@@ -1142,7 +1142,28 @@ describe('useFormState', () => {
       expect(formState.touched.get((path) => path.info.age)).toBe(true); // other fields should remain touched
     });
 
-    it('should reset the form and keep errors empty', () => {
+    it('should reset the form and keep errors empty without validation', () => {
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { ...createState(schema.shape.info), age: 30 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { change, reset },
+      } = result.current;
+
+      act(() => {
+        change('name', '');
+        reset();
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.data.name).toBe('John');
+      expect(formStatus.valid).toBeNull();
+    });
+
+    it('should reset the form and keep errors empty (validate on init)', () => {
       const initialState: InitialSchema = {
         name: 'John',
         info: { ...createState(schema.shape.info), age: 30 },
@@ -1155,6 +1176,28 @@ describe('useFormState', () => {
       } = result.current;
 
       act(() => {
+        change('name', '');
+        reset();
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.data.name).toBe('John');
+      expect(formStatus.valid).toBe(true);
+    });
+
+    it('should keep the validated status after submission', () => {
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { ...createState(schema.shape.info), age: 30 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { change, reset, submit },
+      } = result.current;
+
+      act(() => {
+        submit();
         change('name', '');
         reset();
       });

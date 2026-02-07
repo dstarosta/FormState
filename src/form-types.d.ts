@@ -7,24 +7,6 @@ import type z from 'zod/v4';
 
 type TypeIteration = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...0[]];
 
-type ImmutablePrimitive =
-  | undefined
-  | null
-  | boolean
-  | string
-  | number
-  | symbol
-  | Date
-  | Error
-  | Function
-  | RegExp
-  | Promise<unknown>;
-
-type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
-type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
-type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
-type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
-
 type PathValue<T, P extends string> = P extends keyof T
   ? T[P]
   : P extends `${infer K}.${infer R}`
@@ -41,6 +23,24 @@ type RangeOf<T> =
   | number
   | (IsUnion<T, Date | string> extends true ? Date | string : never)
   | (IsUnion<T, number | ''> extends true ? number | '' : never);
+
+export type ImmutablePrimitive =
+  | undefined
+  | null
+  | boolean
+  | string
+  | number
+  | symbol
+  | Date
+  | Error
+  | Function
+  | RegExp
+  | Promise<unknown>;
+
+export type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
+export type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
+export type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
+export type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
 
 export type Immutable<T> = T extends ImmutablePrimitive
   ? T

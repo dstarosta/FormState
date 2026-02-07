@@ -51,6 +51,7 @@ export default defineConfig([
         },
       ],
       'unicorn/no-null': 'off',
+      'unicorn/no-useless-undefined': ['error', { checkArguments: false }],
       'unicorn/numeric-separators-style': 'off',
       'unicorn/prefer-string-replace-all': 'off',
       'unicorn/prevent-abbreviations': 'off',

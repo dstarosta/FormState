@@ -10,11 +10,12 @@
   "main": "dist/index.mjs",
   "sideEffects": false,
   "type": "module",
-  "version": "1.0.0",
+  "types": "dist/index.d.ts",
+  "version": "1.0.1",
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "build": "npm ci && npm run typecheck && npm run lint && vitest run && tsdown",
+    "build": "npm i && npm run typecheck && npm run lint && vitest run && tsdown && tsdown --config tsdown.types.config.ts",
     "test": "vitest run --coverage"
   },
   "peerDependencies": {

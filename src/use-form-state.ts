@@ -396,7 +396,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
             return {
               initialData: prevState.initialData,
               data: action.options.retainData ? prevState.data : prevState.initialData,
-              validated: validateOnInit,
+              validated: prevState.submitted || validateOnInit,
               submitted: action.options.resetSubmitted ? state.submitted : prevState.submitted,
               dirty: { ...state.dirty },
               touched: action.options.resetTouched

@@ -32,8 +32,8 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse(true).data).toBe(true);
     expect(requiredFieldSchema.safeParse('').success).toBe(false);
     expect(requiredFieldSchema.safeParse('').error).toBeDefined();
-    expect(requiredFieldSchema.safeParse().success).toBe(false);
-    expect(requiredFieldSchema.safeParse().error).toBeDefined();
+    expect(requiredFieldSchema.safeParse(undefined).success).toBe(false);
+    expect(requiredFieldSchema.safeParse(undefined).error).toBeDefined();
   });
 
   it('formNumeric should parse values', () => {
@@ -65,8 +65,8 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse('abcd').error).toBeDefined();
     expect(requiredFieldSchema.safeParse('').success).toBe(false);
     expect(requiredFieldSchema.safeParse('').error).toBeDefined();
-    expect(requiredFieldSchema.safeParse().success).toBe(false);
-    expect(requiredFieldSchema.safeParse().error).toBeDefined();
+    expect(requiredFieldSchema.safeParse(undefined).success).toBe(false);
+    expect(requiredFieldSchema.safeParse(undefined).error).toBeDefined();
   });
 
   it('formDate should parse values', () => {
@@ -101,8 +101,8 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse(new Date(Number.NaN)).error).toBeDefined();
     expect(requiredFieldSchema.safeParse('').success).toBe(false);
     expect(requiredFieldSchema.safeParse('').error).toBeDefined();
-    expect(requiredFieldSchema.safeParse().success).toBe(false);
-    expect(requiredFieldSchema.safeParse().error).toBeDefined();
+    expect(requiredFieldSchema.safeParse(undefined).success).toBe(false);
+    expect(requiredFieldSchema.safeParse(undefined).error).toBeDefined();
   });
 
   it('formValues should not allow empty values', () => {

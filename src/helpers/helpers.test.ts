@@ -170,7 +170,7 @@ describe('helpers', () => {
   });
 
   it('should not parse invalid dates', () => {
-    let parsedDate = safeParseDate();
+    let parsedDate = safeParseDate(undefined);
 
     expect(parsedDate.success).toBe(false);
     expect(parsedDate.date).toBeNull();

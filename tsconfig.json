@@ -11,6 +11,8 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "inlineSources": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -42,5 +44,6 @@
     "useUnknownInCatchVariables": true,
     "removeComments": true
   },
-  "include": ["src", "*.ts", "test.config.ts"]
+  "include": ["src/**/*", "*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
