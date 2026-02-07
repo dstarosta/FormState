@@ -1,0 +1,49 @@
+{
+  "author": {
+    "name": "Dmitry Starosta"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "name": "form-state",
+  "main": "dist/index.mjs",
+  "sideEffects": false,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "build": "npm ci && npm run typecheck && npm run lint && vitest run && tsdown",
+    "test": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "react": ">= 19.2.0",
+    "react-dom": ">= 19.2.0",
+    "zod": ">= 4.3.0 < 5.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.2.1",
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-sonarjs": "^3.0.6",
+    "eslint-plugin-unicorn": "^62.0.0",
+    "fast-equals": "^6.0.0",
+    "globals": "^17.3.0",
+    "jsdom": "^28.0.0",
+    "prettier": "^3.8.1",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^4.0.18"
+  }
+}
