@@ -105,6 +105,21 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse(undefined).error).toBeDefined();
   });
 
+  it('formBoolean should parse values', () => {
+    const stringSchema = z.formString(z.string());
+
+    expect(stringSchema.safeParse(null).success).toBe(true);
+    expect(stringSchema.safeParse('').success).toBe(true);
+    expect(stringSchema.safeParse('test').success).toBe(true);
+    expect(stringSchema.safeParse(/test/).success).toBe(false);
+
+    const requiredStringSchema = z.formString(z.string(), { required: true });
+
+    expect(requiredStringSchema.safeParse(null).success).toBe(false);
+    expect(requiredStringSchema.safeParse('').success).toBe(false);
+    expect(requiredStringSchema.safeParse('test').success).toBe(true);
+  });
+
   it('formValues should not allow empty values', () => {
     expect(() => z.formValues(undefined as never)).toThrow(TypeError);
     expect(() => z.formValues([''])).toThrow(TypeError);

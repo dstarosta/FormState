@@ -90,11 +90,7 @@ export function formBoolean(
       if (typeof value === 'boolean') {
         return value;
       }
-      if (
-        options?.required &&
-        options.error &&
-        (value === undefined || value === EMPTY_STRING)
-      ) {
+      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
         ctx.addIssue({
           code: 'invalid_type',
           expected: 'boolean',
@@ -135,11 +131,7 @@ export function formDate(
 
   return z.preprocess(
     (value, ctx) => {
-      if (
-        options?.required &&
-        options.error &&
-        (value === undefined || value === EMPTY_STRING)
-      ) {
+      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
         ctx.addIssue({
           code: 'invalid_type',
           expected: 'date',
@@ -191,11 +183,7 @@ export function formNumber(
       if (typeof value === 'number' && !Number.isNaN(value)) {
         return value;
       }
-      if (
-        options?.required &&
-        options.error &&
-        (value === undefined || value === EMPTY_STRING)
-      ) {
+      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
         ctx.addIssue({
           code: 'invalid_type',
           expected: 'number',
@@ -227,11 +215,7 @@ export function formString(
 ) {
   return z.preprocess(
     (value, ctx) => {
-      if (
-        options?.required &&
-        options.error &&
-        (value === undefined || value === EMPTY_STRING)
-      ) {
+      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
         ctx.addIssue({
           code: 'invalid_type',
           expected: 'string',
@@ -243,7 +227,7 @@ export function formString(
       }
       return value;
     },
-    options?.required ? zodString : zodString.or(Z_EMPTY_STRING)
+    options?.required ? zodString.min(1, options.error) : zodString.or(Z_EMPTY_STRING)
   );
 }
 
@@ -307,11 +291,7 @@ export function formValues(
 
   return z.preprocess(
     (value, ctx) => {
-      if (
-        options?.required &&
-        options.error &&
-        (value === undefined || value === EMPTY_STRING)
-      ) {
+      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
         ctx.addIssue({
           code: 'invalid_type',
           expected: 'string',
