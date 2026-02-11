@@ -1,7 +1,7 @@
 import { createContext, use, type ComponentType, type Context, type ReactNode } from 'react';
 import * as z from 'zod/v4';
 
-import type { FormOptions, FormPath, FormStateResponse } from './form-types.d';
+import type { DeepPartial, FormOptions, FormPath, FormStateResponse } from './form-types.d';
 
 import { useFormState } from './use-form-state';
 
@@ -28,7 +28,7 @@ export function FormStateProvider<T extends z.ZodObject>({
   children,
 }: Readonly<{
   schema: T;
-  initialState?: Partial<z.output<T>>;
+  initialState?: DeepPartial<z.output<T>>;
   initialTouched?: FormPath<T>[];
   validateOnInit?: boolean;
   children?: ReactNode;
@@ -95,7 +95,7 @@ export function useFormStateContext<T extends z.ZodObject>(schema: T) {
 export function formConnect<T extends z.ZodObject>(
   props: Readonly<{
     schema: T;
-    initialState?: Partial<z.output<T>>;
+    initialState?: DeepPartial<z.output<T>>;
     initialTouched?: FormPath<T>[];
     validateOnInit?: boolean;
   }>

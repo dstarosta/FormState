@@ -299,16 +299,19 @@ describe('form schema', () => {
     const testSchema = z.object({
       users: z.array(
         z.object({
-          name: z.string().default('anon').optional(),
+          name: z.formString(z.string(), { required: false }).default('anon'),
         })
       ),
     });
-    const initialState: z.infer<typeof testSchema> = { users: [{}] };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
-    const { formState } = result.current;
+    const initialState: z.infer<typeof testSchema> = { users: [{ name: '' }] };
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+    const { formState, formStatus } = result.current;
 
     expect(formState.data.users).toHaveLength(1);
     expect(formState.data.users[0]?.name).toBe('anon');
+    expect(formStatus.valid).toBe(true);
   });
 
   it('should format wrong required value', () => {

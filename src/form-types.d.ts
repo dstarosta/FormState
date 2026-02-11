@@ -96,7 +96,7 @@ export type FormAction<T extends object> =
       };
     }
   | {
-      type: 'merge';
+      type: 'replace';
       data: DeepPartial<T>;
       options: {
         validate: boolean;
@@ -164,7 +164,7 @@ export type FormOptions<T extends z.ZodObject> = {
    * the initial state in the schema.
    * Non-dirty form state values will reflect reactive changes to the initial state.
    */
-  initialState?: Partial<z.infer<T>> | undefined;
+  initialState?: DeepPartial<z.infer<T>> | undefined;
   /**
    * An optional array of root level field names or a state path expressions that
    * will be marked as touched when the form is initialized.
@@ -411,9 +411,9 @@ export type FormChangeOptions<T extends z.ZodObject> = {
 };
 
 /**
- * Form data merge options.
+ * Form data replace options.
  */
-export type FormMergeOptions = {
+export type FormReplaceOptions = {
   /**
    * Indicates whether to validate the field (default: false).
    */
@@ -516,13 +516,13 @@ export type FormStateResponse<T extends z.ZodObject> = {
       options?: FormChangeOptions<T>
     ) => void;
     /**
-     * Performs data merge into the form state.
+     * Performs data replacement in the form state.
      *
      * @typeparam T form state type.
-     * @param data - the merged data.
-     * @param options - options for the merge event.
+     * @param data - the replacement data.
+     * @param options - options for the replace event.
      */
-    merge: (data: DeepPartial<z.infer<T>>, options?: FormMergeOptions) => void;
+    replace: (data: DeepPartial<z.infer<T>>, options?: FormReplaceOptions) => void;
     /**
      * Performs form field control touch state changes.
      *

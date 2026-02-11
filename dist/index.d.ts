@@ -52,7 +52,7 @@ type FormOptions<T extends z.ZodObject> = {
    * the initial state in the schema.
    * Non-dirty form state values will reflect reactive changes to the initial state.
    */
-  initialState?: Partial<z.infer<T>> | undefined;
+  initialState?: DeepPartial<z.infer<T>> | undefined;
   /**
    * An optional array of root level field names or a state path expressions that
    * will be marked as touched when the form is initialized.
@@ -268,9 +268,9 @@ type FormChangeOptions<T extends z.ZodObject> = {
   callbackInterval?: number;
 };
 /**
- * Form data merge options.
+ * Form data replace options.
  */
-type FormMergeOptions = {
+type FormReplaceOptions = {
   /**
    * Indicates whether to validate the field (default: false).
    */
@@ -361,13 +361,13 @@ type FormStateResponse<T extends z.ZodObject> = {
      */
     change: <P extends FormPath<T>>(nameOrPath: P, value: FormPathValue<T, P>, options?: FormChangeOptions<T>) => void;
     /**
-     * Performs data merge into the form state.
+     * Performs data replacement in the form state.
      *
      * @typeparam T form state type.
-     * @param data - the merged data.
-     * @param options - options for the merge event.
+     * @param data - the replacement data.
+     * @param options - options for the replace event.
      */
-    merge: (data: DeepPartial<z.infer<T>>, options?: FormMergeOptions) => void;
+    replace: (data: DeepPartial<z.infer<T>>, options?: FormReplaceOptions) => void;
     /**
      * Performs form field control touch state changes.
      *
@@ -828,7 +828,7 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
+}): z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
 declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;
@@ -842,7 +842,7 @@ declare function FormStateProvider<T extends z$1.ZodObject>({
   children
 }: Readonly<{
   schema: T;
-  initialState?: Partial<z$1.output<T>>;
+  initialState?: DeepPartial<z$1.output<T>>;
   initialTouched?: FormPath<T>[];
   validateOnInit?: boolean;
   children?: ReactNode;
@@ -850,7 +850,7 @@ declare function FormStateProvider<T extends z$1.ZodObject>({
 declare function useFormStateContext<T extends z$1.ZodObject>(schema: T): FormStateResponse<T>;
 declare function formConnect<T extends z$1.ZodObject>(props: Readonly<{
   schema: T;
-  initialState?: Partial<z$1.output<T>>;
+  initialState?: DeepPartial<z$1.output<T>>;
   initialTouched?: FormPath<T>[];
   validateOnInit?: boolean;
 }>): <P>(Component: ComponentType<P>) => {
@@ -860,6 +860,7 @@ declare function formConnect<T extends z$1.ZodObject>(props: Readonly<{
 //#endregion
 //#region src/helpers/state-manager.d.ts
 declare function createState<T extends z$1.ZodObject>(schema: T): z$1.infer<T>;
+declare function createInitialState<T extends z$1.ZodObject>(schema: T, data: DeepPartial<z$1.infer<T>> | null | undefined): z$1.core.output<T>;
 declare function updateState<T>(state: ImmutableArray<T> | undefined, updater: (draft: T[]) => void): T[];
 declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: (draft: T) => void): T;
 //#endregion
@@ -867,4 +868,4 @@ declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: 
 declare function formatDate(date: Date, format?: FormDateFormat): string;
 declare function safeParseDate(input: string | undefined, format?: FormDateFormat): DateParseResult;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, createState, formConnect, formatDate, safeParseDate, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, createInitialState, createState, formConnect, formatDate, safeParseDate, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };

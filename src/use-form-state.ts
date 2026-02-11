@@ -21,6 +21,7 @@ import type {
   FormResetOptions,
   FormMutableState,
   FormOptions,
+  FormReplaceOptions,
   FormState,
   FormStatePath,
   FormStateResponse,
@@ -29,7 +30,6 @@ import type {
   FormTouchOptions,
   Immutable,
   StateCallback,
-  FormMergeOptions,
   DeepPartial,
 } from './form-types';
 
@@ -41,8 +41,15 @@ import {
   getPath,
   getPathNotation,
 } from './helpers/schema-visitor';
+import { useDeepMemo } from './helpers/use-deep-memo';
 import { useManualErrorState } from './helpers/use-manual-error-state';
-import { createState, diffedState, updateState, cleanEmpty } from './helpers/state-manager';
+import {
+  cleanEmpty,
+  createInitialState,
+  createState,
+  diffedState,
+  updateState,
+} from './helpers/state-manager';
 import { formatErrors } from './helpers/error-formatter';
 import { throttle } from './helpers/throttler';
 import { generateUniqueId } from './helpers/random-id-generator';
@@ -109,29 +116,29 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     []
   );
 
-  // The snapshot of the provided initial state.
-  const generatedInitialState = useMemo(() => createState(schema), [schema]);
+  const defaultData = useMemo(() => createState(schema), [schema]);
+
+  const initialData = useDeepMemo(
+    () => createInitialState(schema, initialState),
+    [schema, initialState]
+  );
 
   // The processed initial state with default property values and optional errors during the
   // initial validation.
   const state = useMemo<FormMutableState<State>>(() => {
-    const mergedState: State = {
-      ...generatedInitialState,
-      ...initialState,
-    };
-
-    const safeInitialState = schema.safeParse(mergedState);
+    const mergedData = initialState ? initialData : defaultData;
+    const safeData = schema.safeParse(mergedData);
 
     const errors = validateOnInit
-      ? formatErrors<State>(safeInitialState.error)
+      ? formatErrors<State>(safeData.error)
       : ({} as Record<keyof State, string>);
 
     const dirty: Record<keyof State, boolean> = {} as Record<keyof State, boolean>;
 
     const touched: Record<keyof State, boolean> = {} as Record<keyof State, boolean>;
 
-    for (const field in mergedState) {
-      if (Object.prototype.hasOwnProperty.call(mergedState, field)) {
+    for (const field in mergedData) {
+      if (Object.prototype.hasOwnProperty.call(mergedData, field)) {
         dirty[field] = false;
         touched[field] = false;
       }
@@ -141,7 +148,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       for (const pathNotation of initialTouched) {
         const path =
           typeof pathNotation === 'function'
-            ? getPath(mergedState, pathNotation).join('.')
+            ? getPath(mergedData, pathNotation).join('.')
             : String(pathNotation);
 
         touched[path as keyof State] = true;
@@ -156,7 +163,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     const patterns = collectPatterns(schema) as Record<keyof State, string | undefined>;
     const descriptions = collectDescriptions(schema) as Record<keyof State, string | undefined>;
 
-    const data = safeInitialState.data ?? mergedState;
+    const data = safeData.data ?? mergedData;
 
     return {
       validated: validateOnInit,
@@ -172,7 +179,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       descriptions,
       pendingValidation: null,
     };
-  }, [schema, generatedInitialState, initialState, initialTouched, validateOnInit]);
+  }, [schema, defaultData, initialData, initialState, initialTouched, validateOnInit]);
 
   // Tracks whether component is mounted.
   const isMountedRef = useRef(true);
@@ -277,21 +284,18 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               prevState
             );
           }
-          // data merge event
-          case 'merge': {
+          // data replace event
+          case 'replace': {
             const {
               data,
               options: { validate },
             } = action;
 
-            const mergedData: State = {
-              ...prevState.data,
-              ...data,
-            };
+            const replacedData = createInitialState(schema, data);
 
             let errors: Record<keyof State, string | undefined>;
             if (validate || Object.keys(prevState.errors).length > 0) {
-              const safeData = schema.safeParse(mergedData);
+              const safeData = schema.safeParse(replacedData);
               errors = formatErrors<State>(safeData.error);
             } else {
               errors = { ...prevState.errors };
@@ -299,7 +303,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
             return {
               ...prevState,
-              data: mergedData,
+              data: replacedData,
               errors: { ...errors, ...prevManualErrors },
               validated: prevState.validated || validate,
             } satisfies FormMutableState<State>;
@@ -798,11 +802,11 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     [throttledCallbackCacheSize, formState.data, formState.touched, dispatch]
   );
 
-  // The memoized "merge" function.
-  const merge = useCallback(
-    (data: DeepPartial<State>, options?: FormMergeOptions) => {
+  // The memoized "replace" function.
+  const replace = useCallback(
+    (data: DeepPartial<State>, options?: FormReplaceOptions) => {
       dispatch({
-        type: 'merge',
+        type: 'replace',
         data,
         options: {
           validate: Boolean(options?.validate),
@@ -1056,7 +1060,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formClasses,
       formActions: {
         change,
-        merge,
+        replace,
         touch,
         reset,
         submit,
@@ -1079,7 +1083,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formStatus,
       formClasses,
       change,
-      merge,
+      replace,
       touch,
       reset,
       submit,
