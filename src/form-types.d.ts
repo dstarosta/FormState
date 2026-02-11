@@ -97,7 +97,7 @@ export type FormAction<T extends object> =
     }
   | {
       type: 'merge';
-      data: Partial<T>;
+      data: DeepPartial<T>;
       options: {
         validate: boolean;
       };
@@ -522,7 +522,7 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * @param data - the merged data.
      * @param options - options for the merge event.
      */
-    merge: (data: Partial<z.infer<T>>, options?: FormMergeOptions) => void;
+    merge: (data: DeepPartial<z.infer<T>>, options?: FormMergeOptions) => void;
     /**
      * Performs form field control touch state changes.
      *

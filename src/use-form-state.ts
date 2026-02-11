@@ -30,6 +30,7 @@ import type {
   Immutable,
   StateCallback,
   FormMergeOptions,
+  DeepPartial,
 } from './form-types';
 
 import {
@@ -799,7 +800,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
   // The memoized "merge" function.
   const merge = useCallback(
-    (data: Partial<State>, options?: FormMergeOptions) => {
+    (data: DeepPartial<State>, options?: FormMergeOptions) => {
       dispatch({
         type: 'merge',
         data,
