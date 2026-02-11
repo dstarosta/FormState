@@ -5,6 +5,12 @@ import * as react_jsx_runtime0 from "react/jsx-runtime";
 
 //#region \0rolldown/runtime.js
 //#endregion
+//#region src/helpers/form-state-error.d.ts
+declare class FormStateError<T extends object> extends Error {
+  readonly errors: Partial<Record<keyof T, string>>;
+  constructor(message: string, errors?: Partial<Record<keyof T, string>>);
+}
+//#endregion
 //#region src/form-types.d.ts
 type PathValue<T, P extends string> = P extends keyof T ? T[P] : P extends `${infer K}.${infer R}` ? K extends keyof T ? PathValue<T[K], R> : never : never;
 type IsUnion<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
@@ -487,12 +493,33 @@ type DateParseResult = {
 };
 /**
  * The `ranges` value conditional type.
+ *
+ * @typeparam The range type.
  */
 type RangeResult<R> = R extends number | Date ? {
   min: R | undefined | '';
   max: R | undefined | '';
   format: string;
 } : undefined;
+/**
+ * The type of the state validation result.
+ *
+ * @typeparam The form schema type.
+ */
+type StateValidationResult<T extends z.ZodObject> = {
+  /**
+   * The data object instance, if the validation was successful.
+   */
+  data?: z.infer<T>;
+  /**
+   * The form state error instance, if the validation was unsuccessful.
+   */
+  error?: FormStateError<T>;
+  /**
+   * Indicates whether the validation was successful.
+   */
+  success: boolean;
+};
 declare namespace form_schema_d_exports {
   export { advanced, array, boolean, date, formArray, formBoolean, formDate, formNumber, formString, formValues, infer, number, object, regexes, strictObject, string, symbol };
 }
@@ -868,4 +895,7 @@ declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: 
 declare function formatDate(date: Date, format?: FormDateFormat): string;
 declare function safeParseDate(input: string | undefined, format?: FormDateFormat): DateParseResult;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, createInitialState, createState, formConnect, formatDate, safeParseDate, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+//#region src/helpers/error-formatter.d.ts
+declare const validateState: <T extends z$1.ZodObject>(schema: T, data: DeepPartial<z$1.infer<T>>, populateDefaults?: boolean) => StateValidationResult<T>;
+//#endregion
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, createInitialState, createState, formConnect, formatDate, safeParseDate, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };

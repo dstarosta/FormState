@@ -1,5 +1,9 @@
 import * as z from 'zod/v4';
 
+import type { DeepPartial, StateValidationResult } from '../form-types';
+import { createInitialState } from './state-manager';
+import { FormStateError } from './form-state-error';
+
 // Private methods
 
 const isGenericMessage = (message: string) =>
@@ -8,6 +12,40 @@ const isGenericMessage = (message: string) =>
   message.startsWith('Too big:') ||
   message.startsWith('Expected ') ||
   message.startsWith('String must');
+
+// Public methods
+
+/**
+ * Validates whether the data is valid for the schema used by the form state.
+ *
+ * @param schema - The form schema.
+ * @param data - The data object instance.
+ * @param populateDefaults - Indicates whether to populate defaults values for uninitialized fields
+ *                           such as empty strings for optional fields and symbols for strong IDs.
+ *                           Those values would have been populated by the form state initializer
+ *                           automatically and do not result in errors.
+ * @returns The object containing the validation result as well as the validated data object
+ *          instance or the form state error.
+ */
+export const validateState = <T extends z.ZodObject>(
+  schema: T,
+  data: DeepPartial<z.infer<T>>,
+  populateDefaults: boolean = true
+) => {
+  const safeData = schema.safeParse(populateDefaults ? createInitialState(schema, data) : data);
+
+  const result: StateValidationResult<T> = safeData.error
+    ? {
+        error: new FormStateError(z.prettifyError(safeData.error), formatErrors(safeData.error)),
+        success: false,
+      }
+    : {
+        data: safeData.data,
+        success: true,
+      };
+
+  return result;
+};
 
 // Internal methods
 

@@ -3,6 +3,8 @@
 import type { SyntheticEvent } from 'react';
 import type z from 'zod/v4';
 
+import { FormStateError } from './helpers/form-state-error';
+
 // Internal types
 
 type TypeIteration = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...0[]];
@@ -657,7 +659,29 @@ export type DateParseResult = {
 
 /**
  * The `ranges` value conditional type.
+ *
+ * @typeparam The range type.
  */
 export type RangeResult<R> = R extends number | Date
   ? { min: R | undefined | ''; max: R | undefined | ''; format: string }
   : undefined;
+
+/**
+ * The type of the state validation result.
+ *
+ * @typeparam The form schema type.
+ */
+export type StateValidationResult<T extends z.ZodObject> = {
+  /**
+   * The data object instance, if the validation was successful.
+   */
+  data?: z.infer<T>;
+  /**
+   * The form state error instance, if the validation was unsuccessful.
+   */
+  error?: FormStateError<T>;
+  /**
+   * Indicates whether the validation was successful.
+   */
+  success: boolean;
+};

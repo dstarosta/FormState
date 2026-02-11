@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { FormMutableState, Immutable } from '../form-types';
 
-import { createState, formatDate, safeParseDate, updateState, z } from '..';
+import { createState, formatDate, safeParseDate, updateState, validateState, z } from '..';
 import { cleanEmpty, diffedState } from './state-manager';
 import { getSchemaType } from './schema-visitor';
 
@@ -198,5 +198,48 @@ describe('helpers', () => {
     expect(() => safeParseDate('12-12-12', 'MM-MM-MM' as unknown as 'MM/dd/yyyy')).toThrow(
       TypeError
     );
+  });
+
+  describe('error formatter', () => {
+    const formSchema = z.object({
+      a: z.array(
+        z.object({
+          id: z.symbol(),
+          i: z.formNumber(z.number(), { required: true }),
+        })
+      ),
+      n: z.formNumber(z.number(), { required: true }),
+      v: z.formValues(['a', 'b'], { required: true }),
+      z: z.object({
+        id: z.formNumber(z.number()),
+      }),
+    });
+
+    it('validates state successfully with defaults', () => {
+      const result = validateState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.error).toBeUndefined();
+      expect(result.data?.n).toBe(2);
+      expect(result.data?.v).toBe('b');
+      expect(result.data?.a.length).toBe(1);
+      expect(result.data?.a[0]?.id).toBeTypeOf('symbol');
+      expect(result.data?.a[0]?.i).toBe(1);
+      expect(result.data?.z.id).toBe('');
+    });
+
+    it('validates state unsuccessfully without defaults', () => {
+      const result = validateState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' }, false);
+
+      expect(result.success).toBe(false);
+      expect(result.data).toBeUndefined();
+      expect(result.error).toBeDefined();
+
+      const errorKeys = Object.keys(result.error?.errors ?? {});
+
+      expect(errorKeys).toContain('a.0.id');
+      expect(errorKeys).toContain('z');
+    });
   });
 });
