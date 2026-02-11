@@ -1,6 +1,7 @@
 export * as z from './form-schema';
 export type {
   DateParseResult,
+  DeepPartial,
   FormChangeOptions,
   FormControlWithStateProps,
   FormDateFormat,
