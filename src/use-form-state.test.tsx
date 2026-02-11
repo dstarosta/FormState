@@ -327,6 +327,55 @@ describe('useFormState', () => {
       });
     });
 
+    it('should merge new data', () => {
+      const { result } = renderHook(() => useFormState(schema));
+      const {
+        formState: { data },
+        formStatus: { valid },
+        formActions: { merge },
+      } = result.current;
+
+      expect(data.name).toBe('');
+      expect(data.info.age).toBe('');
+      expect(valid).toBeNull();
+
+      act(() => {
+        merge({ name: 'Jonathan', info: { ...createState(schema.shape.info), age: 29 } });
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.data.name).toBe('Jonathan');
+      expect(formState.data.info.age).toBe(29);
+      expect(formStatus.valid).toBeNull();
+    });
+
+    it('should merge and validate new data', () => {
+      const { result } = renderHook(() => useFormState(schema));
+      const {
+        formState: { data },
+        formStatus: { valid },
+        formActions: { merge },
+      } = result.current;
+
+      expect(data.name).toBe('');
+      expect(data.info.age).toBe('');
+      expect(valid).toBeNull();
+
+      act(() => {
+        merge(
+          { name: 'Jonathan', info: { ...createState(schema.shape.info), age: 29 } },
+          { validate: true }
+        );
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.data.name).toBe('Jonathan');
+      expect(formState.data.info.age).toBe(29);
+      expect(formStatus.valid).toBe(true);
+    });
+
     it('gets the state values', () => {
       const prevIsSecureContext = globalThis.isSecureContext;
 

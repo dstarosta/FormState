@@ -96,6 +96,13 @@ export type FormAction<T extends object> =
       };
     }
   | {
+      type: 'merge';
+      data: Partial<T>;
+      options: {
+        validate: boolean;
+      };
+    }
+  | {
       type: 'reset';
       options: { retainData: boolean; resetTouched: boolean; resetSubmitted: boolean };
     }
@@ -157,7 +164,7 @@ export type FormOptions<T extends z.ZodObject> = {
    * the initial state in the schema.
    * Non-dirty form state values will reflect reactive changes to the initial state.
    */
-  initialState?: Partial<z.infer<T>>;
+  initialState?: Partial<z.infer<T>> | undefined;
   /**
    * An optional array of root level field names or a state path expressions that
    * will be marked as touched when the form is initialized.
@@ -404,6 +411,16 @@ export type FormChangeOptions<T extends z.ZodObject> = {
 };
 
 /**
+ * Form data merge options.
+ */
+export type FormMergeOptions = {
+  /**
+   * Indicates whether to validate the field (default: false).
+   */
+  validate?: boolean;
+};
+
+/**
  * Form touch options.
  */
 export type FormTouchOptions = {
@@ -499,12 +516,20 @@ export type FormStateResponse<T extends z.ZodObject> = {
       options?: FormChangeOptions<T>
     ) => void;
     /**
+     * Performs data merge into the form state.
+     *
+     * @typeparam T form state type.
+     * @param data - the merged data.
+     * @param options - options for the merge event.
+     */
+    merge: (data: Partial<z.infer<T>>, options?: FormMergeOptions) => void;
+    /**
      * Performs form field control touch state changes.
      *
      * @typeparam T form state type.
      * @param nameOrPath - a root level field name or a state path expression.
      *                     The first field in the schema is touched if the path is not provided.
-     * @param options - options for the touch event:
+     * @param options - options for the touch event.
      */
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
     /**

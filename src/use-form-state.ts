@@ -29,6 +29,7 @@ import type {
   FormTouchOptions,
   Immutable,
   StateCallback,
+  FormMergeOptions,
 } from './form-types';
 
 import {
@@ -274,6 +275,33 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               },
               prevState
             );
+          }
+          // data merge event
+          case 'merge': {
+            const {
+              data,
+              options: { validate },
+            } = action;
+
+            const mergedData: State = {
+              ...prevState.data,
+              ...data,
+            };
+
+            let errors: Record<keyof State, string | undefined>;
+            if (validate || Object.keys(prevState.errors).length > 0) {
+              const safeData = schema.safeParse(mergedData);
+              errors = formatErrors<State>(safeData.error);
+            } else {
+              errors = { ...prevState.errors };
+            }
+
+            return {
+              ...prevState,
+              data: mergedData,
+              errors: { ...errors, ...prevManualErrors },
+              validated: prevState.validated || validate,
+            } satisfies FormMutableState<State>;
           }
           // field touch event
           case 'touch': {
@@ -769,6 +797,20 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     [throttledCallbackCacheSize, formState.data, formState.touched, dispatch]
   );
 
+  // The memoized "merge" function.
+  const merge = useCallback(
+    (data: Partial<State>, options?: FormMergeOptions) => {
+      dispatch({
+        type: 'merge',
+        data,
+        options: {
+          validate: Boolean(options?.validate),
+        },
+      });
+    },
+    [dispatch]
+  );
+
   // The memoized "touch" function.
   const touch = useCallback(
     (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => {
@@ -1013,6 +1055,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formClasses,
       formActions: {
         change,
+        merge,
         touch,
         reset,
         submit,
@@ -1035,6 +1078,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formStatus,
       formClasses,
       change,
+      merge,
       touch,
       reset,
       submit,

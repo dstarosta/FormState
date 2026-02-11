@@ -51,7 +51,7 @@ type FormOptions<T extends z.ZodObject> = {
    * the initial state in the schema.
    * Non-dirty form state values will reflect reactive changes to the initial state.
    */
-  initialState?: Partial<z.infer<T>>;
+  initialState?: Partial<z.infer<T>> | undefined;
   /**
    * An optional array of root level field names or a state path expressions that
    * will be marked as touched when the form is initialized.
@@ -267,6 +267,15 @@ type FormChangeOptions<T extends z.ZodObject> = {
   callbackInterval?: number;
 };
 /**
+ * Form data merge options.
+ */
+type FormMergeOptions = {
+  /**
+   * Indicates whether to validate the field (default: false).
+   */
+  validate?: boolean;
+};
+/**
  * Form touch options.
  */
 type FormTouchOptions = {
@@ -351,12 +360,20 @@ type FormStateResponse<T extends z.ZodObject> = {
      */
     change: <P extends FormPath<T>>(nameOrPath: P, value: FormPathValue<T, P>, options?: FormChangeOptions<T>) => void;
     /**
+     * Performs data merge into the form state.
+     *
+     * @typeparam T form state type.
+     * @param data - the merged data.
+     * @param options - options for the merge event.
+     */
+    merge: (data: Partial<z.infer<T>>, options?: FormMergeOptions) => void;
+    /**
      * Performs form field control touch state changes.
      *
      * @typeparam T form state type.
      * @param nameOrPath - a root level field name or a state path expression.
      *                     The first field in the schema is touched if the path is not provided.
-     * @param options - options for the touch event:
+     * @param options - options for the touch event.
      */
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
     /**
@@ -810,7 +827,7 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
+}): z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
 declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;
