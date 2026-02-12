@@ -501,25 +501,6 @@ type RangeResult<R> = R extends number | Date ? {
   max: R | undefined | '';
   format: string;
 } : undefined;
-/**
- * The type of the state validation result.
- *
- * @typeparam The form schema type.
- */
-type StateValidationResult<T extends z.ZodObject> = {
-  /**
-   * The data object instance, if the validation was successful.
-   */
-  data?: z.infer<T>;
-  /**
-   * The form state error instance, if the validation was unsuccessful.
-   */
-  error?: FormStateError<T>;
-  /**
-   * Indicates whether the validation was successful.
-   */
-  success: boolean;
-};
 declare namespace form_schema_d_exports {
   export { advanced, array, boolean, date, formArray, formBoolean, formDate, formNumber, formString, formValues, infer, number, object, regexes, strictObject, string, symbol };
 }
@@ -855,7 +836,7 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T>>;
+}): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
 declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;
@@ -896,6 +877,14 @@ declare function formatDate(date: Date, format?: FormDateFormat): string;
 declare function safeParseDate(input: string | undefined, format?: FormDateFormat): DateParseResult;
 //#endregion
 //#region src/helpers/error-formatter.d.ts
-declare const validateState: <T extends z$1.ZodObject>(schema: T, data: DeepPartial<z$1.infer<T>>, populateDefaults?: boolean) => StateValidationResult<T>;
+declare const validateState: <T extends z$1.ZodObject>(schema: T, data: DeepPartial<z$1.infer<T>>, populateDefaults?: boolean) => {
+  error: FormStateError<T>;
+  success: false;
+  data?: never;
+} | {
+  data: z$1.core.output<T>;
+  success: true;
+  error?: never;
+};
 //#endregion
 export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, createInitialState, createState, formConnect, formatDate, safeParseDate, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };

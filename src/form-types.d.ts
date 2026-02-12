@@ -667,21 +667,33 @@ export type RangeResult<R> = R extends number | Date
   : undefined;
 
 /**
- * The type of the state validation result.
+ * The type for a successful state validation result.
  *
  * @typeparam The form schema type.
  */
-export type StateValidationResult<T extends z.ZodObject> = {
+export type StateValidationSuccess<T extends z.ZodObject> = {
   /**
    * The data object instance, if the validation was successful.
    */
-  data?: z.infer<T>;
-  /**
-   * The form state error instance, if the validation was unsuccessful.
-   */
-  error?: FormStateError<T>;
+  data: z.infer<T>;
   /**
    * Indicates whether the validation was successful.
    */
-  success: boolean;
+  success: true;
+};
+
+/**
+ * The type for a failed state validation result.
+ *
+ * @typeparam The form schema type.
+ */
+export type StateValidationFailure<T extends z.ZodObject> = {
+  /**
+   * The form state error instance, if the validation was unsuccessful.
+   */
+  error: FormStateError<T>;
+  /**
+   * Indicates whether the validation was successful.
+   */
+  success: false;
 };

@@ -1,6 +1,6 @@
 import * as z from 'zod/v4';
 
-import type { DeepPartial, StateValidationResult } from '../form-types';
+import type { DeepPartial, StateValidationFailure, StateValidationSuccess } from '../form-types';
 import { createInitialState } from './state-manager';
 import { FormStateError } from './form-state-error';
 
@@ -34,17 +34,17 @@ export const validateState = <T extends z.ZodObject>(
 ) => {
   const safeData = schema.safeParse(populateDefaults ? createInitialState(schema, data) : data);
 
-  const result: StateValidationResult<T> = safeData.error
-    ? {
-        error: new FormStateError(z.prettifyError(safeData.error), formatErrors(safeData.error)),
-        success: false,
-      }
-    : {
-        data: safeData.data,
-        success: true,
-      };
+  if (!safeData.success) {
+    return {
+      error: new FormStateError(z.prettifyError(safeData.error), formatErrors(safeData.error)),
+      success: false,
+    } satisfies StateValidationFailure<T>;
+  }
 
-  return result;
+  return {
+    data: safeData.data,
+    success: true,
+  } satisfies StateValidationSuccess<T>;
 };
 
 // Internal methods
