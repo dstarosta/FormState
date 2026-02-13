@@ -174,6 +174,9 @@ export type FormOptions<T extends z.ZodObject> = {
   debounceCacheCapacity?: number;
 };
 
+/**
+ * Form state data type.
+ */
 export type FormData<T extends object> = Immutable<
   FormMutableState<T>['data'] & {
     /**
@@ -186,6 +189,9 @@ export type FormData<T extends object> = Immutable<
   }
 >;
 
+/**
+ * Form state errors type.
+ */
 export type FormErrors<T extends object> = Immutable<
   FormMutableState<T>['errors'] & {
     /**
@@ -573,11 +579,12 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * @param onSubmit - A callback function to execute before submitting the form.
      *                   The function takes 2 parameters: `data: z.infer<typeof schema>` and `hasErrors: boolean`.
      *
-     *                   `data` - the transformed form state data into an object without empty strings for API processing.
-     *                   (see: `formState.data.toObject()`)
+     *                   `data` - the transformed form state data into an object without empty strings for API processing
+     *                            (see: `formState.data.toObject()`). This value is `undefined` when the form state has
+     *                            errors.
      *
-     *                   `hasErrors` - indicates that the form state has errors and the form cannot be submitted.
-     *                   Use `formState.errors` to get the errors.
+     *                   `errors` - errors for each field in the form. This value is `undefined` when the form state has
+     *                              no errors.
      *
      *                   Return value: `false` - do not submit the form even if the form state has no errors.
      *                                 `true` - submit the form if there are no errors.
@@ -587,7 +594,7 @@ export type FormStateResponse<T extends z.ZodObject> = {
      */
     handleSubmit: (
       onSubmit: (
-        data: z.infer<T>,
+        data?: z.infer<T>,
         errors?: FormErrors<z.infer<T>>
       ) => Promise<boolean | void> | boolean | void,
       options?: FormSubmitOptions

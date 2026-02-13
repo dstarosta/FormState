@@ -815,14 +815,12 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   const handleSubmit = useCallback(
     (
       onSubmit: (
-        data: State,
+        data?: State,
         errors?: FormErrors<State>
       ) => Promise<boolean | void> | boolean | void,
       options?: FormSubmitOptions
     ) => {
       return async () => {
-        const data = cleanEmpty(schema, formState.data) as State;
-
         const hasErrors =
           Object.keys(formState.errors).length > 0 ||
           (formStatus.valid === null && Object.keys(formState.initialErrors).length > 0);
@@ -840,6 +838,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               getManual: (key: string) => submittedErrors[key as keyof State],
             }) as FormErrors<State>)
           : undefined;
+
+        const data = hasErrors ? undefined : (cleanEmpty(schema, formState.data) as State);
 
         const shouldSubmit = await onSubmit(data, errors);
 

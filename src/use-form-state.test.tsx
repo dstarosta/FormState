@@ -1539,7 +1539,7 @@ describe('useFormState', () => {
         }
       }, [manualError, setError]);
 
-      const onSubmit = async (submittedData: Schema, errors?: FormErrors<Schema>) => {
+      const onSubmit = async (submittedData?: Schema, errors?: FormErrors<Schema>) => {
         if (errors) {
           if (
             formStatus.valid ||
@@ -1552,7 +1552,7 @@ describe('useFormState', () => {
           return false;
         }
 
-        if (!formStatus.valid) {
+        if (!formStatus.valid || !submittedData) {
           throw new Error('Mismatched form status');
         }
 
