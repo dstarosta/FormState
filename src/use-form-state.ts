@@ -29,6 +29,7 @@ import type {
   FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
+  Immutable,
   StateCallback,
   DeepPartial,
   SubmitState,
@@ -899,91 +900,101 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     dispatch({ type: 'clearManualErrors' });
   }, [dispatch]);
 
-  const formData = useMemo(() => {
-    const extendedData = Object.freeze({
-      ...formState.data,
-      toObject: () => cleanEmpty(schema, formState.data) as State,
-    }) as FormState<State>['data'];
+  const initialFormState = useMemo(
+    () => ({
+      data: Object.freeze(formState.initialData) as Immutable<State>,
+      errors: Object.freeze(formState.initialErrors) as Immutable<
+        Record<keyof State, string | undefined>
+      >,
+    }),
+    [formState.initialData, formState.initialErrors]
+  );
 
-    return extendedData;
-  }, [schema, formState.data]);
+  const formData = useMemo(
+    () =>
+      Object.freeze({
+        ...formState.data,
+        toObject: () => cleanEmpty(schema, formState.data) as State,
+      }) as FormState<State>['data'],
+    [schema, formState.data]
+  );
 
   // The memoized "errors" object of the form state.
-  const formErrors = useMemo(() => {
-    const extendedErrors = Object.freeze({
-      ...formState.errors,
-      get: (expression: (data: State) => unknown) =>
-        getFieldError(formState.errors, getPath(formState.data, expression)),
-      getManual: (key: string) => formState.errors[key as keyof State],
-    }) as FormState<State>['errors'];
-
-    return extendedErrors;
-  }, [formState.data, formState.errors, getFieldError]);
+  const formErrors = useMemo(
+    () =>
+      Object.freeze({
+        ...formState.errors,
+        get: (expression: (data: State) => unknown) =>
+          getFieldError(formState.errors, getPath(formState.data, expression)),
+        getManual: (key: string) => formState.errors[key as keyof State],
+      }) as FormState<State>['errors'],
+    [formState.data, formState.errors, getFieldError]
+  );
 
   // The memoized "dirty" object of the form state.
-  const dirty = useMemo(() => {
-    const extendedDirty = Object.freeze({
-      ...formState.dirty,
-      get: (key: `#${string}`) => Boolean(formState.dirty[key as keyof State]),
-    }) as FormState<State>['dirty'];
-
-    return extendedDirty;
-  }, [formState.dirty]);
+  const dirty = useMemo(
+    () =>
+      Object.freeze({
+        ...formState.dirty,
+        get: (key: `#${string}`) => Boolean(formState.dirty[key as keyof State]),
+      }) as FormState<State>['dirty'],
+    [formState.dirty]
+  );
 
   // The memoized "touched" object of the form state.
-  const touched = useMemo(() => {
-    const extendedTouched = Object.freeze({
-      ...formState.touched,
-      get: (expression: (data: State) => unknown) =>
-        wasFieldTouched(formState.touched, getPath(formState.data, expression)),
-    }) as FormState<State>['touched'];
-
-    return extendedTouched;
-  }, [formState.touched, formState.data, wasFieldTouched]);
+  const touched = useMemo(
+    () =>
+      Object.freeze({
+        ...formState.touched,
+        get: (expression: (data: State) => unknown) =>
+          wasFieldTouched(formState.touched, getPath(formState.data, expression)),
+      }) as FormState<State>['touched'],
+    [formState.touched, formState.data, wasFieldTouched]
+  );
 
   // The memoized "maxLengths" object of the form state.
-  const maxLengths = useMemo(() => {
-    const extendedMaxLengths = Object.freeze({
-      ...formState.maxLengths,
-      get: (expression: (data: State) => unknown) =>
-        getFieldMaxLength(formState.maxLengths, getPath(formState.data, expression)),
-    }) as FormState<State>['maxLengths'];
-
-    return extendedMaxLengths;
-  }, [formState.maxLengths, formState.data, getFieldMaxLength]);
+  const maxLengths = useMemo(
+    () =>
+      Object.freeze({
+        ...formState.maxLengths,
+        get: (expression: (data: State) => unknown) =>
+          getFieldMaxLength(formState.maxLengths, getPath(formState.data, expression)),
+      }) as FormState<State>['maxLengths'],
+    [formState.maxLengths, formState.data, getFieldMaxLength]
+  );
 
   // The memoized "ranges" object of the form state.
-  const ranges = useMemo(() => {
-    const extendedRanges = Object.freeze({
-      ...formState.ranges,
-      get: (expression: (data: State) => unknown) =>
-        getFieldRange(formState.ranges, getPath(formState.data, expression)),
-    }) as FormState<State>['ranges'];
-
-    return extendedRanges;
-  }, [formState.data, formState.ranges, getFieldRange]);
+  const ranges = useMemo(
+    () =>
+      Object.freeze({
+        ...formState.ranges,
+        get: (expression: (data: State) => unknown) =>
+          getFieldRange(formState.ranges, getPath(formState.data, expression)),
+      }) as FormState<State>['ranges'],
+    [formState.data, formState.ranges, getFieldRange]
+  );
 
   // The memoized "patterns" object of the form state.
-  const patterns = useMemo(() => {
-    const extendedPatterns = Object.freeze({
-      ...formState.patterns,
-      get: (expression: (data: State) => unknown) =>
-        getFieldPattern(formState.patterns, getPath(formState.data, expression)),
-    }) as FormState<State>['patterns'];
-
-    return extendedPatterns;
-  }, [formState.data, formState.patterns, getFieldPattern]);
+  const patterns = useMemo(
+    () =>
+      Object.freeze({
+        ...formState.patterns,
+        get: (expression: (data: State) => unknown) =>
+          getFieldPattern(formState.patterns, getPath(formState.data, expression)),
+      }) as FormState<State>['patterns'],
+    [formState.data, formState.patterns, getFieldPattern]
+  );
 
   // The memoized "descriptions" object of the form state.
-  const descriptions = useMemo(() => {
-    const extendedDescriptions = Object.freeze({
-      ...formState.descriptions,
-      get: (expression: (data: State) => unknown) =>
-        getFieldDescription(formState.descriptions, getPath(formState.data, expression)),
-    }) as FormState<State>['descriptions'];
-
-    return extendedDescriptions;
-  }, [formState.data, formState.descriptions, getFieldDescription]);
+  const descriptions = useMemo(
+    () =>
+      Object.freeze({
+        ...formState.descriptions,
+        get: (expression: (data: State) => unknown) =>
+          getFieldDescription(formState.descriptions, getPath(formState.data, expression)),
+      }) as FormState<State>['descriptions'],
+    [formState.data, formState.descriptions, getFieldDescription]
+  );
 
   // The memoized Form component.
   const createComponent = useMemo(() => createFormComponent<T>(reset), [reset]);
@@ -991,6 +1002,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The memoized "response" object that combines the state, form status, CSS classes, HTML element props and actions.
   const response = useMemo<FormStateResponse<T>>(
     () => ({
+      initialState: initialFormState,
       formState: {
         data: formData,
         errors: formErrors,
@@ -1017,6 +1029,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       Form: createComponent,
     }),
     [
+      initialFormState,
       formData,
       formErrors,
       dirty,

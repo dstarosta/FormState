@@ -543,6 +543,19 @@ export type FormSubmitOptions = {
  */
 export type FormStateResponse<T extends z.ZodObject> = {
   /**
+   * Initial form state - data and errors.
+   */
+  initialState: {
+    /**
+     * Initial form state data.
+     */
+    data: Immutable<z.infer<T>>;
+    /**
+     * Initial form state errors.
+     */
+    errors: Immutable<Record<keyof z.infer<T>, string | undefined>>;
+  };
+  /**
    * Form state - data, errors, touched and dirty flags as well as max lengths for strings and arrays.
    */
   formState: FormState<z.infer<T>>;

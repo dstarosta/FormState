@@ -403,6 +403,19 @@ type FormSubmitOptions = {
  */
 type FormStateResponse<T extends z.ZodObject> = {
   /**
+   * Initial form state - data and errors.
+   */
+  initialState: {
+    /**
+     * Initial form state data.
+     */
+    data: Immutable<z.infer<T>>;
+    /**
+     * Initial form state errors.
+     */
+    errors: Immutable<Record<keyof z.infer<T>, string | undefined>>;
+  };
+  /**
    * Form state - data, errors, touched and dirty flags as well as max lengths for strings and arrays.
    */
   formState: FormState<z.infer<T>>;
@@ -899,7 +912,7 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
+}): z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
 declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;
