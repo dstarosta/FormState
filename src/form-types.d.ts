@@ -175,41 +175,51 @@ export type FormOptions<T extends z.ZodObject> = {
 };
 
 /**
- * Form state data type.
+ * Form state on submission.
+ *
+ * @typeParam T type of the form data.
  */
-export type FormData<T extends object> = Immutable<
-  FormMutableState<T>['data'] & {
-    /**
-     * Transforms the form state data into an object without empty strings.
-     *
-     * This is useful for sending the data to JSON APIs.
-     * @returns The transformed form data.
-     */
-    toObject: () => T;
-  }
->;
-
-/**
- * Form state errors type.
- */
-export type FormErrors<T extends object> = Immutable<
-  FormMutableState<T>['errors'] & {
-    /**
-     * Gets an error message for a nested field.
-     *
-     * @param path - a form state path expression.
-     * @returns the error message for the specified field, or `undefined` if there is no error.
-     */
-    get: (expression: (data: T) => unknown) => string | undefined;
-    /**
-     * Gets a manual error message with an arbitrary string key.
-     *
-     * @param key - a manual error key.
-     * @returns the error message for the specified key, or `undefined` if there is no error.
-     */
-    getManual: (key: string) => string | undefined;
-  }
->;
+export type SubmitState<T extends object> =
+  | {
+      /**
+       * Indicates whether the state is valid.
+       */
+      valid: true;
+      /**
+       * The transformed form state data into an object without empty strings for API processing
+       * (see: `formState.data.toObject()`). This value is `undefined` when the form state has
+       * errors.
+       */
+      data: T;
+    }
+  | {
+      /**
+       * Indicates whether the state is valid.
+       */
+      valid: false;
+      /**
+       * The errors for each field in the form. This value is `undefined` when the form state has
+       * no errors.
+       */
+      errors: Immutable<
+        FormMutableState<T>['errors'] & {
+          /**
+           * Gets an error message for a nested field.
+           *
+           * @param path - a form state path expression.
+           * @returns the error message for the specified field, or `undefined` if there is no error.
+           */
+          get: (expression: (data: T) => unknown) => string | undefined;
+          /**
+           * Gets a manual error message with an arbitrary string key.
+           *
+           * @param key - a manual error key.
+           * @returns the error message for the specified key, or `undefined` if there is no error.
+           */
+          getManual: (key: string) => string | undefined;
+        }
+      >;
+    };
 
 /**
  * Form state type made immutable and extended with the `get(expression)` functions.
@@ -217,11 +227,41 @@ export type FormErrors<T extends object> = Immutable<
  * @typeParam T type of the form data.
  */
 export type FormState<T extends object> = {
-  data: FormData<T>;
+  /**
+   * Form state data.
+   */
+  data: Immutable<
+    FormMutableState<T>['data'] & {
+      /**
+       * Transforms the form state data into an object without empty strings.
+       *
+       * This is useful for sending the data to JSON APIs.
+       * @returns The transformed form data.
+       */
+      toObject: () => T;
+    }
+  >;
   /**
    * Errors for each field in the form.
    */
-  errors: FormErrors<T>;
+  errors: Immutable<
+    FormMutableState<T>['errors'] & {
+      /**
+       * Gets an error message for a nested field.
+       *
+       * @param path - a form state path expression.
+       * @returns the error message for the specified field, or `undefined` if there is no error.
+       */
+      get: (expression: (data: T) => unknown) => string | undefined;
+      /**
+       * Gets a manual error message with an arbitrary string key.
+       *
+       * @param key - a manual error key.
+       * @returns the error message for the specified key, or `undefined` if there is no error.
+       */
+      getManual: (key: string) => string | undefined;
+    }
+  >;
   /**
    * Dirty status for each field in the form.
    */
@@ -577,26 +617,15 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * A function to use in the `action` attribute of a `<Form />` component to submit the form.
      *
      * @param onSubmit - A callback function to execute before submitting the form.
-     *                   The function takes 2 parameters: `data: z.infer<typeof schema>` and `hasErrors: boolean`.
      *
-     *                   `data` - the transformed form state data into an object without empty strings for API processing
-     *                            (see: `formState.data.toObject()`). This value is `undefined` when the form state has
-     *                            errors.
-     *
-     *                   `errors` - errors for each field in the form. This value is `undefined` when the form state has
-     *                              no errors.
-     *
-     *                   Return value: `false` - do not submit the form even if the form state has no errors.
-     *                                 `true` - submit the form if there are no errors.
-     *                                 `void` - no return value is treated as `true`.
+     * Callback return value: `false` - do not submit the form even if the form state has no errors.
+     * `true` - submit the form if there are no errors.
+     * `void` - no return value is treated as `true`.
      *
      * @param options - options for form submission.
      */
     handleSubmit: (
-      onSubmit: (
-        data?: z.infer<T>,
-        errors?: FormErrors<z.infer<T>>
-      ) => Promise<boolean | void> | boolean | void,
+      onSubmit: (state: SubmitState<z.infer<T>>) => Promise<boolean | void> | boolean | void,
       options?: FormSubmitOptions
     ) => () => Promise<void>;
     /**

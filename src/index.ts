@@ -5,8 +5,6 @@ export type {
   FormChangeOptions,
   FormControlWithStateProps,
   FormDateFormat,
-  FormData,
-  FormErrors,
   FormPath,
   FormResetOptions,
   FormState,
@@ -16,6 +14,7 @@ export type {
   FormStatus,
   FormSubmitOptions,
   FormTouchOptions,
+  SubmitState,
 } from './form-types.d';
 export { FormStateError } from './helpers/form-state-error';
 export { useFormState } from './use-form-state';

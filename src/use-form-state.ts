@@ -16,8 +16,6 @@ import type {
   FormAction,
   FormChangeOptions,
   FormClassOptions,
-  FormData,
-  FormErrors,
   FormPath,
   FieldRange,
   FormResetOptions,
@@ -33,6 +31,7 @@ import type {
   FormValidateOptions,
   StateCallback,
   DeepPartial,
+  SubmitState,
 } from './form-types';
 
 import {
@@ -516,13 +515,13 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       data: Object.freeze({
         ...formState.data,
         toObject: () => cleanEmpty(schema, formState.data) as State,
-      }) as FormData<State>,
+      }) as FormState<State>['data'],
       errors: Object.freeze({
         ...formState.errors,
         get: (expression: (data: State) => unknown) =>
           getFieldError(formState.errors, getPath(formState.data, expression)),
         getManual: (key: string) => formState.errors[key as keyof State],
-      }) as FormErrors<State>,
+      }) as FormState<State>['errors'],
       touched: Object.freeze({
         ...formState.touched,
         get: (expression: (data: State) => unknown) =>
@@ -814,34 +813,33 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The memoized "handleSubmit" function.
   const handleSubmit = useCallback(
     (
-      onSubmit: (
-        data?: State,
-        errors?: FormErrors<State>
-      ) => Promise<boolean | void> | boolean | void,
+      onSubmit: (state: SubmitState<State>) => Promise<boolean | void> | boolean | void,
       options?: FormSubmitOptions
     ) => {
       return async () => {
-        const hasErrors =
-          Object.keys(formState.errors).length > 0 ||
-          (formStatus.valid === null && Object.keys(formState.initialErrors).length > 0);
-
         const submittedErrors =
           formStatus.valid === null
             ? { ...formState.initialErrors, ...manualErrorsState.get() }
             : formState.errors;
 
-        const errors = hasErrors
-          ? (Object.freeze({
-              ...submittedErrors,
-              get: (expression: (data: State) => unknown) =>
-                getFieldError(submittedErrors, getPath(formState.data, expression)),
-              getManual: (key: string) => submittedErrors[key as keyof State],
-            }) as FormErrors<State>)
-          : undefined;
+        const hasErrors = Object.keys(submittedErrors).length > 0;
 
-        const data = hasErrors ? undefined : (cleanEmpty(schema, formState.data) as State);
+        const submitState: SubmitState<State> = hasErrors
+          ? {
+              valid: false,
+              errors: Object.freeze({
+                ...submittedErrors,
+                get: (expression: (data: State) => unknown) =>
+                  getFieldError(submittedErrors, getPath(formState.data, expression)),
+                getManual: (key: string) => submittedErrors[key as keyof State],
+              }) as FormState<State>['errors'],
+            }
+          : {
+              valid: true,
+              data: cleanEmpty(schema, formState.data) as State,
+            };
 
-        const shouldSubmit = await onSubmit(data, errors);
+        const shouldSubmit = await onSubmit(submitState);
 
         if (hasErrors || shouldSubmit === false) {
           dispatch({ type: 'validate' });
@@ -905,7 +903,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     const extendedData = Object.freeze({
       ...formState.data,
       toObject: () => cleanEmpty(schema, formState.data) as State,
-    }) as FormData<State>;
+    }) as FormState<State>['data'];
 
     return extendedData;
   }, [schema, formState.data]);
@@ -917,7 +915,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       get: (expression: (data: State) => unknown) =>
         getFieldError(formState.errors, getPath(formState.data, expression)),
       getManual: (key: string) => formState.errors[key as keyof State],
-    }) as FormErrors<State>;
+    }) as FormState<State>['errors'];
 
     return extendedErrors;
   }, [formState.data, formState.errors, getFieldError]);

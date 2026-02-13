@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
 
-import { useFormState, z, type DeepPartial, type FormErrors, type FormState } from '.';
+import { useFormState, z, type DeepPartial, type FormState } from '.';
+import type { SubmitState } from './form-types';
 
 describe('useFormState', () => {
   const schema = z.strictObject({
@@ -1539,11 +1540,12 @@ describe('useFormState', () => {
         }
       }, [manualError, setError]);
 
-      const onSubmit = async (submittedData?: Schema, errors?: FormErrors<Schema>) => {
-        if (errors) {
+      const onSubmit = async (submitState: SubmitState<Schema>) => {
+        if (!submitState.valid) {
           if (
             formStatus.valid ||
-            (!errors.get((path) => path.name) && !errors.getManual('someProp'))
+            (!submitState.errors.get((path) => path.name) &&
+              !submitState.errors.getManual('someProp'))
           ) {
             throw new Error('Mismatched form status');
           }
@@ -1552,11 +1554,11 @@ describe('useFormState', () => {
           return false;
         }
 
-        if (!formStatus.valid || !submittedData) {
+        if (!formStatus.valid || !submitState.data) {
           throw new Error('Mismatched form status');
         }
 
-        await Promise.resolve(submittedData);
+        await Promise.resolve(submitState.data);
 
         submitFn(true);
         return true;

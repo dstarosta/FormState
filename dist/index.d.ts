@@ -75,47 +75,84 @@ type FormOptions<T extends z.ZodObject> = {
   debounceCacheCapacity?: number;
 };
 /**
- * Form state data type.
+ * Form state on submission.
+ *
+ * @typeParam T type of the form data.
  */
-type FormData<T extends object> = Immutable<FormMutableState<T>['data'] & {
+type SubmitState<T extends object> = {
   /**
-   * Transforms the form state data into an object without empty strings.
-   *
-   * This is useful for sending the data to JSON APIs.
-   * @returns The transformed form data.
+   * Indicates whether the state is valid.
    */
-  toObject: () => T;
-}>;
-/**
- * Form state errors type.
- */
-type FormErrors<T extends object> = Immutable<FormMutableState<T>['errors'] & {
+  valid: true;
   /**
-   * Gets an error message for a nested field.
-   *
-   * @param path - a form state path expression.
-   * @returns the error message for the specified field, or `undefined` if there is no error.
+   * The transformed form state data into an object without empty strings for API processing
+   * (see: `formState.data.toObject()`). This value is `undefined` when the form state has
+   * errors.
    */
-  get: (expression: (data: T) => unknown) => string | undefined;
+  data: T;
+} | {
   /**
-   * Gets a manual error message with an arbitrary string key.
-   *
-   * @param key - a manual error key.
-   * @returns the error message for the specified key, or `undefined` if there is no error.
+   * Indicates whether the state is valid.
    */
-  getManual: (key: string) => string | undefined;
-}>;
+  valid: false;
+  /**
+   * The errors for each field in the form. This value is `undefined` when the form state has
+   * no errors.
+   */
+  errors: Immutable<FormMutableState<T>['errors'] & {
+    /**
+     * Gets an error message for a nested field.
+     *
+     * @param path - a form state path expression.
+     * @returns the error message for the specified field, or `undefined` if there is no error.
+     */
+    get: (expression: (data: T) => unknown) => string | undefined;
+    /**
+     * Gets a manual error message with an arbitrary string key.
+     *
+     * @param key - a manual error key.
+     * @returns the error message for the specified key, or `undefined` if there is no error.
+     */
+    getManual: (key: string) => string | undefined;
+  }>;
+};
 /**
  * Form state type made immutable and extended with the `get(expression)` functions.
  *
  * @typeParam T type of the form data.
  */
 type FormState<T extends object> = {
-  data: FormData<T>;
+  /**
+   * Form state data.
+   */
+  data: Immutable<FormMutableState<T>['data'] & {
+    /**
+     * Transforms the form state data into an object without empty strings.
+     *
+     * This is useful for sending the data to JSON APIs.
+     * @returns The transformed form data.
+     */
+    toObject: () => T;
+  }>;
   /**
    * Errors for each field in the form.
    */
-  errors: FormErrors<T>;
+  errors: Immutable<FormMutableState<T>['errors'] & {
+    /**
+     * Gets an error message for a nested field.
+     *
+     * @param path - a form state path expression.
+     * @returns the error message for the specified field, or `undefined` if there is no error.
+     */
+    get: (expression: (data: T) => unknown) => string | undefined;
+    /**
+     * Gets a manual error message with an arbitrary string key.
+     *
+     * @param key - a manual error key.
+     * @returns the error message for the specified key, or `undefined` if there is no error.
+     */
+    getManual: (key: string) => string | undefined;
+  }>;
   /**
    * Dirty status for each field in the form.
    */
@@ -432,22 +469,14 @@ type FormStateResponse<T extends z.ZodObject> = {
      * A function to use in the `action` attribute of a `<Form />` component to submit the form.
      *
      * @param onSubmit - A callback function to execute before submitting the form.
-     *                   The function takes 2 parameters: `data: z.infer<typeof schema>` and `hasErrors: boolean`.
      *
-     *                   `data` - the transformed form state data into an object without empty strings for API processing
-     *                            (see: `formState.data.toObject()`). This value is `undefined` when the form state has
-     *                            errors.
-     *
-     *                   `errors` - errors for each field in the form. This value is `undefined` when the form state has
-     *                              no errors.
-     *
-     *                   Return value: `false` - do not submit the form even if the form state has no errors.
-     *                                 `true` - submit the form if there are no errors.
-     *                                 `void` - no return value is treated as `true`.
+     * Callback return value: `false` - do not submit the form even if the form state has no errors.
+     * `true` - submit the form if there are no errors.
+     * `void` - no return value is treated as `true`.
      *
      * @param options - options for form submission.
      */
-    handleSubmit: (onSubmit: (data?: z.infer<T>, errors?: FormErrors<z.infer<T>>) => Promise<boolean | void> | boolean | void, options?: FormSubmitOptions) => () => Promise<void>;
+    handleSubmit: (onSubmit: (state: SubmitState<z.infer<T>>) => Promise<boolean | void> | boolean | void, options?: FormSubmitOptions) => () => Promise<void>;
     /**
      * Marks the form as dirty with an arbitrary string key.
      *
@@ -870,7 +899,7 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T>>;
+}): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
 declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;
@@ -921,4 +950,4 @@ declare const validateState: <T extends z$1.ZodObject>(schema: T, data: DeepPart
   error?: never;
 };
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormData, type FormDateFormat, type FormErrors, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, createInitialState, createState, formConnect, formatDate, safeParseDate, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, createInitialState, createState, formConnect, formatDate, safeParseDate, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
