@@ -40,10 +40,6 @@ type FormMutableState<T extends object> = {
   descriptions: Record<keyof T, string | undefined>;
   validated: boolean;
   submitted: boolean;
-  pendingValidation: {
-    id: string;
-    validator?: ((data: Immutable<State>) => Promise<void | Record<string, string>>) | undefined;
-  } | null;
 };
 // Public types
 /**
@@ -69,16 +65,16 @@ type FormOptions<T extends z.ZodObject> = {
    */
   validateOnInit?: boolean;
   /**
-   * Sets the capacity of the throttle callback cache used by the "change"
-   * method. (default: 50).
+   * Sets the capacity of the debounce callback cache used by the "change"
+   * function. (default: 50).
    * A non-positive value means no throttling of change callbacks is allowed.
    * A smaller value saves memory but can cause issues with throttling
    * change callbacks.
    */
-  throttledCacheCapacity?: number;
+  debounceCacheCapacity?: number;
 };
 /**
- * Form state type made immutable and extended with the `get(expression)` methods.
+ * Form state type made immutable and extended with the `get(expression)` functions.
  *
  * @typeParam T type of the form data.
  */
@@ -227,7 +223,7 @@ type FormPath<T extends z.ZodObject> = keyof z.infer<T> | ((data: z.infer<T>) =>
  */
 type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P extends ((data: z.infer<T>) => infer R) ? R : P extends keyof z.infer<T> ? z.infer<T>[P] : P extends string ? PathValue<z.infer<T>, P> : unknown;
 /**
- * Options for the `formClasses` method.
+ * Options for the `formClasses` function.
  */
 type FormClassOptions = {
   /**
@@ -316,6 +312,32 @@ type FormResetOptions<T extends z.ZodObject> = {
   resetSubmitted?: boolean;
 };
 /**
+ * Form validation options.
+ *
+ * @typeparam T form state type.
+ */
+type FormValidateOptions<T extends z.ZodObject> = {
+  /**
+   * Indicates whether to reset the dirty state of the fields (default: true).
+   */
+  resetDirty?: boolean;
+  /**
+   * Indicates whether to reset the touched state of the fields (default: true).
+   */
+  resetTouched?: boolean;
+  /**
+   * Indicates whether to validate the form if its state is valid.
+   */
+  submit?: boolean;
+  /**
+   * An optional callback to run after the form state has been changed.
+   *
+   * @param state - the updated form state - data, errors, touched and dirty flags.
+   * @param status - the updated form status.
+   */
+  callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
+};
+/**
  * Form submission options.
  */
 type FormSubmitOptions = {
@@ -392,28 +414,30 @@ type FormStateResponse<T extends z.ZodObject> = {
      */
     reset: (event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => void;
     /**
-     * Validates the form and sets its status (`formStatus.submitted`) as submitted, if there are no errors.
-     * That allows form validations rules to be different after the form has been submitted.
+     * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
      *
-     * Calling `resetForm` for the entire form resets this status.
+     * @param options - options for form validation.
+     */
+    validate: (options?: FormValidateOptions<T>) => void;
+    /**
+     * A function to use in the `action` attribute of a `<Form />` component to submit the form.
+     *
+     * @param onSubmit - A callback function to execute before submitting the form.
+     *                   The function takes 2 parameters: `data: z.infer<typeof schema>` and `hasErrors: boolean`.
+     *
+     *                   `data` - the transformed form state data into an object without empty strings for API processing.
+     *                   (see: `formState.data.toObject()`)
+     *
+     *                   `hasErrors` - indicates that the form state has errors and the form cannot be submitted.
+     *                   Use `formState.errors` to get the errors.
+     *
+     *                   Return value: `false` - do not submit the form even if the form state has no errors.
+     *                                 `true` - submit the form if there are no errors.
+     *                                 `void` - no return value is treated as `true`.
      *
      * @param options - options for form submission.
-     * @returns `true` if the form was valid and the status was changed, `false` if the form was not valid.
      */
-    submit: (options?: FormSubmitOptions) => boolean;
-    /**
-     * Validates the form state.
-     *
-     * @param validator - An async function to validate the form state data, usually to validate it against APIs.
-     *
-     *                    Note: Synchronous validation should be done in the schema.
-     * @returns A promise with the updated form state object. The form state objects returned from the hook require
-     *          an additional render to update and cannot be used synchronously after the function call.
-     */
-    validateAsync: (validator?: (data: Immutable<z.infer<T>>) => Promise<Record<string, string> | void>) => Promise<{
-      state: FormState<z.infer<T>>;
-      status: FormStatus;
-    }>;
+    handleSubmit: (onSubmit: (data: z.infer<T>, hasErrors: boolean) => Promise<boolean | void> | boolean | void, options?: FormSubmitOptions) => () => Promise<void>;
     /**
      * Marks the form as dirty with an arbitrary string key.
      *

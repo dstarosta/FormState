@@ -28,7 +28,7 @@ import type {
   FormStatus,
   FormSubmitOptions,
   FormTouchOptions,
-  Immutable,
+  FormValidateOptions,
   StateCallback,
   DeepPartial,
 } from './form-types';
@@ -51,8 +51,7 @@ import {
   updateState,
 } from './helpers/state-manager';
 import { formatErrors } from './helpers/error-formatter';
-import { throttle } from './helpers/throttler';
-import { generateUniqueId } from './helpers/random-id-generator';
+import { debounce } from './helpers/debouncer';
 
 /**
  * Hook that manages form state.
@@ -70,7 +69,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     initialState,
     initialTouched,
     validateOnInit = false,
-    throttledCacheCapacity: throttledCallbackCacheSize = 50,
+    debounceCacheCapacity = 50,
   } = formOptions ?? {};
 
   // The manual errors that are not a part of the schema.
@@ -177,8 +176,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       ranges,
       patterns,
       descriptions,
-      pendingValidation: null,
-    };
+    } satisfies FormMutableState<State>;
   }, [schema, defaultData, initialData, initialState, initialTouched, validateOnInit]);
 
   // Tracks whether component is mounted.
@@ -187,18 +185,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
-  // Validation resolvers.
-  const validationResolversRef = useRef<
-    Map<
-      string,
-      {
-        resolve: (value: { state: FormState<State>; status: FormStatus }) => void;
-        reject: (error: Error) => void;
-      }
-    >
-  >(new Map());
-
-  const throttleCache = useRef<
+  const debounceCache = useRef<
     Map<StateCallback<State>, StateCallback<State> & { cancel: () => void }>
   >(new Map());
 
@@ -440,7 +427,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               patterns: { ...state.patterns },
               descriptions: { ...state.descriptions },
               errors,
-              pendingValidation: null,
             } satisfies FormMutableState<State>;
           }
           // form validate event
@@ -452,14 +438,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               ...prevState,
               validated: true,
               errors: { ...errors, ...prevManualErrors },
-              pendingValidation: action.validationRequest ?? null,
-            } satisfies FormMutableState<State>;
-          }
-          // clear pending validation event
-          case 'clearPendingValidation': {
-            return {
-              ...prevState,
-              pendingValidation: null,
             } satisfies FormMutableState<State>;
           }
           // set manual error event
@@ -602,88 +580,22 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     }
   }, [formState, formStatus, generateCallbackState]);
 
-  // Process pending validation requests.
-  useEffect(() => {
-    const pending = formState.pendingValidation;
-
-    if (!pending || !isMountedRef.current) {
-      return;
-    }
-
-    const { id, validator } = pending;
-    const resolvers = validationResolversRef.current.get(id);
-
-    // Defensive check for a race condition where validation ID exists but resolver was cleaned up.
-    /* v8 ignore if -- @preserve */
-    if (!resolvers) {
-      return;
-    }
-
-    const currentState = generateCallbackState();
-    const currentStatus = formStatus;
-
-    dispatch({ type: 'clearPendingValidation' });
-
-    validationResolversRef.current.delete(id);
-
-    if (validator) {
-      validator(currentState.data)
-        .then((errors) => {
-          if (errors && Object.keys(errors).length > 0) {
-            // Dispatch all manual errors
-            for (const [key, value] of Object.entries(errors)) {
-              if (key?.trim().length && value?.trim().length) {
-                dispatch({
-                  type: 'setManualError',
-                  name: key,
-                  error: value,
-                });
-              }
-            }
-
-            const validatorId = generateUniqueId();
-
-            validationResolversRef.current.set(validatorId, resolvers);
-            dispatch({
-              type: 'validate',
-              validationRequest: { id: validatorId },
-            });
-          } else {
-            // No errors from validator, resolve with current state
-            resolvers.resolve({ state: currentState, status: currentStatus });
-          }
-        })
-        .catch((error: unknown) => {
-          if (isMountedRef.current) {
-            resolvers.reject(error instanceof Error ? error : new Error(String(error)));
-          }
-        });
-    } else {
-      // No validator - resolve with current state after validation.
-      resolvers.resolve({ state: currentState, status: currentStatus });
-    }
-  }, [formState.pendingValidation, formStatus, generateCallbackState, dispatch]);
-
   // Cleanup on unmount.
   useEffect(() => {
     isMountedRef.current = true;
 
-    const currentCache = throttleCache.current;
-    const currentResolvers = validationResolversRef.current;
+    const currentCache = debounceCache.current;
 
     return () => {
       isMountedRef.current = false;
 
-      // Cancel all throttled callbacks.
+      // Cancel all debounced callbacks.
       if (currentCache.size > 0) {
-        for (const throttled of currentCache.values()) {
-          throttled.cancel();
+        for (const debounced of currentCache.values()) {
+          debounced.cancel();
         }
         currentCache.clear();
       }
-
-      // Clear validation resolvers.
-      currentResolvers.clear();
     };
   }, []);
 
@@ -747,32 +659,29 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       const interval = options?.callbackInterval ?? 0;
 
       if (typeof callback === 'function') {
-        if (
-          (interval <= 0 || throttledCallbackCacheSize <= 0) &&
-          !throttleCache.current.has(callback)
-        ) {
-          // Only add callback if it's not already being throttled.
+        if ((interval <= 0 || debounceCacheCapacity <= 0) && !debounceCache.current.has(callback)) {
+          // Only add callback if it's not already being debounced.
           changeCallbackRefs.current.push(callback);
         } else if (interval > 0) {
-          // Use or create a throttled callback.
-          let throttledCallback = throttleCache.current.get(callback);
+          // Use or create a debounced callback.
+          let debouncedCallback = debounceCache.current.get(callback);
 
-          if (throttledCallback) {
+          if (debouncedCallback) {
             // The Map object holds key-value pairs and remembers the original insertion order
             // of the keys - JavaScript's Map specification document.
             // Put the callback at the end of the set.
-            throttleCache.current.delete(callback);
-            throttleCache.current.set(callback, throttledCallback);
+            debounceCache.current.delete(callback);
+            debounceCache.current.set(callback, debouncedCallback);
           } else {
             // Cache eviction logic.
-            if (throttleCache.current.size >= throttledCallbackCacheSize) {
-              const firstKey = throttleCache.current.keys().next().value!;
-              const oldThrottled = throttleCache.current.get(firstKey);
-              oldThrottled?.cancel();
-              throttleCache.current.delete(firstKey);
+            if (debounceCache.current.size >= debounceCacheCapacity) {
+              const firstKey = debounceCache.current.keys().next().value!;
+              const oldDebounced = debounceCache.current.get(firstKey);
+              oldDebounced?.cancel();
+              debounceCache.current.delete(firstKey);
             }
 
-            throttledCallback = throttle(
+            debouncedCallback = debounce(
               (currentState: FormState<State>, currentStatus: FormStatus) => {
                 // Only execute the callback if the component is still mounted.
                 if (isMountedRef.current) {
@@ -782,10 +691,10 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               interval
             );
 
-            throttleCache.current.set(callback, throttledCallback);
+            debounceCache.current.set(callback, debouncedCallback);
           }
 
-          changeCallbackRefs.current.push(throttledCallback);
+          changeCallbackRefs.current.push(debouncedCallback);
         }
       }
 
@@ -799,7 +708,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         },
       });
     },
-    [throttledCallbackCacheSize, formState.data, formState.touched, dispatch]
+    [debounceCacheCapacity, formState.data, formState.touched, dispatch]
   );
 
   // The memoized "replace" function.
@@ -870,55 +779,61 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     [dispatch]
   );
 
-  // The memoized "submit" function.
-  const submit = useCallback(
-    (options?: FormSubmitOptions) => {
-      const safeData = schema.safeParse(formState.data);
-      const errors = formatErrors<State>(safeData.error);
-
-      if (Object.keys(errors).length > 0 || Object.keys(manualErrorsState.get()).length > 0) {
+  // The memoized "validate" function.
+  const validate = useCallback(
+    (options?: FormValidateOptions<T>) => {
+      if (options?.submit) {
+        dispatch({
+          type: 'submit',
+          options: {
+            resetDirty: Boolean(options.resetDirty !== false),
+            resetTouched: Boolean(options.resetTouched !== false),
+          },
+        });
+      } else {
         dispatch({ type: 'validate' });
-        return false;
       }
 
-      dispatch({
-        type: 'submit',
-        options: {
-          resetDirty: Boolean(options?.resetDirty !== false),
-          resetTouched: Boolean(options?.resetTouched !== false),
-        },
-      });
+      const callback = options?.callback;
+
+      if (typeof callback === 'function') {
+        changeCallbackRefs.current.push(() => {
+          changeCallbackRefs.current.push(callback);
+        });
+      }
 
       return true;
     },
-    [schema, formState.data, manualErrorsState, dispatch]
+    [dispatch]
   );
 
-  // The memoized "validateAsync" function.
-  const validateAsync = useCallback(
+  // The memoized "handleSubmit" function.
+  const handleSubmit = useCallback(
     (
-      validator?: (data: Immutable<z.infer<T>>) => Promise<Record<string, string> | void>
-    ): Promise<{
-      state: FormState<State>;
-      status: FormStatus;
-    }> => {
-      return new Promise((resolve, reject) => {
-        if (!isMountedRef.current) {
-          reject(new Error('Form component is unmounted.'));
+      onSubmit: (data: State, hasErrors: boolean) => Promise<boolean | void> | boolean | void,
+      options?: FormSubmitOptions
+    ) => {
+      return async () => {
+        const data = cleanEmpty(schema, formState.data) as State;
+        const hasErrors = Object.keys(formState.errors).length > 0;
+
+        const shouldSubmit = await onSubmit(data, hasErrors);
+
+        if (hasErrors || shouldSubmit === false) {
+          dispatch({ type: 'validate' });
           return;
         }
 
-        const validatorId = generateUniqueId();
-
-        validationResolversRef.current.set(validatorId, { resolve, reject });
-
         dispatch({
-          type: 'validate',
-          validationRequest: { id: validatorId, validator },
+          type: 'submit',
+          options: {
+            resetDirty: Boolean(options?.resetDirty !== false),
+            resetTouched: Boolean(options?.resetTouched !== false),
+          },
         });
-      });
+      };
     },
-    [dispatch]
+    [schema, formState.data, formState.errors, dispatch]
   );
 
   // The memoized "setDirty" function.
@@ -964,7 +879,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   }, [schema, formState.data]);
 
   // The memoized "errors" object of the form state.
-  const errors = useMemo(() => {
+  const formErrors = useMemo(() => {
     const extendedErrors = Object.freeze({
       ...formState.errors,
       get: (expression: (data: State) => unknown) =>
@@ -1048,7 +963,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     () => ({
       formState: {
         data: formData,
-        errors,
+        errors: formErrors,
         dirty,
         touched,
         maxLengths,
@@ -1063,8 +978,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         replace,
         touch,
         reset,
-        submit,
-        validateAsync,
+        validate,
+        handleSubmit,
         setDirty,
         setError,
         clearManualErrors,
@@ -1073,7 +988,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     }),
     [
       formData,
-      errors,
+      formErrors,
       dirty,
       touched,
       maxLengths,
@@ -1086,8 +1001,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       replace,
       touch,
       reset,
-      submit,
-      validateAsync,
+      validate,
+      handleSubmit,
       setDirty,
       setError,
       clearManualErrors,

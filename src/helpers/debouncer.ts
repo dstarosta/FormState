@@ -1,0 +1,36 @@
+// Internal methods
+
+export function debounce<T extends unknown[]>(fn: (...args: T) => unknown, wait: number) {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let lastArgs: T | null = null;
+
+  const invoke = () => {
+    const args = lastArgs as T;
+    lastArgs = null;
+    fn(...args);
+  };
+
+  const debounced = ((...args: T) => {
+    lastArgs = args;
+
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+
+    timeout = setTimeout(() => {
+      timeout = null;
+      invoke();
+    }, wait);
+  }) as ((...args: T) => void) & { cancel: () => void };
+
+  debounced.cancel = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+
+    lastArgs = null;
+  };
+
+  return debounced;
+}

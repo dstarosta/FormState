@@ -219,7 +219,7 @@ describe('useFormState', () => {
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
-        formActions: { change, submit, reset },
+        formActions: { change, validate, reset },
       } = result.current;
 
       act(() => {
@@ -227,7 +227,15 @@ describe('useFormState', () => {
         change((path) => path.info.age, 29, { touch: true });
       });
 
-      submit();
+      validate({
+        submit: true,
+        callback: (state, status) => {
+          expect(state.data.name).toBe('Jonathan');
+          expect(state.data.info.age).toBe(29);
+          expect(status.valid).toBe(true);
+          expect(status.submitted).toBe(true);
+        },
+      });
 
       act(() => {
         reset();
@@ -674,7 +682,7 @@ describe('useFormState', () => {
       expect(touched.name).toBe(true);
     });
 
-    it('should call a throttled change callback once', () => {
+    it('should call a debounced change callback once', () => {
       vi.useFakeTimers();
 
       const initialState: InitialSchema = {
@@ -724,10 +732,10 @@ describe('useFormState', () => {
       expect(data.version).toBe('');
       expect(data.info.age).toBe(18);
 
-      expect(updateCounter).toBe(1); // throttled callbacks
+      expect(updateCounter).toBe(1); // debounced callbacks
     });
 
-    it('should call an unstable throttled change callback n times while keeping cache size in check', () => {
+    it('should call an unstable debounced change callback n times while keeping cache size in check', () => {
       vi.useFakeTimers();
 
       const initialState: InitialSchema = {
@@ -735,7 +743,7 @@ describe('useFormState', () => {
         info: { age: 18 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, throttledCacheCapacity: 1 })
+        useFormState(schema, { initialState, debounceCacheCapacity: 1 })
       );
       const {
         formActions: { change },
@@ -771,10 +779,10 @@ describe('useFormState', () => {
         vi.advanceTimersByTime(interval * 5);
       });
 
-      expect(updateCounter).toBe(3); // throttled callbacks
+      expect(updateCounter).toBe(3); // debounced callbacks
     });
 
-    it('should call the second throttled change callback', () => {
+    it('should call the second debounced change callback', () => {
       vi.useFakeTimers();
 
       const { result } = renderHook(() => useFormState(schema));
@@ -811,7 +819,7 @@ describe('useFormState', () => {
       expect(updateCounter).toBe(2);
     });
 
-    it('should call the throttled change callback once for rapid changes', () => {
+    it('should call the debounced change callback once for rapid changes', () => {
       vi.useFakeTimers();
 
       const { result } = renderHook(() => useFormState(schema));
@@ -866,7 +874,7 @@ describe('useFormState', () => {
       expect(updateCounter).toBe(1);
     });
 
-    it('should call the throttled change callback twice for sequential changes', () => {
+    it('should call the debounced change callback twice for sequential changes', () => {
       vi.useFakeTimers();
 
       const { result } = renderHook(() => useFormState(schema));
@@ -921,7 +929,7 @@ describe('useFormState', () => {
       expect(updateCounter).toBe(2);
     });
 
-    it('should not called throttled change callbacks if unmounted', () => {
+    it('should not called debounced change callbacks if unmounted', () => {
       vi.useFakeTimers();
 
       const { result, unmount } = renderHook(() => useFormState(schema));
@@ -1242,11 +1250,11 @@ describe('useFormState', () => {
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
-        formActions: { change, reset, submit },
+        formActions: { change, reset, validate },
       } = result.current;
 
       act(() => {
-        submit();
+        validate({ submit: true });
         change('name', '');
         reset();
       });
@@ -1313,7 +1321,7 @@ describe('useFormState', () => {
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
-        formActions: { change, submit },
+        formActions: { change, validate },
       } = result.current;
 
       act(() => {
@@ -1321,47 +1329,15 @@ describe('useFormState', () => {
         change((path) => path.info.age, 29, { touch: true });
       });
 
-      const isFormSubmitted = submit();
+      validate({ submit: true });
 
       await waitFor(() => {
         const { formStatus } = result.current;
 
-        expect(isFormSubmitted).toBe(true);
         expect(formStatus.submitted).toBe(true);
         expect(formStatus.valid).toBe(true);
         expect(formStatus.dirty).toBe(false);
         expect(formStatus.touched).toBe(false);
-      });
-    });
-
-    it('should not submit form with manual errors', async () => {
-      const initialState: InitialSchema = {
-        name: 'John',
-        info: { age: 30 },
-        tags: ['a', 'b'],
-      };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
-      const {
-        formActions: { change, setError, submit },
-      } = result.current;
-
-      act(() => {
-        change('name', 'Jonathan', { touch: true });
-        change((path) => path.info.age, 29, { touch: true });
-      });
-
-      act(() => {
-        setError('custom', 'Jonathan is not an acceptable name');
-      });
-
-      const isFormSubmitted = submit();
-
-      await waitFor(() => {
-        const { formStatus } = result.current;
-
-        expect(isFormSubmitted).toBe(false);
-        expect(formStatus.submitted).toBe(false);
-        expect(formStatus.valid).toBe(false);
       });
     });
 
@@ -1373,7 +1349,7 @@ describe('useFormState', () => {
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
-        formActions: { change, submit },
+        formActions: { change, validate },
       } = result.current;
 
       act(() => {
@@ -1381,12 +1357,15 @@ describe('useFormState', () => {
         change((path) => path.info.age, 29, { touch: true });
       });
 
-      const isFormSubmitted = submit({ resetDirty: false, resetTouched: false });
+      validate({
+        submit: true,
+        resetDirty: false,
+        resetTouched: false,
+      });
 
       await waitFor(() => {
         const { formStatus } = result.current;
 
-        expect(isFormSubmitted).toBe(true);
         expect(formStatus.submitted).toBe(true);
         expect(formStatus.dirty).toBe(true);
         expect(formStatus.touched).toBe(true);
@@ -1396,7 +1375,7 @@ describe('useFormState', () => {
     it('should not submit form with errors', async () => {
       const { result } = renderHook(() => useFormState(schema));
       const {
-        formActions: { change, submit },
+        formActions: { change, validate },
       } = result.current;
 
       act(() => {
@@ -1404,19 +1383,18 @@ describe('useFormState', () => {
         change((path) => path.info.age, 29, { touch: true });
       });
 
-      const isFormSubmitted = submit();
+      validate({ submit: true });
 
       await waitFor(() => {
         const { formStatus } = result.current;
 
-        expect(isFormSubmitted).toBe(false);
         expect(formStatus.submitted).toBe(false);
         expect(formStatus.dirty).toBe(true);
         expect(formStatus.touched).toBe(true);
       });
     });
 
-    it('should revalidate form', async () => {
+    it('should not submit form with manual errors', async () => {
       const initialState: InitialSchema = {
         name: 'John',
         info: { age: 30 },
@@ -1424,103 +1402,26 @@ describe('useFormState', () => {
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
-        formActions: { validateAsync },
+        formActions: { change, setError, validate },
       } = result.current;
 
-      await validateAsync();
-
-      const { formStatus } = result.current;
-
-      expect(formStatus.valid).toBe(true);
-    });
-
-    it('validateAsync should throw an error when component is unmounted', async () => {
-      const initialState: InitialSchema = {
-        name: 'John',
-        info: { age: 30 },
-        tags: ['a', 'b'],
-      };
-      const { result, unmount } = renderHook(() => useFormState(schema, { initialState }));
-      const {
-        formActions: { validateAsync },
-      } = result.current;
-
-      unmount();
-
-      await expect(validateAsync()).rejects.toThrow();
-    });
-
-    it('should revalidate form without clearing the initial state errors', async () => {
-      const { result } = renderHook(() => useFormState(schema));
-      const {
-        formActions: { validateAsync },
-      } = result.current;
-
-      await validateAsync(() => Promise.resolve());
-
-      const { formState, formStatus } = result.current;
-
-      expect(formStatus.valid).toBe(false);
-      expect(formState.errors.name).toBe('Name is required');
-      expect(formState.errors.get((path) => path.info.age)).toBe('Age is required');
-    });
-
-    it('should revalidate form with a manual error', async () => {
-      const initialState: InitialSchema = {
-        name: 'John',
-        info: { age: 30 },
-        tags: ['a', 'b'],
-      };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
-      const {
-        formActions: { validateAsync },
-      } = result.current;
-
-      await validateAsync(async () => {
-        await Promise.resolve();
-
-        return { id: 'Invalid ID' };
+      act(() => {
+        change('name', 'Jonathan', { touch: true });
+        change((path) => path.info.age, 29, { touch: true });
       });
 
-      const { formState, formStatus } = result.current;
+      act(() => {
+        setError('custom', 'Jonathan is not an acceptable name');
+      });
 
-      expect(formStatus.validSchema).toBe(true);
-      expect(formStatus.valid).toBe(false);
-      expect(formState.errors.getManual('id')).toMatch('Invalid ID');
-    });
+      validate({ submit: true });
 
-    it('should not revalidate form with a rejected promise', async () => {
-      const initialState: InitialSchema = {
-        name: 'John',
-        info: { age: 30 },
-        tags: ['a', 'b'],
-      };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
-      const {
-        formActions: { validateAsync },
-      } = result.current;
+      await waitFor(() => {
+        const { formStatus } = result.current;
 
-      try {
-        await validateAsync(async () => {
-          await Promise.reject(new TypeError('Type error'));
-        });
-
-        expect.fail('We should not be getting here');
-      } catch (error) {
-        expect(error).toBeInstanceOf(TypeError);
-      }
-
-      try {
-        await validateAsync(async () => {
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-          await Promise.reject('Unknown error');
-        });
-
-        expect.fail('We should not be getting here');
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toBe('Unknown error');
-      }
+        expect(formStatus.submitted).toBe(false);
+        expect(formStatus.valid).toBe(false);
+      });
     });
 
     it('should set and clear manual errors', async () => {
@@ -1531,14 +1432,15 @@ describe('useFormState', () => {
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
-        formActions: { clearManualErrors, setError, submit },
+        formActions: { clearManualErrors, setError, validate },
       } = result.current;
 
       act(() => {
         setError('id', 'Invalid ID');
         setError((path) => path.isActive, 'What is active?');
         setError((path) => path.isActive); // cleared the error
-        submit();
+
+        validate();
       });
 
       await waitFor(() => {
@@ -1602,20 +1504,51 @@ describe('useFormState', () => {
   });
 
   describe('form element tests', () => {
+    const submitFn = vi.fn();
+
+    afterEach(() => {
+      submitFn.mockReset();
+    });
+
     const FormComponent = ({ initialValue }: { initialValue?: string }) => {
       const {
-        formState: { data },
-        formActions: { change, touch },
+        formState: { data, errors },
+        formStatus,
+        formActions: { change, touch, handleSubmit },
         formClasses,
         Form,
       } = useFormState(schema, {
         initialState: {
           name: initialValue ?? '',
+          info: {
+            age: 30,
+          },
         },
       });
 
+      const onSubmit = async (submittedData: Schema, hasErrors: boolean) => {
+        if (hasErrors) {
+          if (formStatus.valid || !errors['name']) {
+            throw new Error('Mismatched form status');
+          }
+
+          submitFn(false);
+          return false;
+        }
+
+        if (!formStatus.valid || errors['name']) {
+          throw new Error('Mismatched form status');
+        }
+
+        await Promise.resolve(submittedData);
+
+        submitFn(true);
+        return true;
+      };
+
       return (
-        <Form data-testid="mainForm">
+        <Form action={handleSubmit(onSubmit)} data-testid="mainForm">
+          {formStatus.submitted && <div>Form Submitted</div>}
           <p title="name" className={formClasses('name', 'block', { classPrefix: 'form-text' })}>
             {data.name}
           </p>
@@ -1627,38 +1560,95 @@ describe('useFormState', () => {
             onBlur={() => touch('name')}
             onChange={(event) => change('name', event.target.value)}
           />
+          <button type="submit">Submit</button>
         </Form>
       );
     };
 
     it('should render form with properties', () => {
-      const { getByRole, getByTestId, getByTitle } = render(<FormComponent />);
+      const { getByRole, getByTestId, getByTitle, queryByText } = render(<FormComponent />);
 
       const form = getByTestId('mainForm');
       const input = getByRole('textbox');
       const name = getByTitle('name');
+      const submittedInfo = queryByText('Form Submitted');
 
-      fireEvent.change(input, { target: { value: 'Some value' } });
-      fireEvent.keyDown(input, { key: 'Enter' });
+      act(() => {
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
 
       expect(form.hasAttribute('novalidate')).toBe(true);
       expect(input).toBeInTheDocument();
-      expect(name).toContainHTML('Some value');
+      expect(name).toContainHTML('John');
+      expect(submittedInfo).not.toBeInTheDocument();
     });
 
     it('should add error and touched CSS classes', () => {
-      const { getByRole, getByTitle } = render(<FormComponent initialValue="Some value" />);
+      const { getByRole, getByTitle } = render(<FormComponent initialValue="John" />);
 
       const input = getByRole('textbox');
       const name = getByTitle('name');
 
-      fireEvent.change(input, { target: { value: '' } });
-      fireEvent.blur(input);
+      act(() => {
+        fireEvent.change(input, { target: { value: '' } });
+        fireEvent.blur(input);
+      });
 
       expect(input.classList).toContain('form-state__error');
       expect(input.classList).toContain('form-state__touched');
       expect(name.classList).toContain('form-text__error');
       expect(name.classList).toContain('form-text__touched');
+    });
+
+    it('should submit form with "handleSubmit"', async () => {
+      const { getByRole, getByTitle, getByText, findByText } = render(<FormComponent />);
+
+      const input = getByRole('textbox');
+      const name = getByTitle('name');
+      const submitButton = getByText('Submit');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      const submittedInfo = await findByText('Form Submitted');
+
+      expect(submitFn).toBeCalledWith(true);
+      expect(name).toContainHTML('John');
+      expect(submittedInfo).toBeInTheDocument();
+    });
+
+    it('should not submit form with "handleSubmit" with errors', async () => {
+      const { getByRole, getByText, queryByText } = render(<FormComponent initialValue="John" />);
+
+      const input = getByRole('textbox');
+      const submitButton = getByText('Submit');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: '' } });
+        fireEvent.blur(input);
+      });
+
+      await waitFor(() => {
+        expect(input.classList).toContain('form-state__error');
+        expect(input.classList).toContain('form-state__touched');
+      });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      expect(submitFn).toBeCalledWith(false);
+
+      await waitFor(() => {
+        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+      });
     });
   });
 });
