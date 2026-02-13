@@ -13,11 +13,13 @@ import { dotPathGet, dotPathSet } from './helpers/dot-path';
 import { createFormComponent } from './helpers/form-builder';
 
 import type {
-  FieldRange,
   FormAction,
   FormChangeOptions,
   FormClassOptions,
+  FormData,
+  FormErrors,
   FormPath,
+  FieldRange,
   FormResetOptions,
   FormMutableState,
   FormOptions,
@@ -128,9 +130,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     const mergedData = initialState ? initialData : defaultData;
     const safeData = schema.safeParse(mergedData);
 
-    const errors = validateOnInit
-      ? formatErrors<State>(safeData.error)
-      : ({} as Record<keyof State, string>);
+    const initialErrors = formatErrors<State>(safeData.error);
+    const errors = validateOnInit ? initialErrors : ({} as Record<keyof State, string>);
 
     const dirty: Record<keyof State, boolean> = {} as Record<keyof State, boolean>;
 
@@ -169,6 +170,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       submitted: false,
       initialData: data,
       data,
+      initialErrors,
       errors,
       dirty,
       touched,
@@ -218,6 +220,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               ...prevState,
               data: mergedData,
               initialData: state.data,
+              initialErrors: state.errors,
               errors: { ...errors, ...prevManualErrors },
             } satisfies FormMutableState<State>;
           }
@@ -415,6 +418,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
             return {
               initialData: prevState.initialData,
+              initialErrors: prevState.initialErrors,
               data: action.options.retainData ? prevState.data : prevState.initialData,
               validated: prevState.submitted || validateOnInit,
               submitted: action.options.resetSubmitted ? state.submitted : prevState.submitted,
@@ -512,13 +516,13 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       data: Object.freeze({
         ...formState.data,
         toObject: () => cleanEmpty(schema, formState.data) as State,
-      }) as FormState<State>['data'],
+      }) as FormData<State>,
       errors: Object.freeze({
         ...formState.errors,
         get: (expression: (data: State) => unknown) =>
           getFieldError(formState.errors, getPath(formState.data, expression)),
         getManual: (key: string) => formState.errors[key as keyof State],
-      }) as FormState<State>['errors'],
+      }) as FormErrors<State>,
       touched: Object.freeze({
         ...formState.touched,
         get: (expression: (data: State) => unknown) =>
@@ -810,14 +814,34 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The memoized "handleSubmit" function.
   const handleSubmit = useCallback(
     (
-      onSubmit: (data: State, hasErrors: boolean) => Promise<boolean | void> | boolean | void,
+      onSubmit: (
+        data: State,
+        errors?: FormErrors<State>
+      ) => Promise<boolean | void> | boolean | void,
       options?: FormSubmitOptions
     ) => {
       return async () => {
         const data = cleanEmpty(schema, formState.data) as State;
-        const hasErrors = Object.keys(formState.errors).length > 0;
 
-        const shouldSubmit = await onSubmit(data, hasErrors);
+        const hasErrors =
+          Object.keys(formState.errors).length > 0 ||
+          (formStatus.valid === null && Object.keys(formState.initialErrors).length > 0);
+
+        const submittedErrors =
+          formStatus.valid === null
+            ? { ...formState.initialErrors, ...manualErrorsState.get() }
+            : formState.errors;
+
+        const errors = hasErrors
+          ? (Object.freeze({
+              ...submittedErrors,
+              get: (expression: (data: State) => unknown) =>
+                getFieldError(submittedErrors, getPath(formState.data, expression)),
+              getManual: (key: string) => submittedErrors[key as keyof State],
+            }) as FormErrors<State>)
+          : undefined;
+
+        const shouldSubmit = await onSubmit(data, errors);
 
         if (hasErrors || shouldSubmit === false) {
           dispatch({ type: 'validate' });
@@ -833,7 +857,15 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         });
       };
     },
-    [schema, formState.data, formState.errors, dispatch]
+    [
+      schema,
+      formState.data,
+      formState.errors,
+      formState.initialErrors,
+      formStatus.valid,
+      manualErrorsState,
+      getFieldError,
+    ]
   );
 
   // The memoized "setDirty" function.
@@ -873,7 +905,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     const extendedData = Object.freeze({
       ...formState.data,
       toObject: () => cleanEmpty(schema, formState.data) as State,
-    }) as FormState<State>['data'];
+    }) as FormData<State>;
 
     return extendedData;
   }, [schema, formState.data]);
@@ -885,7 +917,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       get: (expression: (data: State) => unknown) =>
         getFieldError(formState.errors, getPath(formState.data, expression)),
       getManual: (key: string) => formState.errors[key as keyof State],
-    }) as FormState<State>['errors'];
+    }) as FormErrors<State>;
 
     return extendedErrors;
   }, [formState.data, formState.errors, getFieldError]);

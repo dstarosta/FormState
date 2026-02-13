@@ -126,6 +126,7 @@ export type FormAction<T extends object> =
 export type FormMutableState<T extends object> = {
   initialData: T;
   data: T;
+  initialErrors: Record<keyof T, string | undefined>;
   errors: Record<keyof T, string | undefined>;
   dirty: Record<keyof T, boolean>;
   touched: Record<keyof T, boolean>;
@@ -166,12 +167,43 @@ export type FormOptions<T extends z.ZodObject> = {
   /**
    * Sets the capacity of the debounce callback cache used by the "change"
    * function. (default: 50).
-   * A non-positive value means no throttling of change callbacks is allowed.
-   * A smaller value saves memory but can cause issues with throttling
-   * change callbacks.
+   * A non-positive value means no debouncing of change callbacks is allowed.
+   * A smaller value saves memory but can cause issues with debounced change
+   * callbacks.
    */
   debounceCacheCapacity?: number;
 };
+
+export type FormData<T extends object> = Immutable<
+  FormMutableState<T>['data'] & {
+    /**
+     * Transforms the form state data into an object without empty strings.
+     *
+     * This is useful for sending the data to JSON APIs.
+     * @returns The transformed form data.
+     */
+    toObject: () => T;
+  }
+>;
+
+export type FormErrors<T extends object> = Immutable<
+  FormMutableState<T>['errors'] & {
+    /**
+     * Gets an error message for a nested field.
+     *
+     * @param path - a form state path expression.
+     * @returns the error message for the specified field, or `undefined` if there is no error.
+     */
+    get: (expression: (data: T) => unknown) => string | undefined;
+    /**
+     * Gets a manual error message with an arbitrary string key.
+     *
+     * @param key - a manual error key.
+     * @returns the error message for the specified key, or `undefined` if there is no error.
+     */
+    getManual: (key: string) => string | undefined;
+  }
+>;
 
 /**
  * Form state type made immutable and extended with the `get(expression)` functions.
@@ -179,38 +211,11 @@ export type FormOptions<T extends z.ZodObject> = {
  * @typeParam T type of the form data.
  */
 export type FormState<T extends object> = {
-  data: Immutable<
-    FormMutableState<T>['data'] & {
-      /**
-       * Transforms the form state data into an object without empty strings.
-       *
-       * This is useful for sending the data to JSON APIs.
-       * @returns The transformed form data.
-       */
-      toObject: () => T;
-    }
-  >;
+  data: FormData<T>;
   /**
    * Errors for each field in the form.
    */
-  errors: Immutable<
-    FormMutableState<T>['errors'] & {
-      /**
-       * Gets an error message for a nested field.
-       *
-       * @param path - a form state path expression.
-       * @returns the error message for the specified field, or `undefined` if there is no error.
-       */
-      get: (expression: (data: T) => unknown) => string | undefined;
-      /**
-       * Gets a manual error message with an arbitrary string key.
-       *
-       * @param key - a manual error key.
-       * @returns the error message for the specified key, or `undefined` if there is no error.
-       */
-      getManual: (key: string) => string | undefined;
-    }
-  >;
+  errors: FormErrors<T>;
   /**
    * Dirty status for each field in the form.
    */
@@ -392,7 +397,7 @@ export type FormChangeOptions<T extends z.ZodObject> = {
    */
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
   /**
-   * An optional throttling interval in milliseconds for the provided `callback` parameter.
+   * An optional debounce interval in milliseconds for the provided `callback` parameter.
    *
    * It is useful for making API calls on state change.
    */
@@ -581,7 +586,10 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * @param options - options for form submission.
      */
     handleSubmit: (
-      onSubmit: (data: z.infer<T>, hasErrors: boolean) => Promise<boolean | void> | boolean | void,
+      onSubmit: (
+        data: z.infer<T>,
+        errors?: FormErrors<z.infer<T>>
+      ) => Promise<boolean | void> | boolean | void,
       options?: FormSubmitOptions
     ) => () => Promise<void>;
     /**

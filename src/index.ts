@@ -5,6 +5,8 @@ export type {
   FormChangeOptions,
   FormControlWithStateProps,
   FormDateFormat,
+  FormData,
+  FormErrors,
   FormPath,
   FormResetOptions,
   FormState,

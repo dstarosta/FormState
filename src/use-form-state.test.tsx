@@ -1,7 +1,8 @@
+import { useEffect } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
 
-import { useFormState, z, type DeepPartial, type FormState } from '.';
+import { useFormState, z, type DeepPartial, type FormErrors, type FormState } from '.';
 
 describe('useFormState', () => {
   const schema = z.strictObject({
@@ -1510,11 +1511,17 @@ describe('useFormState', () => {
       submitFn.mockReset();
     });
 
-    const FormComponent = ({ initialValue }: { initialValue?: string }) => {
+    const FormComponent = ({
+      initialValue,
+      manualError,
+    }: {
+      initialValue?: string;
+      manualError?: string;
+    }) => {
       const {
-        formState: { data, errors },
+        formState: { data },
         formStatus,
-        formActions: { change, touch, handleSubmit },
+        formActions: { change, touch, handleSubmit, setError },
         formClasses,
         Form,
       } = useFormState(schema, {
@@ -1526,9 +1533,18 @@ describe('useFormState', () => {
         },
       });
 
-      const onSubmit = async (submittedData: Schema, hasErrors: boolean) => {
-        if (hasErrors) {
-          if (formStatus.valid || !errors['name']) {
+      useEffect(() => {
+        if (manualError) {
+          setError('someProp', 'manualError');
+        }
+      }, [manualError, setError]);
+
+      const onSubmit = async (submittedData: Schema, errors?: FormErrors<Schema>) => {
+        if (errors) {
+          if (
+            formStatus.valid ||
+            (!errors.get((path) => path.name) && !errors.getManual('someProp'))
+          ) {
             throw new Error('Mismatched form status');
           }
 
@@ -1536,7 +1552,7 @@ describe('useFormState', () => {
           return false;
         }
 
-        if (!formStatus.valid || errors['name']) {
+        if (!formStatus.valid) {
           throw new Error('Mismatched form status');
         }
 
@@ -1624,6 +1640,30 @@ describe('useFormState', () => {
       expect(submittedInfo).toBeInTheDocument();
     });
 
+    it('should not submit form with "handleSubmit" with manual errors', async () => {
+      const { getByRole, getByText, queryByText } = render(
+        <FormComponent manualError="A manual error" />
+      );
+
+      const input = getByRole('textbox');
+      const submitButton = getByText('Submit');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      expect(submitFn).toBeCalledWith(false);
+
+      await waitFor(() => {
+        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+      });
+    });
+
     it('should not submit form with "handleSubmit" with errors', async () => {
       const { getByRole, getByText, queryByText } = render(<FormComponent initialValue="John" />);
 
@@ -1639,6 +1679,40 @@ describe('useFormState', () => {
         expect(input.classList).toContain('form-state__error');
         expect(input.classList).toContain('form-state__touched');
       });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      expect(submitFn).toBeCalledWith(false);
+
+      await waitFor(() => {
+        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should not submit form with "handleSubmit" with initial errors without validations', async () => {
+      const { getByText, queryByText } = render(<FormComponent />);
+
+      const submitButton = getByText('Submit');
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      expect(submitFn).toBeCalledWith(false);
+
+      await waitFor(() => {
+        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should not submit form with "handleSubmit" with manual errors without validations', async () => {
+      const { getByText, queryByText } = render(
+        <FormComponent initialValue="John" manualError="A manual error" />
+      );
+
+      const submitButton = getByText('Submit');
 
       act(() => {
         fireEvent.click(submitButton);

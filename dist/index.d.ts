@@ -27,6 +27,7 @@ type FieldRange = number | Date | undefined;
 type FormMutableState<T extends object> = {
   initialData: T;
   data: T;
+  initialErrors: Record<keyof T, string | undefined>;
   errors: Record<keyof T, string | undefined>;
   dirty: Record<keyof T, boolean>;
   touched: Record<keyof T, boolean>;
@@ -67,9 +68,9 @@ type FormOptions<T extends z.ZodObject> = {
   /**
    * Sets the capacity of the debounce callback cache used by the "change"
    * function. (default: 50).
-   * A non-positive value means no throttling of change callbacks is allowed.
-   * A smaller value saves memory but can cause issues with throttling
-   * change callbacks.
+   * A non-positive value means no debouncing of change callbacks is allowed.
+   * A smaller value saves memory but can cause issues with debounced change
+   * callbacks.
    */
   debounceCacheCapacity?: number;
 };
@@ -263,7 +264,7 @@ type FormChangeOptions<T extends z.ZodObject> = {
    */
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
   /**
-   * An optional throttling interval in milliseconds for the provided `callback` parameter.
+   * An optional debounce interval in milliseconds for the provided `callback` parameter.
    *
    * It is useful for making API calls on state change.
    */
@@ -860,7 +861,7 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
+}): z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
 declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;
