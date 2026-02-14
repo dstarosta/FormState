@@ -1523,7 +1523,8 @@ describe('useFormState', () => {
       const {
         formState: { data },
         formStatus,
-        formActions: { change, touch, handleSubmit, setError },
+        formActions: { change, touch, setError },
+        formHandlers: { handleSubmit },
         formClasses,
         Form,
       } = useFormState(schema, {

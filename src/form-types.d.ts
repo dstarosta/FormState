@@ -626,35 +626,6 @@ export type FormStateResponse<T extends z.ZodObject> = {
      */
     validate: (options?: FormValidateOptions<T>) => void;
     /**
-     * A function to call in the `onReset` attribute the form to its initial state.
-     *
-     * There is no need to call this function manually if you are using the `Form` component of the library.
-     * However, you may still want to call the function on reset with non-default option values.
-     *
-     * @typeparam T form state type.
-     * @param event - a pass-through form reset event that triggered the HTML form reset.
-     * @param options - options for reset event.
-     */
-    handleReset: (
-      event?: SyntheticEvent<HTMLFormElement> | null,
-      options?: FormResetOptions<T>
-    ) => void;
-    /**
-     * A function to call in the `action` attribute of a `<Form />` component to submit the form.
-     *
-     * @param onSubmit - A callback function to execute before submitting the form.
-     *
-     * Callback return value: `false` - do not submit the form even if the form state has no errors.
-     * `true` - submit the form if there are no errors.
-     * `void` - no return value is treated as `true`.
-     *
-     * @param options - options for form submission.
-     */
-    handleSubmit: (
-      onSubmit: (state: SubmitState<z.infer<T>>) => Promise<boolean | void> | boolean | void,
-      options?: FormSubmitOptions
-    ) => () => Promise<void>;
-    /**
      * Marks the form as dirty with an arbitrary string key.
      *
      * @param key - an arbitrary string independent of the managed form state. It must start with the `#` sign to avoid collisions.
@@ -673,6 +644,40 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * Clears all manual errors.
      */
     clearManualErrors: () => void;
+  };
+  /**
+   * Form handler functions.
+   */
+  formHandlers: {
+    /**
+     * A function to call in the `action` attribute of a `<Form />` component to submit the form.
+     *
+     * @param onSubmit - A callback function to execute before submitting the form.
+     *
+     * Callback return value: `false` - do not submit the form even if the form state has no errors.
+     * `true` - submit the form if there are no errors.
+     * `void` - no return value is treated as `true`.
+     *
+     * @param options - options for form submission.
+     */
+    handleSubmit: (
+      onSubmit: (state: SubmitState<z.infer<T>>) => Promise<boolean | void> | boolean | void,
+      options?: FormSubmitOptions
+    ) => () => Promise<void>;
+    /**
+     * A function to call in the `onReset` attribute the form to its initial state.
+     *
+     * There is no need to call this function manually if you are using the `Form` component of the library.
+     * However, you may still want to call the function on reset with non-default option values.
+     *
+     * @typeparam T form state type.
+     * @param event - a pass-through form reset event that triggered the HTML form reset.
+     * @param options - options for reset event.
+     */
+    handleReset: (
+      event?: SyntheticEvent<HTMLFormElement> | null,
+      options?: FormResetOptions<T>
+    ) => void;
   };
   /**
    * The Form component with pre-wired reset logic.
