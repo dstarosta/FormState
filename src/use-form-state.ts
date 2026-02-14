@@ -294,6 +294,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
             return {
               ...prevState,
               data: replacedData,
+              initialErrors: errors,
               errors: { ...errors, ...prevManualErrors },
               validated: prevState.validated || validate,
             } satisfies FormMutableState<State>;
