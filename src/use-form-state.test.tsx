@@ -66,11 +66,6 @@ describe('useFormState', () => {
   type Schema = z.infer<typeof schema>;
   type InitialSchema = DeepPartial<Schema>;
 
-  const resetEvent = new Event('reset', {
-    bubbles: true,
-    cancelable: true,
-  }) as unknown as React.SyntheticEvent<HTMLFormElement>;
-
   afterEach(() => {
     vi.useRealTimers();
     cleanup();
@@ -1132,7 +1127,7 @@ describe('useFormState', () => {
         setError('name', 'Unsupported name');
         setError('isActive', '');
 
-        reset(resetEvent, { names: ['name'], resetTouched: false });
+        reset({ names: ['name'], resetTouched: false });
       });
 
       const { formState } = result.current;
@@ -1159,9 +1154,11 @@ describe('useFormState', () => {
       act(() => {
         touch('name');
         change('name', 'Jonathan');
+
         touch((path) => path.info.age);
         change((path) => path.info.age, 29);
-        reset(resetEvent, { names: ['name'], retainData: true });
+
+        reset({ names: ['name'], retainData: true });
       });
 
       const { formState } = result.current;
@@ -1187,9 +1184,11 @@ describe('useFormState', () => {
       act(() => {
         touch('name');
         change('name', 'Jonathan');
+
         touch('name.test' as 'name');
         change((path) => path.info.age, 29, { touch: true });
-        reset(resetEvent, { names: ['name'], resetTouched: true, resetSubmitted: true });
+
+        reset({ names: ['name'], resetTouched: true, resetSubmitted: true });
       });
 
       const { formState } = result.current;
@@ -1280,7 +1279,8 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Jonathan', { touch: true });
         change((path) => path.info.age, 29, { touch: true });
-        reset(resetEvent, { resetTouched: true, resetSubmitted: true });
+
+        reset({ resetTouched: true, resetSubmitted: true });
       });
 
       const { formState, formStatus } = result.current;
@@ -1304,7 +1304,8 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Jonathan', { touch: true });
         change((path) => path.info.age, 29, { touch: true });
-        reset(resetEvent, { retainData: true, resetSubmitted: true, resetTouched: false });
+
+        reset({ retainData: true, resetSubmitted: true, resetTouched: false });
       });
 
       const { formState, formStatus } = result.current;
@@ -1579,6 +1580,7 @@ describe('useFormState', () => {
             onChange={(event) => change('name', event.target.value)}
           />
           <button type="submit">Submit</button>
+          <button type="reset">Reset</button>
         </Form>
       );
     };
@@ -1597,7 +1599,6 @@ describe('useFormState', () => {
       });
 
       expect(form.hasAttribute('novalidate')).toBe(true);
-      expect(input).toBeInTheDocument();
       expect(name).toContainHTML('John');
       expect(submittedInfo).not.toBeInTheDocument();
     });
@@ -1725,6 +1726,27 @@ describe('useFormState', () => {
       await waitFor(() => {
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
+    });
+
+    it('should reset form with properties', () => {
+      const { getByRole, getByText, getByTitle } = render(<FormComponent />);
+
+      const input = getByRole('textbox');
+      const name = getByTitle('name');
+      const resetButton = getByText('Reset');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+
+      expect(name).toContainHTML('John');
+
+      act(() => {
+        fireEvent.click(resetButton);
+      });
+
+      expect(name).toContainHTML('');
     });
   });
 });

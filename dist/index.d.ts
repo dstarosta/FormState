@@ -456,6 +456,13 @@ type FormStateResponse<T extends z.ZodObject> = {
      */
     replace: (data: DeepPartial<z.infer<T>>, options?: FormReplaceOptions) => void;
     /**
+     * Resets the form to its initial state.
+     *
+     * @typeparam T form state type.
+     * @param options - options for reset event.
+     */
+    reset: (options?: FormResetOptions<T>) => void;
+    /**
      * Performs form field control touch state changes.
      *
      * @typeparam T form state type.
@@ -465,21 +472,24 @@ type FormStateResponse<T extends z.ZodObject> = {
      */
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
     /**
-     * Resets the form to its initial state.
-     *
-     * @typeparam T form state type.
-     * @param event - a pass-through form reset event that triggered the HTML form reset.
-     * @param options - options for reset event.
-     */
-    reset: (event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => void;
-    /**
      * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
      *
      * @param options - options for form validation.
      */
     validate: (options?: FormValidateOptions<T>) => void;
     /**
-     * A function to use in the `action` attribute of a `<Form />` component to submit the form.
+     * A function to call in the `onReset` attribute the form to its initial state.
+     *
+     * There is no need to call this function manually if you are using the `Form` component of the library.
+     * However, you may still want to call the function on reset with non-default option values.
+     *
+     * @typeparam T form state type.
+     * @param event - a pass-through form reset event that triggered the HTML form reset.
+     * @param options - options for reset event.
+     */
+    handleReset: (event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => void;
+    /**
+     * A function to call in the `action` attribute of a `<Form />` component to submit the form.
      *
      * @param onSubmit - A callback function to execute before submitting the form.
      *
@@ -912,7 +922,7 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
+}): z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> | z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
 declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;

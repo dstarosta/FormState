@@ -757,33 +757,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     [formState.data, dispatch]
   );
 
-  // The memoized "reset" function.
-  const reset = useCallback(
-    (_event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => {
-      if (Array.isArray(options?.names) && options.names.length > 0) {
-        dispatch({
-          type: 'resetFields',
-          names: options.names,
-          options: {
-            retainData: Boolean(options?.retainData),
-            resetTouched: Boolean(options?.resetTouched),
-            resetSubmitted: Boolean(options?.resetSubmitted),
-          },
-        });
-      } else {
-        dispatch({
-          type: 'reset',
-          options: {
-            retainData: Boolean(options?.retainData),
-            resetTouched: Boolean(options?.resetTouched !== false),
-            resetSubmitted: Boolean(options?.resetSubmitted),
-          },
-        });
-      }
-    },
-    [dispatch]
-  );
-
   // The memoized "validate" function.
   const validate = useCallback(
     (options?: FormValidateOptions<T>) => {
@@ -808,6 +781,33 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       }
 
       return true;
+    },
+    [dispatch]
+  );
+
+  // The memoized "handleReset" function.
+  const handleReset = useCallback(
+    (_event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => {
+      if (Array.isArray(options?.names) && options.names.length > 0) {
+        dispatch({
+          type: 'resetFields',
+          names: options.names,
+          options: {
+            retainData: Boolean(options?.retainData),
+            resetTouched: Boolean(options?.resetTouched),
+            resetSubmitted: Boolean(options?.resetSubmitted),
+          },
+        });
+      } else {
+        dispatch({
+          type: 'reset',
+          options: {
+            retainData: Boolean(options?.retainData),
+            resetTouched: Boolean(options?.resetTouched !== false),
+            resetSubmitted: Boolean(options?.resetSubmitted),
+          },
+        });
+      }
     },
     [dispatch]
   );
@@ -866,6 +866,14 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       manualErrorsState,
       getFieldError,
     ]
+  );
+
+  // The memoized "reset" function.
+  const reset = useCallback(
+    (options?: FormResetOptions<T>) => {
+      handleReset(null, options);
+    },
+    [handleReset]
   );
 
   // The memoized "setDirty" function.
@@ -998,7 +1006,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   );
 
   // The memoized Form component.
-  const createComponent = useMemo(() => createFormComponent<T>(reset), [reset]);
+  const createComponent = useMemo(() => createFormComponent<T>(handleReset), [handleReset]);
 
   // The memoized "response" object that combines the state, form status, CSS classes, HTML element props and actions.
   const response = useMemo<FormStateResponse<T>>(
@@ -1019,9 +1027,10 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formActions: {
         change,
         replace,
-        touch,
         reset,
+        touch,
         validate,
+        handleReset,
         handleSubmit,
         setDirty,
         setError,
@@ -1043,9 +1052,10 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formClasses,
       change,
       replace,
-      touch,
       reset,
+      touch,
       validate,
+      handleReset,
       handleSubmit,
       setDirty,
       setError,

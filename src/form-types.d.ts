@@ -604,6 +604,13 @@ export type FormStateResponse<T extends z.ZodObject> = {
      */
     replace: (data: DeepPartial<z.infer<T>>, options?: FormReplaceOptions) => void;
     /**
+     * Resets the form to its initial state.
+     *
+     * @typeparam T form state type.
+     * @param options - options for reset event.
+     */
+    reset: (options?: FormResetOptions<T>) => void;
+    /**
      * Performs form field control touch state changes.
      *
      * @typeparam T form state type.
@@ -613,21 +620,27 @@ export type FormStateResponse<T extends z.ZodObject> = {
      */
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
     /**
-     * Resets the form to its initial state.
-     *
-     * @typeparam T form state type.
-     * @param event - a pass-through form reset event that triggered the HTML form reset.
-     * @param options - options for reset event.
-     */
-    reset: (event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => void;
-    /**
      * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
      *
      * @param options - options for form validation.
      */
     validate: (options?: FormValidateOptions<T>) => void;
     /**
-     * A function to use in the `action` attribute of a `<Form />` component to submit the form.
+     * A function to call in the `onReset` attribute the form to its initial state.
+     *
+     * There is no need to call this function manually if you are using the `Form` component of the library.
+     * However, you may still want to call the function on reset with non-default option values.
+     *
+     * @typeparam T form state type.
+     * @param event - a pass-through form reset event that triggered the HTML form reset.
+     * @param options - options for reset event.
+     */
+    handleReset: (
+      event?: SyntheticEvent<HTMLFormElement> | null,
+      options?: FormResetOptions<T>
+    ) => void;
+    /**
+     * A function to call in the `action` attribute of a `<Form />` component to submit the form.
      *
      * @param onSubmit - A callback function to execute before submitting the form.
      *
