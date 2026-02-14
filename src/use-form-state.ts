@@ -283,18 +283,18 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
             const replacedData = createInitialState(schema, data);
 
-            let errors: Record<keyof State, string | undefined>;
-            if (validate || Object.keys(prevState.errors).length > 0) {
-              const safeData = schema.safeParse(replacedData);
-              errors = formatErrors<State>(safeData.error);
-            } else {
-              errors = { ...prevState.errors };
-            }
+            const safeData = schema.safeParse(replacedData);
+            const dataErrors = formatErrors<State>(safeData.error);
+
+            const errors =
+              validate || Object.keys(prevState.errors).length > 0
+                ? dataErrors
+                : { ...prevState.errors };
 
             return {
               ...prevState,
               data: replacedData,
-              initialErrors: errors,
+              initialErrors: dataErrors,
               errors: { ...errors, ...prevManualErrors },
               validated: prevState.validated || validate,
             } satisfies FormMutableState<State>;
