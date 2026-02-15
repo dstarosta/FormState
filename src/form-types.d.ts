@@ -140,6 +140,11 @@ export type FormMutableState<T extends object> = {
 
 export type StateCallback<T extends object> = (state: FormState<T>, status: FormStatus) => void;
 
+export type ManualErrorState = {
+  get: () => Immutable<Record<string, string>>;
+  set: (value?: Readonly<Record<string, string>>) => void;
+};
+
 // Public types
 
 /**
