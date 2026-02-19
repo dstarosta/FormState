@@ -36,15 +36,18 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-sonarjs": "^3.0.6",
-    "eslint-plugin-unicorn": "^62.0.0",
+    "eslint-plugin-sonarjs": "^4.0.0",
+    "eslint-plugin-unicorn": "^63.0.0",
     "fast-equals": "^6.0.0",
     "globals": "^17.3.0",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.54.0",
+    "typescript-eslint": "^8.56.0",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "minimatch": "^10.2.1"
   }
 }
