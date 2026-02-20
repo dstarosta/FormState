@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
 
-import { useFormState, z, type DeepPartial, type FormState } from '.';
+import { submitForm, useFormState, z, type DeepPartial, type FormState } from '.';
 import type { SubmitState } from './form-types';
 
 describe('useFormState', () => {
@@ -1526,7 +1526,7 @@ describe('useFormState', () => {
         formState: { data },
         formStatus,
         formActions: { change, touch, setError },
-        formHandlers: { handleSubmit, submitForm },
+        formHandlers: { handleSubmit },
         formClasses,
         Form,
       } = useFormState(schema, {

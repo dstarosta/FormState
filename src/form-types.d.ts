@@ -550,7 +550,7 @@ export type FormSubmitHandler<T extends z.ZodObject> = (
    */
   state: SubmitState<z.infer<T>>,
   /**
-   * Form data in the <c>FormData</c> format.
+   * Form data in the `FormData` format.
    */
   formData: FormData
 ) => Promise<boolean | void> | boolean | void;
@@ -697,14 +697,6 @@ export type FormStateResponse<T extends z.ZodObject> = {
       event?: SyntheticEvent<HTMLFormElement> | null,
       options?: FormResetOptions<T>
     ) => void;
-    /**
-     * Submits a form element.
-     *
-     * This method supports asynchronous action forms.
-     *
-     * @param form - The form element.
-     */
-    submitForm: (form?: HTMLFormElement | null) => void;
   };
   /**
    * The Form component with pre-wired reset logic.

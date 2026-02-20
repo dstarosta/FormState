@@ -406,7 +406,7 @@ type FormSubmitHandler<T extends z.ZodObject> = (
 
 state: SubmitState<z.infer<T>>,
 /**
- * Form data in the <c>FormData</c> format.
+ * Form data in the `FormData` format.
  */
 
 formData: FormData) => Promise<boolean | void> | boolean | void;
@@ -538,14 +538,6 @@ type FormStateResponse<T extends z.ZodObject> = {
      * @param options - options for reset event.
      */
     handleReset: (event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => void;
-    /**
-     * Submits a form element.
-     *
-     * This method supports asynchronous action forms.
-     *
-     * @param form - The form element.
-     */
-    submitForm: (form?: HTMLFormElement | null) => void;
   };
   /**
    * The Form component with pre-wired reset logic.
@@ -1000,4 +992,8 @@ declare const validateState: <T extends z$1.ZodObject>(schema: T, data: DeepPart
   error?: never;
 };
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, createInitialState, createState, formConnect, formatDate, safeParseDate, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+//#region src/helpers/form-builder.d.ts
+declare const formDataToURL: (formData: FormData) => URLSearchParams;
+declare const submitForm: (form?: HTMLFormElement | null) => void;
+//#endregion
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, createInitialState, createState, formConnect, formDataToURL, formatDate, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
