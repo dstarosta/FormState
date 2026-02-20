@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
 
@@ -1520,11 +1520,13 @@ describe('useFormState', () => {
       initialValue?: string;
       manualError?: string;
     }) => {
+      const formRef = useRef<HTMLFormElement>(null);
+
       const {
         formState: { data },
         formStatus,
         formActions: { change, touch, setError },
-        formHandlers: { handleSubmit },
+        formHandlers: { handleSubmit, submitForm },
         formClasses,
         Form,
       } = useFormState(schema, {
@@ -1567,7 +1569,7 @@ describe('useFormState', () => {
       };
 
       return (
-        <Form action={handleSubmit(onSubmit)} data-testid="mainForm">
+        <Form ref={formRef} action={handleSubmit(onSubmit)} aria-label="main-form">
           {formStatus.submitted && <div>Form Submitted</div>}
           <p title="name" className={formClasses('name', 'block', { classPrefix: 'form-text' })}>
             {data.name}
@@ -1581,15 +1583,21 @@ describe('useFormState', () => {
             onChange={(event) => change('name', event.target.value)}
           />
           <button type="submit">Submit</button>
+          <button type="button" onClick={() => submitForm(formRef.current)}>
+            Submit Manually
+          </button>
+          <button type="button" onClick={() => formRef.current?.submit()}>
+            Submit Fail
+          </button>
           <button type="reset">Reset</button>
         </Form>
       );
     };
 
     it('should render form with properties', () => {
-      const { getByRole, getByTestId, getByTitle, queryByText } = render(<FormComponent />);
+      const { getByRole, getByTitle, queryByText } = render(<FormComponent />);
 
-      const form = getByTestId('mainForm');
+      const form = getByRole('form');
       const input = getByRole('textbox');
       const name = getByTitle('name');
       const submittedInfo = queryByText('Form Submitted');
@@ -1619,6 +1627,49 @@ describe('useFormState', () => {
       expect(input.classList).toContain('form-state__touched');
       expect(name.classList).toContain('form-text__error');
       expect(name.classList).toContain('form-text__touched');
+    });
+
+    it('should fail to submit form using "submit"', async () => {
+      const { getByRole, getByText, queryByText } = render(<FormComponent />);
+
+      const input = getByRole('textbox');
+      const submitButton = getByText('Submit Fail');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      await waitFor(() => {
+        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should submit form programatically', async () => {
+      const { getByRole, getByText, getByTitle, findByText } = render(<FormComponent />);
+
+      const input = getByRole('textbox');
+      const name = getByTitle('name');
+      const submitButton = getByText('Submit Manually');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      const submittedInfo = await findByText('Form Submitted');
+
+      expect(submitFn).toBeCalledWith(true);
+      expect(name).toContainHTML('John');
+      expect(submittedInfo).toBeInTheDocument();
     });
 
     it('should submit form with "handleSubmit"', async () => {

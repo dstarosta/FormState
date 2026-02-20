@@ -32,6 +32,17 @@ const formProps: React.ComponentPropsWithoutRef<'form'> = {
 };
 
 /**
+ * Submits a form element.
+ *
+ * This method supports asynchronous action forms.
+ *
+ * @param form - The form element.
+ */
+export const submitForm = (form?: HTMLFormElement | null) => {
+  form?.requestSubmit();
+};
+
+/**
  * Creates a Form.
  *
  * @typeParam T type of the form data.

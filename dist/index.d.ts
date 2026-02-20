@@ -524,6 +524,14 @@ type FormStateResponse<T extends z.ZodObject> = {
      * @param options - options for reset event.
      */
     handleReset: (event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => void;
+    /**
+     * Submits a form element.
+     *
+     * This method supports asynchronous action forms.
+     *
+     * @param form - The form element.
+     */
+    submitForm: (form?: HTMLFormElement | null) => void;
   };
   /**
    * The Form component with pre-wired reset logic.

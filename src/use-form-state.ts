@@ -3,7 +3,7 @@ import { deepEqual } from 'fast-equals';
 import * as z from 'zod/v4';
 
 import { dotPathGet } from './helpers/dot-path';
-import { createFormComponent } from './helpers/form-builder';
+import { createFormComponent, submitForm } from './helpers/form-builder';
 
 import type {
   FormChangeOptions,
@@ -736,6 +736,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formHandlers: {
         handleSubmit,
         handleReset,
+        submitForm,
       },
       Form: createComponent,
     }),
