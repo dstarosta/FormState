@@ -25,6 +25,7 @@ import type {
   StateCallback,
   DeepPartial,
   SubmitState,
+  FormSubmitHandler,
 } from './form-types';
 
 import {
@@ -512,11 +513,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
   // The memoized "handleSubmit" function.
   const handleSubmit = useCallback(
-    (
-      onSubmit: (state: SubmitState<State>) => Promise<boolean | void> | boolean | void,
-      options?: FormSubmitOptions
-    ) => {
-      return async () => {
+    (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions) => {
+      return async (formData: FormData) => {
         const submittedErrors =
           formStatus.valid === null
             ? { ...formState.initialErrors, ...manualErrorsState.get() }
@@ -539,7 +537,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               data: cleanEmpty(schema, formState.data) as State,
             };
 
-        const shouldSubmit = await onSubmit(submitState);
+        const shouldSubmit = await onSubmit(submitState, formData);
 
         if (hasErrors || shouldSubmit === false) {
           dispatch({ type: 'validate' });

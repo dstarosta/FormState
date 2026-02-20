@@ -397,6 +397,20 @@ type FormSubmitOptions = {
   resetTouched?: boolean;
 };
 /**
+ * Form submission hander callback.
+ */
+type FormSubmitHandler<T extends z.ZodObject> = (
+/**
+ * The submitted form state.
+ */
+
+state: SubmitState<z.infer<T>>,
+/**
+ * Form data in the <c>FormData</c> format.
+ */
+
+formData: FormData) => Promise<boolean | void> | boolean | void;
+/**
  * The form state response type.
  *
  * @typeparam T form state type.
@@ -512,7 +526,7 @@ type FormStateResponse<T extends z.ZodObject> = {
      *
      * @param options - options for form submission.
      */
-    handleSubmit: (onSubmit: (state: SubmitState<z.infer<T>>) => Promise<boolean | void> | boolean | void, options?: FormSubmitOptions) => () => Promise<void>;
+    handleSubmit: (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions) => (formData: FormData) => Promise<void>;
     /**
      * A function to call in the `onReset` attribute the form to its initial state.
      *
