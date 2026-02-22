@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type SyntheticEvent } from 'react';
+import { useCallback, useEffect, useMemo, useOptimistic, useRef, type SyntheticEvent } from 'react';
 import { deepEqual } from 'fast-equals';
 import * as z from 'zod/v4';
 
@@ -175,6 +175,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
+  // The debounce callback cache.
   const debounceCache = useRef<
     Map<StateCallback<State>, StateCallback<State> & { cancel: () => void }>
   >(new Map());
@@ -186,6 +187,9 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     manualErrorsState,
     validateOnInit
   );
+
+  // The pending state during the form submit action.
+  const [isSubmitting, setIsSubmitting] = useOptimistic(false);
 
   // The memoized "formStatus" object.
   const formStatus = useMemo<FormStatus>(
@@ -199,6 +203,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               Object.entries(manualErrorsState.get()).every((entry) => !deepEqual(entry, error))
             ).length === 0
           : null,
+        submitting: isSubmitting,
         submitted: formState.submitted,
       }) as const,
     [
@@ -207,6 +212,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formState.errors,
       formState.validated,
       formState.submitted,
+      isSubmitting,
       manualErrorsState,
     ]
   );
@@ -537,6 +543,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
               data: cleanEmpty(schema, formState.data) as State,
             };
 
+        setIsSubmitting(true);
+
         const shouldSubmit = await onSubmit(submitState, formData);
 
         if (hasErrors || shouldSubmit === false) {
@@ -562,6 +570,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       manualErrorsState,
       getFieldError,
       dispatch,
+      setIsSubmitting,
     ]
   );
 

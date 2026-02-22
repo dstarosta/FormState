@@ -378,6 +378,12 @@ export type FormStatus = {
    */
   readonly validSchema: boolean | null;
   /**
+   * Whether the form submit action is pending.
+   *
+   * The form must be submitted from the `action` method of the form.
+   */
+  readonly submitting: boolean;
+  /**
    * Whether the form has been submitted (initially or after the last form reset).
    */
   readonly submitted: boolean;

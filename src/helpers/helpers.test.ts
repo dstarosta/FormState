@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import type { FormMutableState, Immutable } from '../form-types';
 
-import { createState, formatDate, safeParseDate, updateState, validateState, z } from '..';
+import {
+  createState,
+  formatDate,
+  formDataToURL,
+  safeParseDate,
+  updateState,
+  validateState,
+  z,
+} from '..';
 import { cleanEmpty, diffedState } from './state-manager';
 import { getSchemaType } from './schema-visitor';
 
@@ -240,6 +248,23 @@ describe('helpers', () => {
 
       expect(errorKeys).toContain('a.0.id');
       expect(errorKeys).toContain('z');
+    });
+  });
+
+  describe('form builder', () => {
+    it('should convert FormData into URL parameters', () => {
+      const formData = new FormData();
+      formData.append('param1', 'Some value');
+      formData.append('param2', 'value1');
+      formData.append('param2', 'value2');
+      formData.append('param3', '');
+      formData.append('param4', new File([], 'some<file>.txt'));
+
+      const urlParams = formDataToURL(formData).toString();
+
+      expect(urlParams).toBe(
+        'param1=Some+value&param2=value1&param2=value2&param3=&param4=some%3Cfile%3E.txt'
+      );
     });
   });
 });

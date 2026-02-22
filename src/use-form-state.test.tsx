@@ -1570,7 +1570,8 @@ describe('useFormState', () => {
 
       return (
         <Form ref={formRef} action={handleSubmit(onSubmit)} aria-label="main-form">
-          {formStatus.submitted && <div>Form Submitted</div>}
+          {formStatus.submitting && <p>Submitting...</p>}
+          {formStatus.submitted && <p>Form Submitted</p>}
           <p title="name" className={formClasses('name', 'block', { classPrefix: 'form-text' })}>
             {data.name}
           </p>
@@ -1629,6 +1630,62 @@ describe('useFormState', () => {
       expect(name.classList).toContain('form-text__touched');
     });
 
+    it('should submit form programatically', async () => {
+      const { getByRole, getByText, getByTitle, queryByText, findByText } = render(
+        <FormComponent />
+      );
+
+      const input = getByRole('textbox');
+      const name = getByTitle('name');
+      const submitButton = getByText('Submit Manually');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      expect(getByText('Submitting...')).toBeInTheDocument();
+
+      const submittedInfo = await findByText('Form Submitted');
+
+      expect(queryByText('Submitting...')).not.toBeInTheDocument();
+      expect(submitFn).toBeCalledWith(true);
+      expect(name).toContainHTML('John');
+      expect(submittedInfo).toBeInTheDocument();
+    });
+
+    it('should submit form with "handleSubmit"', async () => {
+      const { getByRole, getByTitle, getByText, queryByText, findByText } = render(
+        <FormComponent />
+      );
+
+      const input = getByRole('textbox');
+      const name = getByTitle('name');
+      const submitButton = getByText('Submit');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      expect(getByText('Submitting...')).toBeInTheDocument();
+
+      const submittedInfo = await findByText('Form Submitted');
+
+      expect(queryByText('Submitting...')).not.toBeInTheDocument();
+      expect(submitFn).toBeCalledWith(true);
+      expect(name).toContainHTML('John');
+      expect(submittedInfo).toBeInTheDocument();
+    });
+
     it('should fail to submit form using "submit"', async () => {
       const { getByRole, getByText, queryByText } = render(<FormComponent />);
 
@@ -1647,52 +1704,6 @@ describe('useFormState', () => {
       await waitFor(() => {
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
-    });
-
-    it('should submit form programatically', async () => {
-      const { getByRole, getByText, getByTitle, findByText } = render(<FormComponent />);
-
-      const input = getByRole('textbox');
-      const name = getByTitle('name');
-      const submitButton = getByText('Submit Manually');
-
-      act(() => {
-        fireEvent.change(input, { target: { value: 'John' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
-
-      act(() => {
-        fireEvent.click(submitButton);
-      });
-
-      const submittedInfo = await findByText('Form Submitted');
-
-      expect(submitFn).toBeCalledWith(true);
-      expect(name).toContainHTML('John');
-      expect(submittedInfo).toBeInTheDocument();
-    });
-
-    it('should submit form with "handleSubmit"', async () => {
-      const { getByRole, getByTitle, getByText, findByText } = render(<FormComponent />);
-
-      const input = getByRole('textbox');
-      const name = getByTitle('name');
-      const submitButton = getByText('Submit');
-
-      act(() => {
-        fireEvent.change(input, { target: { value: 'John' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
-
-      act(() => {
-        fireEvent.click(submitButton);
-      });
-
-      const submittedInfo = await findByText('Form Submitted');
-
-      expect(submitFn).toBeCalledWith(true);
-      expect(name).toContainHTML('John');
-      expect(submittedInfo).toBeInTheDocument();
     });
 
     it('should not submit form with "handleSubmit" with manual errors', async () => {
