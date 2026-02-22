@@ -134,6 +134,7 @@ export type FormMutableState<T extends object> = {
   ranges: Record<keyof T, { min: FieldRange; max: FieldRange; format: string }>;
   patterns: Record<keyof T, string | undefined>;
   descriptions: Record<keyof T, string | undefined>;
+  replaced: boolean;
   validated: boolean;
   submitted: boolean;
 };

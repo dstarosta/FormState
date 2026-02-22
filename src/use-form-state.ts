@@ -154,6 +154,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     const data = safeData.data ?? mergedData;
 
     return {
+      replaced: false,
       validated: validateOnInit,
       submitted: false,
       initialData: data,
@@ -273,10 +274,14 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
   // Dispatches inital state changes.
   useEffect(() => {
-    if (!formState.submitted && !deepEqual(formState.initialData, state.data)) {
+    if (
+      !formState.replaced &&
+      !formState.submitted &&
+      !deepEqual(formState.initialData, state.data)
+    ) {
       dispatch({ type: 'changeInitialState' });
     }
-  }, [state.data, formState.submitted, formState.initialData, dispatch]);
+  }, [state.data, formState.replaced, formState.submitted, formState.initialData, dispatch]);
 
   // Calls the change callbacks on the form status change.
   useEffect(() => {

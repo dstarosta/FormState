@@ -115,9 +115,11 @@ export function useFormStateReducer<T extends z.ZodObject>(
 
           return {
             ...prevState,
+            initialData: replacedData,
             data: replacedData,
             initialErrors: dataErrors,
             errors: { ...errors, ...prevManualErrors },
+            replaced: true,
             validated: prevState.validated || validate,
           } satisfies FormMutableState<State>;
         }
@@ -241,6 +243,7 @@ export function useFormStateReducer<T extends z.ZodObject>(
             initialData: prevState.initialData,
             initialErrors: prevState.initialErrors,
             data: action.options.retainData ? prevState.data : prevState.initialData,
+            replaced: prevState.replaced,
             validated: prevState.submitted || validateOnInit,
             submitted: action.options.resetSubmitted ? state.submitted : prevState.submitted,
             dirty: { ...state.dirty },

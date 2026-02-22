@@ -320,13 +320,41 @@ describe('useFormState', () => {
       });
 
       initialState = { name: 'Jonathan', info: { age: 29 } };
-      rerender(); // required to updated the initial state of the hook
+      rerender(); // required to update the initial state of the hook
 
       await waitFor(() => {
         const { formState } = result.current;
 
-        expect(formState.data.name).toBe('Tom');
-        expect(formState.data.info.age).toBe(29);
+        expect(formState.data.name).toBe('Tom'); // changed value
+        expect(formState.data.info.age).toBe(29); // unchanged value from the initial state
+      });
+    });
+
+    it('should not update initial state reactively after calling "replace"', async () => {
+      let initialState: InitialSchema = {
+        name: 'Jonathan',
+        info: { age: 30 },
+      };
+      const { result, rerender } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { replace },
+      } = result.current;
+
+      act(() => {
+        replace({
+          ...initialState,
+          name: 'Tom',
+        });
+      });
+
+      initialState = { name: 'Jonathan', info: { age: 29 } };
+      rerender(); // required to update the initial state of the hook
+
+      await waitFor(() => {
+        const { formState } = result.current;
+
+        expect(formState.data.name).toBe('Tom'); // replaced value
+        expect(formState.data.info.age).toBe(30); // replaced value
       });
     });
 
