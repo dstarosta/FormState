@@ -2,16 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { FormMutableState, Immutable } from '../form-types';
 
-import {
-  createState,
-  formatDate,
-  formDataToURL,
-  safeParseDate,
-  updateState,
-  validateState,
-  z,
-} from '..';
-import { cleanEmpty, diffedState } from './state-manager';
+import { formatDate, formDataToURL, safeParseDate, validateState, z } from '..';
+import { cleanEmpty, createState, diffedState, getState, updateState } from './state-manager';
 import { getSchemaType } from './schema-visitor';
 
 // Error Formatter and Schema Visitor have no public methods and are extensively tested
@@ -93,8 +85,42 @@ describe('helpers', () => {
 
       expect(updatedArrayState).toHaveLength(1);
       expect(updatedArrayState[0]).toBe(updatedItemState);
+    });
 
-      // change('a', updatedArrayState)
+    it('should get state correctly', () => {
+      const data: z.infer<typeof formSchema> = {
+        a: [{ i: 1, id: Symbol(1) }],
+        b: '',
+        b2: true,
+        n: 4,
+        s: 'a',
+        v: 'b',
+        z: { id: 2 },
+      };
+
+      expect(getState(undefined as unknown as typeof formSchema, data, 'a')).toBeUndefined();
+      expect(getState(formSchema, data, 'a')).toBe(data.a);
+      expect(getState(formSchema, data, (path) => path.a)).toBe(data.a);
+      expect(getState(formSchema, data, 'c' as unknown as 'a')).toBeUndefined();
+      expect(getState(formSchema, data, (path) => path.a[0])).toBe(data.a[0]);
+      expect(getState(formSchema, data, (path) => path.a[1])).toBeUndefined();
+      expect(getState(formSchema, data, (path) => path.a[0]?.i)).toBe(1);
+      expect(getState(formSchema, data, (path) => path.a[0]?.id)).toBeTypeOf('symbol');
+      expect(getState(formSchema, data, 'b')).toBe(data.b);
+      expect(getState(formSchema, data, (path) => path.b)).toBe(data.b);
+      expect(getState(formSchema, data, 'b2')).toBe(data.b2);
+      expect(getState(formSchema, data, (path) => path.b2)).toBe(data.b2);
+      expect(getState(formSchema, data, 'n')).toBe(data.n);
+      expect(getState(formSchema, data, (path) => path.n)).toBe(data.n);
+      expect(getState(formSchema, data, 's')).toBe(data.s);
+      expect(getState(formSchema, data, (path) => path.s)).toBe(data.s);
+      expect(getState(formSchema, data, 'v')).toBe(data.v);
+      expect(getState(formSchema, data, (path) => path.v)).toBe(data.v);
+      expect(getState(formSchema, data, 'z')).toBe(data.z);
+      expect(getState(formSchema, data, (path) => path.z)).toBe(data.z);
+      expect(getState(formSchema, data, (path) => path.z.id)).toBe(data.z.id);
+      expect(getState(formSchema, data, (path) => path.z['id'])).toBe(data.z.id);
+      expect(getState(formSchema, data, (path) => path.z['id2' as 'id'])).toBeUndefined();
     });
 
     it('should update state only supports arrays and objects', () => {

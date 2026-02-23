@@ -4,13 +4,16 @@ import { deepEqual } from 'fast-equals';
 import type {
   DeepPartial,
   FormMutableState,
+  FormPath,
+  FormPathValue,
   ImmutableArray,
   ImmutableObject,
   UnknownObject,
 } from '../form-types';
 
-import { getBaseType, getSchemaType } from './schema-visitor';
+import { dotPathGet } from './dot-path';
 import { generateUniqueId } from './random-id-generator';
+import { getBaseType, getPath, getSchemaType } from './schema-visitor';
 
 // Private methods
 
@@ -240,6 +243,29 @@ export function createInitialState<T extends z.ZodObject>(
   }
 
   return defaultState;
+}
+
+/**
+ * Gets strongly typed child data or field value based on the provided name or path.
+ *
+ * @typeParam T schema type.
+ * @param schema - The form schema.
+ * @param data - The strongly typed state data.
+ * @returns The child data or the field value that is assigned to the provided name or path.
+ */
+export function getState<T extends z.ZodObject, P extends FormPath<T>>(
+  schema: T,
+  data: z.infer<T>,
+  nameOrPath: P
+) {
+  if (!schema) {
+    return;
+  }
+
+  const path = typeof nameOrPath === 'function' ? getPath(data, nameOrPath) : nameOrPath;
+  const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
+
+  return dotPathGet<FormPathValue<T, P>>(data, pathNotation);
 }
 
 /**
