@@ -1,7 +1,6 @@
-import { type SyntheticEvent } from 'react';
-import * as z from 'zod/v4';
+import { useCallback } from 'react';
 
-import type { FormResetOptions } from '../form-types';
+import type { FormAction } from '../form-types';
 
 /**
  * 'form' HTML element props that disable native behavior such as browser
@@ -63,14 +62,21 @@ export const submitForm = (form?: HTMLFormElement | null) => {
  * @typeParam T type of the form data.
  * @param reset - The form reset method from the hook.
  */
-export const createFormComponent = <T extends z.ZodObject>(
-  reset: (event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => void
+export const createFormComponent = <T extends object>(
+  dispatch: (payload: FormAction<T>) => void
 ) => {
   /**
    * The Form component with pre-wired reset logic.
    */
   function Form(props: React.ComponentPropsWithRef<'form'>) {
-    return <form onReset={reset} {...formProps} {...props} />;
+    const handleReset = useCallback(() => {
+      dispatch({
+        type: 'reset',
+        options: { retainData: false, resetTouched: true, resetSubmitted: false },
+      });
+    }, []);
+
+    return <form onReset={handleReset} {...formProps} {...props} />;
   }
 
   return Form;

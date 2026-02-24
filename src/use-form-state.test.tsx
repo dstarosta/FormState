@@ -235,7 +235,12 @@ describe('useFormState', () => {
       });
 
       act(() => {
-        reset();
+        reset({
+          callback: (state) => {
+            expect(state.data.name).toBe('Jonathan');
+            expect(state.data.info.age).toBe(29);
+          },
+        });
       });
 
       await waitFor(() => {
@@ -1124,7 +1129,14 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Jonathan');
         change((path) => path.info.age, 29);
-        reset();
+        reset({
+          callback: (state) => {
+            expect(state.data.name).toBe('John');
+            expect(state.data.info.age).toBe(30);
+            expect(state.dirty.name).toBe(false);
+            expect(state.dirty.info).toBe(false);
+          },
+        });
       });
 
       const { formState } = result.current;
@@ -1155,7 +1167,19 @@ describe('useFormState', () => {
         setError('name', 'Unsupported name');
         setError('isActive', '');
 
-        reset({ names: ['name'], resetTouched: false });
+        reset({
+          names: ['name'],
+          resetTouched: false,
+          callback: (state) => {
+            expect(state.data.name).toBe('John');
+            expect(state.data.info.age).toBe(29);
+            expect(state.dirty.name).toBe(false);
+            expect(state.dirty.info).toBe(true);
+            expect(state.touched.name).toBe(true);
+            expect(state.touched.get((path) => path.info.age)).toBe(true);
+            expect(state.errors.isActive).toBeDefined();
+          },
+        });
       });
 
       const { formState } = result.current;
@@ -1186,7 +1210,18 @@ describe('useFormState', () => {
         touch((path) => path.info.age);
         change((path) => path.info.age, 29);
 
-        reset({ names: ['name'], retainData: true });
+        reset({
+          names: ['name'],
+          retainData: true,
+          callback: (state) => {
+            expect(state.data.name).toBe('Jonathan');
+            expect(state.data.info.age).toBe(29);
+            expect(state.dirty.name).toBe(false);
+            expect(state.dirty.info).toBe(true);
+            expect(state.touched.name).toBe(true);
+            expect(state.touched.get((path) => path.info.age)).toBe(true);
+          },
+        });
       });
 
       const { formState } = result.current;
@@ -1216,7 +1251,18 @@ describe('useFormState', () => {
         touch('name.test' as 'name');
         change((path) => path.info.age, 29, { touch: true });
 
-        reset({ names: ['name'], resetTouched: true, resetSubmitted: true });
+        reset({
+          names: ['name'],
+          resetTouched: true,
+          resetSubmitted: true,
+          callback: (state) => {
+            expect(state.data.name).toBe('John');
+            expect(state.data.info.age).toBe(29);
+            expect(state.dirty.info).toBe(true);
+            expect(state.touched.name).toBe(false);
+            expect(state.touched.get((path) => path.info.age)).toBe(true);
+          },
+        });
       });
 
       const { formState } = result.current;
@@ -1240,7 +1286,11 @@ describe('useFormState', () => {
 
       act(() => {
         change('name', '');
-        reset();
+        reset({
+          callback: (state) => {
+            expect(state.data.name).toBe('John');
+          },
+        });
       });
 
       const { formState, formStatus } = result.current;
@@ -1568,7 +1618,7 @@ describe('useFormState', () => {
 
       useEffect(() => {
         if (manualError) {
-          setError('someProp', 'manualError');
+          setError('someProp', manualError);
         }
       }, [manualError, setError]);
 
@@ -1582,7 +1632,6 @@ describe('useFormState', () => {
             throw new Error('Mismatched form status');
           }
 
-          submitFn(false);
           return false;
         }
 
@@ -1592,12 +1641,15 @@ describe('useFormState', () => {
 
         await Promise.resolve(submitState.data);
 
-        submitFn(true);
         return true;
       };
 
       return (
-        <Form ref={formRef} action={handleSubmit(onSubmit)} aria-label="main-form">
+        <Form
+          ref={formRef}
+          action={handleSubmit(onSubmit, { callback: submitFn })}
+          aria-label="main-form"
+        >
           {formStatus.submitting && <p>Submitting...</p>}
           {formStatus.submitted && <p>Form Submitted</p>}
           <p title="name" className={formClasses('name', 'block', { classPrefix: 'form-text' })}>
@@ -1680,10 +1732,19 @@ describe('useFormState', () => {
 
       const submittedInfo = await findByText('Form Submitted');
 
-      expect(queryByText('Submitting...')).not.toBeInTheDocument();
-      expect(submitFn).toBeCalledWith(true);
-      expect(name).toContainHTML('John');
-      expect(submittedInfo).toBeInTheDocument();
+      await waitFor(() => {
+        expect(queryByText('Submitting...')).not.toBeInTheDocument();
+
+        expect(submitFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ name: 'John' }) as object,
+          }),
+          expect.objectContaining({ valid: true, submitted: true })
+        );
+
+        expect(name).toContainHTML('John');
+        expect(submittedInfo).toBeInTheDocument();
+      });
     });
 
     it('should submit form with "handleSubmit"', async () => {
@@ -1708,10 +1769,19 @@ describe('useFormState', () => {
 
       const submittedInfo = await findByText('Form Submitted');
 
-      expect(queryByText('Submitting...')).not.toBeInTheDocument();
-      expect(submitFn).toBeCalledWith(true);
-      expect(name).toContainHTML('John');
-      expect(submittedInfo).toBeInTheDocument();
+      await waitFor(() => {
+        expect(queryByText('Submitting...')).not.toBeInTheDocument();
+
+        expect(submitFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ name: 'John' }) as object,
+          }),
+          expect.objectContaining({ valid: true, submitted: true })
+        );
+
+        expect(name).toContainHTML('John');
+        expect(submittedInfo).toBeInTheDocument();
+      });
     });
 
     it('should fail to submit form using "submit"', async () => {
@@ -1751,9 +1821,14 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
       });
 
-      expect(submitFn).toBeCalledWith(false);
-
       await waitFor(() => {
+        expect(submitFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
+          }),
+          expect.objectContaining({ valid: false, submitted: false })
+        );
+
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
     });
@@ -1778,9 +1853,14 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
       });
 
-      expect(submitFn).toBeCalledWith(false);
-
       await waitFor(() => {
+        expect(submitFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            errors: expect.objectContaining({ name: 'Name is required' }) as object,
+          }),
+          expect.objectContaining({ valid: false, submitted: false })
+        );
+
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
     });
@@ -1794,9 +1874,14 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
       });
 
-      expect(submitFn).toBeCalledWith(false);
-
       await waitFor(() => {
+        expect(submitFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            errors: expect.objectContaining({ name: 'Name is required' }) as object,
+          }),
+          expect.objectContaining({ valid: false, submitted: false })
+        );
+
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
     });
@@ -1812,9 +1897,14 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
       });
 
-      expect(submitFn).toBeCalledWith(false);
-
       await waitFor(() => {
+        expect(submitFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
+          }),
+          expect.objectContaining({ valid: false, submitted: false })
+        );
+
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
     });

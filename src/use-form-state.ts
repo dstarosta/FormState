@@ -482,12 +482,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         dispatch({ type: 'validate' });
       }
 
-      const callback = options?.callback;
-
-      if (typeof callback === 'function') {
-        changeCallbackRefs.current.push(() => {
-          changeCallbackRefs.current.push(callback);
-        });
+      if (typeof options?.callback === 'function') {
+        changeCallbackRefs.current.push(options.callback);
       }
 
       return true;
@@ -498,6 +494,10 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The memoized "handleReset" function.
   const handleReset = useCallback(
     (_event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => {
+      if (typeof options?.callback === 'function') {
+        changeCallbackRefs.current.push(options.callback);
+      }
+
       if (Array.isArray(options?.names) && options.names.length > 0) {
         dispatch({
           type: 'resetFields',
@@ -524,7 +524,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
   // The memoized "handleSubmit" function.
   const handleSubmit = useCallback(
-    (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions) => {
+    (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions<T>) => {
       return async (formData: FormData) => {
         const submittedErrors =
           formStatus.valid === null
@@ -551,6 +551,10 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         setIsSubmitting(true);
 
         const shouldSubmit = await onSubmit(submitState, formData);
+
+        if (typeof options?.callback === 'function') {
+          changeCallbackRefs.current.push(options.callback);
+        }
 
         if (hasErrors || shouldSubmit === false) {
           dispatch({ type: 'validate' });
@@ -717,7 +721,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   );
 
   // The memoized Form component.
-  const createComponent = useMemo(() => createFormComponent<T>(handleReset), [handleReset]);
+  const createComponent = useMemo(() => createFormComponent<State>(dispatch), [dispatch]);
 
   // The memoized "response" object that combines the state, form status, CSS classes, HTML element props and actions.
   const response = useMemo<FormStateResponse<T>>(

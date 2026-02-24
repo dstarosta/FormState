@@ -363,6 +363,13 @@ type FormResetOptions<T extends z.ZodObject> = {
    * Indicates whether to reset the submitted state of the fields (default: false).
    */
   resetSubmitted?: boolean;
+  /**
+   * An optional callback to run after the form state has been reset.
+   *
+   * @param state - the updated form state - data, errors, touched and dirty flags.
+   * @param status - the updated form status.
+   */
+  callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
 /**
  * Form validation options.
@@ -383,7 +390,7 @@ type FormValidateOptions<T extends z.ZodObject> = {
    */
   submit?: boolean;
   /**
-   * An optional callback to run after the form state has been changed.
+   * An optional callback to run after the form state has been validated.
    *
    * @param state - the updated form state - data, errors, touched and dirty flags.
    * @param status - the updated form status.
@@ -392,8 +399,10 @@ type FormValidateOptions<T extends z.ZodObject> = {
 };
 /**
  * Form submission options.
+ *
+ * @typeparam T form state type.
  */
-type FormSubmitOptions = {
+type FormSubmitOptions<T extends z.ZodObject> = {
   /**
    * Indicates whether to reset the dirty state of the fields (default: true).
    */
@@ -402,6 +411,13 @@ type FormSubmitOptions = {
    * Indicates whether to reset the touched state of the fields (default: true).
    */
   resetTouched?: boolean;
+  /**
+   * An optional callback to run after the form state has been submitted.
+   *
+   * @param state - the updated form state - data, errors, touched and dirty flags.
+   * @param status - the updated form status.
+   */
+  callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
 /**
  * Form submission hander callback.
