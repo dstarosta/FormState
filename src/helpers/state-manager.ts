@@ -3,9 +3,11 @@ import { deepEqual } from 'fast-equals';
 
 import type {
   DeepPartial,
+  FieldRange,
   FormMutableState,
   FormPath,
   FormPathValue,
+  FormStatePath,
   ImmutableArray,
   ImmutableObject,
   UnknownObject,
@@ -13,7 +15,7 @@ import type {
 
 import { dotPathGet } from './dot-path';
 import { generateUniqueId } from './random-id-generator';
-import { getBaseType, getPath, getSchemaType } from './schema-visitor';
+import { getBaseType, getPath, getPathNotation, getSchemaType } from './schema-visitor';
 
 // Private methods
 
@@ -106,6 +108,36 @@ export const cleanEmpty = <T>(
   return innerObj as DeepPartial<T>;
 };
 
+export const getFieldError = <T extends z.ZodObject>(
+  errors: Record<keyof z.infer<T>, string | undefined>,
+  path: FormStatePath<z.infer<T>>
+) => errors[path.join('.') as keyof z.infer<T>];
+
+export const wasFieldTouched = <T extends z.ZodObject>(
+  touched: Record<keyof z.infer<T>, boolean>,
+  path: FormStatePath<z.infer<T>>
+) => Boolean(touched[path.join('.') as keyof z.infer<T>]);
+
+export const getFieldMaxLength = <T extends z.ZodObject>(
+  maxLengths: Record<keyof z.infer<T>, number | undefined>,
+  path: FormStatePath<z.infer<T>>
+) => maxLengths[getPathNotation(path) as keyof z.infer<T>];
+
+export const getFieldRange = <T extends z.ZodObject>(
+  ranges: Record<keyof z.infer<T>, { min: FieldRange; max: FieldRange; format: string }>,
+  path: FormStatePath<z.infer<T>>
+) => ranges[getPathNotation(path) as keyof z.infer<T>];
+
+export const getFieldPattern = <T extends z.ZodObject>(
+  patterns: Record<keyof z.infer<T>, string | undefined>,
+  path: FormStatePath<z.infer<T>>
+) => patterns[getPathNotation(path) as keyof z.infer<T>] ?? '';
+
+export const getFieldDescription = <T extends z.ZodObject>(
+  descriptions: Record<keyof z.infer<T>, string | undefined>,
+  path: FormStatePath<z.infer<T>>
+) => descriptions[getPathNotation(path) as keyof z.infer<T>] ?? '';
+
 export const diffedState = <T extends z.ZodObject>(
   newState: FormMutableState<z.infer<T>>,
   prevState: FormMutableState<z.infer<T>>
@@ -115,6 +147,15 @@ export const diffedState = <T extends z.ZodObject>(
   }
 
   return newState;
+};
+
+export const freezeObject = (obj: object) => {
+  const isDevelopment =
+    typeof process === 'object' &&
+    process.env &&
+    process.env['NODE_ENV']?.toLowerCase() === 'development';
+
+  return isDevelopment ? Object.freeze(obj) : obj;
 };
 
 // Public methods

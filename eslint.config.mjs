@@ -40,6 +40,7 @@ export default defineConfig([
       'no-shadow': 'error',
       'sonarjs/cognitive-complexity': 'off',
       'sonarjs/function-return-type': 'off',
+      'sonarjs/no-nested-functions': 'off',
       'sonarjs/todo-tag': 'warn',
       'unicorn/filename-case': [
         'error',

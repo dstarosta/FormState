@@ -15,7 +15,6 @@ import type {
   FormOptions,
   FormReplaceOptions,
   FormState,
-  FormStatePath,
   FormStateResponse,
   FormStatus,
   FormSubmitOptions,
@@ -34,11 +33,21 @@ import {
   collectPatterns,
   collectRanges,
   getPath,
-  getPathNotation,
 } from './helpers/schema-visitor';
 import { useDeepMemo } from './helpers/use-deep-memo';
 import { useManualErrorState } from './helpers/use-manual-error-state';
-import { cleanEmpty, createInitialState, createState } from './helpers/state-manager';
+import {
+  cleanEmpty,
+  createInitialState,
+  createState,
+  freezeObject,
+  getFieldDescription,
+  getFieldError,
+  getFieldMaxLength,
+  getFieldPattern,
+  getFieldRange,
+  wasFieldTouched,
+} from './helpers/state-manager';
 import { formatErrors } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
@@ -64,46 +73,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
   // The manual errors that are not a part of the schema.
   const manualErrorsState = useManualErrorState();
-
-  // Memoized strongly typed form state accessor methods.
-
-  const getFieldError = useCallback(
-    (errors: Record<keyof State, string | undefined>, path: FormStatePath<State>) =>
-      errors[path.join('.') as keyof State],
-    []
-  );
-
-  const wasFieldTouched = useCallback(
-    (touched: Record<keyof State, boolean>, path: FormStatePath<State>) =>
-      Boolean(touched[path.join('.') as keyof State]),
-    []
-  );
-
-  const getFieldMaxLength = useCallback(
-    (maxLengths: Record<keyof State, number | undefined>, path: FormStatePath<State>) =>
-      maxLengths[getPathNotation(path) as keyof State],
-    []
-  );
-
-  const getFieldRange = useCallback(
-    (
-      ranges: Record<keyof State, { min: FieldRange; max: FieldRange; format: string }>,
-      path: FormStatePath<State>
-    ) => ranges[getPathNotation(path) as keyof State],
-    []
-  );
-
-  const getFieldPattern = useCallback(
-    (patterns: Record<keyof State, string | undefined>, path: FormStatePath<State>) =>
-      patterns[getPathNotation(path) as keyof State] ?? '',
-    []
-  );
-
-  const getFieldDescription = useCallback(
-    (descriptions: Record<keyof State, string | undefined>, path: FormStatePath<State>) =>
-      descriptions[getPathNotation(path) as keyof State] ?? '',
-    []
-  );
 
   const defaultData = useMemo(() => createState(schema), [schema]);
 
@@ -192,96 +161,169 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The pending state during the form submit action.
   const [isSubmitting, setIsSubmitting] = useOptimistic(false);
 
-  // The memoized "formStatus" object.
-  const formStatus = useMemo<FormStatus>(
-    () =>
-      ({
-        dirty: Object.values(formState.dirty).some(Boolean),
-        touched: Object.values(formState.touched).some(Boolean),
-        valid: formState.validated ? Object.keys(formState.errors).length === 0 : null,
-        validSchema: formState.validated
-          ? Object.entries(formState.errors).filter((error) =>
-              Object.entries(manualErrorsState.get()).every((entry) => !deepEqual(entry, error))
-            ).length === 0
-          : null,
-        submitting: isSubmitting,
-        submitted: formState.submitted,
-      }) as const,
-    [
-      formState.dirty,
-      formState.touched,
-      formState.errors,
-      formState.validated,
-      formState.submitted,
-      isSubmitting,
-      manualErrorsState,
-    ]
+  // Dirty form state.
+  const formDirty = useMemo(() => Object.values(formState.dirty).some(Boolean), [formState.dirty]);
+
+  // Touched form state.
+  const formTouched = useMemo(
+    () => Object.values(formState.touched).some(Boolean),
+    [formState.touched]
   );
 
-  const generateCallbackState = useCallback(
-    () => ({
-      data: Object.freeze({
+  // Valid form state.
+  const formValid = useMemo(
+    () => (formState.validated ? Object.keys(formState.errors).length === 0 : null),
+    [formState.errors, formState.validated]
+  );
+
+  // Determines whether the schema is valid (manual errors ignored).
+  const isSchemaValid = useCallback(() => {
+    if (!formState.validated) {
+      return null;
+    }
+
+    const manualErrors = Object.entries(manualErrorsState.get());
+    const allErrors = Object.entries(formState.errors);
+
+    const allErrorsAreManual = allErrors.every((error) =>
+      manualErrors.some((manual) => deepEqual(manual, error))
+    );
+
+    return allErrorsAreManual;
+  }, [formState.errors, formState.validated, manualErrorsState]);
+
+  // The memoized "formStatus" object.
+  const formStatus = useMemo<FormStatus>(() => {
+    let _validSchema: boolean | null = null;
+
+    return {
+      dirty: formDirty,
+      touched: formTouched,
+      submitting: isSubmitting,
+      submitted: formState.submitted,
+      valid: formValid,
+      get validSchema() {
+        // Expensive, computed only when accessed.
+        if (_validSchema === null) {
+          _validSchema = isSchemaValid();
+        }
+        return _validSchema;
+      },
+    } as const;
+  }, [formDirty, formTouched, formValid, isSubmitting, formState.submitted, isSchemaValid]);
+
+  // The memoized form state data.
+  const formData = useMemo(
+    () =>
+      freezeObject({
         ...formState.data,
         toObject: () => cleanEmpty(schema, formState.data) as State,
       }) as FormState<State>['data'],
-      errors: Object.freeze({
+    [schema, formState.data]
+  );
+
+  // The memoized "errors" object of the form state.
+  const formErrors = useMemo(
+    () =>
+      freezeObject({
         ...formState.errors,
         get: (expression: (data: State) => unknown) =>
           getFieldError(formState.errors, getPath(formState.data, expression)),
         getManual: (key: string) => formState.errors[key as keyof State],
       }) as FormState<State>['errors'],
-      touched: Object.freeze({
+    [formState.data, formState.errors]
+  );
+
+  // The memoized "dirty" object of the form state.
+  const dirty = useMemo(
+    () =>
+      freezeObject({
+        ...formState.dirty,
+        get: (key: `#${string}`) => Boolean(formState.dirty[key as keyof State]),
+      }) as FormState<State>['dirty'],
+    [formState.dirty]
+  );
+
+  // The memoized "touched" object of the form state.
+  const touched = useMemo(
+    () =>
+      freezeObject({
         ...formState.touched,
         get: (expression: (data: State) => unknown) =>
           wasFieldTouched(formState.touched, getPath(formState.data, expression)),
       }) as FormState<State>['touched'],
-      dirty: Object.freeze({
-        ...formState.dirty,
-        get: (key: `#${string}`) => Boolean(formState.dirty[key as keyof State]),
-      }) as FormState<State>['dirty'],
-      maxLengths: Object.freeze({
+    [formState.touched, formState.data]
+  );
+
+  // The memoized "maxLengths" object of the form state.
+  const maxLengths = useMemo(
+    () =>
+      freezeObject({
         ...formState.maxLengths,
         get: (expression: (data: State) => unknown) =>
           getFieldMaxLength(formState.maxLengths, getPath(formState.data, expression)),
       }) as FormState<State>['maxLengths'],
-      ranges: Object.freeze({
+    [formState.maxLengths, formState.data]
+  );
+
+  // The memoized "ranges" object of the form state.
+  const ranges = useMemo(
+    () =>
+      freezeObject({
         ...formState.ranges,
         get: (expression: (data: State) => unknown) =>
           getFieldRange(formState.ranges, getPath(formState.data, expression)),
       }) as FormState<State>['ranges'],
-      patterns: Object.freeze({
+    [formState.data, formState.ranges]
+  );
+
+  // The memoized "patterns" object of the form state.
+  const patterns = useMemo(
+    () =>
+      freezeObject({
         ...formState.patterns,
         get: (expression: (data: State) => unknown) =>
           getFieldPattern(formState.patterns, getPath(formState.data, expression)),
       }) as FormState<State>['patterns'],
-      descriptions: Object.freeze({
+    [formState.data, formState.patterns]
+  );
+
+  // The memoized "descriptions" object of the form state.
+  const descriptions = useMemo(
+    () =>
+      freezeObject({
         ...formState.descriptions,
         get: (expression: (data: State) => unknown) =>
           getFieldDescription(formState.descriptions, getPath(formState.data, expression)),
       }) as FormState<State>['descriptions'],
+    [formState.data, formState.descriptions]
+  );
+
+  const generateCallbackState = useCallback(
+    () => ({
+      data: formData,
+      errors: formErrors,
+      touched,
+      dirty,
+      maxLengths,
+      ranges,
+      patterns,
+      descriptions,
     }),
-    [
-      schema,
-      formState,
-      getFieldDescription,
-      getFieldError,
-      getFieldMaxLength,
-      getFieldPattern,
-      getFieldRange,
-      wasFieldTouched,
-    ]
+    [formData, formErrors, touched, dirty, maxLengths, ranges, patterns, descriptions]
+  );
+
+  const initialStateChanged = useMemo(
+    () => !deepEqual(formState.initialData, state.data),
+    [formState.initialData, state.data]
   );
 
   // Dispatches inital state changes.
   useEffect(() => {
-    if (
-      !formState.replaced &&
-      !formState.submitted &&
-      !deepEqual(formState.initialData, state.data)
-    ) {
+    if (!formState.replaced && !formState.submitted && initialStateChanged) {
       dispatch({ type: 'changeInitialState' });
     }
-  }, [state.data, formState.replaced, formState.submitted, formState.initialData, dispatch]);
+  }, [initialStateChanged, formState.replaced, formState.submitted, dispatch]);
 
   // Calls the change callbacks on the form status change.
   useEffect(() => {
@@ -354,9 +396,9 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
       if (unchanged) {
         if (options?.touch) {
-          const touched = formState.touched[pathNotation];
+          const isTouched = formState.touched[pathNotation];
 
-          if (!touched) {
+          if (!isTouched) {
             dispatch({
               type: 'touch',
               name: path,
@@ -525,7 +567,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The memoized "handleSubmit" function.
   const handleSubmit = useCallback(
     (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions<T>) => {
-      return async (formData: FormData) => {
+      return async (submittedFormData: FormData) => {
         const submittedErrors =
           formStatus.valid === null
             ? { ...formState.initialErrors, ...manualErrorsState.get() }
@@ -536,7 +578,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         const submitState: SubmitState<State> = hasErrors
           ? {
               valid: false,
-              errors: Object.freeze({
+              errors: freezeObject({
                 ...submittedErrors,
                 get: (expression: (data: State) => unknown) =>
                   getFieldError(submittedErrors, getPath(formState.data, expression)),
@@ -550,7 +592,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
         setIsSubmitting(true);
 
-        const submissionErrors = await onSubmit(submitState, formData);
+        const submissionErrors = await onSubmit(submitState, submittedFormData);
 
         if (
           hasErrors ||
@@ -580,7 +622,10 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
         if (typeof options?.onSuccess === 'function') {
           changeCallbackRefs.current.push((submittedState) => {
-            options.onSuccess?.(cleanEmpty(schema, submittedState.data) as State, formData);
+            options.onSuccess?.(
+              cleanEmpty(schema, submittedState.data) as State,
+              submittedFormData
+            );
           });
         }
 
@@ -600,7 +645,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       formState.initialErrors,
       formStatus.valid,
       manualErrorsState,
-      getFieldError,
       dispatch,
       setIsSubmitting,
     ]
@@ -616,7 +660,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
   // The memoized "setDirty" function.
   const setDirty = useCallback(
-    (key: string, dirty?: boolean) => {
+    (key: string, isDirty?: boolean) => {
       if (!key?.trim()?.startsWith('#')) {
         throw new TypeError('A missing or invalid key was provided.');
       }
@@ -624,7 +668,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       dispatch({
         type: 'setDirty',
         name: key,
-        dirty: dirty !== false,
+        dirty: isDirty !== false,
       });
     },
     [dispatch]
@@ -649,98 +693,12 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
   const initialFormState = useMemo(
     () => ({
-      data: Object.freeze(formState.initialData) as Immutable<State>,
-      errors: Object.freeze(formState.initialErrors) as Immutable<
+      data: freezeObject(formState.initialData) as Immutable<State>,
+      errors: freezeObject(formState.initialErrors) as Immutable<
         Record<keyof State, string | undefined>
       >,
     }),
     [formState.initialData, formState.initialErrors]
-  );
-
-  const formData = useMemo(
-    () =>
-      Object.freeze({
-        ...formState.data,
-        toObject: () => cleanEmpty(schema, formState.data) as State,
-      }) as FormState<State>['data'],
-    [schema, formState.data]
-  );
-
-  // The memoized "errors" object of the form state.
-  const formErrors = useMemo(
-    () =>
-      Object.freeze({
-        ...formState.errors,
-        get: (expression: (data: State) => unknown) =>
-          getFieldError(formState.errors, getPath(formState.data, expression)),
-        getManual: (key: string) => formState.errors[key as keyof State],
-      }) as FormState<State>['errors'],
-    [formState.data, formState.errors, getFieldError]
-  );
-
-  // The memoized "dirty" object of the form state.
-  const dirty = useMemo(
-    () =>
-      Object.freeze({
-        ...formState.dirty,
-        get: (key: `#${string}`) => Boolean(formState.dirty[key as keyof State]),
-      }) as FormState<State>['dirty'],
-    [formState.dirty]
-  );
-
-  // The memoized "touched" object of the form state.
-  const touched = useMemo(
-    () =>
-      Object.freeze({
-        ...formState.touched,
-        get: (expression: (data: State) => unknown) =>
-          wasFieldTouched(formState.touched, getPath(formState.data, expression)),
-      }) as FormState<State>['touched'],
-    [formState.touched, formState.data, wasFieldTouched]
-  );
-
-  // The memoized "maxLengths" object of the form state.
-  const maxLengths = useMemo(
-    () =>
-      Object.freeze({
-        ...formState.maxLengths,
-        get: (expression: (data: State) => unknown) =>
-          getFieldMaxLength(formState.maxLengths, getPath(formState.data, expression)),
-      }) as FormState<State>['maxLengths'],
-    [formState.maxLengths, formState.data, getFieldMaxLength]
-  );
-
-  // The memoized "ranges" object of the form state.
-  const ranges = useMemo(
-    () =>
-      Object.freeze({
-        ...formState.ranges,
-        get: (expression: (data: State) => unknown) =>
-          getFieldRange(formState.ranges, getPath(formState.data, expression)),
-      }) as FormState<State>['ranges'],
-    [formState.data, formState.ranges, getFieldRange]
-  );
-
-  // The memoized "patterns" object of the form state.
-  const patterns = useMemo(
-    () =>
-      Object.freeze({
-        ...formState.patterns,
-        get: (expression: (data: State) => unknown) =>
-          getFieldPattern(formState.patterns, getPath(formState.data, expression)),
-      }) as FormState<State>['patterns'],
-    [formState.data, formState.patterns, getFieldPattern]
-  );
-
-  // The memoized "descriptions" object of the form state.
-  const descriptions = useMemo(
-    () =>
-      Object.freeze({
-        ...formState.descriptions,
-        get: (expression: (data: State) => unknown) =>
-          getFieldDescription(formState.descriptions, getPath(formState.data, expression)),
-      }) as FormState<State>['descriptions'],
-    [formState.data, formState.descriptions, getFieldDescription]
   );
 
   // The memoized Form component.

@@ -15,7 +15,7 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "build": "npm i && npm run typecheck && npm run lint && vitest run && tsdown && tsdown --config tsdown.types.config.ts",
+    "build": "npm i && npm run typecheck && npm run lint && npm run test && tsdown && tsdown --config tsdown.types.config.ts",
     "test": "vitest run --coverage"
   },
   "peerDependencies": {

@@ -1,11 +1,19 @@
 import { useEffect, useRef } from 'react';
-import { describe, expect, it, afterEach, vi } from 'vitest';
+import { describe, expect, it, afterEach, afterAll, beforeAll, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
 
 import { submitForm, useFormState, z, type DeepPartial, type FormState } from '.';
 import type { SubmitState } from './form-types';
 
 describe('useFormState', () => {
+  beforeAll(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   const schema = z.strictObject({
     name: z
       .formString(
@@ -1516,6 +1524,11 @@ describe('useFormState', () => {
         formActions: { clearManualErrors, setError, validate },
       } = result.current;
 
+      const { formStatus: initialFormStatus } = result.current;
+
+      expect(initialFormStatus.validSchema).toBeNull();
+      expect(initialFormStatus.valid).toBeNull();
+
       act(() => {
         setError('id', 'Invalid ID');
         setError((path) => path.isActive, 'What is active?');
@@ -1528,6 +1541,7 @@ describe('useFormState', () => {
         const { formState, formStatus } = result.current;
 
         expect(formStatus.validSchema).toBe(true);
+        expect(formStatus.validSchema).toBe(true); // hitting a cached value
         expect(formStatus.valid).toBe(false);
         expect(formState.errors.getManual('id')).toMatch('Invalid ID');
         expect(formState.errors.getManual('isActive')).toBeUndefined();
