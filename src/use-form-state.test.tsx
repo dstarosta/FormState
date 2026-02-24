@@ -1586,9 +1586,11 @@ describe('useFormState', () => {
 
   describe('form element tests', () => {
     const submitFn = vi.fn();
+    const submitFailFn = vi.fn();
 
     afterEach(() => {
       submitFn.mockReset();
+      submitFailFn.mockReset();
     });
 
     const FormComponent = ({
@@ -1632,7 +1634,11 @@ describe('useFormState', () => {
             throw new Error('Mismatched form status');
           }
 
-          return false;
+          return {}; // the state already has errors
+        }
+
+        if (submitState.data.name === 'Ivan') {
+          return { name: 'The name Ivan is not allowed', customError: 'true' };
         }
 
         if (!formStatus.valid || !submitState.data) {
@@ -1647,7 +1653,7 @@ describe('useFormState', () => {
       return (
         <Form
           ref={formRef}
-          action={handleSubmit(onSubmit, { callback: submitFn })}
+          action={handleSubmit(onSubmit, { onSuccess: submitFn, onFail: submitFailFn })}
           aria-label="main-form"
         >
           {formStatus.submitting && <p>Submitting...</p>}
@@ -1736,11 +1742,10 @@ describe('useFormState', () => {
         expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
         expect(submitFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            data: expect.objectContaining({ name: 'John' }) as object,
-          }),
-          expect.objectContaining({ valid: true, submitted: true })
+          expect.objectContaining({ name: 'John' }),
+          expect.any(FormData)
         );
+        expect(submitFailFn).not.toBeCalled();
 
         expect(name).toContainHTML('John');
         expect(submittedInfo).toBeInTheDocument();
@@ -1773,11 +1778,10 @@ describe('useFormState', () => {
         expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
         expect(submitFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            data: expect.objectContaining({ name: 'John' }) as object,
-          }),
-          expect.objectContaining({ valid: true, submitted: true })
+          expect.objectContaining({ name: 'John' }),
+          expect.any(FormData)
         );
+        expect(submitFailFn).not.toBeCalled();
 
         expect(name).toContainHTML('John');
         expect(submittedInfo).toBeInTheDocument();
@@ -1804,6 +1808,37 @@ describe('useFormState', () => {
       });
     });
 
+    it('should fail to submit form with name "Ivan"', async () => {
+      const { getByRole, getByText, queryByText } = render(<FormComponent />);
+
+      const input = getByRole('textbox');
+      const submitButton = getByText('Submit');
+
+      act(() => {
+        fireEvent.change(input, { target: { value: 'Ivan' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+
+      act(() => {
+        fireEvent.click(submitButton);
+      });
+
+      await waitFor(() => {
+        expect(submitFn).not.toBeCalled();
+        expect(submitFailFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            errors: expect.objectContaining({
+              name: 'The name Ivan is not allowed',
+              customError: 'true',
+            }) as object,
+          }),
+          expect.objectContaining({ valid: false, submitted: false })
+        );
+
+        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+      });
+    });
+
     it('should not submit form with "handleSubmit" with manual errors', async () => {
       const { getByRole, getByText, queryByText } = render(
         <FormComponent manualError="A manual error" />
@@ -1822,7 +1857,8 @@ describe('useFormState', () => {
       });
 
       await waitFor(() => {
-        expect(submitFn).toHaveBeenCalledWith(
+        expect(submitFn).not.toBeCalled();
+        expect(submitFailFn).toHaveBeenCalledWith(
           expect.objectContaining({
             errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
           }),
@@ -1854,7 +1890,8 @@ describe('useFormState', () => {
       });
 
       await waitFor(() => {
-        expect(submitFn).toHaveBeenCalledWith(
+        expect(submitFn).not.toBeCalled();
+        expect(submitFailFn).toHaveBeenCalledWith(
           expect.objectContaining({
             errors: expect.objectContaining({ name: 'Name is required' }) as object,
           }),
@@ -1875,7 +1912,8 @@ describe('useFormState', () => {
       });
 
       await waitFor(() => {
-        expect(submitFn).toHaveBeenCalledWith(
+        expect(submitFn).not.toBeCalled();
+        expect(submitFailFn).toHaveBeenCalledWith(
           expect.objectContaining({
             errors: expect.objectContaining({ name: 'Name is required' }) as object,
           }),
@@ -1898,7 +1936,8 @@ describe('useFormState', () => {
       });
 
       await waitFor(() => {
-        expect(submitFn).toHaveBeenCalledWith(
+        expect(submitFn).not.toBeCalled();
+        expect(submitFailFn).toHaveBeenCalledWith(
           expect.objectContaining({
             errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
           }),

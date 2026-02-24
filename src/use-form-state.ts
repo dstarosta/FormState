@@ -470,6 +470,10 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The memoized "validate" function.
   const validate = useCallback(
     (options?: FormValidateOptions<T>) => {
+      if (typeof options?.callback === 'function') {
+        changeCallbackRefs.current.push(options.callback);
+      }
+
       if (options?.submit) {
         dispatch({
           type: 'submit',
@@ -480,10 +484,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         });
       } else {
         dispatch({ type: 'validate' });
-      }
-
-      if (typeof options?.callback === 'function') {
-        changeCallbackRefs.current.push(options.callback);
       }
 
       return true;
@@ -550,15 +550,38 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
         setIsSubmitting(true);
 
-        const shouldSubmit = await onSubmit(submitState, formData);
+        const submissionErrors = await onSubmit(submitState, formData);
 
-        if (typeof options?.callback === 'function') {
-          changeCallbackRefs.current.push(options.callback);
-        }
+        if (
+          hasErrors ||
+          (submissionErrors &&
+            submissionErrors !== true &&
+            Object.keys(submissionErrors).length > 0)
+        ) {
+          if (typeof options?.onFail === 'function') {
+            changeCallbackRefs.current.push(options.onFail);
+          }
 
-        if (hasErrors || shouldSubmit === false) {
+          if (typeof submissionErrors === 'object') {
+            for (const errorName in submissionErrors) {
+              if (Object.hasOwn(submissionErrors, errorName)) {
+                dispatch({
+                  type: 'setManualError',
+                  name: errorName,
+                  error: submissionErrors[errorName] ?? null,
+                });
+              }
+            }
+          }
+
           dispatch({ type: 'validate' });
           return;
+        }
+
+        if (typeof options?.onSuccess === 'function') {
+          changeCallbackRefs.current.push((submittedState) => {
+            options.onSuccess?.(cleanEmpty(schema, submittedState.data) as State, formData);
+          });
         }
 
         dispatch({

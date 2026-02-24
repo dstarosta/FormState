@@ -558,14 +558,25 @@ export type FormSubmitOptions<T extends z.ZodObject> = {
   /**
    * An optional callback to run after the form state has been submitted.
    *
+   * @param data - the strongly typed submitted form data.
+   * @param status - the submitted form data as a `FormData` instance.
+   */
+  onSuccess?: (data: z.infer<T>, formData: FormData) => void;
+  /**
+   * An optional callback to run after the form state if the form was not submitted due to errors
+   * or the `onSubmit` function returning `false`.
+   *
    * @param state - the updated form state - data, errors, touched and dirty flags.
    * @param status - the updated form status.
    */
-  callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
+  onFail?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
 
 /**
  * Form submission hander callback.
+ *
+ * @typeparam T form state type.
+ * @returns true, if there are no errors, or a hash object with error names and messages.
  */
 export type FormSubmitHandler<T extends z.ZodObject> = (
   /**
@@ -576,7 +587,7 @@ export type FormSubmitHandler<T extends z.ZodObject> = (
    * Form data in the `FormData` format.
    */
   formData: FormData
-) => Promise<boolean | void> | boolean | void;
+) => Promise<Record<string, string> | true> | Record<string, string> | true;
 
 /**
  * The form state response type.
@@ -704,7 +715,7 @@ export type FormStateResponse<T extends z.ZodObject> = {
      */
     handleSubmit: (
       onSubmit: FormSubmitHandler<T>,
-      options?: FormSubmitOptions
+      options?: FormSubmitOptions<T>
     ) => (formData: FormData) => Promise<void>;
     /**
      * A function to call in the `onReset` attribute the form to its initial state.
