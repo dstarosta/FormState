@@ -529,7 +529,7 @@ export type FormValidateOptions<T extends z.ZodObject> = {
    */
   resetTouched?: boolean;
   /**
-   * Indicates whether to validate the form if its state is valid.
+   * Indicates whether to mark the form submitted if its state is valid.
    */
   submit?: boolean;
   /**
