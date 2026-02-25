@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useOptimistic, useRef, type SyntheticEvent } from 'react';
 import { deepEqual } from 'fast-equals';
-import * as z from 'zod/v4';
+import * as z from 'zod';
 
 import { dotPathGet } from './helpers/dot-path';
 import { createFormComponent } from './helpers/form-builder';

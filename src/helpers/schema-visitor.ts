@@ -1,4 +1,4 @@
-import * as z from 'zod/v4';
+import * as z from 'zod';
 import type { FieldRange, FormStatePath } from '../form-types';
 import { toUTC } from './date-formatter';
 

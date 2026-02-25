@@ -1,5 +1,5 @@
-import * as z$1 from "zod/v4";
-import z from "zod/v4";
+import * as z$1 from "zod";
+import z from "zod";
 import { ComponentType, ReactNode, SyntheticEvent } from "react";
 import * as react_jsx_runtime0 from "react/jsx-runtime";
 
@@ -654,8 +654,8 @@ declare const strictObject: typeof z$1.strictObject;
 declare const symbol: typeof z$1.symbol;
 declare const regexes: typeof z$1.core.regexes;
 declare const advanced: {
-  default: typeof z$1.z;
   z: typeof z$1.z;
+  default: typeof z$1.z;
   core: typeof z$1.core;
   globalRegistry: z$1.core.$ZodRegistry<z$1.core.GlobalMeta, z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>>;
   registry: typeof z$1.core.registry;

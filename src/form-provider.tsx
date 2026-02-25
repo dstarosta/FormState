@@ -1,5 +1,5 @@
 import { createContext, use, type ComponentType, type Context, type ReactNode } from 'react';
-import * as z from 'zod/v4';
+import * as z from 'zod';
 
 import type { DeepPartial, FormOptions, FormPath, FormStateResponse } from './form-types.d';
 
