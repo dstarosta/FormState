@@ -388,11 +388,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         classes += `${classPrefix}__touched `;
       }
 
-      if (
-        !options?.isLoading &&
-        formState.validated &&
-        formState.errors[pathNotation as keyof State]
-      ) {
+      if (formState.validated && formState.errors[pathNotation as keyof State]) {
         classes += `${classPrefix}__error `;
       }
 

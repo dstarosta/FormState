@@ -449,11 +449,6 @@ export type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P exte
  */
 export type FormClassOptions = {
   /**
-   * Indicates that the control data is being fetched to prevent applying the error classes
-   * to lazy loaded controls.
-   */
-  isLoading?: boolean;
-  /**
    * A custom CSS class prefix for the form. The default prefix is `form-state`.
    *
    * CSS classes that are generated based on the form state:
@@ -669,7 +664,7 @@ export type FormStateResponse<T extends z.ZodObject> = {
    * @typeparam T form state type.
    * @param nameOrPath - Root level field name or a state path expression.
    * @param additionalClasses - Optional string containing additional CSS classes for the control.
-   * @param isLoading - Indicates that the control data is being fetched to prevent applying the error class.
+   * @param options - Options for form CSS classes.
    * @returns A `string` containing the form and the additional CSS class names.
    */
   formClasses: (

@@ -103,7 +103,6 @@ type FormStatus = {
 type FormPath<T extends z.ZodObject> = keyof z.infer<T> | ((data: z.infer<T>) => unknown);
 type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P extends ((data: z.infer<T>) => infer R) ? R : P extends keyof z.infer<T> ? z.infer<T>[P] : P extends string ? PathValue<z.infer<T>, P> : unknown;
 type FormClassOptions = {
-  isLoading?: boolean;
   classPrefix?: string;
 };
 type FormChangeOptions<T extends z.ZodObject> = {
@@ -274,7 +273,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 declare const toBoolean: (value: string, options?: {
   strict?: boolean;
 }) => boolean | "";
