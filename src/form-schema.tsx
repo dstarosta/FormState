@@ -64,13 +64,6 @@ export const symbol = z.symbol;
  * Regular expressions for common validations.
  */
 export const regexes = z.regexes;
-/**
- * Returns all of the Zod methods and objects.
- *
- * Note: this library does not provides no guarantees of supporting the remainder of
- * Zod types correctly.
- */
-export const advanced = { ...z };
 
 /**
  * Zod schema for a control with a boolean value that can optionally be an empty string.
@@ -344,3 +337,11 @@ export function formArray<T extends z.ZodType>(
 
   return options?.required ? schema : schema.optional();
 }
+
+/**
+ * Returns all of the Zod methods and objects.
+ *
+ * Note: this library does not provides no guarantees of supporting the remainder of
+ * Zod types correctly.
+ */
+export * as advanced from 'zod';
