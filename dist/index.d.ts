@@ -130,7 +130,7 @@ type FormSubmitOptions<T extends z.ZodObject> = {
   resetDirty?: boolean;
   resetTouched?: boolean;
   onSuccess?: (data: z.infer<T>, formData: FormData) => void;
-  onFail?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
+  onError?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
 type FormSubmitHandler<T extends z.ZodObject> = (state: SubmitState<z.infer<T>>, formData: FormData) => Promise<Record<string, string> | true> | Record<string, string> | true;
 type FormStateResponse<T extends z.ZodObject> = {

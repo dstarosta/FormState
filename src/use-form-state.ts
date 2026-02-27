@@ -613,8 +613,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
             submissionErrors !== true &&
             Object.keys(submissionErrors).length > 0)
         ) {
-          if (typeof options?.onFail === 'function') {
-            changeCallbackRefs.current.push(options.onFail);
+          if (typeof options?.onError === 'function') {
+            changeCallbackRefs.current.push(options.onError);
           }
 
           if (typeof submissionErrors === 'object') {

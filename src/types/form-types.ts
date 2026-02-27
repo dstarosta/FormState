@@ -583,7 +583,7 @@ export type FormSubmitOptions<T extends z.ZodObject> = {
    * @param state - Updated form state - data, errors, touched and dirty flags.
    * @param status - Updated form status.
    */
-  onFail?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
+  onError?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
 
 /**
