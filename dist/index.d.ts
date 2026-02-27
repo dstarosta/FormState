@@ -1,6 +1,6 @@
 import * as z$1 from "zod";
 import z from "zod";
-import { ComponentType, ReactNode, SyntheticEvent } from "react";
+import { ComponentType, PropsWithChildren, SyntheticEvent } from "react";
 import * as react_jsx_runtime0 from "react/jsx-runtime";
 
 //#region \0rolldown/runtime.js
@@ -516,26 +516,23 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
 declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;
 //#endregion
 //#region src/form-provider.d.ts
+type FormStateProviderProps<T extends z$1.ZodObject> = {
+  schema: T;
+  initialState?: DeepPartial<z$1.output<T>>;
+  initialTouched?: FormPath<T>[];
+  validateOnInit?: boolean;
+  watch?: boolean;
+};
 declare function FormStateProvider<T extends z$1.ZodObject>({
   schema,
   initialState,
   initialTouched,
   validateOnInit,
+  watch,
   children
-}: Readonly<{
-  schema: T;
-  initialState?: DeepPartial<z$1.output<T>>;
-  initialTouched?: FormPath<T>[];
-  validateOnInit?: boolean;
-  children?: ReactNode;
-}>): react_jsx_runtime0.JSX.Element;
+}: Readonly<PropsWithChildren<FormStateProviderProps<T>>>): react_jsx_runtime0.JSX.Element;
 declare function useFormStateContext<T extends z$1.ZodObject>(schema: T): FormStateResponse<T>;
-declare function formConnect<T extends z$1.ZodObject>(props: Readonly<{
-  schema: T;
-  initialState?: DeepPartial<z$1.output<T>>;
-  initialTouched?: FormPath<T>[];
-  validateOnInit?: boolean;
-}>): <P>(Component: ComponentType<P>) => {
+declare function formConnect<T extends z$1.ZodObject>(props: FormStateProviderProps<T>): <P>(Component: ComponentType<P>) => {
   (innerProps: Readonly<P>): react_jsx_runtime0.JSX.Element;
   displayName: string;
 };

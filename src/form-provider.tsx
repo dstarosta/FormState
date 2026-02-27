@@ -1,4 +1,4 @@
-import { createContext, use, type ComponentType, type Context, type ReactNode } from 'react';
+import { createContext, use, type ComponentType, type Context, type PropsWithChildren } from 'react';
 import * as z from 'zod';
 
 import type { DeepPartial, FormOptions, FormPath, FormStateResponse } from './types/form-types';
@@ -7,6 +7,14 @@ import { useFormState } from './use-form-state';
 
 // Allows a separate context per schema that are garbage collected when the schema goes out of scope.
 const schemaToContext = new WeakMap<z.ZodObject, Context<FormStateResponse<z.ZodObject> | null>>();
+
+type FormStateProviderProps<T extends z.ZodObject> = {
+  schema: T;
+  initialState?: DeepPartial<z.output<T>>;
+  initialTouched?: FormPath<T>[];
+  validateOnInit?: boolean;
+  watch?: boolean;
+};
 
 /**
  * Context provider to manage form state.
@@ -18,6 +26,7 @@ const schemaToContext = new WeakMap<z.ZodObject, Context<FormStateResponse<z.Zod
  *                               the initial state in the schema.
  * @param options.validateOnInit - Validate the schema with the initial values (default: false).
  * @param options.children - Optional child components.
+ * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: false).
  * @returns The form state provider.
  */
 export function FormStateProvider<T extends z.ZodObject>({
@@ -25,18 +34,14 @@ export function FormStateProvider<T extends z.ZodObject>({
   initialState,
   initialTouched,
   validateOnInit,
+  watch,
   children,
-}: Readonly<{
-  schema: T;
-  initialState?: DeepPartial<z.output<T>>;
-  initialTouched?: FormPath<T>[];
-  validateOnInit?: boolean;
-  children?: ReactNode;
-}>) {
+}: Readonly<PropsWithChildren<FormStateProviderProps<T>>>) {
   const formOptions = {
     initialState,
     initialTouched,
     validateOnInit,
+    watch
   } as FormOptions<T>;
 
   const form = useFormState(schema, formOptions);
@@ -89,16 +94,12 @@ export function useFormStateContext<T extends z.ZodObject>(schema: T) {
  *                               This object should be used for asynchronous form initialization, otherwise, specify
  *                               the initial state in the schema.
  * @param options.validateOnInit - Validate the schema with the initial values (default: false).
+ * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: false).
  *
  * @returns A curried function to wrap the component.
  */
 export function formConnect<T extends z.ZodObject>(
-  props: Readonly<{
-    schema: T;
-    initialState?: DeepPartial<z.output<T>>;
-    initialTouched?: FormPath<T>[];
-    validateOnInit?: boolean;
-  }>
+  props: FormStateProviderProps<T>
 ) {
   /**
    * Wrap the provided React component.
