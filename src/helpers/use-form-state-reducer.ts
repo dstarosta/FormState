@@ -268,7 +268,7 @@ export function useFormStateReducer<T extends z.ZodObject>(
         }
         // set manual error event
         case 'setManualError': {
-          const { name, error } = action;
+          const { name, error, options } = action;
 
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name).trim();
 
@@ -288,6 +288,7 @@ export function useFormStateReducer<T extends z.ZodObject>(
           return {
             ...prevState,
             errors: { ...errors, ...manualErrors },
+            validated: prevState.validated || options.validate,
           } satisfies FormMutableState<State>;
         }
         // clear manual errors event

@@ -20,7 +20,7 @@ import type {
   FieldRange,
   FormResetOptions,
   FormMutableState,
-  FormOptions,
+  FormInitOptions,
   FormReplaceOptions,
   FormState,
   FormStateResponse,
@@ -33,6 +33,7 @@ import type {
   DeepPartial,
   SubmitState,
   FormSubmitHandler,
+  FormSetErrorOptions,
 } from './types/form-types';
 
 import {
@@ -54,6 +55,7 @@ import {
   getFieldMaxLength,
   getFieldPattern,
   getFieldRange,
+  shouldValidate,
   wasFieldTouched,
 } from './helpers/state-manager';
 import { formatErrors } from './helpers/error-formatter';
@@ -69,7 +71,7 @@ import { createFormStore } from './helpers/form-store';
  * @param formOptions - Form initialization options.
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
-export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: FormOptions<T>) {
+export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: FormInitOptions<T>) {
   type State = z.infer<T>;
 
   // The initial hook parameters.
@@ -77,6 +79,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     initialState,
     initialTouched,
     validateOnInit = false,
+    validateOnChange = 'afterSubmit',
+    validateOnTouch = 'manually',
     debounceCacheCapacity = 50,
     watch,
   } = formOptions ?? {};
@@ -401,6 +405,55 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   // The memoized "change" function.
   const change = useCallback(
     (nameOrPath: FormPath<T>, value: unknown, options?: FormChangeOptions<T>) => {
+      const performDebounceCallback = () => {
+        const callback = options?.callback;
+
+        if (typeof callback === 'function') {
+          const interval = options?.callbackInterval ?? 0;
+
+          if (
+            (interval <= 0 || debounceCacheCapacity <= 0) &&
+            !debounceCache.current.has(callback)
+          ) {
+            // Only add callback if it's not already being debounced.
+            changeCallbackRefs.current.push(callback);
+          } else if (interval > 0) {
+            // Use or create a debounced callback.
+            let debouncedCallback = debounceCache.current.get(callback);
+
+            if (debouncedCallback) {
+              // The Map object holds key-value pairs and remembers the original insertion order
+              // of the keys - JavaScript's Map specification document.
+              // Put the callback at the end of the set.
+              debounceCache.current.delete(callback);
+              debounceCache.current.set(callback, debouncedCallback);
+            } else {
+              // Cache eviction logic.
+              if (debounceCache.current.size >= debounceCacheCapacity) {
+                const firstKey = debounceCache.current.keys().next().value!;
+                const oldDebounced = debounceCache.current.get(firstKey);
+                oldDebounced?.cancel();
+                debounceCache.current.delete(firstKey);
+              }
+
+              debouncedCallback = debounce(
+                (currentState: FormState<State>, currentStatus: FormStatus) => {
+                  // Only execute the callback if the component is still mounted.
+                  if (isMountedRef.current) {
+                    callback(currentState, currentStatus);
+                  }
+                },
+                interval
+              );
+
+              debounceCache.current.set(callback, debouncedCallback);
+            }
+
+            changeCallbackRefs.current.push(debouncedCallback);
+          }
+        }
+      };
+
       const path =
         typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : nameOrPath;
       const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
@@ -425,48 +478,9 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         return;
       }
 
-      const callback = options?.callback;
-      const interval = options?.callbackInterval ?? 0;
+      performDebounceCallback();
 
-      if (typeof callback === 'function') {
-        if ((interval <= 0 || debounceCacheCapacity <= 0) && !debounceCache.current.has(callback)) {
-          // Only add callback if it's not already being debounced.
-          changeCallbackRefs.current.push(callback);
-        } else if (interval > 0) {
-          // Use or create a debounced callback.
-          let debouncedCallback = debounceCache.current.get(callback);
-
-          if (debouncedCallback) {
-            // The Map object holds key-value pairs and remembers the original insertion order
-            // of the keys - JavaScript's Map specification document.
-            // Put the callback at the end of the set.
-            debounceCache.current.delete(callback);
-            debounceCache.current.set(callback, debouncedCallback);
-          } else {
-            // Cache eviction logic.
-            if (debounceCache.current.size >= debounceCacheCapacity) {
-              const firstKey = debounceCache.current.keys().next().value!;
-              const oldDebounced = debounceCache.current.get(firstKey);
-              oldDebounced?.cancel();
-              debounceCache.current.delete(firstKey);
-            }
-
-            debouncedCallback = debounce(
-              (currentState: FormState<State>, currentStatus: FormStatus) => {
-                // Only execute the callback if the component is still mounted.
-                if (isMountedRef.current) {
-                  callback(currentState, currentStatus);
-                }
-              },
-              interval
-            );
-
-            debounceCache.current.set(callback, debouncedCallback);
-          }
-
-          changeCallbackRefs.current.push(debouncedCallback);
-        }
-      }
+      const validationMode = options?.validate ?? validateOnChange;
 
       dispatch({
         type: 'change',
@@ -474,11 +488,18 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         value,
         options: {
           touch: Boolean(options?.touch),
-          validate: options?.validate ?? true,
+          validate: shouldValidate(validationMode, formState.submitted),
         },
       });
     },
-    [debounceCacheCapacity, formState.data, formState.touched, dispatch]
+    [
+      validateOnChange,
+      formState.data,
+      formState.submitted,
+      formState.touched,
+      debounceCacheCapacity,
+      dispatch,
+    ]
   );
 
   // The memoized "replace" function.
@@ -511,15 +532,17 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         path = names[0]!;
       }
 
+      const validationMode = options?.validate ?? validateOnTouch;
+
       dispatch({
         type: 'touch',
         name: path,
         options: {
-          validate: Boolean(options?.validate),
+          validate: shouldValidate(validationMode, formState.submitted),
         },
       });
     },
-    [formState.data, dispatch]
+    [validateOnTouch, formState.data, formState.submitted, dispatch]
   );
 
   // The memoized "validate" function.
@@ -530,20 +553,31 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       }
 
       if (options?.submit) {
-        dispatch({
-          type: 'submit',
-          options: {
-            resetDirty: Boolean(options.resetDirty !== false),
-            resetTouched: Boolean(options.resetTouched !== false),
-          },
-        });
+        const submittedErrors =
+          formStatus.valid === null
+            ? { ...formState.initialErrors, ...manualErrorsState.get() }
+            : formState.errors;
+
+        const hasErrors = Object.keys(submittedErrors).length > 0;
+
+        if (hasErrors) {
+          dispatch({ type: 'validate' });
+        } else {
+          dispatch({
+            type: 'submit',
+            options: {
+              resetDirty: Boolean(options.resetDirty !== false),
+              resetTouched: Boolean(options.resetTouched !== false),
+            },
+          });
+        }
       } else {
         dispatch({ type: 'validate' });
       }
 
       return true;
     },
-    [dispatch]
+    [formState.errors, formState.initialErrors, formStatus.valid, manualErrorsState, dispatch]
   );
 
   // The memoized "handleReset" function.
@@ -624,6 +658,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
                   type: 'setManualError',
                   name: errorName,
                   error: submissionErrors[errorName] ?? null,
+                  options: { validate: true },
                 });
               }
             }
@@ -689,14 +724,23 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
   // The memoized "setError" function.
   const setError = useCallback(
-    (nameOrPath: string | ((data: State) => unknown), error?: string | null) => {
+    (
+      nameOrPath: string | ((data: State) => unknown),
+      error?: string | null,
+      options?: FormSetErrorOptions
+    ) => {
+      const validationMode = options?.validate ?? validateOnChange;
+
       dispatch({
         type: 'setManualError',
         name: typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : nameOrPath,
         error: error ?? null,
+        options: {
+          validate: shouldValidate(validationMode, formState.submitted),
+        },
       });
     },
-    [formState.data, dispatch]
+    [validateOnChange, formState.data, formState.submitted, dispatch]
   );
 
   // The memoized "clearManualErrors" function.

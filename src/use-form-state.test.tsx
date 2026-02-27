@@ -267,7 +267,9 @@ describe('useFormState', () => {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialState, validateOnChange: 'always' })
+      );
       const {
         formActions: { change },
       } = result.current;
@@ -296,7 +298,7 @@ describe('useFormState', () => {
       } = result.current;
 
       act(() => {
-        change((path) => path.info.birthDate, '2020-12-31'); // unsuported ISO format
+        change((path) => path.info.birthDate, '2020-12-31', { validate: 'always' }); // unsuported ISO format
       });
 
       const { formState, formStatus } = result.current;
@@ -499,7 +501,7 @@ describe('useFormState', () => {
       } = result.current;
 
       act(() => {
-        change('name', '');
+        change('name', '', { validate: 'always' });
       });
 
       initialState = { name: 'John', info: { age: 30 } };
@@ -1011,14 +1013,14 @@ describe('useFormState', () => {
       expect(updateCounter).toBe(0);
     });
 
-    it('should update field without validation when validate is false', () => {
+    it('should update field without validation when validate is "manually"', () => {
       const { result } = renderHook(() => useFormState(schema));
       const {
         formActions: { change },
       } = result.current;
 
       act(() => {
-        change('name', '', { validate: false });
+        change('name', '', { validate: 'manually' });
       });
 
       const { formState, formStatus } = result.current;
@@ -1109,14 +1111,14 @@ describe('useFormState', () => {
       expect(formStatus.touched).toEqual(false);
     });
 
-    it('should validate field when touched and validate option is true', () => {
+    it('should validate field when touched and validate option is "always"', () => {
       const { result } = renderHook(() => useFormState(schema));
       const {
         formActions: { touch },
       } = result.current;
 
       act(() => {
-        touch('name', { validate: true });
+        touch('name', { validate: 'always' });
       });
 
       const { formState } = result.current;
@@ -1170,7 +1172,7 @@ describe('useFormState', () => {
 
       act(() => {
         touch('name');
-        change('name', 'Jonathan', { validate: false });
+        change('name', 'Jonathan', { validate: 'manually' });
 
         touch((path) => path.info.age);
         change((path) => path.info.age, 29);
@@ -1661,6 +1663,7 @@ describe('useFormState', () => {
             age: 30,
           },
         },
+        validateOnChange: 'always',
         watch: watch === true,
       });
 

@@ -43,12 +43,17 @@ type FormMutableState<T extends object> = {
   validated: boolean;
   submitted: boolean;
 };
-type FormOptions<T extends z.ZodObject> = {
+type FormInitOptions<T extends z.ZodObject> = {
   initialState?: DeepPartial<z.infer<T>> | undefined;
   initialTouched?: FormPath<T>[];
   validateOnInit?: boolean;
+  validateOnChange?: ValidationMode;
+  validateOnTouch?: ValidationMode;
   debounceCacheCapacity?: number;
   watch?: boolean;
+};
+type FormProviderInitOptions<T extends z.ZodObject> = FormInitOptions<T> & {
+  schema: T;
 };
 type SubmitState<T extends object> = {
   valid: true;
@@ -97,13 +102,14 @@ type FormStatus = {
 };
 type FormPath<T extends z.ZodObject> = keyof z.infer<T> | ((data: z.infer<T>) => unknown);
 type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P extends ((data: z.infer<T>) => infer R) ? R : P extends keyof z.infer<T> ? z.infer<T>[P] : P extends string ? PathValue<z.infer<T>, P> : unknown;
+type ValidationMode = 'always' | 'afterSubmit' | 'manually';
 type FormClassOptions = {
   isLoading?: boolean;
   classPrefix?: string;
 };
 type FormChangeOptions<T extends z.ZodObject> = {
   touch?: boolean;
-  validate?: boolean;
+  validate?: ValidationMode;
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
   callbackInterval?: number;
 };
@@ -111,7 +117,10 @@ type FormReplaceOptions = {
   validate?: boolean;
 };
 type FormTouchOptions = {
-  validate?: boolean;
+  validate?: ValidationMode;
+};
+type FormSetErrorOptions = {
+  validate?: ValidationMode;
 };
 type FormResetOptions<T extends z.ZodObject> = {
   names?: (keyof z.infer<T>)[];
@@ -148,7 +157,7 @@ type FormStateResponse<T extends z.ZodObject> = {
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
     validate: (options?: FormValidateOptions<T>) => void;
     setDirty: (key: `#${string}`, dirty?: boolean) => void;
-    setError: (keyOrPath: string | ((data: z.infer<T>) => unknown), error?: string | null) => void;
+    setError: (keyOrPath: string | ((data: z.infer<T>) => unknown), error?: string | null, options?: FormSetErrorOptions) => void;
     clearManualErrors: () => void;
   };
   formHandlers: {
@@ -223,26 +232,12 @@ declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.Z
 }): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
-declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormOptions<T>): FormStateResponse<T>;
+declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
 //#endregion
 //#region src/form-provider.d.ts
-type FormStateProviderProps<T extends z$1.ZodObject> = {
-  schema: T;
-  initialState?: DeepPartial<z$1.output<T>>;
-  initialTouched?: FormPath<T>[];
-  validateOnInit?: boolean;
-  watch?: boolean;
-};
-declare function FormStateProvider<T extends z$1.ZodObject>({
-  schema,
-  initialState,
-  initialTouched,
-  validateOnInit,
-  watch,
-  children
-}: Readonly<PropsWithChildren<FormStateProviderProps<T>>>): react_jsx_runtime0.JSX.Element;
+declare function FormStateProvider<T extends z$1.ZodObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): react_jsx_runtime0.JSX.Element;
 declare function useFormStateContext<T extends z$1.ZodObject>(schema: T): FormStateResponse<T>;
-declare function formConnect<T extends z$1.ZodObject>(props: FormStateProviderProps<T>): <P>(Component: ComponentType<P>) => {
+declare function formConnect<T extends z$1.ZodObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
   (innerProps: Readonly<P>): react_jsx_runtime0.JSX.Element;
   displayName: string;
 };

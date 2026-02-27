@@ -119,7 +119,12 @@ export type FormAction<T extends object> =
     }
   | { type: 'changeInitialState' }
   | { type: 'setDirty'; name: string; dirty: boolean }
-  | { type: 'setManualError'; name: keyof T | FormStatePath<T>; error: string | null }
+  | {
+      type: 'setManualError';
+      name: keyof T | FormStatePath<T>;
+      error: string | null;
+      options: { validate: boolean };
+    }
   | { type: 'clearManualErrors' }
   | { type: 'validate' };
 
@@ -159,7 +164,7 @@ export type FormStore = {
  *
  * @typeParam T type of the form data.
  */
-export type FormOptions<T extends z.ZodObject> = {
+export type FormInitOptions<T extends z.ZodObject> = {
   /**
    * An optional object with schema properties to set the initial state of the form.
    * This object should be used for asynchronous form initialization, otherwise, specify
@@ -173,9 +178,19 @@ export type FormOptions<T extends z.ZodObject> = {
    */
   initialTouched?: FormPath<T>[];
   /**
-   * Validate the schema with the initial values (default: false).
+   * Validate the schema with the initial values (default: `false`).
    */
   validateOnInit?: boolean;
+  /**
+   * Indicates how to validate the form, by default, after a `change` action
+   * (default: `"afterSubmit"`).
+   */
+  validateOnChange?: ValidationMode;
+  /**
+   * Indicates how to validate the form, by default, after a `touch` action
+   * (default: `"manually"`).
+   */
+  validateOnTouch?: ValidationMode;
   /**
    * Sets the capacity of the debounce callback cache used by the "change"
    * function. (default: 50).
@@ -186,12 +201,16 @@ export type FormOptions<T extends z.ZodObject> = {
   debounceCacheCapacity?: number;
   /**
    * Sets a value indicating whether the `useWatch` hook should be enabled
-   * (default: false).
+   * (default: `false`).
    *
    * This functionality is only necessary for special use-cases. It requires
    * additional memory and has a minor overhead.
    */
   watch?: boolean;
+};
+
+export type FormProviderInitOptions<T extends z.ZodObject> = FormInitOptions<T> & {
+  schema: T;
 };
 
 /**
@@ -428,6 +447,15 @@ export type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P exte
       : unknown;
 
 /**
+ * Indicates whether to validate the form state after the current action.
+ *
+ * - `"always"` - perform the validation.
+ * - `"afterSubmit"`- perform the validation only if the form had been submitted.
+ * - `"manually"` - do not perform the validation.
+ */
+export type ValidationMode = 'always' | 'afterSubmit' | 'manually';
+
+/**
  * Options for the `formClasses` function.
  */
 export type FormClassOptions = {
@@ -454,13 +482,15 @@ export type FormClassOptions = {
  */
 export type FormChangeOptions<T extends z.ZodObject> = {
   /**
-   * Indicates whether to mark field as touched (default: false).
+   * Indicates whether to mark field as touched (default: `false`).
    */
   touch?: boolean;
   /**
-   * Indicates whether to validate the field (default: true).
+   * Indicates when to validate the field (default: `'afterSubmit'`).
+   *
+   * The default value can be overriden in the options of the `useFormState` hook.
    */
-  validate?: boolean;
+  validate?: ValidationMode;
   /**
    * An optional callback to run after the form state has been changed.
    *
@@ -481,7 +511,7 @@ export type FormChangeOptions<T extends z.ZodObject> = {
  */
 export type FormReplaceOptions = {
   /**
-   * Indicates whether to validate the field (default: false).
+   * Indicates whether to validate the field (default: `false`).
    */
   validate?: boolean;
 };
@@ -491,9 +521,23 @@ export type FormReplaceOptions = {
  */
 export type FormTouchOptions = {
   /**
-   * Indicates whether to validate the field (default: false).
+   * Indicates when to validate the field (default: `'afterSubmit'`).
+   *
+   * The default value can be overriden in the options of the `useFormState` hook.
    */
-  validate?: boolean;
+  validate?: ValidationMode;
+};
+
+/**
+ * Form set error options.
+ */
+export type FormSetErrorOptions = {
+  /**
+   * Indicates when to validate the field (default: `'afterSubmit'` - uses the `change` action default).
+   *
+   * The default value can be overriden in the options of the `useFormState` hook.
+   */
+  validate?: ValidationMode;
 };
 
 /**
@@ -507,7 +551,7 @@ export type FormResetOptions<T extends z.ZodObject> = {
    */
   names?: (keyof z.infer<T>)[];
   /**
-   * Indicates whether to retain the current field values (default: false).
+   * Indicates whether to retain the current field values (default: `false`).
    */
   retainData?: boolean;
   /**
@@ -516,7 +560,7 @@ export type FormResetOptions<T extends z.ZodObject> = {
    */
   resetTouched?: boolean;
   /**
-   * Indicates whether to reset the submitted state of the fields (default: false).
+   * Indicates whether to reset the submitted state of the fields (default: `false`).
    */
   resetSubmitted?: boolean;
   /**
@@ -535,11 +579,11 @@ export type FormResetOptions<T extends z.ZodObject> = {
  */
 export type FormValidateOptions<T extends z.ZodObject> = {
   /**
-   * Indicates whether to reset the dirty state of the fields (default: true).
+   * Indicates whether to reset the dirty state of the fields (default: `true`).
    */
   resetDirty?: boolean;
   /**
-   * Indicates whether to reset the touched state of the fields (default: true).
+   * Indicates whether to reset the touched state of the fields (default: `true`).
    */
   resetTouched?: boolean;
   /**
@@ -562,11 +606,11 @@ export type FormValidateOptions<T extends z.ZodObject> = {
  */
 export type FormSubmitOptions<T extends z.ZodObject> = {
   /**
-   * Indicates whether to reset the dirty state of the fields (default: true).
+   * Indicates whether to reset the dirty state of the fields (default: `true`).
    */
   resetDirty?: boolean;
   /**
-   * Indicates whether to reset the touched state of the fields (default: true).
+   * Indicates whether to reset the touched state of the fields (default: `true`).
    */
   resetTouched?: boolean;
   /**
@@ -696,7 +740,7 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * Marks the form as dirty with an arbitrary string key.
      *
      * @param key - Arbitrary string independent of the managed form state. It must start with the `#` sign to avoid collisions.
-     * @param dirty - `true` to set the key as dirty, `false` to clear it. (default: true).
+     * @param dirty - `true` to set the key as dirty, `false` to clear it. (default: `true`).
      */
     setDirty: (key: `#${string}`, dirty?: boolean) => void;
     /**
@@ -705,8 +749,13 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * @param keyOrPath - Arbitrary string or a state path expression.
      *                    The first field in the schema is touched if the path is not provided.
      * @param error - Error message. Leave this parameter blank or set it to `null` to clear the manual error.
+     * @param options - Options for setting a manual error.
      */
-    setError: (keyOrPath: string | ((data: z.infer<T>) => unknown), error?: string | null) => void;
+    setError: (
+      keyOrPath: string | ((data: z.infer<T>) => unknown),
+      error?: string | null,
+      options?: FormSetErrorOptions
+    ) => void;
     /**
      * Clears all manual errors.
      */
