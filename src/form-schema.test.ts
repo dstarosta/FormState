@@ -217,7 +217,7 @@ describe('form schema', () => {
     } = result.current;
 
     act(() => {
-      change('value2', 'z' as 'a' | 'b' | 'c', { validate: 'always' });
+      change('value2', 'z' as 'a' | 'b' | 'c');
     });
 
     const { formState, formStatus } = result.current;
@@ -241,7 +241,7 @@ describe('form schema', () => {
     } = result.current;
 
     act(() => {
-      change('value2', 'z' as 'a' | 'b', { validate: 'always' });
+      change('value2', 'z' as 'a' | 'b');
     });
 
     const { formState, formStatus } = result.current;

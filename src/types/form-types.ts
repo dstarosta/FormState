@@ -182,15 +182,13 @@ export type FormInitOptions<T extends z.ZodObject> = {
    */
   validateOnInit?: boolean;
   /**
-   * Indicates how to validate the form, by default, after a `change` action
-   * (default: `"afterSubmit"`).
+   * Validate the schema, by default, after a `change` action (default: `true`).
    */
-  validateOnChange?: ValidationMode;
+  validateOnChange?: boolean;
   /**
-   * Indicates how to validate the form, by default, after a `touch` action
-   * (default: `"manually"`).
+   * Validate the schema, by default, after a `touch` action  (default: `false`).
    */
-  validateOnTouch?: ValidationMode;
+  validateOnTouch?: boolean;
   /**
    * Sets the capacity of the debounce callback cache used by the "change"
    * function. (default: 50).
@@ -447,15 +445,6 @@ export type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P exte
       : unknown;
 
 /**
- * Indicates whether to validate the form state after the current action.
- *
- * - `"always"` - perform the validation.
- * - `"afterSubmit"`- perform the validation only if the form had been submitted.
- * - `"manually"` - do not perform the validation.
- */
-export type ValidationMode = 'always' | 'afterSubmit' | 'manually';
-
-/**
  * Options for the `formClasses` function.
  */
 export type FormClassOptions = {
@@ -486,11 +475,11 @@ export type FormChangeOptions<T extends z.ZodObject> = {
    */
   touch?: boolean;
   /**
-   * Indicates when to validate the field (default: `'afterSubmit'`).
+   * Indicates whether to validate the field (default: `true`).
    *
    * The default value can be overriden in the options of the `useFormState` hook.
    */
-  validate?: ValidationMode;
+  validate?: boolean;
   /**
    * An optional callback to run after the form state has been changed.
    *
@@ -521,11 +510,11 @@ export type FormReplaceOptions = {
  */
 export type FormTouchOptions = {
   /**
-   * Indicates when to validate the field (default: `'afterSubmit'`).
+   * Indicates whether to validate the field (default: `false`).
    *
    * The default value can be overriden in the options of the `useFormState` hook.
    */
-  validate?: ValidationMode;
+  validate?: boolean;
 };
 
 /**
@@ -533,11 +522,11 @@ export type FormTouchOptions = {
  */
 export type FormSetErrorOptions = {
   /**
-   * Indicates when to validate the field (default: `'afterSubmit'` - uses the `change` action default).
+   * Indicates whether to validate the field (default: `true` - uses the `change` action default).
    *
    * The default value can be overriden in the options of the `useFormState` hook.
    */
-  validate?: ValidationMode;
+  validate?: boolean;
 };
 
 /**

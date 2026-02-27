@@ -47,8 +47,8 @@ type FormInitOptions<T extends z.ZodObject> = {
   initialState?: DeepPartial<z.infer<T>> | undefined;
   initialTouched?: FormPath<T>[];
   validateOnInit?: boolean;
-  validateOnChange?: ValidationMode;
-  validateOnTouch?: ValidationMode;
+  validateOnChange?: boolean;
+  validateOnTouch?: boolean;
   debounceCacheCapacity?: number;
   watch?: boolean;
 };
@@ -102,14 +102,13 @@ type FormStatus = {
 };
 type FormPath<T extends z.ZodObject> = keyof z.infer<T> | ((data: z.infer<T>) => unknown);
 type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P extends ((data: z.infer<T>) => infer R) ? R : P extends keyof z.infer<T> ? z.infer<T>[P] : P extends string ? PathValue<z.infer<T>, P> : unknown;
-type ValidationMode = 'always' | 'afterSubmit' | 'manually';
 type FormClassOptions = {
   isLoading?: boolean;
   classPrefix?: string;
 };
 type FormChangeOptions<T extends z.ZodObject> = {
   touch?: boolean;
-  validate?: ValidationMode;
+  validate?: boolean;
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
   callbackInterval?: number;
 };
@@ -117,10 +116,10 @@ type FormReplaceOptions = {
   validate?: boolean;
 };
 type FormTouchOptions = {
-  validate?: ValidationMode;
+  validate?: boolean;
 };
 type FormSetErrorOptions = {
-  validate?: ValidationMode;
+  validate?: boolean;
 };
 type FormResetOptions<T extends z.ZodObject> = {
   names?: (keyof z.infer<T>)[];
@@ -275,7 +274,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 declare const toBoolean: (value: string, options?: {
   strict?: boolean;
 }) => boolean | "";

@@ -267,9 +267,7 @@ describe('useFormState', () => {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnChange: 'always' })
-      );
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
         formActions: { change },
       } = result.current;
@@ -298,7 +296,7 @@ describe('useFormState', () => {
       } = result.current;
 
       act(() => {
-        change((path) => path.info.birthDate, '2020-12-31', { validate: 'always' }); // unsuported ISO format
+        change((path) => path.info.birthDate, '2020-12-31'); // unsuported ISO format
       });
 
       const { formState, formStatus } = result.current;
@@ -501,7 +499,7 @@ describe('useFormState', () => {
       } = result.current;
 
       act(() => {
-        change('name', '', { validate: 'always' });
+        change('name', '');
       });
 
       initialState = { name: 'John', info: { age: 30 } };
@@ -1020,7 +1018,7 @@ describe('useFormState', () => {
       } = result.current;
 
       act(() => {
-        change('name', '', { validate: 'manually' });
+        change('name', '', { validate: false });
       });
 
       const { formState, formStatus } = result.current;
@@ -1118,7 +1116,7 @@ describe('useFormState', () => {
       } = result.current;
 
       act(() => {
-        touch('name', { validate: 'always' });
+        touch('name', { validate: true });
       });
 
       const { formState } = result.current;
@@ -1172,7 +1170,7 @@ describe('useFormState', () => {
 
       act(() => {
         touch('name');
-        change('name', 'Jonathan', { validate: 'manually' });
+        change('name', 'Jonathan', { validate: false });
 
         touch((path) => path.info.age);
         change((path) => path.info.age, 29);
@@ -1663,7 +1661,6 @@ describe('useFormState', () => {
             age: 30,
           },
         },
-        validateOnChange: 'always',
         watch: watch === true,
       });
 

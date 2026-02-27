@@ -77,10 +77,8 @@ export function useFormStateContext<T extends z.ZodObject>(schema: T) {
  * @param options.initialTouch - An optional array of root level field names or a state path expressions that
  *                               will be marked as touched when the form is initialized.
  * @param options.validateOnInit - Validate the schema with the initial values (default: `false`).
- * @param options.validateOnChange - Indicates how to validate the form, by default, after a `change` action
- *                                   (default: `"afterSubmit"`).
- * @param options.validateOnTouch - Indicates how to validate the form, by default, after a `touch` action
- *                                  (default: `"manual"`).
+ * @param options.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
+ * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
  * @param options.debounceCacheCapacity - Sets the capacity of the debounce callback cache used by the "change"
  *                                        function. (default: 50). A non-positive value means no debouncing of
  *                                        change callbacks is allowed.

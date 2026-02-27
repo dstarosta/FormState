@@ -55,7 +55,6 @@ import {
   getFieldMaxLength,
   getFieldPattern,
   getFieldRange,
-  shouldValidate,
   wasFieldTouched,
 } from './helpers/state-manager';
 import { formatErrors } from './helpers/error-formatter';
@@ -79,11 +78,11 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     initialState,
     initialTouched,
     validateOnInit = false,
-    validateOnChange = 'afterSubmit',
-    validateOnTouch = 'manually',
+    validateOnChange = true,
+    validateOnTouch = false,
     debounceCacheCapacity = 50,
     watch,
-  } = formOptions ?? {};
+  }: FormInitOptions<T> = formOptions ?? {};
 
   // The manual errors that are not a part of the schema.
   const manualErrorsState = useManualErrorState();
@@ -389,7 +388,11 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         classes += `${classPrefix}__touched `;
       }
 
-      if (!options?.isLoading && formState.errors[pathNotation as keyof State]) {
+      if (
+        !options?.isLoading &&
+        formState.validated &&
+        formState.errors[pathNotation as keyof State]
+      ) {
         classes += `${classPrefix}__error `;
       }
 
@@ -399,7 +402,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
       return (classes.trim() + ' ' + additionalClasses).trim();
     },
-    [formState.data, formState.errors, formState.touched]
+    [formState.data, formState.errors, formState.touched, formState.validated]
   );
 
   // The memoized "change" function.
@@ -480,26 +483,17 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
       performDebounceCallback();
 
-      const validationMode = options?.validate ?? validateOnChange;
-
       dispatch({
         type: 'change',
         name: path,
         value,
         options: {
           touch: Boolean(options?.touch),
-          validate: shouldValidate(validationMode, formState.submitted),
+          validate: options?.validate ?? validateOnChange,
         },
       });
     },
-    [
-      validateOnChange,
-      formState.data,
-      formState.submitted,
-      formState.touched,
-      debounceCacheCapacity,
-      dispatch,
-    ]
+    [validateOnChange, formState.data, formState.touched, debounceCacheCapacity, dispatch]
   );
 
   // The memoized "replace" function.
@@ -532,17 +526,15 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         path = names[0]!;
       }
 
-      const validationMode = options?.validate ?? validateOnTouch;
-
       dispatch({
         type: 'touch',
         name: path,
         options: {
-          validate: shouldValidate(validationMode, formState.submitted),
+          validate: options?.validate ?? validateOnTouch,
         },
       });
     },
-    [validateOnTouch, formState.data, formState.submitted, dispatch]
+    [validateOnTouch, formState.data, dispatch]
   );
 
   // The memoized "validate" function.
@@ -729,18 +721,16 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       error?: string | null,
       options?: FormSetErrorOptions
     ) => {
-      const validationMode = options?.validate ?? validateOnChange;
-
       dispatch({
         type: 'setManualError',
         name: typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : nameOrPath,
         error: error ?? null,
         options: {
-          validate: shouldValidate(validationMode, formState.submitted),
+          validate: options?.validate ?? validateOnChange,
         },
       });
     },
-    [validateOnChange, formState.data, formState.submitted, dispatch]
+    [validateOnChange, formState.data, dispatch]
   );
 
   // The memoized "clearManualErrors" function.

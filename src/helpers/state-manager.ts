@@ -11,7 +11,6 @@ import type {
   ImmutableArray,
   ImmutableObject,
   UnknownObject,
-  ValidationMode,
 } from '../types/form-types';
 
 import { dotPathGet } from './dot-path';
@@ -157,20 +156,6 @@ export const freezeObject = (obj: object) => {
     process.env['NODE_ENV']?.toLowerCase() === 'development';
 
   return isDevelopment ? Object.freeze(obj) : obj;
-};
-
-export const shouldValidate = (mode: ValidationMode, formSubmitted: boolean) => {
-  switch (mode) {
-    case 'afterSubmit': {
-      return formSubmitted;
-    }
-    case 'always': {
-      return true;
-    }
-    default: {
-      return false;
-    }
-  }
 };
 
 // Public methods
