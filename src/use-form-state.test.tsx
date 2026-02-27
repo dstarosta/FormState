@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type Ref } from 'react';
 import { describe, expect, it, afterEach, afterAll, beforeAll, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
-import { submitForm, useFormState, z, type DeepPartial, type FormState } from '.';
-import type { SubmitState } from './form-types';
+import { submitForm, useFormState, convert, z, type DeepPartial, type FormState } from '.';
+import type { SubmitState } from './types/form-types';
 
 describe('useFormState', () => {
   beforeAll(() => {
@@ -65,6 +66,7 @@ describe('useFormState', () => {
       .describe('Tags'),
     category: z.formValues(['legacy', 'unconfirmed']).describe('Category'),
     isActive: z.formBoolean(z.boolean()).describe('Is record active?'),
+    isArchived: z.formBoolean(z.boolean()).describe('Is record archived?'),
     version: z.formNumber(z.number().min(0).max(9999999)).describe('Record version'),
     registeredOn: z.formDate(z.date()),
     updateDates: z.formArray(z.date().max(new Date(2099, 11, 31))),
@@ -95,6 +97,7 @@ describe('useFormState', () => {
         tags: [],
         category: '',
         isActive: '',
+        isArchived: '',
         version: '',
         registeredOn: '',
         previousVersions: [],
@@ -279,7 +282,7 @@ describe('useFormState', () => {
       expect(formStatus.valid).toBe(true);
       expect(formState.data.info.age).toBe(42);
       expect(formState.data.info.birthDate).toBeInstanceOf(Date);
-      expect((formState.data.info.birthDate as Date).toISOString()).toMatch(/^2020-12-31T00:00:00/);
+      expect((formState.data.info.birthDate as Date).toISOString()).toMatch(/^2020-12-31/);
     });
 
     it('should handle invalid date', () => {
@@ -1607,12 +1610,39 @@ describe('useFormState', () => {
       submitFailFn.mockReset();
     });
 
+    const WatchedComponent = ({ useWatch }: { useWatch: (name: string) => string | undefined }) => {
+      const nameValue = useWatch('name');
+      const ageValue = useWatch('age');
+      const categoryValue = useWatch('category');
+      const activeValue = useWatch('active');
+      const archivedValue = useWatch('archived');
+
+      expect(() => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        useWatch(' ');
+      }).toThrowError(TypeError);
+
+      return (
+        <>
+          <p data-testid="watched-name">{nameValue}</p>
+          <p data-testid="watched-age">{ageValue}</p>
+          <p data-testid="watched-category">{categoryValue}</p>
+          <p data-testid="watched-active">{activeValue}</p>
+          <p data-testid="watched-archived">{archivedValue}</p>
+        </>
+      );
+    };
+
     const FormComponent = ({
       initialValue,
       manualError,
+      forwardRef,
+      watch,
     }: {
       initialValue?: string;
       manualError?: string;
+      forwardRef?: Ref<HTMLFormElement>;
+      watch?: boolean;
     }) => {
       const formRef = useRef<HTMLFormElement>(null);
 
@@ -1623,6 +1653,7 @@ describe('useFormState', () => {
         formHandlers: { handleSubmit },
         formClasses,
         Form,
+        useWatch,
       } = useFormState(schema, {
         initialState: {
           name: initialValue ?? '',
@@ -1630,6 +1661,7 @@ describe('useFormState', () => {
             age: 30,
           },
         },
+        watch: watch === true,
       });
 
       useEffect(() => {
@@ -1666,7 +1698,7 @@ describe('useFormState', () => {
 
       return (
         <Form
-          ref={formRef}
+          ref={forwardRef ?? formRef}
           action={handleSubmit(onSubmit, { onSuccess: submitFn, onFail: submitFailFn })}
           aria-label="main-form"
         >
@@ -1675,14 +1707,90 @@ describe('useFormState', () => {
           <p title="name" className={formClasses('name', 'block', { classPrefix: 'form-text' })}>
             {data.name}
           </p>
+          {watch !== false && <WatchedComponent useWatch={useWatch} />}
+          <label htmlFor="name">Name</label>
           <input
             type="text"
+            id="name"
             name="name"
             className={formClasses((path) => path.name)}
             value={data.name}
             onBlur={() => touch('name')}
             onChange={(event) => change('name', event.target.value)}
           />
+          <label htmlFor="age">Age</label>
+          <textarea
+            id="age"
+            name="age"
+            defaultValue={data.info.age}
+            onBlur={(event) =>
+              change((path) => path.info.age, convert.toInt(event.target.value), {
+                touch: true,
+              })
+            }
+          />
+          <label htmlFor="category">Category</label>
+          <select
+            id="category"
+            name="category"
+            value={data.category}
+            onChange={(event) =>
+              change(
+                (path) => path.category,
+                convert.toLiteral<typeof data.category>(event.target.value, [
+                  '',
+                  'legacy',
+                  'unconfirmed',
+                ]),
+                {
+                  touch: true,
+                }
+              )
+            }
+          >
+            <option value="">None</option>
+            <option value="legacy">Legacy</option>
+            <option value="unconfirmed">Unconfirmed</option>
+          </select>
+          <label htmlFor="active">Active</label>
+          <input
+            id="active"
+            name="active"
+            type="checkbox"
+            checked={Boolean(data.isActive)}
+            onChange={(event) =>
+              change('isActive', convert.toBoolean(event.target.value), { touch: true })
+            }
+          />
+
+          <span role="group">
+            <label className="inline-block cursor-pointer">
+              <input
+                type="radio"
+                className="cursor-pointer mr-1.5"
+                id="archivedYes"
+                name="archived"
+                data-testid="archivedYes"
+                value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
+                checked={Boolean(data.isArchived)}
+                onChange={() => change('isArchived', true, { touch: true })}
+              />
+              Yes
+            </label>
+            <label className="inline-block cursor-pointer ml-3">
+              <input
+                type="radio"
+                className="cursor-pointer mr-1.5"
+                id="archivedNo"
+                name="archived"
+                data-testid="archivedNo"
+                value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
+                checked={!data.isArchived}
+                onChange={() => change('isArchived', false, { touch: true })}
+              />
+              No
+            </label>
+          </span>
           <button type="submit">Submit</button>
           <button type="button" onClick={() => submitForm(formRef.current)}>
             Submit Manually
@@ -1695,11 +1803,13 @@ describe('useFormState', () => {
       );
     };
 
-    it('should render form with properties', () => {
-      const { getByRole, getByTitle, queryByText } = render(<FormComponent />);
+    it.each([true, false])('should render form with properties', (watch) => {
+      const { getByLabelText, getByRole, getByTitle, queryByText } = render(
+        <FormComponent watch={watch} />
+      );
 
       const form = getByRole('form');
-      const input = getByRole('textbox');
+      const input = getByLabelText('Name');
       const name = getByTitle('name');
       const submittedInfo = queryByText('Form Submitted');
 
@@ -1713,10 +1823,12 @@ describe('useFormState', () => {
       expect(submittedInfo).not.toBeInTheDocument();
     });
 
-    it('should add error and touched CSS classes', () => {
-      const { getByRole, getByTitle } = render(<FormComponent initialValue="John" />);
+    it.each([true, false])('should add error and touched CSS classes', (watch) => {
+      const { getByLabelText, getByTitle } = render(
+        <FormComponent initialValue="John" watch={watch} />
+      );
 
-      const input = getByRole('textbox');
+      const input = getByLabelText('Name');
       const name = getByTitle('name');
 
       act(() => {
@@ -1730,12 +1842,12 @@ describe('useFormState', () => {
       expect(name.classList).toContain('form-text__touched');
     });
 
-    it('should submit form programatically', async () => {
-      const { getByRole, getByText, getByTitle, queryByText, findByText } = render(
-        <FormComponent />
+    it.each([true, false])('should submit form programatically', async (watch) => {
+      const { getByLabelText, getByText, getByTitle, queryByText, findByText } = render(
+        <FormComponent watch={watch} />
       );
 
-      const input = getByRole('textbox');
+      const input = getByLabelText('Name');
       const name = getByTitle('name');
       const submitButton = getByText('Submit Manually');
 
@@ -1766,12 +1878,12 @@ describe('useFormState', () => {
       });
     });
 
-    it('should submit form with "handleSubmit"', async () => {
-      const { getByRole, getByTitle, getByText, queryByText, findByText } = render(
-        <FormComponent />
+    it.each([true, false])('should submit form with "handleSubmit"', async (watch) => {
+      const { getByLabelText, getByTitle, getByText, queryByText, findByText } = render(
+        <FormComponent watch={watch} />
       );
 
-      const input = getByRole('textbox');
+      const input = getByLabelText('Name');
       const name = getByTitle('name');
       const submitButton = getByText('Submit');
 
@@ -1802,10 +1914,10 @@ describe('useFormState', () => {
       });
     });
 
-    it('should fail to submit form using "submit"', async () => {
-      const { getByRole, getByText, queryByText } = render(<FormComponent />);
+    it.each([true, false])('should fail to submit form using "submit"', async (watch) => {
+      const { getByLabelText, getByText, queryByText } = render(<FormComponent watch={watch} />);
 
-      const input = getByRole('textbox');
+      const input = getByLabelText('Name');
       const submitButton = getByText('Submit Fail');
 
       act(() => {
@@ -1822,10 +1934,10 @@ describe('useFormState', () => {
       });
     });
 
-    it('should fail to submit form with name "Ivan"', async () => {
-      const { getByRole, getByText, queryByText } = render(<FormComponent />);
+    it.each([true, false])('should fail to submit form with name "Ivan"', async (watch) => {
+      const { getByLabelText, getByText, queryByText } = render(<FormComponent watch={watch} />);
 
-      const input = getByRole('textbox');
+      const input = getByLabelText('Name');
       const submitButton = getByText('Submit');
 
       act(() => {
@@ -1853,119 +1965,133 @@ describe('useFormState', () => {
       });
     });
 
-    it('should not submit form with "handleSubmit" with manual errors', async () => {
-      const { getByRole, getByText, queryByText } = render(
-        <FormComponent manualError="A manual error" />
-      );
-
-      const input = getByRole('textbox');
-      const submitButton = getByText('Submit');
-
-      act(() => {
-        fireEvent.change(input, { target: { value: 'John' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
-
-      act(() => {
-        fireEvent.click(submitButton);
-      });
-
-      await waitFor(() => {
-        expect(submitFn).not.toBeCalled();
-        expect(submitFailFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
-          }),
-          expect.objectContaining({ valid: false, submitted: false })
+    it.each([true, false])(
+      'should not submit form with "handleSubmit" with manual errors',
+      async (watch) => {
+        const { getByLabelText, getByText, queryByText } = render(
+          <FormComponent manualError="A manual error" watch={watch} />
         );
 
-        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
-      });
-    });
+        const input = getByLabelText('Name');
+        const submitButton = getByText('Submit');
 
-    it('should not submit form with "handleSubmit" with errors', async () => {
-      const { getByRole, getByText, queryByText } = render(<FormComponent initialValue="John" />);
+        act(() => {
+          fireEvent.change(input, { target: { value: 'John' } });
+          fireEvent.keyDown(input, { key: 'Enter' });
+        });
 
-      const input = getByRole('textbox');
-      const submitButton = getByText('Submit');
+        act(() => {
+          fireEvent.click(submitButton);
+        });
 
-      act(() => {
-        fireEvent.change(input, { target: { value: '' } });
-        fireEvent.blur(input);
-      });
+        await waitFor(() => {
+          expect(submitFn).not.toBeCalled();
+          expect(submitFailFn).toHaveBeenCalledWith(
+            expect.objectContaining({
+              errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
+            }),
+            expect.objectContaining({ valid: false, submitted: false })
+          );
 
-      await waitFor(() => {
-        expect(input.classList).toContain('form-state__error');
-        expect(input.classList).toContain('form-state__touched');
-      });
+          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+        });
+      }
+    );
 
-      act(() => {
-        fireEvent.click(submitButton);
-      });
-
-      await waitFor(() => {
-        expect(submitFn).not.toBeCalled();
-        expect(submitFailFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            errors: expect.objectContaining({ name: 'Name is required' }) as object,
-          }),
-          expect.objectContaining({ valid: false, submitted: false })
+    it.each([true, false])(
+      'should not submit form with "handleSubmit" with errors',
+      async (watch) => {
+        const { getByLabelText, getByText, queryByText } = render(
+          <FormComponent initialValue="John" watch={watch} />
         );
 
-        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
-      });
-    });
+        const input = getByLabelText('Name');
+        const submitButton = getByText('Submit');
 
-    it('should not submit form with "handleSubmit" with initial errors without validations', async () => {
-      const { getByText, queryByText } = render(<FormComponent />);
+        act(() => {
+          fireEvent.change(input, { target: { value: '' } });
+          fireEvent.blur(input);
+        });
 
-      const submitButton = getByText('Submit');
+        await waitFor(() => {
+          expect(input.classList).toContain('form-state__error');
+          expect(input.classList).toContain('form-state__touched');
+        });
 
-      act(() => {
-        fireEvent.click(submitButton);
-      });
+        act(() => {
+          fireEvent.click(submitButton);
+        });
 
-      await waitFor(() => {
-        expect(submitFn).not.toBeCalled();
-        expect(submitFailFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            errors: expect.objectContaining({ name: 'Name is required' }) as object,
-          }),
-          expect.objectContaining({ valid: false, submitted: false })
+        await waitFor(() => {
+          expect(submitFn).not.toBeCalled();
+          expect(submitFailFn).toHaveBeenCalledWith(
+            expect.objectContaining({
+              errors: expect.objectContaining({ name: 'Name is required' }) as object,
+            }),
+            expect.objectContaining({ valid: false, submitted: false })
+          );
+
+          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+        });
+      }
+    );
+
+    it.each([true, false])(
+      'should not submit form with "handleSubmit" with initial errors without validations',
+      async (watch) => {
+        const { getByText, queryByText } = render(<FormComponent watch={watch} />);
+
+        const submitButton = getByText('Submit');
+
+        act(() => {
+          fireEvent.click(submitButton);
+        });
+
+        await waitFor(() => {
+          expect(submitFn).not.toBeCalled();
+          expect(submitFailFn).toHaveBeenCalledWith(
+            expect.objectContaining({
+              errors: expect.objectContaining({ name: 'Name is required' }) as object,
+            }),
+            expect.objectContaining({ valid: false, submitted: false })
+          );
+
+          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+        });
+      }
+    );
+
+    it.each([true, false])(
+      'should not submit form with "handleSubmit" with manual errors without validations',
+      async (watch) => {
+        const { getByText, queryByText } = render(
+          <FormComponent initialValue="John" manualError="A manual error" watch={watch} />
         );
 
-        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
-      });
-    });
+        const submitButton = getByText('Submit');
 
-    it('should not submit form with "handleSubmit" with manual errors without validations', async () => {
-      const { getByText, queryByText } = render(
-        <FormComponent initialValue="John" manualError="A manual error" />
-      );
+        act(() => {
+          fireEvent.click(submitButton);
+        });
 
-      const submitButton = getByText('Submit');
+        await waitFor(() => {
+          expect(submitFn).not.toBeCalled();
+          expect(submitFailFn).toHaveBeenCalledWith(
+            expect.objectContaining({
+              errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
+            }),
+            expect.objectContaining({ valid: false, submitted: false })
+          );
 
-      act(() => {
-        fireEvent.click(submitButton);
-      });
+          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+        });
+      }
+    );
 
-      await waitFor(() => {
-        expect(submitFn).not.toBeCalled();
-        expect(submitFailFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
-          }),
-          expect.objectContaining({ valid: false, submitted: false })
-        );
+    it.each([true, false])('should reset form with properties', (watch) => {
+      const { getByLabelText, getByText, getByTitle } = render(<FormComponent watch={watch} />);
 
-        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
-      });
-    });
-
-    it('should reset form with properties', () => {
-      const { getByRole, getByText, getByTitle } = render(<FormComponent />);
-
-      const input = getByRole('textbox');
+      const input = getByLabelText('Name');
       const name = getByTitle('name');
       const resetButton = getByText('Reset');
 
@@ -1981,6 +2107,112 @@ describe('useFormState', () => {
       });
 
       expect(name).toContainHTML('');
+    });
+
+    it('should watch the changes', async () => {
+      const user = userEvent.setup();
+
+      const { getByLabelText, getByTestId, getByText } = render(
+        <FormComponent initialValue="Tom" watch />
+      );
+
+      const nameInput = getByLabelText('Name');
+      const ageInput = getByLabelText('Age');
+      const categorySelect = getByLabelText('Category');
+      const activeCheckbox = getByLabelText('Active');
+      const archivedYesRadio = getByTestId('archivedYes');
+      const archivedNoRadio = getByTestId('archivedNo');
+      const resetButton = getByText('Reset');
+
+      const watchedName = getByTestId('watched-name');
+      const watchedAge = getByTestId('watched-age');
+      const watchedCategory = getByTestId('watched-category');
+      const watchedActive = getByTestId('watched-active');
+      const watchedArchived = getByTestId('watched-archived');
+
+      await waitFor(() => {
+        expect(nameInput).toHaveValue('Tom');
+        expect(watchedName).toHaveTextContent('Tom');
+
+        expect(ageInput).toHaveValue('30');
+        expect(watchedAge).toHaveTextContent('30');
+
+        expect(categorySelect).toHaveValue('');
+        expect(watchedCategory).toHaveTextContent('');
+
+        expect(activeCheckbox).not.toBeChecked();
+        expect(watchedActive).toHaveTextContent('');
+
+        expect(archivedYesRadio).not.toBeChecked();
+        expect(archivedNoRadio).toBeChecked();
+        expect(watchedArchived).toHaveTextContent('false');
+      });
+
+      await user.clear(nameInput);
+      await user.keyboard('John{Tab}');
+
+      await user.clear(ageInput);
+      await user.keyboard('25{Tab}');
+
+      await user.selectOptions(categorySelect, 'legacy');
+
+      await user.click(activeCheckbox);
+      await user.click(archivedYesRadio);
+
+      expect(nameInput).toHaveValue('John');
+      expect(watchedName).toHaveTextContent('John');
+
+      expect(ageInput).toHaveValue('25');
+      expect(watchedAge).toHaveTextContent('25');
+
+      expect(categorySelect).toHaveValue('legacy');
+      expect(watchedCategory).toHaveTextContent('legacy');
+
+      expect(activeCheckbox).toBeChecked();
+      expect(watchedActive).toHaveTextContent('on');
+
+      expect(archivedYesRadio).toBeChecked();
+      expect(archivedNoRadio).not.toBeChecked();
+      expect(watchedArchived).toHaveTextContent('true');
+
+      await user.click(resetButton);
+
+      expect(nameInput).toHaveValue('Tom');
+      expect(watchedName).toHaveTextContent('Tom');
+
+      expect(ageInput).toHaveValue('30');
+      expect(watchedAge).toHaveTextContent('30');
+
+      expect(categorySelect).toHaveValue('');
+      expect(watchedCategory).toHaveTextContent('');
+
+      expect(activeCheckbox).not.toBeChecked();
+      expect(watchedActive).toHaveTextContent('');
+
+      expect(archivedYesRadio).not.toBeChecked();
+      expect(archivedNoRadio).toBeChecked();
+      expect(watchedArchived).toHaveTextContent('false');
+    });
+
+    it('should watch the changes with a custom ref', async () => {
+      const user = userEvent.setup();
+
+      const { getByLabelText, getByTestId } = render(<FormComponent forwardRef={() => {}} watch />);
+
+      const input = getByLabelText('Name');
+      const watchedName = getByTestId('watched-name');
+
+      await user.click(input);
+      await user.keyboard('John{Enter}');
+
+      expect(input).toHaveValue('John');
+      expect(watchedName).toHaveTextContent('John');
+    });
+
+    it('throws when watch is not enabled and useWatch is defined', () => {
+      expect(() => render(<FormComponent forwardRef={() => {}} />)).toThrowError(
+        /"watch" property/
+      );
     });
   });
 });

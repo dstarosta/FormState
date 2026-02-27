@@ -11,7 +11,7 @@ import type {
   ImmutableArray,
   ImmutableObject,
   UnknownObject,
-} from '../form-types';
+} from '../types/form-types';
 
 import { dotPathGet } from './dot-path';
 import { generateUniqueId } from './random-id-generator';

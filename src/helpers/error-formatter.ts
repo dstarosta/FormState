@@ -1,6 +1,6 @@
 import * as z from 'zod';
 
-import type { DeepPartial, StateValidationFailure, StateValidationSuccess } from '../form-types';
+import type { DeepPartial, StateValidationFailure, StateValidationSuccess } from '../types/form-types';
 import { createInitialState } from './state-manager';
 import { FormStateError } from './form-state-error';
 

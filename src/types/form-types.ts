@@ -3,7 +3,7 @@
 import type { SyntheticEvent } from 'react';
 import type z from 'zod';
 
-import { FormStateError } from './helpers/form-state-error';
+import { FormStateError } from '../helpers/form-state-error';
 
 // Internal types
 
@@ -146,6 +146,12 @@ export type ManualErrorState = {
   set: (value?: Readonly<Record<string, string>>) => void;
 };
 
+export type FormStore = {
+  getValue: (name: string) => string | undefined;
+  setValue: (name: string, value: string) => void;
+  subscribeToField: (name: string, listener: () => void) => () => boolean | undefined;
+};
+
 // Public types
 
 /**
@@ -178,6 +184,14 @@ export type FormOptions<T extends z.ZodObject> = {
    * callbacks.
    */
   debounceCacheCapacity?: number;
+  /**
+   * Sets a value indicating whether the `useWatch` hook should be enabled
+   * (default: false).
+   *
+   * This functionality is only necessary for special use-cases. It requires
+   * additional memory and has a minor overhead.
+   */
+  watch?: boolean;
 };
 
 /**
@@ -212,15 +226,15 @@ export type SubmitState<T extends object> =
           /**
            * Gets an error message for a nested field.
            *
-           * @param path - a form state path expression.
-           * @returns the error message for the specified field, or `undefined` if there is no error.
+           * @param path - Form state path expression.
+           * @returns Error message for the specified field, or `undefined` if there is no error.
            */
           get: (expression: (data: T) => unknown) => string | undefined;
           /**
            * Gets a manual error message with an arbitrary string key.
            *
-           * @param key - a manual error key.
-           * @returns the error message for the specified key, or `undefined` if there is no error.
+           * @param key - Manual error key.
+           * @returns Error message for the specified key, or `undefined` if there is no error.
            */
           getManual: (key: string) => string | undefined;
         }
@@ -255,15 +269,15 @@ export type FormState<T extends object> = {
       /**
        * Gets an error message for a nested field.
        *
-       * @param path - a form state path expression.
-       * @returns the error message for the specified field, or `undefined` if there is no error.
+       * @param path - Form state path expression.
+       * @returns Error message for the specified field, or `undefined` if there is no error.
        */
       get: (expression: (data: T) => unknown) => string | undefined;
       /**
        * Gets a manual error message with an arbitrary string key.
        *
-       * @param key - a manual error key.
-       * @returns the error message for the specified key, or `undefined` if there is no error.
+       * @param key - Manual error key.
+       * @returns Error message for the specified key, or `undefined` if there is no error.
        */
       getManual: (key: string) => string | undefined;
     }
@@ -276,7 +290,7 @@ export type FormState<T extends object> = {
       /**
        * Gets the touched state for an arbitrary string key.
        *
-       * @param key - a string key.
+       * @param key - A string key.
        * @returns `true` if the key exists and is dirty, `false` otherwise.
        */
       get: (key: `#${string}`) => boolean;
@@ -290,7 +304,7 @@ export type FormState<T extends object> = {
       /**
        * Gets the touched state for a nested field.
        *
-       * @param path - a form state path expression.
+       * @param path - Form state path expression.
        * @returns `true` if the field exists and has been touched, `false` otherwise.
        */
       get: (expression: (data: T) => unknown) => boolean;
@@ -304,8 +318,8 @@ export type FormState<T extends object> = {
       /**
        * Gets the maximum length for a nested field.
        *
-       * @param path - a form state path expression.
-       * @returns a number representing the maximum length or undefined.
+       * @param path - Form state path expression.
+       * @returns `number` representing the maximum length or undefined.
        */
       get: (expression: (data: T) => unknown) => number | undefined;
     }
@@ -318,8 +332,8 @@ export type FormState<T extends object> = {
       /**
        * Gets the minimum and maximum values for a nested numeric field.
        *
-       * @param path - a form state path expression.
-       * @returns an object containing the `min` and the `max` properties that can be numeric, dates or `undefined`.
+       * @param path - Form state path expression.
+       * @returns Object containing the `min` and the `max` properties that can be numeric, dates or `undefined`.
        */
       get: <R extends RangeOf<R>>(expression: (data: T) => R) => RangeResult<R>;
     }
@@ -332,8 +346,8 @@ export type FormState<T extends object> = {
       /**
        * Gets the regular expression pattern for a nested field.
        *
-       * @param path - a form state path expression.
-       * @returns a string containing the regular expression pattern or `undefined`.
+       * @param path - Form state path expression.
+       * @returns `string` containing the regular expression pattern or `undefined`.
        */
       get: (expression: (data: T) => unknown) => string | undefined;
     }
@@ -346,8 +360,8 @@ export type FormState<T extends object> = {
       /**
        * Gets the description for a nested field.
        *
-       * @param path - a form state path expression.
-       * @returns a string containing the description; no description returns an empty `string`.
+       * @param path - Form state path expression.
+       * @returns `string` containing the description; no description returns an empty `string`.
        */
       get: (expression: (data: T) => unknown) => string;
     }
@@ -450,8 +464,8 @@ export type FormChangeOptions<T extends z.ZodObject> = {
   /**
    * An optional callback to run after the form state has been changed.
    *
-   * @param state - the updated form state - data, errors, touched and dirty flags.
-   * @param status - the updated form status.
+   * @param state - Updated form state - data, errors, touched and dirty flags.
+   * @param status - Updated form status.
    */
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
   /**
@@ -508,8 +522,8 @@ export type FormResetOptions<T extends z.ZodObject> = {
   /**
    * An optional callback to run after the form state has been reset.
    *
-   * @param state - the updated form state - data, errors, touched and dirty flags.
-   * @param status - the updated form status.
+   * @param state - Updated form state - data, errors, touched and dirty flags.
+   * @param status - Updated form status.
    */
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
@@ -535,8 +549,8 @@ export type FormValidateOptions<T extends z.ZodObject> = {
   /**
    * An optional callback to run after the form state has been validated.
    *
-   * @param state - the updated form state - data, errors, touched and dirty flags.
-   * @param status - the updated form status.
+   * @param state - Updated form state - data, errors, touched and dirty flags.
+   * @param status - Updated form status.
    */
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
@@ -558,16 +572,16 @@ export type FormSubmitOptions<T extends z.ZodObject> = {
   /**
    * An optional callback to run after the form state has been submitted.
    *
-   * @param data - the strongly typed submitted form data.
-   * @param status - the submitted form data as a `FormData` instance.
+   * @param data - Strongly typed submitted form data.
+   * @param status - Submitted form data as a `FormData` instance.
    */
   onSuccess?: (data: z.infer<T>, formData: FormData) => void;
   /**
    * An optional callback to run after the form state if the form was not submitted due to errors
    * or the `onSubmit` function returning `false`.
    *
-   * @param state - the updated form state - data, errors, touched and dirty flags.
-   * @param status - the updated form status.
+   * @param state - Updated form state - data, errors, touched and dirty flags.
+   * @param status - Updated form status.
    */
   onFail?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
@@ -620,10 +634,10 @@ export type FormStateResponse<T extends z.ZodObject> = {
    * Returns the form CSS classes for the control with the provided path.
    *
    * @typeparam T form state type.
-   * @param nameOrPath - a root level field name or a state path expression.
-   * @param additionalClasses - an optional string containing additional CSS classes for the control.
-   * @param isLoading - indicates that the control data is being fetched to prevent applying the error class.
-   * @returns a string containing the form and the additional CSS class names.
+   * @param nameOrPath - Root level field name or a state path expression.
+   * @param additionalClasses - Optional string containing additional CSS classes for the control.
+   * @param isLoading - Indicates that the control data is being fetched to prevent applying the error class.
+   * @returns A `string` containing the form and the additional CSS class names.
    */
   formClasses: (
     nameOrPath: FormPath<T>,
@@ -639,9 +653,9 @@ export type FormStateResponse<T extends z.ZodObject> = {
      *
      * @typeparam T form state type.
      * @typeparam P the form path type.
-     * @param nameOrPath - a root level field name or a state path expression.
-     * @param value - the new value for the field (typed based on the path).
-     * @param options - options for the change event.
+     * @param nameOrPath - Root level field name or a state path expression.
+     * @param value - New value for the field (typed based on the path).
+     * @param options - Options for the change event.
      */
     change: <P extends FormPath<T>>(
       nameOrPath: P,
@@ -652,45 +666,45 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * Performs data replacement in the form state.
      *
      * @typeparam T form state type.
-     * @param data - the replacement data.
-     * @param options - options for the replace event.
+     * @param data - Replacement data.
+     * @param options - Options for the replace event.
      */
     replace: (data: DeepPartial<z.infer<T>>, options?: FormReplaceOptions) => void;
     /**
      * Resets the form to its initial state.
      *
      * @typeparam T form state type.
-     * @param options - options for reset event.
+     * @param options - Options for reset event.
      */
     reset: (options?: FormResetOptions<T>) => void;
     /**
      * Performs form field control touch state changes.
      *
      * @typeparam T form state type.
-     * @param nameOrPath - a root level field name or a state path expression.
+     * @param nameOrPath - Root level field name or a state path expression.
      *                     The first field in the schema is touched if the path is not provided.
-     * @param options - options for the touch event.
+     * @param options - Options for the touch event.
      */
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
     /**
      * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
      *
-     * @param options - options for form validation.
+     * @param options - Options for form validation.
      */
     validate: (options?: FormValidateOptions<T>) => void;
     /**
      * Marks the form as dirty with an arbitrary string key.
      *
-     * @param key - an arbitrary string independent of the managed form state. It must start with the `#` sign to avoid collisions.
+     * @param key - Arbitrary string independent of the managed form state. It must start with the `#` sign to avoid collisions.
      * @param dirty - `true` to set the key as dirty, `false` to clear it. (default: true).
      */
     setDirty: (key: `#${string}`, dirty?: boolean) => void;
     /**
      * Sets a manual error for a path that overrides any form generated errors.
      *
-     * @param keyOrPath - an arbitrary string or a state path expression.
+     * @param keyOrPath - Arbitrary string or a state path expression.
      *                    The first field in the schema is touched if the path is not provided.
-     * @param error - an error message. Leave this parameter blank or set it to `null` to clear the manual error.
+     * @param error - Error message. Leave this parameter blank or set it to `null` to clear the manual error.
      */
     setError: (keyOrPath: string | ((data: z.infer<T>) => unknown), error?: string | null) => void;
     /**
@@ -711,7 +725,7 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * `true` - submit the form if there are no errors.
      * `void` - no return value is treated as `true`.
      *
-     * @param options - options for form submission.
+     * @param options - Options for form submission.
      */
     handleSubmit: (
       onSubmit: FormSubmitHandler<T>,
@@ -724,8 +738,8 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * However, you may still want to call the function on reset with non-default option values.
      *
      * @typeparam T form state type.
-     * @param event - a pass-through form reset event that triggered the HTML form reset.
-     * @param options - options for reset event.
+     * @param event - Pass-through form reset event that triggered the HTML form reset.
+     * @param options - Options for reset event.
      */
     handleReset: (
       event?: SyntheticEvent<HTMLFormElement> | null,
@@ -738,10 +752,23 @@ export type FormStateResponse<T extends z.ZodObject> = {
    * Native form validation has been disabled and Enter handling modified
    * for consistency.
    *
-   * @param props - The `form` element props.
-   * @returns The `Form` React element.
+   * @param props - `form` HTML element props.
+   * @returns `Form` React element.
    */
   Form: (props: React.ComponentPropsWithRef<'form'>) => React.JSX.Element;
+  /**
+   * A hook that watches a field based on the element's `name` HTML attribute.
+   *
+   * Note: The `Form` component from this library must be used to track changes.
+   *
+   * The following HTML form elements are supported.
+   *  - input
+   *  - textarea
+   *
+   * @param name - A `name` HTML attribute value of the element to watch.
+   * @returns - The value of the element.
+   */
+  useWatch: (name: string) => string | undefined;
 };
 
 /**
@@ -760,7 +787,7 @@ export type FormDateFormat =
  *
  * @typeparam T form state type.
  */
-export type FormStateProps<T extends ZodObject> = {
+export type FormStateProps<T extends z.ZodObject> = {
   /**
    * The form state.
    */
@@ -772,7 +799,7 @@ export type FormStateProps<T extends ZodObject> = {
  *
  * @typeparam T form state type.
  */
-export type FormStatePropsWithIndex<T extends ZodObject> = FormStateProps<T> & {
+export type FormStatePropsWithIndex<T extends z.ZodObject> = FormStateProps<T> & {
   /**
    * The index of the corresponding array state property.
    */
@@ -785,7 +812,7 @@ export type FormStatePropsWithIndex<T extends ZodObject> = FormStateProps<T> & {
  * @typeparam T HTML element type.
  * @typeparam F form state type.
  */
-export type FormControlWithStateProps<F extends ZodObject> = FormStateProps<F> &
+export type FormControlWithStateProps<F extends z.ZodObject> = FormStateProps<F> &
   Omit<React.ComponentPropsWithRef<'form'>, 'form'>;
 
 /**

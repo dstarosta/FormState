@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import type { FieldRange, FormStatePath } from '../form-types';
+import type { FieldRange, FormStatePath } from '../types/form-types';
 import { toUTC } from './date-formatter';
 
 // Private methods

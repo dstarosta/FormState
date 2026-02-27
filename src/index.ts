@@ -15,7 +15,7 @@ export type {
   FormSubmitOptions,
   FormTouchOptions,
   SubmitState,
-} from './form-types.d';
+} from './types/form-types';
 export { FormStateError } from './helpers/form-state-error';
 export { useFormState } from './use-form-state';
 export { FormStateProvider, formConnect, useFormStateContext } from './form-provider';
@@ -23,3 +23,4 @@ export { createInitialState, createState, getState, updateState } from './helper
 export { formatDate, safeParseDate } from './helpers/date-formatter';
 export { validateState } from './helpers/error-formatter';
 export { formDataToURL, submitForm } from './helpers/form-builder';
+export * as convert from './helpers/value-converter';

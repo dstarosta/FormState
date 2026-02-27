@@ -4,7 +4,6 @@ import eslintPluginUnicorn from 'eslint-plugin-unicorn';
 import sonarjs from 'eslint-plugin-sonarjs';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
-import jsxA11y from 'eslint-plugin-jsx-a11y';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 
@@ -18,7 +17,6 @@ export default defineConfig([
       eslintPluginUnicorn.configs.recommended,
       sonarjs.configs.recommended,
       reactHooks.configs.flat.recommended,
-      jsxA11y.flatConfigs.recommended,
       eslintConfigPrettier,
     ],
     languageOptions: {

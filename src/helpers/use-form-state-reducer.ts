@@ -1,7 +1,7 @@
 import { useActionState, useCallback } from 'react';
 import * as z from 'zod';
 
-import type { FormAction, FormMutableState, ManualErrorState } from '../form-types';
+import type { FormAction, FormMutableState, ManualErrorState } from '../types/form-types';
 import { formatErrors } from './error-formatter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { deepEqual } from 'fast-equals';

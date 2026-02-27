@@ -1,6 +1,6 @@
 import * as z from 'zod';
 
-import type { FormDateFormat, ZodDeepType } from './form-types.d';
+import type { FormDateFormat, ZodDeepType } from './types/form-types';
 
 import { isValidDate, parseDate } from './helpers/date-formatter';
 
@@ -76,9 +76,9 @@ export const advanced = { ...z };
  * Zod schema for a control with a boolean value that can optionally be an empty string.
  *
  * @param zodNumber - The Zod boolean schema.
- * @param options - Options for the boolean schema:
- *   - required: Whether a value is required.
- *   - error: Optional custom error message for required validation.
+ * @param options - Options for the boolean schema.
+ * @param options.required - Indicates whether a value is required.
+ * @param options.error - Optional custom error message for required validation.
  * @returns A Zod schema with preprocessing for boolean values.
  */
 export function formBoolean(
@@ -111,11 +111,11 @@ export function formBoolean(
  * Zod schema for a control with a date value that can optionally be an empty string.
  *
  * @param zodDate - The Zod date schema.
- * @param options - Options for the date schema:
- *   - required: Whether a value is required.
- *   - error: Optional custom error message for required validation.
- *   - dateFormat: Optional date format string (default: 'yyyy-MM-dd').
- *   - dateFormatError: Optional custom error for invalid dates.
+ * @param options - Options for the date schema.
+ * @param options.required - Whether a value is required.
+ * @param options.error - Optional custom error message for required validation.
+ * @param options.dateFormat - Optional date format string (default: 'yyyy-MM-dd').
+ * @param options.dateFormatError - Optional custom error for invalid dates.
  * @returns A Zod schema with preprocessing for date values.
  */
 export function formDate(
@@ -169,9 +169,9 @@ export function formDate(
  * Zod schema for a control with a numeric value that can optionally be an empty string.
  *
  * @param zodNumber - The Zod number schema.
- * @param options - Options for the number schema:
- *   - required: Whether a value is required.
- *   - error: Optional custom error message for required validation.
+ * @param options - Options for the number schema.
+ * @param options.required - Whether a value is required.
+ * @param options.error - Optional custom error message for required validation.
  * @returns A Zod schema with preprocessing for number values.
  */
 export function formNumber(
@@ -204,9 +204,9 @@ export function formNumber(
  * Zod schema for a control with a string value that can optionally be empty.
  *
  * @param zodString - The Zod string schema.
- * @param options - Options for the string schema:
- *   - required: Whether a value is required.
- *   - error: Optional custom error message for required validation.
+ * @param options - Options for the string schema.
+ * @param options.required - Whether a value is required.
+ * @param options.error - Optional custom error message for required validation.
  * @returns A Zod string schema with required or optional validation.
  */
 export function formString(
@@ -237,8 +237,8 @@ export function formString(
  * @param T Represents a generic tuple of strings for type inference.
  * @param values - An array of the string values. At least 1 non-empty value is required.
  * @param options - Options for the values schema.
- *   - required: Whether a non-empty value is required.
- *   - error: Optional custom error message for value validation.
+ * @param options.required - Whether a non-empty value is required.
+ * @param option.serror - Optional custom error message for value validation.
  * @returns A Zod string schema that only allows the provided values.
  */
 export function formValues<const T extends readonly [string, ...string[]]>(
@@ -259,8 +259,8 @@ export function formValues<const T extends readonly [string, ...string[]]>(
  * @param T Represents a generic tuple of strings for type inference.
  * @param values - An array of the string values. At least 1 non-empty value is required.
  * @param options - Options for the values schema.
- *   - required: Whether a non-empty value is required.
- *   - error: Optional custom error message for value validation.
+ * @param options.required - Whether a non-empty value is required.
+ * @param options.error - Optional custom error message for value validation.
  * @returns A Zod string schema that only allows the provided values.
  */
 export function formValues<const T extends readonly [string, ...string[]]>(
@@ -315,10 +315,10 @@ export function formValues(
  * Note: Use `z.array()` or `z.object()` to shape complex schemas.
  *
  * @param elementSchema - Zod schema for the array elements (do not wrap in z.array()).
- * @param options - Options for the array schema:
- *   - required: Whether a value is required.
- *   - error: Optional custom error message for required validation.
- *   - lengthError: Optional custom error message for min/max validation.
+ * @param options - Options for the array schema.
+ * @param options.required - Whether a value is required.
+ * @param options.error - Optional custom error message for required validation.
+ * @param options.lengthError - Optional custom error message for min/max validation.
  * @throws If elementSchema is already a ZodArray.
  * @returns A Zod array schema.
  */

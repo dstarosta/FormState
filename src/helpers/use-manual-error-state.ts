@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 
-import type { Immutable, ManualErrorState } from '../form-types';
+import type { Immutable, ManualErrorState } from '../types/form-types';
 
 const EMPTY_STORE: Record<string, string> = Object.freeze({});
 

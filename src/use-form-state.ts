@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useOptimistic, useRef, type SyntheticEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useSyncExternalStore,
+  type SyntheticEvent,
+} from 'react';
 import { deepEqual } from 'fast-equals';
 import * as z from 'zod';
 
@@ -25,7 +33,7 @@ import type {
   DeepPartial,
   SubmitState,
   FormSubmitHandler,
-} from './form-types';
+} from './types/form-types';
 
 import {
   collectDescriptions,
@@ -51,6 +59,7 @@ import {
 import { formatErrors } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
+import { createFormStore } from './helpers/form-store';
 
 /**
  * Hook that manages form state.
@@ -69,10 +78,14 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     initialTouched,
     validateOnInit = false,
     debounceCacheCapacity = 50,
+    watch,
   } = formOptions ?? {};
 
   // The manual errors that are not a part of the schema.
   const manualErrorsState = useManualErrorState();
+
+  // Form watch store.
+  const storeRef = useRef(watch ? createFormStore() : null);
 
   const defaultData = useMemo(() => createState(schema), [schema]);
 
@@ -702,7 +715,29 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   );
 
   // The memoized Form component.
-  const createComponent = useMemo(() => createFormComponent<State>(dispatch), [dispatch]);
+  const createComponent = useMemo(
+    () => createFormComponent<State>(storeRef.current, dispatch),
+    [dispatch]
+  );
+
+  // useSyncExternalStore is stable and storeRef is a stable ref and not a real dependency.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const useWatch = (name: string) => {
+    if (!name?.trim()) {
+      throw new TypeError('The "name" value cannot be empty.');
+    }
+
+    const store = storeRef.current;
+
+    if (!store) {
+      throw new Error('The "watch" property has not been set to "true" in the options.');
+    }
+
+    return useSyncExternalStore(
+      (listener) => store.subscribeToField(name, listener),
+      () => store.getValue(name)
+    );
+  };
 
   // The memoized "response" object that combines the state, form status, CSS classes, HTML element props and actions.
   const response = useMemo<FormStateResponse<T>>(
@@ -735,6 +770,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         handleReset,
       },
       Form: createComponent,
+      useWatch,
     }),
     [
       initialFormState,
@@ -759,6 +795,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       setError,
       clearManualErrors,
       createComponent,
+      useWatch,
     ]
   );
 

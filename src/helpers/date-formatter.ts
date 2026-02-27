@@ -1,4 +1,4 @@
-import type { DateParseResult, FormDateFormat } from '../form-types';
+import type { DateParseResult, FormDateFormat } from '../types/form-types';
 
 // Constants
 
@@ -49,7 +49,11 @@ export const isValidDate = (date: unknown) => {
   return date instanceof Date && date !== INVALID_DATE && !Number.isNaN(date.getTime());
 };
 
-export const parseDate = (input: string | undefined, format: FormDateFormat) => {
+export const parseDate = (
+  input: string | undefined,
+  format: FormDateFormat,
+  asUTC: boolean = false
+) => {
   if (!input) {
     return INVALID_DATE;
   }
@@ -76,14 +80,24 @@ export const parseDate = (input: string | undefined, format: FormDateFormat) => 
   const numMonth = Number.parseInt(String(month), 10) - 1;
   const numDay = Number.parseInt(String(day), 10);
 
-  const date = new Date(Date.UTC(numYear, numMonth, numDay));
+  let date: Date;
+  let dateYear: number;
+  let dateMonth: number;
+  let dateDay: number;
 
-  if (
-    !isValidDate(date) ||
-    date.getUTCFullYear() !== numYear ||
-    date.getUTCMonth() !== numMonth ||
-    date.getUTCDate() !== numDay
-  ) {
+  if (asUTC) {
+    date = new Date(Date.UTC(numYear, numMonth, numDay));
+    dateYear = date.getUTCFullYear();
+    dateMonth = date.getUTCMonth();
+    dateDay = date.getUTCDate();
+  } else {
+    date = new Date(numYear, numMonth, numDay);
+    dateYear = date.getFullYear();
+    dateMonth = date.getMonth();
+    dateDay = date.getDate();
+  }
+
+  if (!isValidDate(date) || dateYear !== numYear || dateMonth !== numMonth || dateDay !== numDay) {
     return INVALID_DATE;
   }
 

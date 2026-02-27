@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 
-import type { FormAction } from '../form-types';
+import type { FormAction, FormStore } from '../types/form-types';
 
 /**
  * 'form' HTML element props that disable native behavior such as browser
@@ -9,7 +9,7 @@ import type { FormAction } from '../form-types';
  *
  * They provide consistent behavior to forms submitted using the "action" prop.
  */
-const formProps: React.ComponentPropsWithoutRef<'form'> = {
+const formProps: React.ComponentPropsWithRef<'form'> = {
   noValidate: true,
   onKeyDown: (event: React.KeyboardEvent) => {
     if (
@@ -28,6 +28,28 @@ const formProps: React.ComponentPropsWithoutRef<'form'> = {
       }
     }
   },
+};
+
+const getDefaultElementValue = (
+  element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+) => {
+  if (element instanceof HTMLInputElement && element.type === 'checkbox') {
+    return element.defaultChecked ? element.defaultValue || 'on' : '';
+  }
+
+  if ('defaultValue' in element) {
+    return element.defaultValue ?? '';
+  }
+
+  return '';
+};
+
+const getElementValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement) => {
+  if (element instanceof HTMLInputElement && element.type === 'checkbox') {
+    return element.checked ? element.value || 'on' : '';
+  }
+
+  return element.value ?? '';
 };
 
 /**
@@ -63,20 +85,90 @@ export const submitForm = (form?: HTMLFormElement | null) => {
  * @param reset - The form reset method from the hook.
  */
 export const createFormComponent = <T extends object>(
+  store: FormStore | null,
   dispatch: (payload: FormAction<T>) => void
 ) => {
   /**
    * The Form component with pre-wired reset logic.
    */
   function Form(props: React.ComponentPropsWithRef<'form'>) {
+    const { ref: forwardedRef, ...restProps } = props;
+
+    const formRef = useRef<HTMLFormElement | null>(null);
+
+    const resetStore = () => {
+      // This condition should not be happening in a callback.
+      /* v8 ignore if -- @preserve */
+      if (!store || !formRef.current) {
+        return;
+      }
+
+      for (const element of formRef.current) {
+        if (
+          (element instanceof HTMLInputElement ||
+            element instanceof HTMLTextAreaElement ||
+            element instanceof HTMLSelectElement) &&
+          element.name
+        ) {
+          store.setValue(element.name, getDefaultElementValue(element) || getElementValue(element));
+        }
+      }
+    };
+
+    const handleInputChange = useCallback((event: Event) => {
+      const element = event.target;
+
+      if (
+        (element instanceof HTMLInputElement ||
+          element instanceof HTMLTextAreaElement ||
+          (element instanceof HTMLSelectElement && event.type !== 'input')) &&
+        element.name
+      ) {
+        store?.setValue(element.name, getElementValue(element));
+      }
+    }, []);
+
+    const formRefCallback = useCallback(
+      (node: HTMLFormElement | null) => {
+        if (typeof forwardedRef === 'function') {
+          forwardedRef(node);
+        } else if (forwardedRef) {
+          forwardedRef.current = node;
+        }
+
+        formRef.current = node;
+
+        // Defensive check for a null node.
+        /* v8 ignore if -- @preserve */
+        if (!store || !node) {
+          return;
+        }
+
+        resetStore();
+
+        node.addEventListener('input', handleInputChange);
+        node.addEventListener('change', handleInputChange);
+
+        return () => {
+          node.removeEventListener('change', handleInputChange);
+          node.removeEventListener('input', handleInputChange);
+        };
+      },
+      [forwardedRef, handleInputChange]
+    );
+
     const handleReset = useCallback(() => {
       dispatch({
         type: 'reset',
         options: { retainData: false, resetTouched: true, resetSubmitted: false },
       });
+
+      setTimeout(() => {
+        resetStore();
+      }, 0);
     }, []);
 
-    return <form onReset={handleReset} {...formProps} {...props} />;
+    return <form ref={formRefCallback} onReset={handleReset} {...formProps} {...restProps} />;
   }
 
   return Form;

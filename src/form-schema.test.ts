@@ -72,7 +72,7 @@ describe('form schema', () => {
   it('formDate should parse values', () => {
     const fieldSchema = z.formDate(z.date(), { required: false, dateFormat: 'MM-dd-yyyy' });
 
-    const date = new Date(Date.UTC(2025, 11, 31));
+    const date = new Date(2025, 11, 31);
 
     expect(fieldSchema.safeParse(date).success).toBe(true);
     expect(fieldSchema.safeParse(date).data).toBe(date);
