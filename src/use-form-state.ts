@@ -18,22 +18,23 @@ import type {
   FormClassOptions,
   FormPath,
   FieldRange,
-  FormResetOptions,
+  FormMode,
   FormMutableState,
   FormInitOptions,
   FormReplaceOptions,
+  FormResetOptions,
+  FormSetErrorOptions,
   FormState,
   FormStateResponse,
   FormStatus,
+  FormSubmitHandler,
   FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
+  DeepPartial,
   Immutable,
   StateCallback,
-  DeepPartial,
   SubmitState,
-  FormSubmitHandler,
-  FormSetErrorOptions,
 } from './types/form-types';
 
 import {
@@ -77,6 +78,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
   const {
     initialState,
     initialTouched,
+    initialMode = 'editable',
     validateOnInit = false,
     validateOnChange = true,
     validateOnTouch = false,
@@ -143,6 +145,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       validated: validateOnInit,
       submitted: false,
       initialData: data,
+      disabled: initialMode === 'disabled',
+      readOnly: initialMode === 'readOnly',
       data,
       initialErrors,
       errors,
@@ -153,7 +157,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       patterns,
       descriptions,
     } satisfies FormMutableState<State>;
-  }, [schema, defaultData, initialData, initialState, initialTouched, validateOnInit]);
+  }, [schema, defaultData, initialData, initialState, initialTouched, initialMode, validateOnInit]);
 
   // Tracks whether component is mounted.
   const isMountedRef = useRef(true);
@@ -217,6 +221,8 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       touched: formTouched,
       submitting: isSubmitting,
       submitted: formState.submitted,
+      readOnly: formState.readOnly,
+      disabled: formState.disabled,
       valid: formValid,
       get validSchema() {
         // Expensive, computed only when accessed.
@@ -226,7 +232,16 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         return _validSchema;
       },
     } as const;
-  }, [formDirty, formTouched, formValid, isSubmitting, formState.submitted, isSchemaValid]);
+  }, [
+    formDirty,
+    formTouched,
+    isSubmitting,
+    formState.submitted,
+    formState.readOnly,
+    formState.disabled,
+    formValid,
+    isSchemaValid,
+  ]);
 
   // The memoized form state data.
   const formData = useMemo(
@@ -710,6 +725,26 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     [dispatch]
   );
 
+  const setMode = useCallback(
+    (mode: FormMode) => {
+      switch (mode) {
+        case 'readOnly': {
+          dispatch({ type: 'setMode', readOnly: true, disabled: false });
+          break;
+        }
+        case 'disabled': {
+          dispatch({ type: 'setMode', readOnly: false, disabled: true });
+          break;
+        }
+        default: {
+          dispatch({ type: 'setMode', readOnly: false, disabled: false });
+          break;
+        }
+      }
+    },
+    [dispatch]
+  );
+
   // The memoized "setError" function.
   const setError = useCallback(
     (
@@ -792,6 +827,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
         touch,
         validate,
         setDirty,
+        setMode,
         setError,
         clearManualErrors,
       },
@@ -822,6 +858,7 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       handleReset,
       handleSubmit,
       setDirty,
+      setMode,
       setError,
       clearManualErrors,
       createComponent,

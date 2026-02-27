@@ -42,10 +42,13 @@ type FormMutableState<T extends object> = {
   replaced: boolean;
   validated: boolean;
   submitted: boolean;
+  readOnly: boolean;
+  disabled: boolean;
 };
 type FormInitOptions<T extends z.ZodObject> = {
   initialState?: DeepPartial<z.infer<T>> | undefined;
   initialTouched?: FormPath<T>[];
+  initialMode?: FormMode | undefined;
   validateOnInit?: boolean;
   validateOnChange?: boolean;
   validateOnTouch?: boolean;
@@ -99,6 +102,8 @@ type FormStatus = {
   readonly validSchema: boolean | null;
   readonly submitting: boolean;
   readonly submitted: boolean;
+  readonly readOnly: boolean;
+  readonly disabled: boolean;
 };
 type FormPath<T extends z.ZodObject> = keyof z.infer<T> | ((data: z.infer<T>) => unknown);
 type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P extends ((data: z.infer<T>) => infer R) ? R : P extends keyof z.infer<T> ? z.infer<T>[P] : P extends string ? PathValue<z.infer<T>, P> : unknown;
@@ -140,6 +145,7 @@ type FormSubmitOptions<T extends z.ZodObject> = {
   onError?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
 type FormSubmitHandler<T extends z.ZodObject> = (state: SubmitState<z.infer<T>>, formData: FormData) => Promise<Record<string, string> | true> | Record<string, string> | true;
+type FormMode = 'editable' | 'readOnly' | 'disabled';
 type FormStateResponse<T extends z.ZodObject> = {
   initialState: {
     data: Immutable<z.infer<T>>;
@@ -155,6 +161,7 @@ type FormStateResponse<T extends z.ZodObject> = {
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
     validate: (options?: FormValidateOptions<T>) => void;
     setDirty: (key: `#${string}`, dirty?: boolean) => void;
+    setMode: (mode: FormMode) => void;
     setError: (keyOrPath: string | ((data: z.infer<T>) => unknown), error?: string | null, options?: FormSetErrorOptions) => void;
     clearManualErrors: () => void;
   };
@@ -283,4 +290,4 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createInitialState, createState, formConnect, formDataToURL, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createInitialState, createState, formConnect, formDataToURL, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };

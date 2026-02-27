@@ -126,7 +126,8 @@ export type FormAction<T extends object> =
       options: { validate: boolean };
     }
   | { type: 'clearManualErrors' }
-  | { type: 'validate' };
+  | { type: 'validate' }
+  | { type: 'setMode'; readOnly: boolean; disabled: boolean };
 
 export type FormMutableState<T extends object> = {
   initialData: T;
@@ -142,6 +143,8 @@ export type FormMutableState<T extends object> = {
   replaced: boolean;
   validated: boolean;
   submitted: boolean;
+  readOnly: boolean;
+  disabled: boolean;
 };
 
 export type StateCallback<T extends object> = (state: FormState<T>, status: FormStatus) => void;
@@ -177,6 +180,10 @@ export type FormInitOptions<T extends z.ZodObject> = {
    * will be marked as touched when the form is initialized.
    */
   initialTouched?: FormPath<T>[];
+  /**
+   * The initial form mode (default: "editable").
+   */
+  initialMode?: FormMode | undefined;
   /**
    * Validate the schema with the initial values (default: `false`).
    */
@@ -419,6 +426,14 @@ export type FormStatus = {
    * Whether the form has been submitted (initially or after the last form reset).
    */
   readonly submitted: boolean;
+  /**
+   * Whether the form is marked as read-only.
+   */
+  readonly readOnly: boolean;
+  /**
+   * Whether the form is marked as disabled.
+   */
+  readonly disabled: boolean;
 };
 
 /**
@@ -632,6 +647,11 @@ export type FormSubmitHandler<T extends z.ZodObject> = (
 ) => Promise<Record<string, string> | true> | Record<string, string> | true;
 
 /**
+ * The form mode type.
+ */
+export type FormMode = 'editable' | 'readOnly' | 'disabled';
+
+/**
  * The form state response type.
  *
  * @typeparam T form state type.
@@ -727,6 +747,12 @@ export type FormStateResponse<T extends z.ZodObject> = {
      * @param dirty - `true` to set the key as dirty, `false` to clear it. (default: `true`).
      */
     setDirty: (key: `#${string}`, dirty?: boolean) => void;
+    /**
+     * Sets the form mode.
+     *
+     * @param mode - sets the form mode as "editable" (default), "readOnly" or "disabled".
+     */
+    setMode: (mode: FormMode) => void;
     /**
      * Sets a manual error for a path that overrides any form generated errors.
      *

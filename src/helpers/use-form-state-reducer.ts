@@ -248,6 +248,8 @@ export function useFormStateReducer<T extends z.ZodObject>(
             submitted: action.options.resetSubmitted ? state.submitted : prevState.submitted,
             dirty: { ...state.dirty },
             touched: action.options.resetTouched ? { ...state.touched } : { ...prevState.touched },
+            readOnly: prevState.readOnly,
+            disabled: prevState.disabled,
             maxLengths: { ...state.maxLengths },
             ranges: { ...state.ranges },
             patterns: { ...state.patterns },
@@ -301,6 +303,14 @@ export function useFormStateReducer<T extends z.ZodObject>(
           return {
             ...prevState,
             errors,
+          } satisfies FormMutableState<State>;
+        }
+        // set the form mode
+        case 'setMode': {
+          return {
+            ...prevState,
+            readOnly: action.readOnly,
+            disabled: action.disabled,
           } satisfies FormMutableState<State>;
         }
       }

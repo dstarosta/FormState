@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-l
 import userEvent from '@testing-library/user-event';
 
 import { submitForm, useFormState, convert, z, type DeepPartial, type FormState } from '.';
-import type { SubmitState } from './types/form-types';
+import type { FormMode, SubmitState } from './types/form-types';
 
 describe('useFormState', () => {
   beforeAll(() => {
@@ -1599,6 +1599,49 @@ describe('useFormState', () => {
 
       expect(() => setDirty('test' as '#test')).toThrow(TypeError);
     });
+
+    it('should change the form mode', () => {
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: ['a', 'b'],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formStatus,
+        formActions: { setMode },
+      } = result.current;
+
+      expect(formStatus.disabled).toBe(false);
+      expect(formStatus.readOnly).toBe(false);
+
+      act(() => {
+        setMode('readOnly');
+      });
+
+      const { formStatus: readOnlyFormStatus } = result.current;
+
+      expect(readOnlyFormStatus.disabled).toBe(false);
+      expect(readOnlyFormStatus.readOnly).toBe(true);
+
+      act(() => {
+        setMode('disabled');
+      });
+
+      const { formStatus: disabledFormStatus } = result.current;
+
+      expect(disabledFormStatus.disabled).toBe(true);
+      expect(disabledFormStatus.readOnly).toBe(false);
+
+      act(() => {
+        setMode('editable');
+      });
+
+      const { formStatus: editableFormStatus } = result.current;
+
+      expect(editableFormStatus.disabled).toBe(false);
+      expect(editableFormStatus.readOnly).toBe(false);
+    });
   });
 
   describe('form element tests', () => {
@@ -1635,11 +1678,13 @@ describe('useFormState', () => {
 
     const FormComponent = ({
       initialValue,
+      initialMode,
       manualError,
       forwardRef,
       watch,
     }: {
       initialValue?: string;
+      initialMode?: FormMode;
       manualError?: string;
       forwardRef?: Ref<HTMLFormElement>;
       watch?: boolean;
@@ -1661,6 +1706,7 @@ describe('useFormState', () => {
             age: 30,
           },
         },
+        initialMode,
         watch: watch === true,
       });
 
@@ -1708,97 +1754,111 @@ describe('useFormState', () => {
             {data.name}
           </p>
           {watch !== false && <WatchedComponent useWatch={useWatch} />}
-          <label htmlFor="name">Name</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            className={formClasses((path) => path.name)}
-            value={data.name}
-            onBlur={() => touch('name')}
-            onChange={(event) => change('name', event.target.value)}
-          />
-          <label htmlFor="age">Age</label>
-          <textarea
-            id="age"
-            name="age"
-            defaultValue={data.info.age}
-            onBlur={(event) =>
-              change((path) => path.info.age, convert.toInt(event.target.value), {
-                touch: true,
-              })
-            }
-          />
-          <label htmlFor="category">Category</label>
-          <select
-            id="category"
-            name="category"
-            value={data.category}
-            onChange={(event) =>
-              change(
-                (path) => path.category,
-                convert.toLiteral<typeof data.category>(event.target.value, [
-                  '',
-                  'legacy',
-                  'unconfirmed',
-                ]),
-                {
+          <fieldset disabled={formStatus.disabled}>
+            <label htmlFor="name">Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              className={formClasses((path) => path.name)}
+              readOnly={formStatus.readOnly}
+              value={data.name}
+              onBlur={() => touch('name')}
+              onChange={(event) => change('name', event.target.value)}
+            />
+            <label htmlFor="age">Age</label>
+            <textarea
+              id="age"
+              name="age"
+              readOnly={formStatus.readOnly}
+              defaultValue={data.info.age}
+              onBlur={(event) =>
+                change((path) => path.info.age, convert.toInt(event.target.value), {
                   touch: true,
+                })
+              }
+            />
+            <label htmlFor="category">Category</label>
+            {formStatus.readOnly ? (
+              <input type="readonly" id="category" name="category" readOnly value={data.category} />
+            ) : (
+              <select
+                id="category"
+                name="category"
+                value={data.category}
+                onChange={(event) =>
+                  change(
+                    (path) => path.category,
+                    convert.toLiteral<typeof data.category>(event.target.value, [
+                      '',
+                      'legacy',
+                      'unconfirmed',
+                    ]),
+                    {
+                      touch: true,
+                    }
+                  )
                 }
-              )
-            }
-          >
-            <option value="">None</option>
-            <option value="legacy">Legacy</option>
-            <option value="unconfirmed">Unconfirmed</option>
-          </select>
-          <label htmlFor="active">Active</label>
-          <input
-            id="active"
-            name="active"
-            type="checkbox"
-            checked={Boolean(data.isActive)}
-            onChange={(event) =>
-              change('isActive', convert.toBoolean(event.target.value), { touch: true })
-            }
-          />
-
-          <span role="group">
-            <label className="inline-block cursor-pointer">
-              <input
-                type="radio"
-                className="cursor-pointer mr-1.5"
-                id="archivedYes"
-                name="archived"
-                data-testid="archivedYes"
-                value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
-                checked={Boolean(data.isArchived)}
-                onChange={() => change('isArchived', true, { touch: true })}
-              />
-              Yes
-            </label>
-            <label className="inline-block cursor-pointer ml-3">
-              <input
-                type="radio"
-                className="cursor-pointer mr-1.5"
-                id="archivedNo"
-                name="archived"
-                data-testid="archivedNo"
-                value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
-                checked={!data.isArchived}
-                onChange={() => change('isArchived', false, { touch: true })}
-              />
-              No
-            </label>
-          </span>
-          <button type="submit">Submit</button>
-          <button type="button" onClick={() => submitForm(formRef.current)}>
-            Submit Manually
-          </button>
-          <button type="button" onClick={() => formRef.current?.submit()}>
-            Submit Fail
-          </button>
-          <button type="reset">Reset</button>
+              >
+                <option value="">None</option>
+                <option value="legacy">Legacy</option>
+                <option value="unconfirmed">Unconfirmed</option>
+              </select>
+            )}
+            <label htmlFor="active">Active</label>
+            <input
+              id="active"
+              name="active"
+              type="checkbox"
+              readOnly={formStatus.readOnly}
+              checked={Boolean(data.isActive)}
+              onChange={(event) =>
+                change('isActive', convert.toBoolean(event.target.value), { touch: true })
+              }
+            />
+            <span role="group">
+              <label className="inline-block cursor-pointer">
+                <input
+                  type="radio"
+                  className="cursor-pointer mr-1.5"
+                  id="archivedYes"
+                  name="archived"
+                  data-testid="archivedYes"
+                  readOnly={formStatus.readOnly}
+                  value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
+                  checked={Boolean(data.isArchived)}
+                  onChange={() => change('isArchived', true, { touch: true })}
+                />
+                Yes
+              </label>
+              <label className="inline-block cursor-pointer ml-3">
+                <input
+                  type="radio"
+                  className="cursor-pointer mr-1.5"
+                  id="archivedNo"
+                  name="archived"
+                  data-testid="archivedNo"
+                  readOnly={formStatus.readOnly}
+                  value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
+                  checked={!data.isArchived}
+                  onChange={() => change('isArchived', false, { touch: true })}
+                />
+                No
+              </label>
+            </span>
+            {!formStatus.disabled && !formStatus.readOnly && (
+              <>
+                <button type="submit">Submit</button>
+                <button type="button" onClick={() => submitForm(formRef.current)}>
+                  Submit Manually
+                </button>
+                <button type="button" onClick={() => formRef.current?.submit()}>
+                  Submit Fail
+                </button>
+                <button type="reset">Reset</button>
+              </>
+            )}
+          </fieldset>
         </Form>
       );
     };
@@ -2213,6 +2273,80 @@ describe('useFormState', () => {
       expect(() => render(<FormComponent forwardRef={() => {}} />)).toThrowError(
         /"watch" property/
       );
+    });
+
+    it('should render form is the editable mode', () => {
+      const { getByLabelText } = render(<FormComponent watch={false} />);
+
+      const nameInput = getByLabelText('Name');
+      const categorySelect = getByLabelText('Category');
+
+      expect(nameInput).toBeEnabled();
+      expect(nameInput).not.toHaveAttribute('readonly');
+
+      expect(categorySelect).toBeEnabled();
+      expect(categorySelect).not.toHaveAttribute('readonly');
+      expect(categorySelect.nodeName.toLowerCase()).toBe('select');
+    });
+
+    it('should render form is the editable mode when the mode is set', () => {
+      const { getByLabelText } = render(<FormComponent initialMode="editable" watch={false} />);
+
+      const nameInput = getByLabelText('Name');
+      const categorySelect = getByLabelText('Category');
+
+      expect(nameInput).toBeEnabled();
+      expect(nameInput).not.toHaveAttribute('readonly');
+
+      expect(categorySelect).toBeEnabled();
+      expect(categorySelect).not.toHaveAttribute('readonly');
+      expect(categorySelect.nodeName.toLowerCase()).toBe('select');
+    });
+
+    it('should mark inputs readonly and hide selects/buttons when the form is readOnly', () => {
+      const { getByLabelText, getByTestId, queryByText } = render(
+        <FormComponent initialMode="readOnly" watch={false} />
+      );
+
+      const nameInput = getByLabelText('Name');
+      const ageInput = getByLabelText('Age');
+      const categorySelect = getByLabelText('Category');
+      const activeCheckbox = getByLabelText('Active');
+      const archivedYesRadio = getByTestId('archivedYes');
+      const archivedNoRadio = getByTestId('archivedNo');
+      const resetButton = queryByText('Reset');
+
+      expect(nameInput).toHaveAttribute('readonly');
+      expect(ageInput).toHaveAttribute('readonly');
+      expect(categorySelect).toHaveAttribute('readonly');
+      expect(categorySelect.nodeName.toLowerCase()).toBe('input');
+      expect(activeCheckbox).toHaveAttribute('readonly');
+      expect(archivedYesRadio).toHaveAttribute('readonly');
+      expect(archivedNoRadio).toHaveAttribute('readonly');
+      expect(resetButton).not.toBeInTheDocument();
+    });
+
+    it('should disable inputs and hide buttons when the form is disabled', () => {
+      const { getByLabelText, getByTestId, queryByText } = render(
+        <FormComponent initialMode="disabled" watch={false} />
+      );
+
+      const nameInput = getByLabelText('Name');
+      const ageInput = getByLabelText('Age');
+      const categorySelect = getByLabelText('Category');
+      const activeCheckbox = getByLabelText('Active');
+      const archivedYesRadio = getByTestId('archivedYes');
+      const archivedNoRadio = getByTestId('archivedNo');
+      const resetButton = queryByText('Reset');
+
+      expect(nameInput).toBeDisabled();
+      expect(ageInput).toBeDisabled();
+      expect(categorySelect).toBeDisabled();
+      expect(categorySelect.nodeName.toLowerCase()).toBe('select');
+      expect(activeCheckbox).toBeDisabled();
+      expect(archivedYesRadio).toBeDisabled();
+      expect(archivedNoRadio).toBeDisabled();
+      expect(resetButton).not.toBeInTheDocument();
     });
   });
 });
