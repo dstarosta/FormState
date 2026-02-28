@@ -798,8 +798,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     [dispatch]
   );
 
-  // useSyncExternalStore is stable and storeRef is a stable ref and not a real dependency.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const useWatch = (name: string) => {
     if (!name?.trim()) {
       throw new TypeError('The "name" value cannot be empty.');
@@ -817,7 +815,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
     );
   };
 
-  // The memoized "response" object that combines the state, form status, CSS classes, HTML element props and actions.
   const response = useMemo<FormStateResponse<T>>(
     () => ({
       initialState: initialFormState,
@@ -875,7 +872,6 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
       setError,
       clearManualErrors,
       createComponent,
-      useWatch,
     ]
   );
 

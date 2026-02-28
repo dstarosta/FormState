@@ -154,7 +154,9 @@ export function formDate(
 
       return dateValue;
     },
-    zodDate.meta({ format: dateFormat }).or(z.string())
+    options?.required
+      ? zodDate.meta({ format: dateFormat }).or(z.string().min(1, options?.error))
+      : zodDate.meta({ format: dateFormat }).or(z.string())
   );
 }
 

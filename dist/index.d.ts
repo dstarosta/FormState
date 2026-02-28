@@ -1,5 +1,4 @@
-import * as z$1 from "zod";
-import z from "zod";
+import * as z from "zod";
 import { ComponentType, PropsWithChildren, SyntheticEvent } from "react";
 import * as react_jsx_runtime0 from "react/jsx-runtime";
 
@@ -190,67 +189,67 @@ type RangeResult<R> = R extends number | Date ? {
   format: string;
 } : undefined;
 declare namespace form_schema_d_exports {
-  export { z$1 as advanced, array, boolean, date, formArray, formBoolean, formDate, formNumber, formString, formValues, infer, number, object, regexes, strictObject, string, symbol };
+  export { z as advanced, array, boolean, date, formArray, formBoolean, formDate, formNumber, formString, formValues, infer, number, object, regexes, strictObject, string, symbol };
 }
-type infer<T extends z$1.ZodType> = z$1.infer<T>;
-declare const string: typeof z$1.string;
-declare const number: typeof z$1.number;
-declare const boolean: typeof z$1.boolean;
-declare const date: typeof z$1.date;
-declare const array: typeof z$1.array;
-declare const object: typeof z$1.object;
-declare const strictObject: typeof z$1.strictObject;
-declare const symbol: typeof z$1.symbol;
-declare const regexes: typeof z$1.core.regexes;
-declare function formBoolean(zodBoolean: ZodDeepType<z$1.ZodBoolean>, options?: {
+type infer<T extends z.ZodType> = z.infer<T>;
+declare const string: typeof z.string;
+declare const number: typeof z.number;
+declare const boolean: typeof z.boolean;
+declare const date: typeof z.date;
+declare const array: typeof z.array;
+declare const object: typeof z.object;
+declare const strictObject: typeof z.strictObject;
+declare const symbol: typeof z.symbol;
+declare const regexes: typeof z.core.regexes;
+declare function formBoolean(zodBoolean: ZodDeepType<z.ZodBoolean>, options?: {
   required: boolean;
   error?: string;
-}): z$1.ZodPipe<z$1.ZodTransform<boolean | "", unknown>, z$1.ZodBoolean | z$1.ZodUnion<[z$1.ZodBoolean, z$1.ZodLiteral<"">]>>;
-declare function formDate(zodDate: ZodDeepType<z$1.ZodDate>, options?: {
+}): z.ZodPipe<z.ZodTransform<boolean | "", unknown>, z.ZodBoolean | z.ZodUnion<[z.ZodBoolean, z.ZodLiteral<"">]>>;
+declare function formDate(zodDate: ZodDeepType<z.ZodDate>, options?: {
   required: boolean;
   error?: string;
   dateFormat?: FormDateFormat;
   dateFormatError?: string;
-}): z$1.ZodPipe<z$1.ZodTransform<string | Date, unknown>, z$1.ZodUnion<[z$1.ZodDate, z$1.ZodString]>>;
-declare function formNumber(zodNumber: ZodDeepType<z$1.ZodNumber>, options?: {
+}): z.ZodPipe<z.ZodTransform<string | Date, unknown>, z.ZodUnion<[z.ZodDate, z.ZodString]>>;
+declare function formNumber(zodNumber: ZodDeepType<z.ZodNumber>, options?: {
   required: boolean;
   error?: string;
-}): z$1.ZodPipe<z$1.ZodTransform<number | "", unknown>, z$1.ZodNumber | z$1.ZodUnion<[z$1.ZodNumber, z$1.ZodLiteral<"">]>>;
-declare function formString(zodString: ZodDeepType<z$1.ZodString>, options?: {
+}): z.ZodPipe<z.ZodTransform<number | "", unknown>, z.ZodNumber | z.ZodUnion<[z.ZodNumber, z.ZodLiteral<"">]>>;
+declare function formString(zodString: ZodDeepType<z.ZodString>, options?: {
   required: boolean;
   error?: string;
-}): z$1.ZodPipe<z$1.ZodTransform<{}, unknown>, z$1.ZodString | z$1.ZodUnion<[z$1.ZodString, z$1.ZodLiteral<"">]>>;
+}): z.ZodPipe<z.ZodTransform<{}, unknown>, z.ZodString | z.ZodUnion<[z.ZodString, z.ZodLiteral<"">]>>;
 declare function formValues<const T extends readonly [string, ...string[]]>(values: T, options: {
   required: true;
   error?: string;
-}): z$1.ZodPipe<z$1.ZodTransform, z$1.ZodEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }>>;
+}): z.ZodPipe<z.ZodTransform, z.ZodEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }>>;
 declare function formValues<const T extends readonly [string, ...string[]]>(values: T, options?: {
   required?: false;
   error?: string;
-}): z$1.ZodPipe<z$1.ZodTransform, z$1.ZodEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }> | z$1.ZodLiteral<''>>;
-declare function formArray<T extends z$1.ZodType>(elementSchema: T extends z$1.ZodObject | z$1.ZodArray ? never : T, options?: {
+}): z.ZodPipe<z.ZodTransform, z.ZodEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }> | z.ZodLiteral<''>>;
+declare function formArray<T extends z.ZodType>(elementSchema: T extends z.ZodObject | z.ZodArray ? never : T, options?: {
   required: boolean;
   minLength?: number;
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z$1.ZodOptional<z$1.ZodArray<T extends z$1.ZodObject<z$1.core.$ZodLooseShape, z$1.core.$strip> | z$1.ZodArray<z$1.core.$ZodType<unknown, unknown, z$1.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
+}): z.ZodArray<T extends z.ZodObject<z.core.$ZodLooseShape, z.core.$strip> | z.ZodArray<z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z.ZodOptional<z.ZodArray<T extends z.ZodObject<z.core.$ZodLooseShape, z.core.$strip> | z.ZodArray<z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
-declare function useFormState<T extends z$1.ZodObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
+declare function useFormState<T extends z.ZodObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
 //#endregion
 //#region src/form-provider.d.ts
-declare function FormStateProvider<T extends z$1.ZodObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): react_jsx_runtime0.JSX.Element;
-declare function useFormStateContext<T extends z$1.ZodObject>(schema: T): FormStateResponse<T>;
-declare function formConnect<T extends z$1.ZodObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
+declare function FormStateProvider<T extends z.ZodObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): react_jsx_runtime0.JSX.Element;
+declare function useFormStateContext<T extends z.ZodObject>(schema: T): FormStateResponse<T>;
+declare function formConnect<T extends z.ZodObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
   (innerProps: Readonly<P>): react_jsx_runtime0.JSX.Element;
   displayName: string;
 };
 //#endregion
 //#region src/helpers/state-manager.d.ts
-declare function createState<T extends z$1.ZodObject>(schema: T): z$1.infer<T>;
-declare function createInitialState<T extends z$1.ZodObject>(schema: T, data: DeepPartial<z$1.infer<T>> | null | undefined): z$1.core.output<T>;
-declare function getState<T extends z$1.ZodObject, P extends FormPath<T>>(schema: T, data: z$1.infer<T>, nameOrPath: P): FormPathValue<T, P> | undefined;
+declare function createState<T extends z.ZodObject>(schema: T): z.infer<T>;
+declare function createInitialState<T extends z.ZodObject>(schema: T, data: DeepPartial<z.infer<T>> | null | undefined): z.core.output<T>;
+declare function getState<T extends z.ZodObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValue<T, P> | undefined;
 declare function updateState<T>(state: ImmutableArray<T> | undefined, updater: (draft: T[]) => void): T[];
 declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: (draft: T) => void): T;
 //#endregion
@@ -259,12 +258,12 @@ declare function formatDate(date: Date, format?: FormDateFormat): string;
 declare function safeParseDate(input: string | undefined, format?: FormDateFormat): DateParseResult;
 //#endregion
 //#region src/helpers/error-formatter.d.ts
-declare const validateState: <T extends z$1.ZodObject>(schema: T, data: DeepPartial<z$1.infer<T>>, populateDefaults?: boolean) => {
+declare const validateState: <T extends z.ZodObject>(schema: T, data: DeepPartial<z.infer<T>>, populateDefaults?: boolean) => {
   error: FormStateError<T>;
   success: false;
   data?: never;
 } | {
-  data: z$1.core.output<T>;
+  data: z.core.output<T>;
   success: true;
   error?: never;
 };
@@ -280,7 +279,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 declare const toBoolean: (value: string, options?: {
   strict?: boolean;
 }) => boolean | "";

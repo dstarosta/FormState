@@ -1,4 +1,4 @@
-import { useActionState, useCallback } from 'react';
+import { useActionState, useCallback, useRef } from 'react';
 import * as z from 'zod';
 
 import type { FormAction, FormMutableState, ManualErrorState } from '../types/form-types';
@@ -15,9 +15,36 @@ export function useFormStateReducer<T extends z.ZodObject>(
 ) {
   type State = z.infer<T>;
 
+  const validationCacheRef = useRef<{
+    schema: z.ZodType;
+    data: State;
+    parsedData: State;
+    errors: Record<keyof State, string | undefined>;
+  } | null>(null);
+
   const reducer = useCallback(
     (prevState: FormMutableState<State>, action: FormAction<State>) => {
       const prevManualErrors = manualErrorsState.get();
+
+      const parseAndCache = (data: State) => {
+        const cached = validationCacheRef.current;
+
+        if (
+          cached &&
+          cached.schema === schema &&
+          (cached.data === data || cached.parsedData === data)
+        ) {
+          return { parsedData: cached.parsedData, errors: cached.errors };
+        }
+
+        const safeData = schema.safeParse(data);
+        const errors = formatErrors<State>(safeData.error);
+        const parsedData = safeData.data ?? data;
+
+        validationCacheRef.current = { schema, data, parsedData, errors };
+
+        return { parsedData, errors };
+      };
 
       switch (action.type) {
         // initial state change event
@@ -58,10 +85,18 @@ export function useFormStateReducer<T extends z.ZodObject>(
           const field = Array.isArray(name) ? name[0] : name;
 
           const mergedData = dotPathSet<State>(prevState.data, pathNotation, value);
-          const safeData = schema.safeParse(mergedData);
-          const finalData = safeData.success ? safeData.data : mergedData;
 
-          const errors = validate ? formatErrors<State>(safeData.error) : { ...prevState.errors };
+          let finalData: State;
+          let errors: Record<keyof State, string | undefined>;
+
+          if (validate) {
+            const cached = parseAndCache(mergedData);
+            finalData = cached.parsedData;
+            errors = cached.errors;
+          } else {
+            finalData = mergedData;
+            errors = prevState.errors;
+          }
 
           const initialValue = dotPathGet<State>(prevState.initialData, pathNotation);
 
@@ -125,13 +160,9 @@ export function useFormStateReducer<T extends z.ZodObject>(
         }
         // field touch event
         case 'touch': {
-          let errors: Record<keyof State, string | undefined>;
-          if (action.options.validate) {
-            const safeData = schema.safeParse(prevState.data);
-            errors = formatErrors<State>(safeData.error);
-          } else {
-            errors = { ...prevState.errors };
-          }
+          const errors = action.options.validate
+            ? parseAndCache(prevState.data).errors
+            : { ...prevState.errors };
 
           const pathNotation = Array.isArray(action.name) ? action.name.join('.') : action.name;
           const touched = { ...prevState.touched, [pathNotation]: true };
@@ -139,9 +170,9 @@ export function useFormStateReducer<T extends z.ZodObject>(
           return diffedState(
             {
               ...prevState,
+              errors: { ...errors, ...prevManualErrors },
               validated: prevState.validated || action.options.validate,
               touched,
-              errors,
             },
             prevState
           );
@@ -259,8 +290,7 @@ export function useFormStateReducer<T extends z.ZodObject>(
         }
         // form validate event
         case 'validate': {
-          const safeData = schema.safeParse(prevState.data);
-          const errors = formatErrors<State>(safeData.error);
+          const errors = parseAndCache(prevState.data).errors;
 
           return {
             ...prevState,
@@ -274,8 +304,7 @@ export function useFormStateReducer<T extends z.ZodObject>(
 
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name).trim();
 
-          const safeData = schema.safeParse(prevState.data);
-          const errors = formatErrors<State>(safeData.error);
+          const errors = parseAndCache(prevState.data).errors;
 
           const manualErrors = updateState(prevManualErrors, (draft) => {
             if (error === null) {
@@ -295,8 +324,7 @@ export function useFormStateReducer<T extends z.ZodObject>(
         }
         // clear manual errors event
         case 'clearManualErrors': {
-          const safeData = schema.safeParse(prevState.data);
-          const errors = formatErrors<State>(safeData.error);
+          const errors = parseAndCache(prevState.data).errors;
 
           manualErrorsState.set();
 

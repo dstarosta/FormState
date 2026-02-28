@@ -149,13 +149,13 @@ export const diffedState = <T extends z.ZodObject>(
   return newState;
 };
 
-export const freezeObject = (obj: object) => {
-  const isDevelopment =
-    typeof process === 'object' &&
-    process.env &&
-    process.env['NODE_ENV']?.toLowerCase() === 'development';
+const IS_DEVELOPMENT =
+  typeof process === 'object' &&
+  process.env &&
+  process.env['NODE_ENV']?.toLowerCase() === 'development';
 
-  return isDevelopment ? Object.freeze(obj) : obj;
+export const freezeObject = (obj: object) => {
+  return IS_DEVELOPMENT ? Object.freeze(obj) : obj;
 };
 
 // Public methods

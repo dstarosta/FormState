@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
 
 import type { SyntheticEvent } from 'react';
-import type z from 'zod';
+import type * as z from 'zod';
 
 import { FormStateError } from '../helpers/form-state-error';
 
