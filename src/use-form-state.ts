@@ -399,6 +399,12 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
       const classPrefix = options?.classPrefix?.trim() || 'form-state';
 
+      if (formState.disabled) {
+        classes += `${classPrefix}__disabled `;
+      } else if (formState.readOnly) {
+        classes += `${classPrefix}__readonly `;
+      }
+
       if (formState.touched[pathNotation as keyof State]) {
         classes += `${classPrefix}__touched `;
       }
@@ -413,7 +419,14 @@ export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: For
 
       return (classes.trim() + ' ' + additionalClasses).trim();
     },
-    [formState.data, formState.errors, formState.touched, formState.validated]
+    [
+      formState.data,
+      formState.disabled,
+      formState.errors,
+      formState.readOnly,
+      formState.touched,
+      formState.validated,
+    ]
   );
 
   // The memoized "change" function.

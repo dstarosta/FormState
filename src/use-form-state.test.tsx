@@ -2324,6 +2324,8 @@ describe('useFormState', () => {
       expect(archivedYesRadio).toHaveAttribute('readonly');
       expect(archivedNoRadio).toHaveAttribute('readonly');
       expect(resetButton).not.toBeInTheDocument();
+
+      expect(nameInput.classList).toContain('form-state__readonly');
     });
 
     it('should disable inputs and hide buttons when the form is disabled', () => {
@@ -2347,6 +2349,8 @@ describe('useFormState', () => {
       expect(archivedYesRadio).toBeDisabled();
       expect(archivedNoRadio).toBeDisabled();
       expect(resetButton).not.toBeInTheDocument();
+
+      expect(nameInput.classList).toContain('form-state__disabled');
     });
   });
 });
