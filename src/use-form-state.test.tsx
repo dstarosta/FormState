@@ -1,20 +1,20 @@
 import { useEffect, useRef, type Ref } from 'react';
-import { describe, expect, it, afterEach, afterAll, beforeAll, vi } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { submitForm, useFormState, convert, z, type DeepPartial, type FormState } from '.';
+import {
+  submitForm,
+  useFormState,
+  convert,
+  formatDate,
+  z,
+  type DeepPartial,
+  type FormState,
+} from '.';
 import type { FormMode, SubmitState } from './types/form-types';
 
 describe('useFormState', () => {
-  beforeAll(() => {
-    vi.stubEnv('NODE_ENV', 'development');
-  });
-
-  afterAll(() => {
-    vi.unstubAllEnvs();
-  });
-
   const schema = z.strictObject({
     name: z
       .formString(z.string().check(z.regex(/^[\d'A-Za-z-]*$/), z.maxLength(25)), {
@@ -55,14 +55,27 @@ describe('useFormState', () => {
       )
       .check(z.describe('Tags')),
     category: z.formValues(['legacy', 'unconfirmed']).check(z.describe('Category')),
-    isActive: z.formBoolean(z.boolean()).check(z.describe('Is record active?')),
-    isArchived: z.formBoolean(z.boolean()).check(z.describe('Is record archived?')),
+    isActive: z
+      .default(z.formBoolean(z.boolean(), { required: true, error: 'Is active is required' }), true)
+      .check(z.describe('Is record active?')),
+    isArchived: z
+      .default(z.formBoolean(z.boolean()), false)
+      .check(z.describe('Is record archived?')),
     version: z
-      .formNumber(z.number().check(z.gte(0), z.lte(9999999)))
+      .catch(z.formNumber(z.number().check(z.gte(0), z.lte(9999999))), 0)
       .check(z.describe('Record version')),
-    registeredOn: z.formDate(z.date()),
-    updateDates: z.formArray(z.date().check(z.lte(new Date(2099, 11, 31)))),
-    previousVersions: z.formArray(z.number().check(z.lte(9999))),
+    registeredOn: z
+      .formDate(z.date(), { required: false, dateFormat: 'MM/dd/yyyy' })
+      .check(z.describe('Registered on')),
+    updateDates: z
+      .formArray(z.date().check(z.lte(new Date(2099, 11, 31)), z.describe('Update date')))
+      .check(z.describe('Update dates')),
+    previousVersions: z
+      .formArray(z.number().check(z.lte(9999), z.describe('Previous version')))
+      .check(z.describe('Previous versions')),
+    specialNumber: z
+      .default(z.formNumber(z.number().check(z.minimum(3.1), z.maximum(3.15))), Math.PI)
+      .check(z.describe('Special number')),
   });
 
   type Schema = z.infer<typeof schema>;
@@ -88,16 +101,17 @@ describe('useFormState', () => {
         },
         tags: [],
         category: '',
-        isActive: '',
-        isArchived: '',
-        version: '',
+        isActive: true,
+        isArchived: false,
+        version: 0,
         registeredOn: '',
         previousVersions: [],
         updateDates: [],
+        specialNumber: Math.PI,
         toObject: formState.data.toObject,
       };
 
-      expect(formState.data).toEqual(expectedData);
+      expect(formState.data).toStrictEqual(expectedData);
       expect(formState.errors.name).toBe('Name is required');
       expect(formState.errors.get((path) => path.info.age)).toBe('Age is required');
       expect(formStatus.valid).toBe(false);
@@ -120,7 +134,7 @@ describe('useFormState', () => {
       expect(formState.touched.name).toBe(false);
       expect(formState.data.info.age).toBe(30);
       expect(formState.touched.get((path) => path.info.age)).toBe(false);
-      expect(formState.data.tags).toEqual(['a', 'b']);
+      expect(formState.data.tags).toStrictEqual(['a', 'b']);
       expect(formState.touched.tags).toBe(false);
     });
 
@@ -134,7 +148,7 @@ describe('useFormState', () => {
       expect(formState.touched.name).toBe(true);
       expect(formState.data.info.age).toBe('');
       expect(formState.touched.get((path) => path.info.age)).toBe(true);
-      expect(formState.data.tags).toEqual([]);
+      expect(formState.data.tags).toStrictEqual([]);
       expect(formState.touched.tags).toBe(false);
     });
 
@@ -155,7 +169,7 @@ describe('useFormState', () => {
       expect(formState.touched.name).toBe(true);
       expect(formState.data.info.age).toBe(30);
       expect(formState.touched.get((path) => path.info.age)).toBe(true);
-      expect(formState.data.tags).toEqual(['a', 'b']);
+      expect(formState.data.tags).toStrictEqual(['a', 'b']);
       expect(formState.touched.tags).toBe(false);
     });
 
@@ -177,23 +191,21 @@ describe('useFormState', () => {
       expect(formStatus.valid).toBe(false);
     });
 
-    it('should not produce errors on initial state change when validateOnInit is false', async () => {
+    it('should not produce errors on initial state change when validateOnInit is false', () => {
       const initialState: InitialSchema = {
         name: '',
         info: { age: 30 },
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
 
-      await waitFor(() => {
-        const { formState, formStatus } = result.current;
+      const { formState, formStatus } = result.current;
 
-        expect(formStatus.valid).toBeNull();
-        expect(formState.errors).not.toHaveProperty('name');
-        expect(formState.errors).not.toHaveProperty('age');
-      });
+      expect(formStatus.valid).toBeNull();
+      expect(formState.errors).not.toHaveProperty('name');
+      expect(formState.errors).not.toHaveProperty('age');
     });
 
-    it('should produce errors on initial state change when validateOnInit is true', async () => {
+    it('should produce errors on initial state change when validateOnInit is true', () => {
       const initialState: InitialSchema = {
         name: '',
         info: { age: 0 },
@@ -202,16 +214,14 @@ describe('useFormState', () => {
         useFormState(schema, { initialState, validateOnInit: true })
       );
 
-      await waitFor(() => {
-        const { formState, formStatus } = result.current;
+      const { formState, formStatus } = result.current;
 
-        expect(formStatus.valid).toBe(false);
-        expect(formState.errors.name).toBe('Name is required');
-        expect(formState.errors.get((path) => path.info.age)).toBe('Age must be > 0');
-      });
+      expect(formStatus.valid).toBe(false);
+      expect(formState.errors.name).toBe('Name is required');
+      expect(formState.errors.get((path) => path.info.age)).toBe('Age must be > 0');
     });
 
-    it('should change initial state after submit', async () => {
+    it('should change initial state after submit', () => {
       const initialState: InitialSchema = {
         name: 'John',
         info: { age: 30 },
@@ -227,14 +237,16 @@ describe('useFormState', () => {
         change((path) => path.info.age, 29, { touch: true });
       });
 
-      validate({
-        submit: true,
-        callback: (state, status) => {
-          expect(state.data.name).toBe('Jonathan');
-          expect(state.data.info.age).toBe(29);
-          expect(status.valid).toBe(true);
-          expect(status.submitted).toBe(true);
-        },
+      act(() => {
+        validate({
+          submit: true,
+          callback: (state, status) => {
+            expect(state.data.name).toBe('Jonathan');
+            expect(state.data.info.age).toBe(29);
+            expect(status.valid).toBe(true);
+            expect(status.submitted).toBe(true);
+          },
+        });
       });
 
       act(() => {
@@ -246,12 +258,10 @@ describe('useFormState', () => {
         });
       });
 
-      await waitFor(() => {
-        const { formState } = result.current;
+      const { formState } = result.current;
 
-        expect(formState.data.name).toBe('Jonathan');
-        expect(formState.data.info.age).toBe(29);
-      });
+      expect(formState.data.name).toBe('Jonathan');
+      expect(formState.data.info.age).toBe(29);
     });
 
     it('should handle number and date fields', () => {
@@ -310,10 +320,10 @@ describe('useFormState', () => {
 
       const { formState } = result.current;
 
-      expect(formState.data.tags).toEqual(['x', 'y']);
+      expect(formState.data.tags).toStrictEqual(['x', 'y']);
     });
 
-    it('should update initial state reactively', async () => {
+    it('should update initial state reactively', () => {
       let initialState: InitialSchema = {
         name: 'Jonathan',
         info: { age: 30 },
@@ -330,15 +340,13 @@ describe('useFormState', () => {
       initialState = { name: 'Jonathan', info: { age: 29 } };
       rerender(); // required to update the initial state of the hook
 
-      await waitFor(() => {
-        const { formState } = result.current;
+      const { formState } = result.current;
 
-        expect(formState.data.name).toBe('Tom'); // changed value
-        expect(formState.data.info.age).toBe(29); // unchanged value from the initial state
-      });
+      expect(formState.data.name).toBe('Tom'); // changed value
+      expect(formState.data.info.age).toBe(29); // unchanged value from the initial state
     });
 
-    it('should not update initial state reactively after calling "replace"', async () => {
+    it('should not update initial state reactively after calling "replace"', () => {
       let initialState: InitialSchema = {
         name: 'Jonathan',
         info: { age: 30 },
@@ -358,12 +366,10 @@ describe('useFormState', () => {
       initialState = { name: 'Jonathan', info: { age: 29 } };
       rerender(); // required to update the initial state of the hook
 
-      await waitFor(() => {
-        const { formState } = result.current;
+      const { formState } = result.current;
 
-        expect(formState.data.name).toBe('Tom'); // replaced value
-        expect(formState.data.info.age).toBe(30); // replaced value
-      });
+      expect(formState.data.name).toBe('Tom'); // replaced value
+      expect(formState.data.info.age).toBe(30); // replaced value
     });
 
     it('should replace all the data', () => {
@@ -432,6 +438,8 @@ describe('useFormState', () => {
         info: { age: 30, birthDate: new Date(2020, 11, 31) },
         category: 'unconfirmed',
         tags: ['a', 'b'],
+        registeredOn: '06/30/2020',
+        updateDates: [new Date(2019, 11, 12), new Date(2020, 3, 15)],
       };
       const { result } = renderHook(() =>
         useFormState(schema, { initialState, validateOnInit: true })
@@ -453,22 +461,33 @@ describe('useFormState', () => {
       expect(data.tags[0]).toBe('a');
       expect(data.tags[1]).toBe('b');
       expect(data.category).toBe('unconfirmed');
-      expect(data.isActive).toBe('');
-      expect(data.version).toBe('');
+      expect(data.isActive).toBe(true);
+      expect(data.version).toBe(0);
+      expect(data.registeredOn).toStrictEqual(new Date(2020, 5, 30));
+      expect(
+        data.registeredOn instanceof Date && formatDate(data.registeredOn, 'MM/dd/yyyy')
+      ).toStrictEqual('06/30/2020');
+      expect(data.updateDates).toStrictEqual([new Date(2019, 11, 12), new Date(2020, 3, 15)]);
+      expect(data.previousVersions).toStrictEqual([]);
+      expect(data.specialNumber).toBe(Math.PI);
 
-      const request = data.toObject();
+      const apiData = data.toObject();
 
-      expect(request.name).toBe('John');
-      expect(request.info.age).toBe(30);
-      expect(request.info.birthDate).toBeInstanceOf(Date);
-      expect(request.info.email).toBe('');
-      expect(request.tags).toHaveLength(2);
-      expect(request.tags[0]).toBe('a');
-      expect(request.tags[1]).toBe('b');
-      expect(request.category).toBe('unconfirmed');
-      expect(request.info.uuid).toBeUndefined();
-      expect(request.isActive).toBeUndefined();
-      expect(request.version).toBeUndefined();
+      expect(apiData.name).toBe('John');
+      expect(apiData.info.age).toBe(30);
+      expect(apiData.info.birthDate).toBeInstanceOf(Date);
+      expect(apiData.info.email).toBe('');
+      expect(apiData.tags).toHaveLength(2);
+      expect(apiData.tags[0]).toBe('a');
+      expect(apiData.tags[1]).toBe('b');
+      expect(apiData.category).toBe('unconfirmed');
+      expect(apiData.info.uuid).toBeUndefined();
+      expect(apiData.isActive).toBe(true);
+      expect(apiData.version).toBe(0);
+      expect(apiData.registeredOn).toStrictEqual(new Date(2020, 5, 30));
+      expect(apiData.updateDates).toStrictEqual([new Date(2019, 11, 12), new Date(2020, 3, 15)]);
+      expect(apiData.previousVersions).toStrictEqual([]);
+      expect(apiData.specialNumber).toBe(Math.PI);
 
       // Resetting the value
       Object.defineProperty(globalThis, 'isSecureContext', {
@@ -479,8 +498,104 @@ describe('useFormState', () => {
     });
   });
 
+  it('validates schema descriptions', () => {
+    const { result } = renderHook(() => useFormState(schema));
+
+    const {
+      formState: { descriptions },
+    } = result.current;
+
+    const expectedDescriptions = {
+      name: 'Name',
+      info: 'Info',
+      'info.age': 'Age',
+      'info.email': 'Email',
+      'info.birthDate': 'Birth date',
+      tags: 'Tags',
+      'tags.0': 'Tag',
+      category: 'Category',
+      isActive: 'Is record active?',
+      isArchived: 'Is record archived?',
+      version: 'Record version',
+      registeredOn: 'Registered on',
+      updateDates: 'Update dates',
+      'updateDates.0': 'Update date',
+      previousVersions: 'Previous versions',
+      'previousVersions.0': 'Previous version',
+      specialNumber: 'Special number',
+    };
+
+    const { get, ...actualDescriptions } = descriptions;
+
+    expect(expectedDescriptions).toStrictEqual(actualDescriptions);
+    expect(get).toBeTypeOf('function');
+  });
+
+  it('validates schema ranges', () => {
+    const { result } = renderHook(() => useFormState(schema));
+
+    const {
+      formState: { ranges },
+    } = result.current;
+
+    const expectedRanges = {
+      'info.age': { min: 1, max: undefined, format: 'integer' },
+      'info.birthDate': {
+        min: new Date(Date.UTC(2020, 0, 1)),
+        max: new Date(Date.UTC(2039, 11, 31)),
+        format: 'MM/dd/yyyy',
+      },
+      version: { min: 0, max: 9999999, format: 'integer' },
+      'updateDates.0': {
+        min: undefined,
+        max: new Date(Date.UTC(2099, 11, 31)),
+        format: 'yyyy-MM-dd',
+      },
+      'previousVersions.0': { min: undefined, max: 9999, format: 'integer' },
+      specialNumber: { min: 3.1, max: 3.15, format: 'numeric' },
+    };
+
+    const { get, ...actualRanges } = ranges;
+
+    expect(expectedRanges).toStrictEqual(actualRanges);
+    expect(get).toBeTypeOf('function');
+  });
+
+  it('validates schema max lengths', () => {
+    const { result } = renderHook(() => useFormState(schema));
+
+    const {
+      formState: { maxLengths },
+    } = result.current;
+
+    const expectedMaxLengths = { name: 25, tags: 5, 'tags.0': 255 };
+
+    const { get, ...actualMaxLengths } = maxLengths;
+
+    expect(expectedMaxLengths).toStrictEqual(actualMaxLengths);
+    expect(get).toBeTypeOf('function');
+  });
+
+  it('validates schema regular expression patterns', () => {
+    const { result } = renderHook(() => useFormState(schema));
+
+    const {
+      formState: { patterns },
+    } = result.current;
+
+    const expectedPatterns = {
+      name: String.raw`^[\d'A-Za-z-]*$`,
+      'tags.0': String.raw`^[\w\\-]*$`,
+    };
+
+    const { get, ...actualPatterns } = patterns;
+
+    expect(expectedPatterns).toStrictEqual(actualPatterns);
+    expect(get).toBeTypeOf('function');
+  });
+
   describe('form actions', () => {
-    it('should produce errors on initial state change when validateOnInit is false but previous errors exist', async () => {
+    it('should produce errors on initial state change when validateOnInit is false but previous errors exist', () => {
       let initialState: InitialSchema = {
         name: 'John',
         info: { age: 18 },
@@ -497,13 +612,11 @@ describe('useFormState', () => {
       initialState = { name: 'John', info: { age: 30 } };
       rerender();
 
-      await waitFor(() => {
-        const { formState } = result.current;
+      const { formState } = result.current;
 
-        expect(formState.errors.name).toBe('Name is required');
-        expect(formState.data.name).toBe('');
-        expect(formState.data.info.age).toBe(30); // was not modified, so affected by the initial state change
-      });
+      expect(formState.errors.name).toBe('Name is required');
+      expect(formState.data.name).toBe('');
+      expect(formState.data.info.age).toBe(30); // was not modified, so affected by the initial state change
     });
 
     it('should update and validate fields', () => {
@@ -542,13 +655,13 @@ describe('useFormState', () => {
       expect(formState.descriptions.get((path) => path.version)).toBe('Record version');
       expect(formState.descriptions.tags).toBe('Tags');
       expect(formState.descriptions.get((path) => path.tags[0])).toBe('Tag');
-      expect(formState.ranges.version).toEqual({ min: 0, max: 9999999, format: 'integer' });
-      expect(formState.ranges.get((path) => path.version)).toEqual({
+      expect(formState.ranges.version).toStrictEqual({ min: 0, max: 9999999, format: 'integer' });
+      expect(formState.ranges.get((path) => path.version)).toStrictEqual({
         min: 0,
         max: 9999999,
         format: 'integer',
       });
-      expect(formState.ranges.get((path) => path.info.birthDate)).toEqual({
+      expect(formState.ranges.get((path) => path.info.birthDate)).toStrictEqual({
         min: new Date('2020-01-01'),
         max: new Date('2039-12-31'),
         format: 'MM/dd/yyyy',
@@ -597,13 +710,13 @@ describe('useFormState', () => {
         expect(state.descriptions.get((path) => path.version)).toBe('Record version');
         expect(state.descriptions.tags).toBe('Tags');
         expect(state.descriptions.get((path) => path.tags[0])).toBe('Tag');
-        expect(state.ranges.version).toEqual({ min: 0, max: 9999999, format: 'integer' });
-        expect(state.ranges.get((path) => path.version)).toEqual({
+        expect(state.ranges.version).toStrictEqual({ min: 0, max: 9999999, format: 'integer' });
+        expect(state.ranges.get((path) => path.version)).toStrictEqual({
           min: 0,
           max: 9999999,
           format: 'integer',
         });
-        expect(state.ranges.get((path) => path.info.birthDate)).toEqual({
+        expect(state.ranges.get((path) => path.info.birthDate)).toStrictEqual({
           min: new Date('2020-01-01'),
           max: new Date('2039-12-31'),
           format: 'MM/dd/yyyy',
@@ -627,7 +740,7 @@ describe('useFormState', () => {
       });
 
       expect(data.name).toBe('John');
-      expect(data.version).toBe('');
+      expect(data.version).toBe(0);
       expect(data.info.age).toBe(18);
 
       expect(updateCounter).toBe(3);
@@ -762,7 +875,7 @@ describe('useFormState', () => {
       });
 
       expect(data.name).toBe('John');
-      expect(data.version).toBe('');
+      expect(data.version).toBe(0);
       expect(data.info.age).toBe(18);
 
       expect(updateCounter).toBe(1); // debounced callbacks
@@ -1097,8 +1210,8 @@ describe('useFormState', () => {
         touch();
       });
 
-      expect(formState.data.toObject()).toEqual({});
-      expect(formStatus.touched).toEqual(false);
+      expect(formState.data.toObject()).toStrictEqual({});
+      expect(formStatus.touched).toBe(false);
     });
 
     it('should validate field when touched and validate option is "always"', () => {
@@ -1166,10 +1279,14 @@ describe('useFormState', () => {
 
         touch((path) => path.info.age);
         change((path) => path.info.age, 29);
+      });
 
+      act(() => {
         setError('name', 'Unsupported name');
         setError('isActive', '');
+      });
 
+      act(() => {
         reset({
           names: ['name'],
           resetTouched: false,
@@ -1212,7 +1329,9 @@ describe('useFormState', () => {
 
         touch((path) => path.info.age);
         change((path) => path.info.age, 29);
+      });
 
+      act(() => {
         reset({
           names: ['name'],
           retainData: true,
@@ -1253,7 +1372,9 @@ describe('useFormState', () => {
 
         touch('name.test' as 'name');
         change((path) => path.info.age, 29, { touch: true });
+      });
 
+      act(() => {
         reset({
           names: ['name'],
           resetTouched: true,
@@ -1337,7 +1458,13 @@ describe('useFormState', () => {
 
       act(() => {
         validate({ submit: true });
+      });
+
+      act(() => {
         change('name', '');
+      });
+
+      act(() => {
         reset();
       });
 
@@ -1360,7 +1487,9 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Jonathan', { touch: true });
         change((path) => path.info.age, 29, { touch: true });
+      });
 
+      act(() => {
         reset({ resetTouched: true, resetSubmitted: true });
       });
 
@@ -1385,7 +1514,9 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Jonathan', { touch: true });
         change((path) => path.info.age, 29, { touch: true });
+      });
 
+      act(() => {
         reset({ retainData: true, resetSubmitted: true, resetTouched: false });
       });
 
@@ -1397,7 +1528,7 @@ describe('useFormState', () => {
       expect(formStatus.touched).toBe(true);
     });
 
-    it('should submit form', async () => {
+    it('should submit form', () => {
       const initialState: InitialSchema = {
         name: 'John',
         info: { age: 30 },
@@ -1413,19 +1544,19 @@ describe('useFormState', () => {
         change((path) => path.info.age, 29, { touch: true });
       });
 
-      validate({ submit: true });
-
-      await waitFor(() => {
-        const { formStatus } = result.current;
-
-        expect(formStatus.submitted).toBe(true);
-        expect(formStatus.valid).toBe(true);
-        expect(formStatus.dirty).toBe(false);
-        expect(formStatus.touched).toBe(false);
+      act(() => {
+        validate({ submit: true });
       });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(true);
+      expect(formStatus.valid).toBe(true);
+      expect(formStatus.dirty).toBe(false);
+      expect(formStatus.touched).toBe(false);
     });
 
-    it('should submit form without resetting touched or dirty states', async () => {
+    it('should submit form without resetting touched or dirty states', () => {
       const initialState: InitialSchema = {
         name: 'John',
         info: { age: 30 },
@@ -1441,44 +1572,64 @@ describe('useFormState', () => {
         change((path) => path.info.age, 29, { touch: true });
       });
 
-      validate({
-        submit: true,
-        resetDirty: false,
-        resetTouched: false,
+      act(() => {
+        validate({
+          submit: true,
+          resetDirty: false,
+          resetTouched: false,
+        });
       });
 
-      await waitFor(() => {
-        const { formStatus } = result.current;
+      const { formStatus } = result.current;
 
-        expect(formStatus.submitted).toBe(true);
-        expect(formStatus.dirty).toBe(true);
-        expect(formStatus.touched).toBe(true);
-      });
+      expect(formStatus.submitted).toBe(true);
+      expect(formStatus.dirty).toBe(true);
+      expect(formStatus.touched).toBe(true);
     });
 
-    it('should not submit form with errors', async () => {
+    it('should not submit form with initial errors', () => {
       const { result } = renderHook(() => useFormState(schema));
       const {
+        formActions: { validate },
+      } = result.current;
+
+      act(() => {
+        validate({ submit: true });
+      });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(false);
+      expect(formStatus.valid).toBe(false);
+    });
+
+    it('should not submit form with runtime errors', () => {
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: ['a', 'b'],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
         formActions: { change, validate },
       } = result.current;
 
       act(() => {
-        change('name', 'Jonathan', { touch: true });
-        change((path) => path.info.age, 29, { touch: true });
+        change('name', '');
+        change((path) => path.info.age, 29);
       });
 
-      validate({ submit: true });
-
-      await waitFor(() => {
-        const { formStatus } = result.current;
-
-        expect(formStatus.submitted).toBe(false);
-        expect(formStatus.dirty).toBe(true);
-        expect(formStatus.touched).toBe(true);
+      act(() => {
+        validate({ submit: true });
       });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(false);
+      expect(formStatus.valid).toBe(false);
     });
 
-    it('should not submit form with manual errors', async () => {
+    it('should not submit form with manual errors', () => {
       const initialState: InitialSchema = {
         name: 'John',
         info: { age: 30 },
@@ -1498,17 +1649,42 @@ describe('useFormState', () => {
         setError('custom', 'Jonathan is not an acceptable name');
       });
 
-      validate({ submit: true });
-
-      await waitFor(() => {
-        const { formStatus } = result.current;
-
-        expect(formStatus.submitted).toBe(false);
-        expect(formStatus.valid).toBe(false);
+      act(() => {
+        validate({ submit: true });
       });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(false);
+      expect(formStatus.valid).toBe(false);
     });
 
-    it('should set and clear manual errors', async () => {
+    it('should not submit form with manual errors without validation', () => {
+      const initialState: InitialSchema = {
+        name: 'Jonathan',
+        info: { age: 30 },
+        tags: ['a', 'b'],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { setError, validate },
+      } = result.current;
+
+      act(() => {
+        setError('custom', 'Jonathan is not an acceptable name');
+      });
+
+      act(() => {
+        validate({ submit: true });
+      });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(false);
+      expect(formStatus.valid).toBe(false);
+    });
+
+    it('should set and clear manual errors', () => {
       const initialState: InitialSchema = {
         name: 'John',
         info: { age: 30 },
@@ -1528,34 +1704,32 @@ describe('useFormState', () => {
         setError('id', 'Invalid ID');
         setError((path) => path.isActive, 'What is active?');
         setError((path) => path.isActive); // cleared the error
+      });
 
+      act(() => {
         validate();
       });
 
-      await waitFor(() => {
-        const { formState, formStatus } = result.current;
+      const { formState: errorFormState, formStatus: errorFormStatus } = result.current;
 
-        expect(formStatus.validSchema).toBe(true);
-        expect(formStatus.validSchema).toBe(true); // hitting a cached value
-        expect(formStatus.valid).toBe(false);
-        expect(formState.errors.getManual('id')).toMatch('Invalid ID');
-        expect(formState.errors.getManual('isActive')).toBeUndefined();
-      });
+      expect(errorFormStatus.validSchema).toBe(true);
+      expect(errorFormStatus.validSchema).toBe(true); // hitting a cached value
+      expect(errorFormStatus.valid).toBe(false);
+      expect(errorFormState.errors.getManual('id')).toMatch('Invalid ID');
+      expect(errorFormState.errors.getManual('isActive')).toBeUndefined();
 
       act(() => {
         clearManualErrors();
       });
 
-      await waitFor(() => {
-        const { formState, formStatus } = result.current;
+      const { formState: cleanFormState, formStatus: cleanFormStatus } = result.current;
 
-        expect(formStatus.validSchema).toBe(true);
-        expect(formStatus.valid).toBe(true);
-        expect(formState.errors.getManual('id')).toBeUndefined();
-      });
+      expect(cleanFormStatus.validSchema).toBe(true);
+      expect(cleanFormStatus.valid).toBe(true);
+      expect(cleanFormState.errors.getManual('id')).toBeUndefined();
     });
 
-    it('should mark the form dirty with a manual key', async () => {
+    it('should mark the form dirty with a manual key', () => {
       const initialState: InitialSchema = {
         name: 'John',
         info: { age: 30 },
@@ -1570,12 +1744,10 @@ describe('useFormState', () => {
         setDirty('#test');
       });
 
-      await waitFor(() => {
-        const { formState, formStatus } = result.current;
+      const { formState, formStatus } = result.current;
 
-        expect(formStatus.dirty).toBe(true);
-        expect(formState.dirty.get('#test')).toBe(true);
-      });
+      expect(formStatus.dirty).toBe(true);
+      expect(formState.dirty.get('#test')).toBe(true);
     });
 
     it('should throw if set dirty with a manual key does not start with #', () => {
@@ -1804,9 +1976,9 @@ describe('useFormState', () => {
               type="checkbox"
               readOnly={formStatus.readOnly}
               checked={Boolean(data.isActive)}
-              onChange={(event) =>
-                change('isActive', convert.toBoolean(event.target.value), { touch: true })
-              }
+              onChange={(event) => {
+                change('isActive', event.target.checked, { touch: true });
+              }}
             />
             <span role="group">
               <label className="inline-block cursor-pointer">
@@ -1865,10 +2037,8 @@ describe('useFormState', () => {
       const name = getByTitle('name');
       const submittedInfo = queryByText('Form Submitted');
 
-      act(() => {
-        fireEvent.change(input, { target: { value: 'John' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
+      fireEvent.change(input, { target: { value: 'John' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
 
       expect(form.hasAttribute('novalidate')).toBe(true);
       expect(name).toContainHTML('John');
@@ -1883,10 +2053,8 @@ describe('useFormState', () => {
       const input = getByLabelText('Name');
       const name = getByTitle('name');
 
-      act(() => {
-        fireEvent.change(input, { target: { value: '' } });
-        fireEvent.blur(input);
-      });
+      fireEvent.change(input, { target: { value: '' } });
+      fireEvent.blur(input);
 
       expect(input.classList).toContain('form-state__error');
       expect(input.classList).toContain('form-state__touched');
@@ -1903,31 +2071,25 @@ describe('useFormState', () => {
       const name = getByTitle('name');
       const submitButton = getByText('Submit Manually');
 
-      act(() => {
-        fireEvent.change(input, { target: { value: 'John' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
+      fireEvent.change(input, { target: { value: 'John' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
 
-      act(() => {
-        fireEvent.click(submitButton);
-      });
+      fireEvent.click(submitButton);
 
       expect(getByText('Submitting...')).toBeInTheDocument();
 
       const submittedInfo = await findByText('Form Submitted');
 
-      await waitFor(() => {
-        expect(queryByText('Submitting...')).not.toBeInTheDocument();
+      expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
-        expect(submitFn).toHaveBeenCalledWith(
-          expect.objectContaining({ name: 'John' }),
-          expect.any(FormData)
-        );
-        expect(errorFn).not.toBeCalled();
+      expect(submitFn).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'John' }),
+        expect.any(FormData)
+      );
+      expect(errorFn).not.toBeCalled();
 
-        expect(name).toContainHTML('John');
-        expect(submittedInfo).toBeInTheDocument();
-      });
+      expect(name).toContainHTML('John');
+      expect(submittedInfo).toBeInTheDocument();
     });
 
     it.each([true, false])('should submit form with "handleSubmit"', async (watch) => {
@@ -1939,31 +2101,25 @@ describe('useFormState', () => {
       const name = getByTitle('name');
       const submitButton = getByText('Submit');
 
-      act(() => {
-        fireEvent.change(input, { target: { value: 'John' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
+      fireEvent.change(input, { target: { value: 'John' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
 
-      act(() => {
-        fireEvent.click(submitButton);
-      });
+      fireEvent.click(submitButton);
 
       expect(getByText('Submitting...')).toBeInTheDocument();
 
       const submittedInfo = await findByText('Form Submitted');
 
-      await waitFor(() => {
-        expect(queryByText('Submitting...')).not.toBeInTheDocument();
+      expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
-        expect(submitFn).toHaveBeenCalledWith(
-          expect.objectContaining({ name: 'John' }),
-          expect.any(FormData)
-        );
-        expect(errorFn).not.toBeCalled();
+      expect(submitFn).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'John' }),
+        expect.any(FormData)
+      );
+      expect(errorFn).not.toBeCalled();
 
-        expect(name).toContainHTML('John');
-        expect(submittedInfo).toBeInTheDocument();
-      });
+      expect(name).toContainHTML('John');
+      expect(submittedInfo).toBeInTheDocument();
     });
 
     it.each([true, false])('should fail to submit form using "submit"', async (watch) => {
@@ -1972,14 +2128,10 @@ describe('useFormState', () => {
       const input = getByLabelText('Name');
       const submitButton = getByText('Submit Fail');
 
-      act(() => {
-        fireEvent.change(input, { target: { value: 'John' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
+      fireEvent.change(input, { target: { value: 'John' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
 
-      act(() => {
-        fireEvent.click(submitButton);
-      });
+      fireEvent.click(submitButton);
 
       await waitFor(() => {
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
@@ -1992,14 +2144,10 @@ describe('useFormState', () => {
       const input = getByLabelText('Name');
       const submitButton = getByText('Submit');
 
-      act(() => {
-        fireEvent.change(input, { target: { value: 'Ivan' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
+      fireEvent.change(input, { target: { value: 'Ivan' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
 
-      act(() => {
-        fireEvent.click(submitButton);
-      });
+      fireEvent.click(submitButton);
 
       await waitFor(() => {
         expect(submitFn).not.toBeCalled();
@@ -2018,29 +2166,28 @@ describe('useFormState', () => {
     });
 
     it.each([true, false])(
-      'should not submit form with "handleSubmit" with manual errors',
+      'should not submit form with "handleSubmit" with errors',
       async (watch) => {
         const { getByLabelText, getByText, queryByText } = render(
-          <FormComponent manualError="A manual error" watch={watch} />
+          <FormComponent initialValue="John" watch={watch} />
         );
 
         const input = getByLabelText('Name');
         const submitButton = getByText('Submit');
 
-        act(() => {
-          fireEvent.change(input, { target: { value: 'John' } });
-          fireEvent.keyDown(input, { key: 'Enter' });
-        });
+        fireEvent.change(input, { target: { value: '' } });
+        fireEvent.blur(input);
 
-        act(() => {
-          fireEvent.click(submitButton);
-        });
+        expect(input.classList).toContain('form-state__error');
+        expect(input.classList).toContain('form-state__touched');
+
+        fireEvent.click(submitButton);
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
           expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
-              errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
+              errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
             expect.objectContaining({ valid: false, submitted: false })
           );
@@ -2051,28 +2198,40 @@ describe('useFormState', () => {
     );
 
     it.each([true, false])(
-      'should not submit form with "handleSubmit" with errors',
+      'should not submit form with "handleSubmit" with errors without validation',
       async (watch) => {
-        const { getByLabelText, getByText, queryByText } = render(
-          <FormComponent initialValue="John" watch={watch} />
-        );
+        const { getByText, queryByText } = render(<FormComponent watch={watch} />);
+
+        const submitButton = getByText('Submit');
+
+        fireEvent.click(submitButton);
+
+        await waitFor(() => {
+          expect(submitFn).not.toBeCalled();
+          expect(errorFn).toHaveBeenCalledWith(
+            expect.objectContaining({
+              errors: expect.objectContaining({ name: 'Name is required' }) as object,
+            }),
+            expect.objectContaining({ valid: false, submitted: false })
+          );
+
+          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+        });
+      }
+    );
+
+    it.each([true, false])(
+      'should not submit form with "handleSubmit" with initial errors',
+      async (watch) => {
+        const { getByLabelText, getByText, queryByText } = render(<FormComponent watch={watch} />);
 
         const input = getByLabelText('Name');
         const submitButton = getByText('Submit');
 
-        act(() => {
-          fireEvent.change(input, { target: { value: '' } });
-          fireEvent.blur(input);
-        });
+        fireEvent.change(input, { target: { value: '' } });
+        fireEvent.blur(input);
 
-        await waitFor(() => {
-          expect(input.classList).toContain('form-state__error');
-          expect(input.classList).toContain('form-state__touched');
-        });
-
-        act(() => {
-          fireEvent.click(submitButton);
-        });
+        fireEvent.click(submitButton);
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
@@ -2095,15 +2254,42 @@ describe('useFormState', () => {
 
         const submitButton = getByText('Submit');
 
-        act(() => {
-          fireEvent.click(submitButton);
-        });
+        fireEvent.click(submitButton);
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
           expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
+            }),
+            expect.objectContaining({ valid: false, submitted: false })
+          );
+
+          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+        });
+      }
+    );
+
+    it.each([true, false])(
+      'should not submit form with "handleSubmit" with manual errors',
+      async (watch) => {
+        const { getByLabelText, getByText, queryByText } = render(
+          <FormComponent manualError="A manual error" watch={watch} />
+        );
+
+        const input = getByLabelText('Name');
+        const submitButton = getByText('Submit');
+
+        fireEvent.change(input, { target: { value: 'John' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+
+        fireEvent.click(submitButton);
+
+        await waitFor(() => {
+          expect(submitFn).not.toBeCalled();
+          expect(errorFn).toHaveBeenCalledWith(
+            expect.objectContaining({
+              errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
             }),
             expect.objectContaining({ valid: false, submitted: false })
           );
@@ -2122,9 +2308,7 @@ describe('useFormState', () => {
 
         const submitButton = getByText('Submit');
 
-        act(() => {
-          fireEvent.click(submitButton);
-        });
+        fireEvent.click(submitButton);
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
@@ -2147,16 +2331,12 @@ describe('useFormState', () => {
       const name = getByTitle('name');
       const resetButton = getByText('Reset');
 
-      act(() => {
-        fireEvent.change(input, { target: { value: 'John' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-      });
+      fireEvent.change(input, { target: { value: 'John' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
 
       expect(name).toContainHTML('John');
 
-      act(() => {
-        fireEvent.click(resetButton);
-      });
+      fireEvent.click(resetButton);
 
       expect(name).toContainHTML('');
     });
@@ -2182,23 +2362,21 @@ describe('useFormState', () => {
       const watchedActive = getByTestId('watched-active');
       const watchedArchived = getByTestId('watched-archived');
 
-      await waitFor(() => {
-        expect(nameInput).toHaveValue('Tom');
-        expect(watchedName).toHaveTextContent('Tom');
+      expect(nameInput).toHaveValue('Tom');
+      expect(watchedName).toHaveTextContent('Tom');
 
-        expect(ageInput).toHaveValue('30');
-        expect(watchedAge).toHaveTextContent('30');
+      expect(ageInput).toHaveValue('30');
+      expect(watchedAge).toHaveTextContent('30');
 
-        expect(categorySelect).toHaveValue('');
-        expect(watchedCategory).toHaveTextContent('');
+      expect(categorySelect).toHaveValue('');
+      expect(watchedCategory).toHaveTextContent('');
 
-        expect(activeCheckbox).not.toBeChecked();
-        expect(watchedActive).toHaveTextContent('');
+      expect(activeCheckbox).toBeChecked();
+      expect(watchedActive).toHaveTextContent('on');
 
-        expect(archivedYesRadio).not.toBeChecked();
-        expect(archivedNoRadio).toBeChecked();
-        expect(watchedArchived).toHaveTextContent('false');
-      });
+      expect(archivedYesRadio).not.toBeChecked();
+      expect(archivedNoRadio).toBeChecked();
+      expect(watchedArchived).toHaveTextContent('false');
 
       await user.clear(nameInput);
       await user.keyboard('John{Tab}');
@@ -2220,8 +2398,8 @@ describe('useFormState', () => {
       expect(categorySelect).toHaveValue('legacy');
       expect(watchedCategory).toHaveTextContent('legacy');
 
-      expect(activeCheckbox).toBeChecked();
-      expect(watchedActive).toHaveTextContent('on');
+      expect(activeCheckbox).not.toBeChecked();
+      expect(watchedActive).toHaveTextContent('');
 
       expect(archivedYesRadio).toBeChecked();
       expect(archivedNoRadio).not.toBeChecked();
@@ -2238,8 +2416,8 @@ describe('useFormState', () => {
       expect(categorySelect).toHaveValue('');
       expect(watchedCategory).toHaveTextContent('');
 
-      expect(activeCheckbox).not.toBeChecked();
-      expect(watchedActive).toHaveTextContent('');
+      expect(activeCheckbox).toBeChecked();
+      expect(watchedActive).toHaveTextContent('on');
 
       expect(archivedYesRadio).not.toBeChecked();
       expect(archivedNoRadio).toBeChecked();

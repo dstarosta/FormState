@@ -182,6 +182,10 @@ export function useFormState<T extends z.ZodMiniObject>(
     validateOnInit
   );
 
+  // Ref to avoid stale closures in validate/handleSubmit callbacks.
+  const formStateRef = useRef(formState);
+  formStateRef.current = formState;
+
   // The pending state during the form submit action.
   const [isSubmitting, setIsSubmitting] = useOptimistic(false);
 
@@ -573,10 +577,11 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
 
       if (options?.submit) {
-        const submittedErrors =
-          formStatus.valid === null
-            ? { ...formState.initialErrors, ...manualErrorsState.get() }
-            : formState.errors;
+        const currentState = formStateRef.current;
+
+        const submittedErrors = currentState.validated
+          ? currentState.errors
+          : { ...currentState.initialErrors, ...manualErrorsState.get() };
 
         const hasErrors = Object.keys(submittedErrors).length > 0;
 
@@ -597,7 +602,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       return true;
     },
-    [formState.errors, formState.initialErrors, formStatus.valid, manualErrorsState, dispatch]
+    [manualErrorsState, dispatch]
   );
 
   // The memoized "handleReset" function.
@@ -635,10 +640,11 @@ export function useFormState<T extends z.ZodMiniObject>(
   const handleSubmit = useCallback(
     (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions<T>) => {
       return async (submittedFormData: FormData) => {
-        const submittedErrors =
-          formStatus.valid === null
-            ? { ...formState.initialErrors, ...manualErrorsState.get() }
-            : formState.errors;
+        const currentState = formStateRef.current;
+
+        const submittedErrors = currentState.validated
+          ? currentState.errors
+          : { ...currentState.initialErrors, ...manualErrorsState.get() };
 
         const hasErrors = Object.keys(submittedErrors).length > 0;
 
@@ -648,13 +654,13 @@ export function useFormState<T extends z.ZodMiniObject>(
               errors: freezeObject({
                 ...submittedErrors,
                 get: (expression: (data: State) => unknown) =>
-                  getFieldError(submittedErrors, getPath(formState.data, expression)),
+                  getFieldError(submittedErrors, getPath(currentState.data, expression)),
                 getManual: (key: string) => submittedErrors[key as keyof State],
               }) as FormState<State>['errors'],
             }
           : {
               valid: true,
-              data: cleanEmpty(schema, formState.data) as State,
+              data: cleanEmpty(schema, currentState.data) as State,
             };
 
         setIsSubmitting(true);
@@ -706,16 +712,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         });
       };
     },
-    [
-      schema,
-      formState.data,
-      formState.errors,
-      formState.initialErrors,
-      formStatus.valid,
-      manualErrorsState,
-      dispatch,
-      setIsSubmitting,
-    ]
+    [schema, manualErrorsState, dispatch, setIsSubmitting]
   );
 
   // The memoized "reset" function.
