@@ -21,7 +21,7 @@ describe('useFormState', () => {
         required: true,
         error: 'Name is required',
       })
-      .check(z.describe('Name')),
+      .with(z.describe('Name')),
     info: z
       .object({
         uuid: z.symbol(),
@@ -30,8 +30,8 @@ describe('useFormState', () => {
             required: true,
             error: 'Age is required',
           })
-          .check(z.describe('Age')),
-        email: z.formString(z.string({ error: 'Invalid email' })).check(z.describe('Email')),
+          .with(z.describe('Age')),
+        email: z.formString(z.string({ error: 'Invalid email' })).with(z.describe('Email')),
         birthDate: z
           .formDate(
             z
@@ -42,40 +42,51 @@ describe('useFormState', () => {
               ),
             { required: false, dateFormat: 'MM/dd/yyyy' }
           )
-          .check(z.describe('Birth date')),
+          .with(z.describe('Birth date')),
       })
-      .check(z.describe('Info')),
+      .with(z.describe('Info')),
     tags: z
       .nonoptional(
-        z.formArray(z.string().check(z.maxLength(255), z.regex(/^[\w\\-]*$/), z.describe('Tag')), {
-          required: true,
-          minLength: 0,
-          maxLength: 5,
-        })
+        z.formArray(
+          z
+            .string()
+            .check(z.maxLength(255), z.regex(/^[\w\\-]*$/))
+            .with(z.describe('Tag')),
+          {
+            required: true,
+            minLength: 0,
+            maxLength: 5,
+          }
+        )
       )
-      .check(z.describe('Tags')),
-    category: z.formValues(['legacy', 'unconfirmed']).check(z.describe('Category')),
+      .with(z.describe('Tags')),
+    category: z.formValues(['legacy', 'unconfirmed']).with(z.describe('Category')),
     isActive: z
       .default(z.formBoolean(z.boolean(), { required: true, error: 'Is active is required' }), true)
-      .check(z.describe('Is record active?')),
+      .with(z.describe('Is record active?')),
     isArchived: z
       .default(z.formBoolean(z.boolean()), false)
-      .check(z.describe('Is record archived?')),
+      .with(z.describe('Is record archived?')),
     version: z
       .catch(z.formNumber(z.number().check(z.gte(0), z.lte(9999999))), 0)
-      .check(z.describe('Record version')),
+      .with(z.describe('Record version')),
     registeredOn: z
       .formDate(z.date(), { required: false, dateFormat: 'MM/dd/yyyy' })
-      .check(z.describe('Registered on')),
+      .with(z.describe('Registered on')),
     updateDates: z
-      .formArray(z.date().check(z.lte(new Date(2099, 11, 31)), z.describe('Update date')))
-      .check(z.describe('Update dates')),
+      .formArray(
+        z
+          .date()
+          .check(z.lte(new Date(2099, 11, 31)))
+          .with(z.describe('Update date'))
+      )
+      .with(z.describe('Update dates')),
     previousVersions: z
-      .formArray(z.number().check(z.lte(9999), z.describe('Previous version')))
-      .check(z.describe('Previous versions')),
+      .formArray(z.number().check(z.lte(9999)).with(z.describe('Previous version')))
+      .with(z.describe('Previous versions')),
     specialNumber: z
       .default(z.formNumber(z.number().check(z.minimum(3.1), z.maximum(3.15))), Math.PI)
-      .check(z.describe('Special number')),
+      .with(z.describe('Special number')),
   });
 
   type Schema = z.infer<typeof schema>;
@@ -2080,16 +2091,18 @@ describe('useFormState', () => {
 
       const submittedInfo = await findByText('Form Submitted');
 
-      expect(queryByText('Submitting...')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
-      expect(submitFn).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'John' }),
-        expect.any(FormData)
-      );
-      expect(errorFn).not.toBeCalled();
+        expect(submitFn).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'John' }),
+          expect.any(FormData)
+        );
+        expect(errorFn).not.toBeCalled();
 
-      expect(name).toContainHTML('John');
-      expect(submittedInfo).toBeInTheDocument();
+        expect(name).toContainHTML('John');
+        expect(submittedInfo).toBeInTheDocument();
+      });
     });
 
     it.each([true, false])('should submit form with "handleSubmit"', async (watch) => {
@@ -2110,16 +2123,18 @@ describe('useFormState', () => {
 
       const submittedInfo = await findByText('Form Submitted');
 
-      expect(queryByText('Submitting...')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
-      expect(submitFn).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'John' }),
-        expect.any(FormData)
-      );
-      expect(errorFn).not.toBeCalled();
+        expect(submitFn).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'John' }),
+          expect.any(FormData)
+        );
+        expect(errorFn).not.toBeCalled();
 
-      expect(name).toContainHTML('John');
-      expect(submittedInfo).toBeInTheDocument();
+        expect(name).toContainHTML('John');
+        expect(submittedInfo).toBeInTheDocument();
+      });
     });
 
     it.each([true, false])('should fail to submit form using "submit"', async (watch) => {
