@@ -79,6 +79,8 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  *                               the initial state in the schema.
  * @param options.initialTouched - An optional array of root level field names or state path expressions that
  *                               will be marked as touched when the form is initialized.
+ * @param options.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset
+ *                                          (default: `true`).
  * @param options.validateOnInit - Validate the schema with the initial values (default: `false`).
  * @param options.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
  * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).

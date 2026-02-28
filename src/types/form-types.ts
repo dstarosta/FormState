@@ -185,6 +185,13 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   initialMode?: FormMode | undefined;
   /**
+   * Reset the "touch" field status after the form has been reset  (default: `true`).
+   *
+   * Note: This option is only applicable to a `Form` component without a provided
+   * `onReset` handler.
+   */
+  resetTouchedOnFormReset?: boolean;
+  /**
    * Validate the schema with the initial values (default: `false`).
    */
   validateOnInit?: boolean;

@@ -48,6 +48,7 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
   initialState?: DeepPartial<z.infer<T>> | undefined;
   initialTouched?: FormPath<T>[];
   initialMode?: FormMode | undefined;
+  resetTouchedOnFormReset?: boolean;
   validateOnInit?: boolean;
   validateOnChange?: boolean;
   validateOnTouch?: boolean;

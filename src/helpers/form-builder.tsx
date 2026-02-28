@@ -2,13 +2,8 @@ import { useCallback, useRef } from 'react';
 
 import type { FormAction, FormStore } from '../types/form-types';
 
-/**
- * 'form' HTML element props that disable native behavior such as browser
- * form validation and submitting forms with a single input when pressing the
- * Enter key.
- *
- * They provide consistent behavior to forms submitted using the "action" prop.
- */
+// Private functions
+
 const formProps: React.ComponentPropsWithRef<'form'> = {
   noValidate: true,
   onKeyDown: (event: React.KeyboardEvent) => {
@@ -52,42 +47,12 @@ const getElementValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLS
   return element.value ?? '';
 };
 
-/**
- * Converts form data name/value pairs into the URL search parameters.
- *
- * Use `formDataToURL(formData).toString()` to get a string notation of the name/value pairs.
- *
- * @param formData - The form data.
- * @returns The `URLSearchParams` instance with the form data name/value pairs.
- */
-export const formDataToURL = (formData: FormData) =>
-  new URLSearchParams(
-    Array.from(formData, ([key, value]): [string, string] => {
-      return typeof value === 'string' ? [key, value] : [key, value.name];
-    })
-  );
+// Internal functions
 
-/**
- * Submits a form element.
- *
- * This function supports asynchronous action forms.
- *
- * @param form - The form element.
- */
-export const submitForm = (form?: HTMLFormElement | null) => {
-  form?.requestSubmit();
-};
-
-/**
- * Creates a Form.
- *
- * @typeParam T - type of the form data.
- * @param store - The form store instance.
- * @param dispatch - The form state reducer dispatch function.
- */
 export const createFormComponent = <T extends object>(
   store: FormStore | null,
-  dispatch: (payload: FormAction<T>) => void
+  dispatch: (payload: FormAction<T>) => void,
+  resetTouchedOnFormReset: boolean
 ) => {
   /**
    * The Form component with pre-wired reset logic.
@@ -161,7 +126,11 @@ export const createFormComponent = <T extends object>(
     const handleReset = useCallback(() => {
       dispatch({
         type: 'reset',
-        options: { retainData: false, resetTouched: true, resetSubmitted: false },
+        options: {
+          retainData: false,
+          resetSubmitted: false,
+          resetTouched: resetTouchedOnFormReset,
+        },
       });
 
       setTimeout(() => {
@@ -173,4 +142,32 @@ export const createFormComponent = <T extends object>(
   }
 
   return Form;
+};
+
+// Public functions
+
+/**
+ * Converts form data name/value pairs into the URL search parameters.
+ *
+ * Use `formDataToURL(formData).toString()` to get a string notation of the name/value pairs.
+ *
+ * @param formData - The form data.
+ * @returns The `URLSearchParams` instance with the form data name/value pairs.
+ */
+export const formDataToURL = (formData: FormData) =>
+  new URLSearchParams(
+    Array.from(formData, ([key, value]): [string, string] => {
+      return typeof value === 'string' ? [key, value] : [key, value.name];
+    })
+  );
+
+/**
+ * Submits a form element.
+ *
+ * This function supports asynchronous action forms.
+ *
+ * @param form - The form element.
+ */
+export const submitForm = (form?: HTMLFormElement | null) => {
+  form?.requestSubmit();
 };

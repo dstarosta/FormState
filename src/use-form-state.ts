@@ -82,6 +82,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     initialState,
     initialTouched,
     initialMode = 'editable',
+    resetTouchedOnFormReset = true,
     validateOnInit = false,
     validateOnChange = true,
     validateOnTouch = false,
@@ -797,8 +798,8 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The memoized Form component.
   const createComponent = useMemo(
-    () => createFormComponent<State>(storeRef.current, dispatch),
-    [dispatch]
+    () => createFormComponent<State>(storeRef.current, dispatch, resetTouchedOnFormReset),
+    [dispatch, resetTouchedOnFormReset]
   );
 
   const useWatch = (name: string) => {
