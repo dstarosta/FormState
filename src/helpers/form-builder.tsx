@@ -70,7 +70,7 @@ export const formDataToURL = (formData: FormData) =>
 /**
  * Submits a form element.
  *
- * This method supports asynchronous action forms.
+ * This function supports asynchronous action forms.
  *
  * @param form - The form element.
  */
@@ -81,8 +81,9 @@ export const submitForm = (form?: HTMLFormElement | null) => {
 /**
  * Creates a Form.
  *
- * @typeParam T type of the form data.
- * @param reset - The form reset method from the hook.
+ * @typeParam T - type of the form data.
+ * @param store - The form store instance.
+ * @param dispatch - The form state reducer dispatch function.
  */
 export const createFormComponent = <T extends object>(
   store: FormStore | null,

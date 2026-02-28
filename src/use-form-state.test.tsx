@@ -17,60 +17,52 @@ describe('useFormState', () => {
 
   const schema = z.strictObject({
     name: z
-      .formString(
-        z
-          .string()
-          .regex(/^[\d'A-Za-z-]*$/)
-          .max(25),
-        {
-          required: true,
-          error: 'Name is required',
-        }
-      )
-      .describe('Name'),
+      .formString(z.string().check(z.regex(/^[\d'A-Za-z-]*$/), z.maxLength(25)), {
+        required: true,
+        error: 'Name is required',
+      })
+      .check(z.describe('Name')),
     info: z
       .object({
         uuid: z.symbol(),
         age: z
-          .formNumber(z.number().min(1, 'Age must be > 0'), {
+          .formNumber(z.number().check(z.gte(1, 'Age must be > 0')), {
             required: true,
             error: 'Age is required',
           })
-          .describe('Age'),
-        email: z.formString(z.string({ error: 'Invalid email' })).describe('Email'),
+          .check(z.describe('Age')),
+        email: z.formString(z.string({ error: 'Invalid email' })).check(z.describe('Email')),
         birthDate: z
           .formDate(
             z
               .date()
-              .min(new Date(2020, 0, 1), 'Invalid date range')
-              .max(new Date(2039, 11, 31), 'Invalid date range'),
+              .check(
+                z.gte(new Date(2020, 0, 1), 'Invalid date range'),
+                z.lte(new Date(2039, 11, 31), 'Invalid date range')
+              ),
             { required: false, dateFormat: 'MM/dd/yyyy' }
           )
-          .describe('Birth date'),
+          .check(z.describe('Birth date')),
       })
-      .describe('Info'),
+      .check(z.describe('Info')),
     tags: z
-      .formArray(
-        z
-          .string()
-          .max(255)
-          .regex(/^[\w\\-]*$/)
-          .describe('Tag'),
-        {
+      .nonoptional(
+        z.formArray(z.string().check(z.maxLength(255), z.regex(/^[\w\\-]*$/), z.describe('Tag')), {
           required: true,
           minLength: 0,
           maxLength: 5,
-        }
+        })
       )
-      .nonoptional()
-      .describe('Tags'),
-    category: z.formValues(['legacy', 'unconfirmed']).describe('Category'),
-    isActive: z.formBoolean(z.boolean()).describe('Is record active?'),
-    isArchived: z.formBoolean(z.boolean()).describe('Is record archived?'),
-    version: z.formNumber(z.number().min(0).max(9999999)).describe('Record version'),
+      .check(z.describe('Tags')),
+    category: z.formValues(['legacy', 'unconfirmed']).check(z.describe('Category')),
+    isActive: z.formBoolean(z.boolean()).check(z.describe('Is record active?')),
+    isArchived: z.formBoolean(z.boolean()).check(z.describe('Is record archived?')),
+    version: z
+      .formNumber(z.number().check(z.gte(0), z.lte(9999999)))
+      .check(z.describe('Record version')),
     registeredOn: z.formDate(z.date()),
-    updateDates: z.formArray(z.date().max(new Date(2099, 11, 31))),
-    previousVersions: z.formArray(z.number().max(9999)),
+    updateDates: z.formArray(z.date().check(z.lte(new Date(2099, 11, 31)))),
+    previousVersions: z.formArray(z.number().check(z.lte(9999))),
   });
 
   type Schema = z.infer<typeof schema>;

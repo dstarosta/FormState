@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
 
 import type { SyntheticEvent } from 'react';
-import type * as z from 'zod';
+import type * as z from 'zod/mini';
 
 import { FormStateError } from '../helpers/form-state-error';
 
@@ -56,14 +56,14 @@ export type Immutable<T> = T extends ImmutablePrimitive
           ? ImmutableObject<T>
           : T;
 
-export type ZodDeepType<T extends z.ZodType> = T extends
-  | z.ZodOptional<infer U>
-  | z.ZodNullable<infer U>
-  | z.ZodDefault<infer U>
-  | z.ZodCatch<infer U>
-  | z.ZodPipe<infer U>
-  | z.ZodNonOptional<infer U>
-  ? ZodDeepType<U extends z.ZodType ? U : never>
+export type ZodDeepType<T extends z.ZodMiniType> = T extends
+  | z.ZodMiniOptional<infer U>
+  | z.ZodMiniNullable<infer U>
+  | z.ZodMiniDefault<infer U>
+  | z.ZodMiniCatch<infer U>
+  | z.ZodMiniPipe<infer U>
+  | z.ZodMiniNonOptional<infer U>
+  ? ZodDeepType<U extends z.ZodMiniType ? U : never>
   : T;
 
 export type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
@@ -165,9 +165,9 @@ export type FormStore = {
 /**
  * Form initialization options.
  *
- * @typeParam T type of the form data.
+ * @typeParam T - type of the form data.
  */
-export type FormInitOptions<T extends z.ZodObject> = {
+export type FormInitOptions<T extends z.ZodMiniObject> = {
   /**
    * An optional object with schema properties to set the initial state of the form.
    * This object should be used for asynchronous form initialization, otherwise, specify
@@ -176,7 +176,7 @@ export type FormInitOptions<T extends z.ZodObject> = {
    */
   initialState?: DeepPartial<z.infer<T>> | undefined;
   /**
-   * An optional array of root level field names or a state path expressions that
+   * An optional array of root level field names or state path expressions that
    * will be marked as touched when the form is initialized.
    */
   initialTouched?: FormPath<T>[];
@@ -214,14 +214,14 @@ export type FormInitOptions<T extends z.ZodObject> = {
   watch?: boolean;
 };
 
-export type FormProviderInitOptions<T extends z.ZodObject> = FormInitOptions<T> & {
+export type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
   schema: T;
 };
 
 /**
  * Form state on submission.
  *
- * @typeParam T type of the form data.
+ * @typeParam T - type of the form data.
  */
 export type SubmitState<T extends object> =
   | {
@@ -268,7 +268,7 @@ export type SubmitState<T extends object> =
 /**
  * Form state type made immutable and extended with the `get(expression)` functions.
  *
- * @typeParam T type of the form data.
+ * @typeParam T - type of the form data.
  */
 export type FormState<T extends object> = {
   /**
@@ -312,7 +312,7 @@ export type FormState<T extends object> = {
   dirty: Immutable<
     FormMutableState<T>['dirty'] & {
       /**
-       * Gets the touched state for an arbitrary string key.
+       * Gets the dirty state for an arbitrary string key.
        *
        * @param key - A string key.
        * @returns `true` if the key exists and is dirty, `false` otherwise.
@@ -357,13 +357,13 @@ export type FormState<T extends object> = {
        * Gets the minimum and maximum values for a nested numeric field.
        *
        * @param path - Form state path expression.
-       * @returns Object containing the `min` and the `max` properties that can be numeric, dates or `undefined`.
+       * @returns An object containing the `min` and the `max` properties that can be numeric, dates or `undefined`.
        */
       get: <R extends RangeOf<R>>(expression: (data: T) => R) => RangeResult<R>;
     }
   >;
   /**
-   * Optional field descriptions in the form.
+   * Optional regular expression patterns for fields in the form.
    */
   patterns: Immutable<
     FormMutableState<T>['patterns'] & {
@@ -419,7 +419,7 @@ export type FormStatus = {
   /**
    * Whether the form submit action is pending.
    *
-   * The form must be submitted from the `action` method of the form.
+   * The form must be submitted from the `action` attribute of the form.
    */
   readonly submitting: boolean;
   /**
@@ -439,17 +439,19 @@ export type FormStatus = {
 /**
  * A form path that can be a field name or a state path expression.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  */
-export type FormPath<T extends z.ZodObject> = keyof z.infer<T> | ((data: z.infer<T>) => unknown);
+export type FormPath<T extends z.ZodMiniObject> =
+  | keyof z.infer<T>
+  | ((data: z.infer<T>) => unknown);
 
 /**
  * Helper type to resolve the value type from a FormPath.
  *
- * @typeparam T form state type.
- * @typeparam P the form path (either a key or a function expression).
+ * @typeParam T - form state type.
+ * @typeParam P - the form path (either a key or a function expression).
  */
-export type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P extends (
+export type FormPathValue<T extends z.ZodMiniObject, P extends FormPath<T>> = P extends (
   data: z.infer<T>
 ) => infer R
   ? R
@@ -477,9 +479,9 @@ export type FormClassOptions = {
 /**
  * Form change options.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  */
-export type FormChangeOptions<T extends z.ZodObject> = {
+export type FormChangeOptions<T extends z.ZodMiniObject> = {
   /**
    * Indicates whether to mark field as touched (default: `false`).
    */
@@ -487,7 +489,7 @@ export type FormChangeOptions<T extends z.ZodObject> = {
   /**
    * Indicates whether to validate the field (default: `true`).
    *
-   * The default value can be overriden in the options of the `useFormState` hook.
+   * The default value can be overridden in the options of the `useFormState` hook.
    */
   validate?: boolean;
   /**
@@ -522,7 +524,7 @@ export type FormTouchOptions = {
   /**
    * Indicates whether to validate the field (default: `false`).
    *
-   * The default value can be overriden in the options of the `useFormState` hook.
+   * The default value can be overridden in the options of the `useFormState` hook.
    */
   validate?: boolean;
 };
@@ -534,7 +536,7 @@ export type FormSetErrorOptions = {
   /**
    * Indicates whether to validate the field (default: `true` - uses the `change` action default).
    *
-   * The default value can be overriden in the options of the `useFormState` hook.
+   * The default value can be overridden in the options of the `useFormState` hook.
    */
   validate?: boolean;
 };
@@ -542,9 +544,9 @@ export type FormSetErrorOptions = {
 /**
  * Form reset options.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  */
-export type FormResetOptions<T extends z.ZodObject> = {
+export type FormResetOptions<T extends z.ZodMiniObject> = {
   /**
    * An optional array of root level field names to reset. If not provided, all fields will be reset.
    */
@@ -555,7 +557,7 @@ export type FormResetOptions<T extends z.ZodObject> = {
   retainData?: boolean;
   /**
    * Indicates whether to reset the touched state of the fields (default: `true` if the whole form is
-   * being submitted, `false` if a list of names is provided.).
+   * being reset, `false` if a list of names is provided).
    */
   resetTouched?: boolean;
   /**
@@ -574,9 +576,9 @@ export type FormResetOptions<T extends z.ZodObject> = {
 /**
  * Form validation options.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  */
-export type FormValidateOptions<T extends z.ZodObject> = {
+export type FormValidateOptions<T extends z.ZodMiniObject> = {
   /**
    * Indicates whether to reset the dirty state of the fields (default: `true`).
    */
@@ -601,9 +603,9 @@ export type FormValidateOptions<T extends z.ZodObject> = {
 /**
  * Form submission options.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  */
-export type FormSubmitOptions<T extends z.ZodObject> = {
+export type FormSubmitOptions<T extends z.ZodMiniObject> = {
   /**
    * Indicates whether to reset the dirty state of the fields (default: `true`).
    */
@@ -616,11 +618,11 @@ export type FormSubmitOptions<T extends z.ZodObject> = {
    * An optional callback to run after the form state has been submitted.
    *
    * @param data - Strongly typed submitted form data.
-   * @param status - Submitted form data as a `FormData` instance.
+   * @param formData - Submitted form data as a `FormData` instance.
    */
   onSuccess?: (data: z.infer<T>, formData: FormData) => void;
   /**
-   * An optional callback to run after the form state if the form was not submitted due to errors
+   * An optional callback to run if the form was not submitted due to errors
    * or the `onSubmit` function returning `false`.
    *
    * @param state - Updated form state - data, errors, touched and dirty flags.
@@ -630,12 +632,12 @@ export type FormSubmitOptions<T extends z.ZodObject> = {
 };
 
 /**
- * Form submission hander callback.
+ * Form submission handler callback.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  * @returns true, if there are no errors, or a hash object with error names and messages.
  */
-export type FormSubmitHandler<T extends z.ZodObject> = (
+export type FormSubmitHandler<T extends z.ZodMiniObject> = (
   /**
    * The submitted form state.
    */
@@ -654,9 +656,9 @@ export type FormMode = 'editable' | 'readOnly' | 'disabled';
 /**
  * The form state response type.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  */
-export type FormStateResponse<T extends z.ZodObject> = {
+export type FormStateResponse<T extends z.ZodMiniObject> = {
   /**
    * Initial form state - data and errors.
    */
@@ -678,10 +680,10 @@ export type FormStateResponse<T extends z.ZodObject> = {
    * Form status.
    */
   formStatus: FormStatus;
-  /***
+  /**
    * Returns the form CSS classes for the control with the provided path.
    *
-   * @typeparam T form state type.
+   * @typeParam T - form state type.
    * @param nameOrPath - Root level field name or a state path expression.
    * @param additionalClasses - Optional string containing additional CSS classes for the control.
    * @param options - Options for form CSS classes.
@@ -699,8 +701,8 @@ export type FormStateResponse<T extends z.ZodObject> = {
     /**
      * Performs form field changes.
      *
-     * @typeparam T form state type.
-     * @typeparam P the form path type.
+     * @typeParam T - form state type.
+     * @typeParam P - the form path type.
      * @param nameOrPath - Root level field name or a state path expression.
      * @param value - New value for the field (typed based on the path).
      * @param options - Options for the change event.
@@ -713,7 +715,7 @@ export type FormStateResponse<T extends z.ZodObject> = {
     /**
      * Performs data replacement in the form state.
      *
-     * @typeparam T form state type.
+     * @typeParam T - form state type.
      * @param data - Replacement data.
      * @param options - Options for the replace event.
      */
@@ -721,14 +723,14 @@ export type FormStateResponse<T extends z.ZodObject> = {
     /**
      * Resets the form to its initial state.
      *
-     * @typeparam T form state type.
+     * @typeParam T - form state type.
      * @param options - Options for reset event.
      */
     reset: (options?: FormResetOptions<T>) => void;
     /**
      * Performs form field control touch state changes.
      *
-     * @typeparam T form state type.
+     * @typeParam T - form state type.
      * @param nameOrPath - Root level field name or a state path expression.
      *                     The first field in the schema is touched if the path is not provided.
      * @param options - Options for the touch event.
@@ -791,12 +793,12 @@ export type FormStateResponse<T extends z.ZodObject> = {
       options?: FormSubmitOptions<T>
     ) => (formData: FormData) => Promise<void>;
     /**
-     * A function to call in the `onReset` attribute the form to its initial state.
+     * A function to call in the `onReset` attribute to reset the form to its initial state.
      *
      * There is no need to call this function manually if you are using the `Form` component of the library.
      * However, you may still want to call the function on reset with non-default option values.
      *
-     * @typeparam T form state type.
+     * @typeParam T - form state type.
      * @param event - Pass-through form reset event that triggered the HTML form reset.
      * @param options - Options for reset event.
      */
@@ -825,7 +827,7 @@ export type FormStateResponse<T extends z.ZodObject> = {
    *  - textarea
    *
    * @param name - A `name` HTML attribute value of the element to watch.
-   * @returns - The value of the element.
+   * @returns The value of the element.
    */
   useWatch: (name: string) => string | undefined;
 };
@@ -844,9 +846,9 @@ export type FormDateFormat =
 /**
  * Component props that contain the form state.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  */
-export type FormStateProps<T extends z.ZodObject> = {
+export type FormStateProps<T extends z.ZodMiniObject> = {
   /**
    * The form state.
    */
@@ -856,9 +858,9 @@ export type FormStateProps<T extends z.ZodObject> = {
 /**
  * Component props that contain the form state and the index of the corresponding array property in the state.
  *
- * @typeparam T form state type.
+ * @typeParam T - form state type.
  */
-export type FormStatePropsWithIndex<T extends z.ZodObject> = FormStateProps<T> & {
+export type FormStatePropsWithIndex<T extends z.ZodMiniObject> = FormStateProps<T> & {
   /**
    * The index of the corresponding array state property.
    */
@@ -866,12 +868,12 @@ export type FormStatePropsWithIndex<T extends z.ZodObject> = FormStateProps<T> &
 };
 
 /**
- * Component props that contain the HTML element properties along witht the form state.
+ * Component props that contain the HTML element properties along with the form state.
  *
- * @typeparam T HTML element type.
- * @typeparam F form state type.
+ * @typeParam T - HTML element type.
+ * @typeParam F - form state type.
  */
-export type FormControlWithStateProps<F extends z.ZodObject> = FormStateProps<F> &
+export type FormControlWithStateProps<F extends z.ZodMiniObject> = FormStateProps<F> &
   Omit<React.ComponentPropsWithRef<'form'>, 'form'>;
 
 /**
@@ -891,7 +893,7 @@ export type DateParseResult = {
 /**
  * The `ranges` value conditional type.
  *
- * @typeparam The range type.
+ * @typeParam R - The range type.
  */
 export type RangeResult<R> = R extends number | Date
   ? { min: R | undefined | ''; max: R | undefined | ''; format: string }
@@ -900,9 +902,9 @@ export type RangeResult<R> = R extends number | Date
 /**
  * The type for a successful state validation result.
  *
- * @typeparam The form schema type.
+ * @typeParam T - The form schema type.
  */
-export type StateValidationSuccess<T extends z.ZodObject> = {
+export type StateValidationSuccess<T extends z.ZodMiniObject> = {
   /**
    * The data object instance, if the validation was successful.
    */
@@ -916,9 +918,9 @@ export type StateValidationSuccess<T extends z.ZodObject> = {
 /**
  * The type for a failed state validation result.
  *
- * @typeparam The form schema type.
+ * @typeParam T - The form schema type.
  */
-export type StateValidationFailure<T extends z.ZodObject> = {
+export type StateValidationFailure<T extends z.ZodMiniObject> = {
   /**
    * The form state error instance, if the validation was unsuccessful.
    */

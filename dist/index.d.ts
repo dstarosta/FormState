@@ -1,4 +1,4 @@
-import * as z from "zod";
+import * as z from "zod/mini";
 import { ComponentType, PropsWithChildren, SyntheticEvent } from "react";
 import * as react_jsx_runtime0 from "react/jsx-runtime";
 
@@ -20,7 +20,7 @@ type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
 type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
 type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
 type Immutable<T> = T extends ImmutablePrimitive ? T : T extends Array<infer U> ? ImmutableArray<U> : T extends Map<infer K, infer V> ? ImmutableMap<K, V> : T extends Set<infer M> ? ImmutableSet<M> : T extends object ? ImmutableObject<T> : T;
-type ZodDeepType<T extends z.ZodType> = T extends z.ZodOptional<infer U> | z.ZodNullable<infer U> | z.ZodDefault<infer U> | z.ZodCatch<infer U> | z.ZodPipe<infer U> | z.ZodNonOptional<infer U> ? ZodDeepType<U extends z.ZodType ? U : never> : T;
+type ZodDeepType<T extends z.ZodMiniType> = T extends z.ZodMiniOptional<infer U> | z.ZodMiniNullable<infer U> | z.ZodMiniDefault<infer U> | z.ZodMiniCatch<infer U> | z.ZodMiniPipe<infer U> | z.ZodMiniNonOptional<infer U> ? ZodDeepType<U extends z.ZodMiniType ? U : never> : T;
 type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 type FieldRange = number | Date | undefined;
 type FormMutableState<T extends object> = {
@@ -44,7 +44,7 @@ type FormMutableState<T extends object> = {
   readOnly: boolean;
   disabled: boolean;
 };
-type FormInitOptions<T extends z.ZodObject> = {
+type FormInitOptions<T extends z.ZodMiniObject> = {
   initialState?: DeepPartial<z.infer<T>> | undefined;
   initialTouched?: FormPath<T>[];
   initialMode?: FormMode | undefined;
@@ -54,7 +54,7 @@ type FormInitOptions<T extends z.ZodObject> = {
   debounceCacheCapacity?: number;
   watch?: boolean;
 };
-type FormProviderInitOptions<T extends z.ZodObject> = FormInitOptions<T> & {
+type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
   schema: T;
 };
 type SubmitState<T extends object> = {
@@ -104,12 +104,12 @@ type FormStatus = {
   readonly readOnly: boolean;
   readonly disabled: boolean;
 };
-type FormPath<T extends z.ZodObject> = keyof z.infer<T> | ((data: z.infer<T>) => unknown);
-type FormPathValue<T extends z.ZodObject, P extends FormPath<T>> = P extends ((data: z.infer<T>) => infer R) ? R : P extends keyof z.infer<T> ? z.infer<T>[P] : P extends string ? PathValue<z.infer<T>, P> : unknown;
+type FormPath<T extends z.ZodMiniObject> = keyof z.infer<T> | ((data: z.infer<T>) => unknown);
+type FormPathValue<T extends z.ZodMiniObject, P extends FormPath<T>> = P extends ((data: z.infer<T>) => infer R) ? R : P extends keyof z.infer<T> ? z.infer<T>[P] : P extends string ? PathValue<z.infer<T>, P> : unknown;
 type FormClassOptions = {
   classPrefix?: string;
 };
-type FormChangeOptions<T extends z.ZodObject> = {
+type FormChangeOptions<T extends z.ZodMiniObject> = {
   touch?: boolean;
   validate?: boolean;
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
@@ -124,28 +124,28 @@ type FormTouchOptions = {
 type FormSetErrorOptions = {
   validate?: boolean;
 };
-type FormResetOptions<T extends z.ZodObject> = {
+type FormResetOptions<T extends z.ZodMiniObject> = {
   names?: (keyof z.infer<T>)[];
   retainData?: boolean;
   resetTouched?: boolean;
   resetSubmitted?: boolean;
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
-type FormValidateOptions<T extends z.ZodObject> = {
+type FormValidateOptions<T extends z.ZodMiniObject> = {
   resetDirty?: boolean;
   resetTouched?: boolean;
   submit?: boolean;
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
-type FormSubmitOptions<T extends z.ZodObject> = {
+type FormSubmitOptions<T extends z.ZodMiniObject> = {
   resetDirty?: boolean;
   resetTouched?: boolean;
   onSuccess?: (data: z.infer<T>, formData: FormData) => void;
   onError?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
 };
-type FormSubmitHandler<T extends z.ZodObject> = (state: SubmitState<z.infer<T>>, formData: FormData) => Promise<Record<string, string> | true> | Record<string, string> | true;
+type FormSubmitHandler<T extends z.ZodMiniObject> = (state: SubmitState<z.infer<T>>, formData: FormData) => Promise<Record<string, string> | true> | Record<string, string> | true;
 type FormMode = 'editable' | 'readOnly' | 'disabled';
-type FormStateResponse<T extends z.ZodObject> = {
+type FormStateResponse<T extends z.ZodMiniObject> = {
   initialState: {
     data: Immutable<z.infer<T>>;
     errors: Immutable<Record<keyof z.infer<T>, string | undefined>>;
@@ -172,13 +172,13 @@ type FormStateResponse<T extends z.ZodObject> = {
   useWatch: (name: string) => string | undefined;
 };
 type FormDateFormat = 'yyyy-MM-dd' | 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'MM-dd-yyyy' | 'dd-MM-yyyy' | 'dd.MM.yyyy';
-type FormStateProps<T extends z.ZodObject> = {
+type FormStateProps<T extends z.ZodMiniObject> = {
   form: FormStateResponse<T>;
 };
-type FormStatePropsWithIndex<T extends z.ZodObject> = FormStateProps<T> & {
+type FormStatePropsWithIndex<T extends z.ZodMiniObject> = FormStateProps<T> & {
   index: number;
 };
-type FormControlWithStateProps<F extends z.ZodObject> = FormStateProps<F> & Omit<React.ComponentPropsWithRef<'form'>, 'form'>;
+type FormControlWithStateProps<F extends z.ZodMiniObject> = FormStateProps<F> & Omit<React.ComponentPropsWithRef<'form'>, 'form'>;
 type DateParseResult = {
   success: boolean;
   date: Date | null;
@@ -189,9 +189,9 @@ type RangeResult<R> = R extends number | Date ? {
   format: string;
 } : undefined;
 declare namespace form_schema_d_exports {
-  export { z as advanced, array, boolean, date, formArray, formBoolean, formDate, formNumber, formString, formValues, infer, number, object, regexes, strictObject, string, symbol };
+  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, _enum as enum, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, infer, length, lt, lte, maxLength, maximum, minLength, minimum, nonoptional, number, object, optional, regex, regexes, strictObject, string, symbol, toLowerCase, toUpperCase, trim };
 }
-type infer<T extends z.ZodType> = z.infer<T>;
+type infer<T extends z.ZodMiniType> = z.infer<T>;
 declare const string: typeof z.string;
 declare const number: typeof z.number;
 declare const boolean: typeof z.boolean;
@@ -201,55 +201,86 @@ declare const object: typeof z.object;
 declare const strictObject: typeof z.strictObject;
 declare const symbol: typeof z.symbol;
 declare const regexes: typeof z.core.regexes;
-declare function formBoolean(zodBoolean: ZodDeepType<z.ZodBoolean>, options?: {
+declare const regex: typeof z.core._regex;
+declare const minLength: typeof z.core._minLength;
+declare const maxLength: typeof z.core._maxLength;
+declare const length: typeof z.core._length;
+declare const minimum: typeof z.core._gte;
+declare const maximum: typeof z.core._lte;
+declare const gt: typeof z.core._gt;
+declare const gte: typeof z.core._gte;
+declare const lt: typeof z.core._lt;
+declare const lte: typeof z.core._lte;
+declare const describe: typeof z.core.describe;
+declare const trim: typeof z.core._trim;
+declare const toLowerCase: typeof z.core._toLowerCase;
+declare const toUpperCase: typeof z.core._toUpperCase;
+declare const optional: typeof z.optional;
+declare const nonoptional: typeof z.nonoptional;
+declare const _enum: typeof z.enum;
+declare const _catch: typeof z.catch;
+declare const _default: typeof z._default;
+declare const advanced: {
+  literal: typeof z.literal;
+  nullable: typeof z.nullable;
+  nullish: typeof z.nullish;
+  pipe: typeof z.pipe;
+  transform: typeof z.transform;
+  union: typeof z.union;
+};
+declare function formBoolean(zodBoolean: ZodDeepType<z.ZodMiniBoolean<boolean>>, options?: {
   required: boolean;
   error?: string;
-}): z.ZodPipe<z.ZodTransform<boolean | "", unknown>, z.ZodBoolean | z.ZodUnion<[z.ZodBoolean, z.ZodLiteral<"">]>>;
-declare function formDate(zodDate: ZodDeepType<z.ZodDate>, options?: {
+}): z.ZodMiniPipe<z.ZodMiniTransform<boolean | "", unknown>, z.ZodMiniBoolean<boolean> | z.ZodMiniUnion<readonly [z.ZodMiniBoolean<boolean>, z.ZodMiniLiteral<"">]>>;
+declare function formDate(zodDate: ZodDeepType<z.ZodMiniDate<Date>>, options?: {
   required: boolean;
   error?: string;
   dateFormat?: FormDateFormat;
   dateFormatError?: string;
-}): z.ZodPipe<z.ZodTransform<string | Date, unknown>, z.ZodUnion<[z.ZodDate, z.ZodString]>>;
-declare function formNumber(zodNumber: ZodDeepType<z.ZodNumber>, options?: {
+}): z.ZodMiniPipe<z.ZodMiniTransform<string | Date, unknown>, z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>>;
+declare function formNumber(zodNumber: ZodDeepType<z.ZodMiniNumber<number>>, options?: {
   required: boolean;
   error?: string;
-}): z.ZodPipe<z.ZodTransform<number | "", unknown>, z.ZodNumber | z.ZodUnion<[z.ZodNumber, z.ZodLiteral<"">]>>;
-declare function formString(zodString: ZodDeepType<z.ZodString>, options?: {
+}): z.ZodMiniPipe<z.ZodMiniTransform<number | "", unknown>, z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<"">]>>;
+declare function formString(zodString: ZodDeepType<z.ZodMiniString<string>>, options?: {
   required: boolean;
   error?: string;
-}): z.ZodPipe<z.ZodTransform<{}, unknown>, z.ZodString | z.ZodUnion<[z.ZodString, z.ZodLiteral<"">]>>;
+}): z.ZodMiniPipe<z.ZodMiniTransform<string, unknown>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<"">]>>;
 declare function formValues<const T extends readonly [string, ...string[]]>(values: T, options: {
   required: true;
   error?: string;
-}): z.ZodPipe<z.ZodTransform, z.ZodEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }>>;
+}): z.ZodMiniPipe<z.ZodMiniTransform, z.ZodMiniEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }>>;
 declare function formValues<const T extends readonly [string, ...string[]]>(values: T, options?: {
   required?: false;
   error?: string;
-}): z.ZodPipe<z.ZodTransform, z.ZodEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }> | z.ZodLiteral<''>>;
-declare function formArray<T extends z.ZodType>(elementSchema: T extends z.ZodObject | z.ZodArray ? never : T, options?: {
+}): z.ZodMiniPipe<z.ZodMiniTransform, z.ZodMiniEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }> | z.ZodMiniLiteral<''>>;
+declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.ZodMiniObject | z.ZodMiniArray ? never : T, options?: {
   required: boolean;
   minLength?: number;
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z.ZodArray<T extends z.ZodObject<z.core.$ZodLooseShape, z.core.$strip> | z.ZodArray<z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>> ? never : T> | z.ZodOptional<z.ZodArray<T extends z.ZodObject<z.core.$ZodLooseShape, z.core.$strip> | z.ZodArray<z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>> ? never : T>>;
+}): z.ZodMiniArray<T extends z.ZodMiniArray<z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>> | z.ZodMiniObject<Readonly<{
+  [k: string]: z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+}>, z.core.$strip> ? never : T> | z.ZodMiniOptional<z.ZodMiniArray<T extends z.ZodMiniArray<z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>> | z.ZodMiniObject<Readonly<{
+  [k: string]: z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+}>, z.core.$strip> ? never : T>>;
 //#endregion
 //#region src/use-form-state.d.ts
-declare function useFormState<T extends z.ZodObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
+declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
 //#endregion
 //#region src/form-provider.d.ts
-declare function FormStateProvider<T extends z.ZodObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): react_jsx_runtime0.JSX.Element;
-declare function useFormStateContext<T extends z.ZodObject>(schema: T): FormStateResponse<T>;
-declare function formConnect<T extends z.ZodObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
+declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): react_jsx_runtime0.JSX.Element;
+declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): FormStateResponse<T>;
+declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
   (innerProps: Readonly<P>): react_jsx_runtime0.JSX.Element;
   displayName: string;
 };
 //#endregion
 //#region src/helpers/state-manager.d.ts
-declare function createState<T extends z.ZodObject>(schema: T): z.infer<T>;
-declare function createInitialState<T extends z.ZodObject>(schema: T, data: DeepPartial<z.infer<T>> | null | undefined): z.core.output<T>;
-declare function getState<T extends z.ZodObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValue<T, P> | undefined;
+declare function createState<T extends z.ZodMiniObject>(schema: T): z.infer<T>;
+declare function createInitialState<T extends z.ZodMiniObject>(schema: T, data: DeepPartial<z.infer<T>> | null | undefined): z.core.output<T>;
+declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValue<T, P> | undefined;
 declare function updateState<T>(state: ImmutableArray<T> | undefined, updater: (draft: T[]) => void): T[];
 declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: (draft: T) => void): T;
 //#endregion
@@ -258,7 +289,7 @@ declare function formatDate(date: Date, format?: FormDateFormat): string;
 declare function safeParseDate(input: string | undefined, format?: FormDateFormat): DateParseResult;
 //#endregion
 //#region src/helpers/error-formatter.d.ts
-declare const validateState: <T extends z.ZodObject>(schema: T, data: DeepPartial<z.infer<T>>, populateDefaults?: boolean) => {
+declare const validateState: <T extends z.ZodMiniObject>(schema: T, data: DeepPartial<z.infer<T>>, populateDefaults?: boolean) => {
   error: FormStateError<T>;
   success: false;
   data?: never;
@@ -279,7 +310,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 declare const toBoolean: (value: string, options?: {
   strict?: boolean;
 }) => boolean | "";

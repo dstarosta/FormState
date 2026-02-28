@@ -5,12 +5,12 @@ import { useFormStateContext, formConnect, z } from './';
 
 describe('form provider', () => {
   const schema = z.object({
-    id: z.formNumber(z.number(), { required: true }).describe('ID'),
+    id: z.formNumber(z.number(), { required: true }).check(z.describe('ID')),
     info: z.object({
-      name: z.formString(z.string().max(50)).describe("Person's Name"),
+      name: z.formString(z.string().check(z.maxLength(50))).check(z.describe("Person's Name")),
       age: z
-        .formNumber(z.number().min(1, 'Age must be > 0').max(125, 'Age must be < 125'))
-        .describe("Person's Age"),
+        .formNumber(z.number().check(z.gte(1, 'Age must be > 0'), z.lte(125, 'Age must be < 125')))
+        .check(z.describe("Person's Age")),
     }),
   });
 

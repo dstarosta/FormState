@@ -1,4 +1,4 @@
-// Internal methods
+// Internal functions
 
 export function debounce<T extends unknown[]>(fn: (...args: T) => unknown, wait: number) {
   let timeout: ReturnType<typeof setTimeout> | null = null;

@@ -1,45 +1,36 @@
-import * as z from 'zod';
+import * as z from 'zod/mini';
 import type { FieldRange, FormStatePath } from '../types/form-types';
 import { toUTC } from './date-formatter';
 
-// Private methods
+// Private functions
 
-const getSchemaMaxLength = (schema: z.ZodString | z.ZodArray) => {
-  let maxLength: number | undefined;
+const getSchemaMaxLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
+  const checks =
+    (schema instanceof z.ZodMiniString || schema instanceof z.ZodMiniArray) &&
+    Array.isArray(schema.def.checks)
+      ? schema.def.checks
+      : undefined;
 
-  if (
-    schema instanceof z.ZodString &&
-    typeof schema.maxLength === 'number' &&
-    Number.isInteger(schema.maxLength)
-  ) {
-    maxLength = schema.maxLength;
-  } else if (schema instanceof z.ZodArray && Array.isArray(schema.def.checks)) {
-    const check = schema.def.checks.find(
-      (chk): chk is z.core.$ZodCheckMaxLength => chk._zod?.def?.check === 'max_length'
-    )?._zod.def;
+  const check = checks?.find(
+    (chk): chk is z.core.$ZodCheckMaxLength => chk._zod?.def?.check === 'max_length'
+  )?._zod.def;
 
-    if (check) {
-      maxLength = check.maximum;
-    }
-  }
-
-  return maxLength;
+  return check?.maximum;
 };
 
-const getNumericSchemaRange = (schema: z.ZodNumber) => {
-  const minValue =
-    schema.minValue !== null &&
-    !Number.isNaN(schema.minValue) &&
-    schema.minValue !== Number.NEGATIVE_INFINITY
-      ? schema.minValue
-      : undefined;
+const getNumericSchemaRange = (schema: z.ZodMiniNumber) => {
+  const bag = schema._zod?.bag as Record<string, number | undefined> | undefined;
+  const rawMin = Math.max(
+    bag?.['minimum'] ?? Number.NEGATIVE_INFINITY,
+    bag?.['exclusiveMinimum'] ?? Number.NEGATIVE_INFINITY
+  );
+  const rawMax = Math.min(
+    bag?.['maximum'] ?? Number.POSITIVE_INFINITY,
+    bag?.['exclusiveMaximum'] ?? Number.POSITIVE_INFINITY
+  );
 
-  const maxValue =
-    schema.maxValue !== null &&
-    !Number.isNaN(schema.maxValue) &&
-    schema.maxValue !== Number.POSITIVE_INFINITY
-      ? schema.maxValue
-      : undefined;
+  const minValue = Number.isFinite(rawMin) ? rawMin : undefined;
+  const maxValue = Number.isFinite(rawMax) ? rawMax : undefined;
 
   const hasNonInteger =
     (minValue !== undefined && !Number.isInteger(minValue)) ||
@@ -50,7 +41,7 @@ const getNumericSchemaRange = (schema: z.ZodNumber) => {
   return { min: minValue, max: maxValue, format: numberFormat };
 };
 
-const getDateSchemaRange = (schema: z.ZodDate) => {
+const getDateSchemaRange = (schema: z.ZodMiniDate) => {
   const minCheck = schema.def.checks?.find(
     (chk): chk is z.core.$ZodCheckGreaterThan<Date> => chk._zod?.def?.check === 'greater_than'
   )?._zod.def;
@@ -64,7 +55,7 @@ const getDateSchemaRange = (schema: z.ZodDate) => {
 
   let dateFormat = 'yyyy-MM-dd';
 
-  const meta = schema.meta();
+  const meta = z.globalRegistry.get(schema);
 
   if (meta && typeof meta['format'] === 'string' && meta['format'].length > 0) {
     dateFormat = meta['format'];
@@ -73,7 +64,7 @@ const getDateSchemaRange = (schema: z.ZodDate) => {
   return { min: toUTC(minDate), max: toUTC(maxDate), format: dateFormat };
 };
 
-const getSchemaPattern = (schema: z.ZodString) => {
+const getSchemaPattern = (schema: z.ZodMiniString) => {
   let pattern: string | undefined;
 
   if (Array.isArray(schema.def.checks)) {
@@ -90,74 +81,75 @@ const getSchemaPattern = (schema: z.ZodString) => {
 };
 
 const recursiveCollect = <T>(
-  schema: z.ZodType,
+  schema: z.ZodMiniType,
   obj: Record<string, T>,
   key: string,
-  collect: (schema: z.ZodType, field: string, parentKey: string) => Record<string, T>
+  collect: (schema: z.ZodMiniType, field: string, parentKey: string) => Record<string, T>
 ) => {
   if (
-    schema instanceof z.ZodArray &&
-    (schema.element instanceof z.ZodArray ||
-      schema.element instanceof z.ZodObject ||
-      schema.element instanceof z.ZodNumber ||
-      schema.element instanceof z.ZodUnion)
+    schema instanceof z.ZodMiniArray &&
+    (schema.def.element instanceof z.ZodMiniArray ||
+      schema.def.element instanceof z.ZodMiniObject ||
+      schema.def.element instanceof z.ZodMiniNumber ||
+      schema.def.element instanceof z.ZodMiniUnion)
   ) {
-    Object.assign(obj, collect(schema.element, '0', key));
-  } else if (schema instanceof z.ZodObject) {
+    Object.assign(obj, collect(schema.def.element, '0', key));
+  } else if (schema instanceof z.ZodMiniObject) {
     for (const prop in schema.shape) {
       if (Object.prototype.hasOwnProperty.call(schema.shape, prop)) {
-        Object.assign(obj, collect(schema.shape[prop] as z.ZodType, prop, key));
+        Object.assign(obj, collect(schema.shape[prop] as z.ZodMiniType, prop, key));
       }
     }
   }
 };
 
-// Internal methods
+// Internal functions
 
 export const getBaseType = (value: unknown) => {
   let innerValue = value;
 
   while (
-    innerValue instanceof z.ZodReadonly ||
-    innerValue instanceof z.ZodOptional ||
-    innerValue instanceof z.ZodNonOptional ||
-    innerValue instanceof z.ZodDefault ||
-    innerValue instanceof z.ZodPrefault ||
-    innerValue instanceof z.ZodCatch ||
-    innerValue instanceof z.ZodNullable ||
-    innerValue instanceof z.ZodPipe ||
-    innerValue instanceof z.ZodUnion
+    innerValue instanceof z.ZodMiniReadonly ||
+    innerValue instanceof z.ZodMiniOptional ||
+    innerValue instanceof z.ZodMiniNonOptional ||
+    innerValue instanceof z.ZodMiniDefault ||
+    innerValue instanceof z.ZodMiniPrefault ||
+    innerValue instanceof z.ZodMiniCatch ||
+    innerValue instanceof z.ZodMiniNullable ||
+    innerValue instanceof z.ZodMiniPipe ||
+    innerValue instanceof z.ZodMiniUnion
   ) {
-    if (innerValue instanceof z.ZodPipe) {
-      innerValue = innerValue.def.out instanceof z.ZodTransform ? innerValue.in : innerValue.out;
-    } else if (innerValue instanceof z.ZodUnion) {
-      innerValue = innerValue.options.find(
-        (option) => !(option instanceof z.ZodLiteral) && !(option instanceof z.ZodTransform)
+    if (innerValue instanceof z.ZodMiniPipe) {
+      innerValue =
+        innerValue.def.out instanceof z.ZodMiniTransform ? innerValue.def.in : innerValue.def.out;
+    } else if (innerValue instanceof z.ZodMiniUnion) {
+      innerValue = innerValue.def.options.find(
+        (option) => !(option instanceof z.ZodMiniLiteral) && !(option instanceof z.ZodMiniTransform)
       );
     } else {
       innerValue = innerValue.def.innerType;
     }
   }
 
-  return innerValue as z.ZodType;
+  return innerValue as z.ZodMiniType;
 };
 
-export function getSchemaType(schema: z.ZodType, path: string) {
-  let current: z.ZodType = getBaseType(schema);
+export function getSchemaType(schema: z.ZodMiniType, path: string) {
+  let current: z.ZodMiniType = getBaseType(schema);
 
   const parts = path.split('.');
 
   for (const part of parts) {
-    if (current instanceof z.ZodObject) {
+    if (current instanceof z.ZodMiniObject) {
       current = current.shape[part] ? getBaseType(current.shape[part]) : z.undefined();
-    } else if (current instanceof z.ZodArray && /^\d+$/.test(part)) {
-      current = getBaseType(current.element);
+    } else if (current instanceof z.ZodMiniArray && /^\d+$/.test(part)) {
+      current = getBaseType(current.def.element);
     }
 
     if (
-      current instanceof z.ZodEnum &&
-      typeof current.enum === 'object' &&
-      typeof Object.values(current.enum)[0] === 'string'
+      current instanceof z.ZodMiniEnum &&
+      typeof current.def.entries === 'object' &&
+      typeof Object.values(current.def.entries)[0] === 'string'
     ) {
       current = z.string();
     }
@@ -167,7 +159,7 @@ export function getSchemaType(schema: z.ZodType, path: string) {
 }
 
 export const collectMaxLengths = (
-  schema: z.ZodType,
+  schema: z.ZodMiniType,
   field: string = '',
   parentKey: string = ''
 ): Record<string, number> => {
@@ -176,17 +168,17 @@ export const collectMaxLengths = (
 
   const baseSchema = getBaseType(schema);
 
-  if (baseSchema instanceof z.ZodArray || baseSchema instanceof z.ZodString) {
+  if (baseSchema instanceof z.ZodMiniArray || baseSchema instanceof z.ZodMiniString) {
     const maxLength = getSchemaMaxLength(baseSchema);
 
     if (typeof maxLength === 'number') {
       maxLengths[key] = maxLength;
     }
 
-    if (baseSchema instanceof z.ZodArray) {
-      const baseElementSchema = getBaseType(baseSchema.element);
+    if (baseSchema instanceof z.ZodMiniArray) {
+      const baseElementSchema = getBaseType(baseSchema.def.element);
 
-      if (baseElementSchema instanceof z.ZodString) {
+      if (baseElementSchema instanceof z.ZodMiniString) {
         const elementMaxLength = getSchemaMaxLength(baseElementSchema);
 
         if (typeof elementMaxLength === 'number') {
@@ -202,7 +194,7 @@ export const collectMaxLengths = (
 };
 
 export const collectRanges = (
-  schema: z.ZodType,
+  schema: z.ZodMiniType,
   field: string = '',
   parentKey: string = ''
 ): Record<string, { min: FieldRange; max: FieldRange; format: string }> => {
@@ -211,28 +203,28 @@ export const collectRanges = (
 
   const baseSchema = getBaseType(schema);
 
-  if (baseSchema instanceof z.ZodNumber) {
+  if (baseSchema instanceof z.ZodMiniNumber) {
     const range = getNumericSchemaRange(baseSchema);
 
     if (range.min !== undefined || range.max !== undefined) {
       ranges[key] = range;
     }
-  } else if (baseSchema instanceof z.ZodDate) {
+  } else if (baseSchema instanceof z.ZodMiniDate) {
     const range = getDateSchemaRange(baseSchema);
 
     if (range.min !== undefined || range.max !== undefined) {
       ranges[key] = range;
     }
-  } else if (baseSchema instanceof z.ZodArray) {
-    const baseElementSchema = getBaseType(baseSchema.element);
+  } else if (baseSchema instanceof z.ZodMiniArray) {
+    const baseElementSchema = getBaseType(baseSchema.def.element);
 
-    if (baseElementSchema instanceof z.ZodNumber) {
+    if (baseElementSchema instanceof z.ZodMiniNumber) {
       const elementRange = getNumericSchemaRange(baseElementSchema);
 
       if (elementRange.min !== undefined || elementRange.max !== undefined) {
         ranges[key + '.0'] = elementRange;
       }
-    } else if (baseElementSchema instanceof z.ZodDate) {
+    } else if (baseElementSchema instanceof z.ZodMiniDate) {
       const elementRange = getDateSchemaRange(baseElementSchema);
 
       if (elementRange.min !== undefined || elementRange.max !== undefined) {
@@ -247,7 +239,7 @@ export const collectRanges = (
 };
 
 export const collectDescriptions = (
-  schema: z.ZodType,
+  schema: z.ZodMiniType,
   field: string = '',
   parentKey: string = ''
 ): Record<string, string | undefined> => {
@@ -256,21 +248,21 @@ export const collectDescriptions = (
 
   const baseSchema = getBaseType(schema);
 
-  let description = schema.description;
+  let description = z.globalRegistry.get(schema)?.description;
 
-  if (!description && baseSchema instanceof z.ZodType) {
-    description = baseSchema.description;
+  if (!description && baseSchema instanceof z.ZodMiniType) {
+    description = z.globalRegistry.get(baseSchema)?.description;
   }
 
   if (description) {
     descriptions[key] = description;
   }
 
-  if (baseSchema instanceof z.ZodArray) {
-    const baseElementSchema = getBaseType(baseSchema.element);
+  if (baseSchema instanceof z.ZodMiniArray) {
+    const baseElementSchema = getBaseType(baseSchema.def.element);
 
-    if (baseElementSchema.description) {
-      descriptions[key + '.0'] = baseElementSchema.description;
+    if (z.globalRegistry.get(baseElementSchema)?.description) {
+      descriptions[key + '.0'] = z.globalRegistry.get(baseElementSchema)?.description;
     }
   }
 
@@ -280,7 +272,7 @@ export const collectDescriptions = (
 };
 
 export const collectPatterns = (
-  schema: z.ZodType,
+  schema: z.ZodMiniType,
   field: string = '',
   parentKey: string = ''
 ): Record<string, string | undefined> => {
@@ -289,16 +281,16 @@ export const collectPatterns = (
 
   const baseSchema = getBaseType(schema);
 
-  if (baseSchema instanceof z.ZodString) {
+  if (baseSchema instanceof z.ZodMiniString) {
     const pattern = getSchemaPattern(baseSchema);
 
     if (pattern) {
       patterns[key] = pattern;
     }
-  } else if (baseSchema instanceof z.ZodArray) {
-    const baseElementSchema = getBaseType(baseSchema.element);
+  } else if (baseSchema instanceof z.ZodMiniArray) {
+    const baseElementSchema = getBaseType(baseSchema.def.element);
 
-    if (baseElementSchema instanceof z.ZodString) {
+    if (baseElementSchema instanceof z.ZodMiniString) {
       const elementPattern = getSchemaPattern(baseElementSchema);
 
       if (elementPattern) {
@@ -338,7 +330,7 @@ export const getPath = <T extends object>(_data: T, expression: (data: T) => unk
   return parts as FormStatePath<T>;
 };
 
-export const getPathNotation = <T extends z.ZodObject>(path: FormStatePath<z.infer<T>>) => {
+export const getPathNotation = <T extends z.ZodMiniObject>(path: FormStatePath<z.infer<T>>) => {
   return path
     .map((pathPart) => {
       if (!Number.isNaN(Number.parseInt(pathPart, 10))) {

@@ -8,7 +8,7 @@ import {
   type SyntheticEvent,
 } from 'react';
 import { deepEqual } from 'fast-equals';
-import * as z from 'zod';
+import * as z from 'zod/mini';
 
 import { dotPathGet } from './helpers/dot-path';
 import { createFormComponent } from './helpers/form-builder';
@@ -66,12 +66,15 @@ import { createFormStore } from './helpers/form-store';
 /**
  * Hook that manages form state.
  *
- * @typeParam T type of the form data.
+ * @typeParam T - type of the form data.
  * @param schema - Zod schema to validate the form data.
  * @param formOptions - Form initialization options.
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
-export function useFormState<T extends z.ZodObject>(schema: T, formOptions?: FormInitOptions<T>) {
+export function useFormState<T extends z.ZodMiniObject>(
+  schema: T,
+  formOptions?: FormInitOptions<T>
+) {
   type State = z.infer<T>;
 
   // The initial hook parameters.

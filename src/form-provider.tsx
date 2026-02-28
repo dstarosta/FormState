@@ -5,23 +5,26 @@ import {
   type Context,
   type PropsWithChildren,
 } from 'react';
-import * as z from 'zod';
+import * as z from 'zod/mini';
 
 import type { FormProviderInitOptions, FormStateResponse } from './types/form-types';
 
 import { useFormState } from './use-form-state';
 
 // Allows a separate context per schema that are garbage collected when the schema goes out of scope.
-const schemaToContext = new WeakMap<z.ZodObject, Context<FormStateResponse<z.ZodObject> | null>>();
+const schemaToContext = new WeakMap<
+  z.ZodMiniObject,
+  Context<FormStateResponse<z.ZodMiniObject> | null>
+>();
 
 /**
  * Context provider to manage form state.
  *
- * @typeParam T type of the form data.
+ * @typeParam T - type of the form data.
  * @param props - Provider props.
  * @returns A form state provider.
  */
-export function FormStateProvider<T extends z.ZodObject>(
+export function FormStateProvider<T extends z.ZodMiniObject>(
   props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>
 ) {
   const { schema, children, ...formOptions } = props;
@@ -41,11 +44,11 @@ export function FormStateProvider<T extends z.ZodObject>(
  * Hook that manages form state inside React components that are, or have a parent component,
  * wrapped with the formConnect HOC.
  *
- * @typeParam T type of the form data.
+ * @typeParam T - type of the form data.
  * @param schema - Zod schema to validate the form data.
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
-export function useFormStateContext<T extends z.ZodObject>(schema: T) {
+export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
   if (!schema) {
     throw new TypeError('No valid schema was provided.');
   }
@@ -74,7 +77,7 @@ export function useFormStateContext<T extends z.ZodObject>(schema: T) {
  * @param options.initialState - An optional object with schema properties to set the initial state of the form.
  *                               This object should be used for asynchronous form initialization, otherwise, specify
  *                               the initial state in the schema.
- * @param options.initialTouch - An optional array of root level field names or a state path expressions that
+ * @param options.initialTouched - An optional array of root level field names or state path expressions that
  *                               will be marked as touched when the form is initialized.
  * @param options.validateOnInit - Validate the schema with the initial values (default: `false`).
  * @param options.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
@@ -86,11 +89,11 @@ export function useFormStateContext<T extends z.ZodObject>(schema: T) {
  *
  * @returns A curried function to wrap the component.
  */
-export function formConnect<T extends z.ZodObject>(options: FormProviderInitOptions<T>) {
+export function formConnect<T extends z.ZodMiniObject>(options: FormProviderInitOptions<T>) {
   /**
    * Wrap the provided React component.
    *
-   * @typeparam P component props type.
+   * @typeParam P - component props type.
    * @returns The wrapped component.
    */
   function wrapComponent<P>(Component: ComponentType<P>) {

@@ -1,4 +1,4 @@
-// Private methods
+// Private functions
 
 export function generateUniqueId() {
   if (

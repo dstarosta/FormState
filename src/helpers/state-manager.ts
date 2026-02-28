@@ -1,4 +1,4 @@
-import * as z from 'zod';
+import * as z from 'zod/mini';
 import { deepEqual } from 'fast-equals';
 
 import type {
@@ -17,7 +17,7 @@ import { dotPathGet } from './dot-path';
 import { generateUniqueId } from './random-id-generator';
 import { getBaseType, getPath, getPathNotation, getSchemaType } from './schema-visitor';
 
-// Private methods
+// Private functions
 
 const isNullish = (value: unknown) => {
   return value === undefined || value === null;
@@ -51,10 +51,10 @@ const isNotRecordObject = (value: unknown) => {
 const isRecordObject = (value: unknown): value is Record<string, unknown> =>
   !isNotRecordObject(value) && !Array.isArray(value);
 
-// Internal methods
+// Internal functions
 
 export const cleanEmpty = <T>(
-  schema: z.ZodType,
+  schema: z.ZodMiniType,
   obj?: T | null,
   field: string = '',
   parentKey: string = ''
@@ -108,37 +108,37 @@ export const cleanEmpty = <T>(
   return innerObj as DeepPartial<T>;
 };
 
-export const getFieldError = <T extends z.ZodObject>(
+export const getFieldError = <T extends z.ZodMiniObject>(
   errors: Record<keyof z.infer<T>, string | undefined>,
   path: FormStatePath<z.infer<T>>
 ) => errors[path.join('.') as keyof z.infer<T>];
 
-export const wasFieldTouched = <T extends z.ZodObject>(
+export const wasFieldTouched = <T extends z.ZodMiniObject>(
   touched: Record<keyof z.infer<T>, boolean>,
   path: FormStatePath<z.infer<T>>
 ) => Boolean(touched[path.join('.') as keyof z.infer<T>]);
 
-export const getFieldMaxLength = <T extends z.ZodObject>(
+export const getFieldMaxLength = <T extends z.ZodMiniObject>(
   maxLengths: Record<keyof z.infer<T>, number | undefined>,
   path: FormStatePath<z.infer<T>>
 ) => maxLengths[getPathNotation(path) as keyof z.infer<T>];
 
-export const getFieldRange = <T extends z.ZodObject>(
+export const getFieldRange = <T extends z.ZodMiniObject>(
   ranges: Record<keyof z.infer<T>, { min: FieldRange; max: FieldRange; format: string }>,
   path: FormStatePath<z.infer<T>>
 ) => ranges[getPathNotation(path) as keyof z.infer<T>];
 
-export const getFieldPattern = <T extends z.ZodObject>(
+export const getFieldPattern = <T extends z.ZodMiniObject>(
   patterns: Record<keyof z.infer<T>, string | undefined>,
   path: FormStatePath<z.infer<T>>
 ) => patterns[getPathNotation(path) as keyof z.infer<T>] ?? '';
 
-export const getFieldDescription = <T extends z.ZodObject>(
+export const getFieldDescription = <T extends z.ZodMiniObject>(
   descriptions: Record<keyof z.infer<T>, string | undefined>,
   path: FormStatePath<z.infer<T>>
 ) => descriptions[getPathNotation(path) as keyof z.infer<T>] ?? '';
 
-export const diffedState = <T extends z.ZodObject>(
+export const diffedState = <T extends z.ZodMiniObject>(
   newState: FormMutableState<z.infer<T>>,
   prevState: FormMutableState<z.infer<T>>
 ) => {
@@ -158,7 +158,7 @@ export const freezeObject = (obj: object) => {
   return IS_DEVELOPMENT ? Object.freeze(obj) : obj;
 };
 
-// Public methods
+// Public functions
 
 /**
  * Creates a unique symbol instance based on UUID v4.
@@ -173,16 +173,16 @@ export function createSymbol() {
  * Creates strongly typed initial state for a schema.
  *
  * This only populates properties one level deep. Use the `createInitialState`
- * method to initialize an object schema recursively.
+ * function to initialize an object schema recursively.
  *
- * @typeParam T schema type.
+ * @typeParam T - schema type.
  * @param schema - The form schema.
  * @returns A new instance of the initial state.
  */
-export function createState<T extends z.ZodObject>(schema: T): z.infer<T> {
+export function createState<T extends z.ZodMiniObject>(schema: T): z.infer<T> {
   type State = z.infer<T>;
 
-  const shape = schema.shape as Record<keyof State, z.ZodType>;
+  const shape = schema.shape as Record<keyof State, z.ZodMiniType>;
   const result = {} as State;
 
   for (const key in shape) {
@@ -191,24 +191,30 @@ export function createState<T extends z.ZodObject>(schema: T): z.infer<T> {
       const value = shape[typedKey];
       const baseType = getBaseType(value);
 
-      if (value instanceof z.ZodCatch) {
-        result[typedKey] = value.catch.bind(value) as State[typeof typedKey];
-      } else if (value instanceof z.ZodDefault) {
+      if (value instanceof z.ZodMiniCatch) {
+        result[typedKey] = value.def.catchValue({
+          value: undefined,
+          issues: [],
+          error: { issues: [] },
+          input: undefined,
+        } as z.core.$ZodCatchCtx) as State[typeof typedKey];
+      } else if (value instanceof z.ZodMiniDefault) {
         result[typedKey] = value.def.defaultValue as State[typeof typedKey];
-      } else if (value instanceof z.ZodObject) {
+      } else if (value instanceof z.ZodMiniObject) {
         result[typedKey] = createState(value) as State[typeof typedKey];
       } else if (
-        baseType instanceof z.ZodString ||
-        (value instanceof z.ZodUnion && value.options.some((opt) => opt instanceof z.ZodString))
+        baseType instanceof z.ZodMiniString ||
+        (value instanceof z.ZodMiniUnion &&
+          value.def.options.some((opt) => opt instanceof z.ZodMiniString))
       ) {
         result[typedKey] = '' as State[typeof typedKey];
-      } else if (baseType instanceof z.ZodArray) {
+      } else if (baseType instanceof z.ZodMiniArray) {
         result[typedKey] = [] as State[typeof typedKey];
-      } else if (baseType instanceof z.ZodSymbol) {
+      } else if (baseType instanceof z.ZodMiniSymbol) {
         result[typedKey] = createSymbol() as State[typeof typedKey];
       } else if (
-        value instanceof z.ZodBoolean ||
-        (value instanceof z.ZodNonOptional && baseType instanceof z.ZodBoolean)
+        value instanceof z.ZodMiniBoolean ||
+        (value instanceof z.ZodMiniNonOptional && baseType instanceof z.ZodMiniBoolean)
       ) {
         result[typedKey] = false as State[typeof typedKey];
       } else {
@@ -226,12 +232,12 @@ export function createState<T extends z.ZodObject>(schema: T): z.infer<T> {
  * Properties that need to be populated cannot have null or undefined
  * values.
  *
- * @typeParam T schema type.
+ * @typeParam T - schema type.
  * @param schema - The form schema.
  * @param data - The data instance that needs to be enriched to meet the schema requirements.
  * @returns A new instance of the initial state that meets the schema requirements.
  */
-export function createInitialState<T extends z.ZodObject>(
+export function createInitialState<T extends z.ZodMiniObject>(
   schema: T,
   data: DeepPartial<z.infer<T>> | null | undefined
 ) {
@@ -242,7 +248,7 @@ export function createInitialState<T extends z.ZodObject>(
 
     for (const key in data) {
       if (Object.hasOwn(data, key)) {
-        const shape = schema.shape as Record<keyof z.infer<T>, z.ZodType>;
+        const shape = schema.shape as Record<keyof z.infer<T>, z.ZodMiniType>;
         const fieldSchema = shape[key];
 
         const baseSchema = getBaseType(fieldSchema);
@@ -253,22 +259,22 @@ export function createInitialState<T extends z.ZodObject>(
           continue;
         }
 
-        if (baseSchema instanceof z.ZodObject) {
+        if (baseSchema instanceof z.ZodMiniObject) {
           result[key] = createInitialState(
             baseSchema,
             incomingValue as DeepPartial<z.infer<typeof baseSchema>>
           );
-        } else if (baseSchema instanceof z.ZodArray) {
+        } else if (baseSchema instanceof z.ZodMiniArray) {
           // Defensive check for a null/undefined array that is unlikely to happen due to `createState(schema)`.
           /* v8 ignore if -- @preserve */
           if (!Array.isArray(incomingValue)) {
             continue;
           }
 
-          const elementSchema = baseSchema.element;
+          const elementSchema = baseSchema.def.element;
 
           result[key] =
-            elementSchema instanceof z.ZodObject
+            elementSchema instanceof z.ZodMiniObject
               ? incomingValue.map((item) => {
                   return createInitialState(
                     elementSchema,
@@ -289,12 +295,12 @@ export function createInitialState<T extends z.ZodObject>(
 /**
  * Gets strongly typed child data or field value based on the provided name or path.
  *
- * @typeParam T schema type.
+ * @typeParam T - schema type.
  * @param schema - The form schema.
  * @param data - The strongly typed state data.
  * @returns The child data or the field value that is assigned to the provided name or path.
  */
-export function getState<T extends z.ZodObject, P extends FormPath<T>>(
+export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
   schema: T,
   data: z.infer<T>,
   nameOrPath: P
@@ -312,7 +318,7 @@ export function getState<T extends z.ZodObject, P extends FormPath<T>>(
 /**
  * Updates an immutable array state in a nested schema.
  *
- * @typeParam T schema type.
+ * @typeParam T - schema type.
  * @param state - The state array property.
  * @param updater - The updater function.
  * @returns A new array containing the modified state.
@@ -325,7 +331,7 @@ export function updateState<T>(
 /**
  * Updates an object state in a nested schema.
  *
- * @typeParam T schema type.
+ * @typeParam T - schema type.
  * @param state - The state object property.
  * @param updater - The updater function.
  * @returns A new object containing the modified state.
@@ -338,7 +344,7 @@ export function updateState<T>(
 /**
  * Updates an immutable array or object state in a nested schema.
  *
- * @typeParam T schema type.
+ * @typeParam T - schema type.
  * @param state - The state array or object property.
  * @param updater - The updater function.
  * @returns A new immutable array or object containing the modified state.

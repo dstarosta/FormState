@@ -1,19 +1,18 @@
-import * as z from 'zod';
+import * as z from 'zod/mini';
 
-import type { DeepPartial, StateValidationFailure, StateValidationSuccess } from '../types/form-types';
+import type {
+  DeepPartial,
+  StateValidationFailure,
+  StateValidationSuccess,
+} from '../types/form-types';
 import { createInitialState } from './state-manager';
 import { FormStateError } from './form-state-error';
 
-// Private methods
+// Private functions
 
-const isGenericMessage = (message: string) =>
-  message.startsWith('Invalid input:') ||
-  message.startsWith('Too small:') ||
-  message.startsWith('Too big:') ||
-  message.startsWith('Expected ') ||
-  message.startsWith('String must');
+const isGenericMessage = (message: string) => message === 'Invalid input';
 
-// Public methods
+// Public functions
 
 /**
  * Validates whether the data is valid for the schema used by the form state.
@@ -27,7 +26,7 @@ const isGenericMessage = (message: string) =>
  * @returns The object containing the validation result as well as the validated data object
  *          instance or the form state error.
  */
-export const validateState = <T extends z.ZodObject>(
+export const validateState = <T extends z.ZodMiniObject>(
   schema: T,
   data: DeepPartial<z.infer<T>>,
   populateDefaults: boolean = true
@@ -47,10 +46,10 @@ export const validateState = <T extends z.ZodObject>(
   } satisfies StateValidationSuccess<T>;
 };
 
-// Internal methods
+// Internal functions
 
 export const formatErrors = <T extends object>(
-  error?: z.ZodError<object>
+  error?: z.core.$ZodError<object>
 ): Record<keyof T, string> => {
   if (!error) {
     return {} as Record<keyof T, string>;

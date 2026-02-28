@@ -127,11 +127,11 @@ describe('form schema', () => {
   });
 
   it('should initialize with ZodDefault values', () => {
-    const schemaWithDefault = z.object({
-      foo: z.string().default('bar'),
-      age: z.formNumber(z.number()).default(99),
+    const schema_default = z.object({
+      foo: z.default(z.string(), 'bar'),
+      age: z.default(z.formNumber(z.number()), 99),
     });
-    const { result } = renderHook(() => useFormState(schemaWithDefault));
+    const { result } = renderHook(() => useFormState(schema_default));
     const { formState } = result.current;
 
     expect(formState.data.foo).toBe('bar');
@@ -140,19 +140,19 @@ describe('form schema', () => {
 
   it('should initialize with ZodCatch values', () => {
     const schemaWithCatch = z.object({
-      foo: z.string().catch('fallback'),
-      age: z.formNumber(z.number()).catch(123),
+      foo: z.catch(z.string(), 'fallback'),
+      age: z.catch(z.formNumber(z.number()), 123),
     });
     const { result } = renderHook(() => useFormState(schemaWithCatch));
     const { formState } = result.current;
 
-    expect(formState.data.foo).toBe('fallback');
-    expect(formState.data.age).toBe(123);
+    expect(formState.data['foo']).toBe('fallback');
+    expect(formState.data['age']).toBe(123);
   });
 
   it('should initialize with ZodPipe', () => {
     const testSchema = z.object({
-      value: z.string().pipe(z.string().min(3)),
+      value: z.advanced.pipe(z.string(), z.string().check(z.minLength(3))),
     });
     const initialState: z.infer<typeof testSchema> = { value: 'test' };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -163,7 +163,7 @@ describe('form schema', () => {
 
   it('should initialize with ZodOptional values', () => {
     const testSchema = z.object({
-      value: z.number().optional(),
+      value: z.optional(z.number()),
     });
     const initialState: z.infer<typeof testSchema> = { value: 0 };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -174,7 +174,7 @@ describe('form schema', () => {
 
   it('should initialize with ZodNonOptional values', () => {
     const testSchema = z.object({
-      value: z.number().nonoptional(),
+      value: z.nonoptional(z.number()),
     });
     const initialState: z.infer<typeof testSchema> = { value: 0 };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -185,7 +185,7 @@ describe('form schema', () => {
 
   it('should initialize with ZodNullable values', () => {
     const testSchema = z.object({
-      value: z.number().nullable(),
+      value: z.advanced.nullable(z.number()),
     });
     const initialState: z.infer<typeof testSchema> = { value: 0 };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -196,7 +196,7 @@ describe('form schema', () => {
 
   it('should initialize with ZodNullish (null and undefined) values', () => {
     const testSchema = z.object({
-      value: z.number().nullish(),
+      value: z.advanced.nullish(z.number()),
     });
     const initialState: z.infer<typeof testSchema> = { value: 0 };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -207,8 +207,8 @@ describe('form schema', () => {
 
   it('should initialize with ZodEnum values', () => {
     const testSchema = z.object({
-      value: z.advanced.enum(['a', 'b', 'c']),
-      value2: z.advanced.enum(['a', 'b', 'c']),
+      value: z.enum(['a', 'b', 'c']),
+      value2: z.enum(['a', 'b', 'c']),
     });
     const initialState: z.infer<typeof testSchema> = { value: 'a', value2: 'c' };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -224,15 +224,15 @@ describe('form schema', () => {
 
     expect(formStatus.valid).toBe(false);
     expect(formState.errors.value).toBeUndefined();
-    expect(formState.errors.value2).toMatch(/invalid option/i);
+    expect(formState.errors.value2).toMatch(/invalid/i);
     expect(formState.data.value).toBe('a');
     expect(formState.data.value2).toBe('z');
   });
 
   it('should initialize with ZodLiteral values', () => {
     const testSchema = z.object({
-      value: z.advanced.literal('a').or(z.advanced.literal('b')),
-      value2: z.advanced.literal('a').or(z.advanced.literal('b')),
+      value: z.advanced.union([z.advanced.literal('a'), z.advanced.literal('b')]),
+      value2: z.advanced.union([z.advanced.literal('a'), z.advanced.literal('b')]),
     });
     const initialState: z.infer<typeof testSchema> = { value: 'a', value2: 'b' };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -255,8 +255,14 @@ describe('form schema', () => {
 
   it('should initialize with ZodTransform values', () => {
     const testSchema = z.object({
-      value: z.string().transform((arg) => arg.trim()),
-      value2: z.number().transform((arg) => arg * 2),
+      value: z.advanced.pipe(
+        z.string(),
+        z.advanced.transform((arg: string) => arg.trim())
+      ),
+      value2: z.advanced.pipe(
+        z.number(),
+        z.advanced.transform((arg: number) => arg * 2)
+      ),
     });
     const initialState: z.infer<typeof testSchema> = { value: ' test ', value2: 5 };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -282,9 +288,9 @@ describe('form schema', () => {
   it('should initialize with defaults in a nested ZodObject', () => {
     const testSchema = z.object({
       user: z.object({
-        name: z.string().default('anon'),
+        name: z.default(z.string(), 'anon'),
         profile: z.object({
-          age: z.formNumber(z.number()).default(18),
+          age: z.default(z.formNumber(z.number()), 18),
         }),
       }),
     });
@@ -299,7 +305,7 @@ describe('form schema', () => {
     const testSchema = z.object({
       users: z.array(
         z.object({
-          name: z.formString(z.string(), { required: false }).default('anon'),
+          name: z.default(z.formString(z.string(), { required: false }), 'anon'),
         })
       ),
     });
@@ -390,12 +396,15 @@ describe('form schema', () => {
 
     const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
 
-    expect(errors.value).toMatch(/invalid option/i);
+    expect(errors.value).toMatch(/invalid/i);
   });
 
   it('should format invalid_union errors', () => {
     const unionSchema = z.object({
-      value: z.advanced.union([z.string().min(2, 'Too short'), z.number().min(10, 'Very small')]),
+      value: z.advanced.union([
+        z.string().check(z.minLength(2, 'Too short')),
+        z.number().check(z.gte(10, 'Very small')),
+      ]),
     });
 
     const result = unionSchema.safeParse({ value: 1 });
@@ -408,7 +417,7 @@ describe('form schema', () => {
 
   it('should use the fallback message for invalid_union if no custom message exists', () => {
     const unionSchema = z.object({
-      value: z.advanced.union([z.string(), z.number().min(10)]),
+      value: z.advanced.union([z.string(), z.number().check(z.gte(10))]),
     });
 
     const result = unionSchema.safeParse({ value: 1 });
@@ -416,7 +425,7 @@ describe('form schema', () => {
 
     const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
 
-    expect(errors.value).toMatch(/^Too small/);
+    expect(errors.value).toMatch(/invalid/i);
   });
 
   it('should use the custom message for invalid_union', () => {

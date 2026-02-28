@@ -3,13 +3,13 @@ import { isValidDate, formatDate, parseDate } from './date-formatter';
 
 const EMPTY_STRING = '';
 
-// Private methods
+// Private functions
 
 const isValidNumberString = (value: string) => {
   return value && !/[a-z]/i.test(value);
 };
 
-// Public methods
+// Public functions
 
 /**
  * Converts an integer in a form string notation to the `number` type.
@@ -71,7 +71,7 @@ export const toDate = (
  *
  * @param value - A stringified value.
  * @param options - Options for the boolean conversion.
- * @param options.strict - Indicates to only used values "true" and "false" to return a boolean;
+ * @param options.strict - Indicates whether to only use the values "true" and "false" to return a boolean;
  *                         otherwise, return an empty `string`.
  *                         The non-strict mode allows values like "yes"/"no", "on/off" and "checked/unchecked"
  *                         as well.
@@ -132,7 +132,7 @@ export const toLiteral = <T extends string>(value: string, validValues: readonly
  * @param options.dateFormat - The resulting date format in the form string notation (only applied to `Date` values).
  * @param options.emptyStringAsFalse - Indicates the input value is an optional `boolean` and an empty string
  *                                     should be converted to 'false'. Only set it to `true` when setting optional
- *                                     booleans in form action methods.
+ *                                     booleans in the form action handler.
  * @returns The converted value.
  */
 export const toString = (

@@ -1,7 +1,7 @@
 /**
  * Form state error containing Zod errors.
  *
- * @typeparam The form schema type.
+ * @typeParam T - The form schema type.
  */
 export class FormStateError<T extends object> extends Error {
   readonly errors: Partial<Record<keyof T, string>>;

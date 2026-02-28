@@ -1,5 +1,5 @@
 import { useActionState, useCallback, useRef } from 'react';
-import * as z from 'zod';
+import * as z from 'zod/mini';
 
 import type { FormAction, FormMutableState, ManualErrorState } from '../types/form-types';
 import { formatErrors } from './error-formatter';
@@ -7,7 +7,7 @@ import { dotPathGet, dotPathSet } from './dot-path';
 import { deepEqual } from 'fast-equals';
 import { createInitialState, diffedState, updateState } from './state-manager';
 
-export function useFormStateReducer<T extends z.ZodObject>(
+export function useFormStateReducer<T extends z.ZodMiniObject>(
   schema: T,
   state: FormMutableState<z.infer<T>>,
   manualErrorsState: ManualErrorState,
@@ -16,7 +16,7 @@ export function useFormStateReducer<T extends z.ZodObject>(
   type State = z.infer<T>;
 
   const validationCacheRef = useRef<{
-    schema: z.ZodType;
+    schema: z.ZodMiniType;
     data: State;
     parsedData: State;
     errors: Record<keyof State, string | undefined>;

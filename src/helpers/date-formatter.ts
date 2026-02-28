@@ -13,7 +13,7 @@ const DATE_PATTERNS = new Map<FormDateFormat, RegExp>([
   ['yyyy-MM-dd', /^(\d{4})-(\d{1,2})-(\d{1,2})$/],
 ]);
 
-// Private methods
+// Private functions
 
 const getParserExpression = (format: FormDateFormat) => {
   const parserExp = DATE_PATTERNS.get(format);
@@ -25,7 +25,7 @@ const getParserExpression = (format: FormDateFormat) => {
   return parserExp;
 };
 
-// Internal methods
+// Internal functions
 
 export const toUTC = (date: Date | undefined) => {
   if (!date || !isValidDate(date)) {
@@ -104,7 +104,7 @@ export const parseDate = (
   return date;
 };
 
-// Public methods
+// Public functions
 
 /**
  * Formats a date as a `string` in the provided date format.
