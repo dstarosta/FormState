@@ -1837,9 +1837,9 @@ describe('useFormState', () => {
       inferName: (nameOrPath: FormPath<typeof schema>) => string;
       useWatch: (name: string) => string | undefined;
     }) => {
-      const nameValue = useWatch(inferName((x) => x.name));
-      const ageValue = useWatch(inferName((x) => x.info.age));
-      const categoryValue = useWatch(inferName((x) => x.category));
+      const nameValue = useWatch(inferName((path) => path.name));
+      const ageValue = useWatch(inferName((path) => path.info.age));
+      const categoryValue = useWatch(inferName((path) => path.category));
       const activeValue = useWatch(inferName('isActive'));
       const archivedValue = useWatch('archivedSelector');
 
