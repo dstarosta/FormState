@@ -304,30 +304,31 @@ export const collectPatterns = (
   return patterns;
 };
 
+const pathParts: string[] = [];
+
+const pathProxy: object = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      if (typeof prop === 'string') {
+        pathParts.push(prop);
+      }
+
+      return pathProxy;
+    },
+  }
+);
+
 export const getPath = <T extends object>(_data: T, expression: (data: T) => unknown) => {
-  const parts: string[] = [];
-
-  const proxy = (() => {
-    const handler: ProxyHandler<object> = {
-      get(_target, prop) {
-        if (typeof prop === 'string') {
-          parts.push(prop);
-        }
-
-        return proxy;
-      },
-    };
-
-    return new Proxy({}, handler) as T;
-  })();
+  pathParts.length = 0;
 
   try {
-    expression(proxy);
+    expression(pathProxy as T);
   } catch {
     // ignore errors of side effects
   }
 
-  return parts as FormStatePath<T>;
+  return [...pathParts] as FormStatePath<T>;
 };
 
 export const getPathNotation = <T extends z.ZodMiniObject>(path: FormStatePath<z.infer<T>>) => {
