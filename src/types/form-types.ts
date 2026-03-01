@@ -125,7 +125,10 @@ export type FormAction<T extends object> =
       error: string | null;
       options: { validate: boolean };
     }
-  | { type: 'clearManualErrors' }
+  | {
+      type: 'clearManualErrors';
+      options: { predicate?: ((key: string) => boolean) | undefined; validate: boolean };
+    }
   | { type: 'validate' }
   | { type: 'setMode'; readOnly: boolean; disabled: boolean };
 
@@ -152,6 +155,7 @@ export type StateCallback<T extends object> = (state: FormState<T>, status: Form
 export type ManualErrorState = {
   get: () => Immutable<Record<string, string>>;
   set: (value?: Readonly<Record<string, string>>) => void;
+  remove: (predicate: (key: string) => boolean) => void;
 };
 
 export type FormStore = {
@@ -506,19 +510,26 @@ export type FormChangeOptions<T extends z.ZodMiniObject> = {
    */
   validate?: boolean;
   /**
+   * An optional debounce interval in milliseconds before dispatching the form state change.
+   * Default: 0 - the change is going to happen immediately.
+   *
+   * Important: this feature should be used for text input/text area elements. The field state value
+   * should be set in the `defaultValue` attribute of the element. Otherwise, the `value`
+   * attribute is going to prevent users from typing properly by changing the control's data
+   * to the existing form state value.
+   */
+  debounceIntervalMs?: number;
+  /**
    * An optional callback to run after the form state has been changed.
+   *
+   * Important: the callback function needs to be stable. It can either be defined on the module level
+   * or implemented with the `useCallback` hook. An inline function cannot be debounced since a new function
+   * instance would get created on every render.
    *
    * @param state - Updated form state - data, errors, touched and dirty flags.
    * @param status - Updated form status.
    */
-  callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
-  /**
-   * An optional debounce interval in milliseconds for the provided `callback` parameter.
-   * Default: 0 - the callback interval is going to happen immediately.
-   *
-   * It is useful for making API calls on state change.
-   */
-  callbackInterval?: number;
+  callback?: ((state: FormState<z.infer<T>>, status: FormStatus) => void) | undefined;
 };
 
 /**
@@ -526,7 +537,7 @@ export type FormChangeOptions<T extends z.ZodMiniObject> = {
  */
 export type FormReplaceOptions = {
   /**
-   * Indicates whether to validate the field (default: `false`).
+   * Indicates whether to validate the form state (default: `false`).
    */
   validate?: boolean;
 };
@@ -548,7 +559,24 @@ export type FormTouchOptions = {
  */
 export type FormSetErrorOptions = {
   /**
-   * Indicates whether to validate the field (default: `true` - uses the `change` action default).
+   * Indicates whether to validate the form state (default: `true` - uses the `change` action default).
+   *
+   * The default value can be overridden in the options of the `useFormState` hook.
+   */
+  validate?: boolean;
+};
+
+/**
+ * Form clear errors options.
+ */
+export type FormClearErrorsOptions = {
+  /**
+   * An optional predicate function to only clear specific errors based on their key.
+   */
+  predicate?: ((key: string) => boolean) | undefined;
+
+  /**
+   * Indicates whether to validate the form state (default: `true` - uses the `change` action default).
    *
    * The default value can be overridden in the options of the `useFormState` hook.
    */
@@ -584,7 +612,7 @@ export type FormResetOptions<T extends z.ZodMiniObject> = {
    * @param state - Updated form state - data, errors, touched and dirty flags.
    * @param status - Updated form status.
    */
-  callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
+  callback?: ((state: FormState<z.infer<T>>, status: FormStatus) => void) | undefined;
 };
 
 /**
@@ -611,7 +639,7 @@ export type FormValidateOptions<T extends z.ZodMiniObject> = {
    * @param state - Updated form state - data, errors, touched and dirty flags.
    * @param status - Updated form status.
    */
-  callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
+  callback?: ((state: FormState<z.infer<T>>, status: FormStatus) => void) | undefined;
 };
 
 /**
@@ -634,7 +662,7 @@ export type FormSubmitOptions<T extends z.ZodMiniObject> = {
    * @param data - Strongly typed submitted form data.
    * @param formData - Submitted form data as a `FormData` instance.
    */
-  onSuccess?: (data: z.infer<T>, formData: FormData) => void;
+  onSuccess?: ((data: z.infer<T>, formData: FormData) => void) | undefined;
   /**
    * An optional callback to run if the form was not submitted due to errors
    * or the `onSubmit` function returning `false`.
@@ -642,7 +670,7 @@ export type FormSubmitOptions<T extends z.ZodMiniObject> = {
    * @param state - Updated form state - data, errors, touched and dirty flags.
    * @param status - Updated form status.
    */
-  onError?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
+  onError?: ((state: FormState<z.infer<T>>, status: FormStatus) => void) | undefined;
 };
 
 /**
@@ -784,8 +812,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     ) => void;
     /**
      * Clears all manual errors.
+     *
+     * @param options - Options for clearing manual errors.
      */
-    clearManualErrors: () => void;
+    clearManualErrors: (options?: FormClearErrorsOptions) => void;
     /**
      * Infers the name of a specified form field. The value can be used in HTML element's "name" attribute as well as
      * the argument in the `useWatch` hook.

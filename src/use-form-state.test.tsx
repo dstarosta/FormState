@@ -868,15 +868,15 @@ describe('useFormState', () => {
         change('name', 'Alice', {
           touch: true,
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change('version', 1, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change((path) => path.info.age, 51, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
       });
 
@@ -915,19 +915,19 @@ describe('useFormState', () => {
           callback: () => {
             ++updateCounter;
           },
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change('version', 1, {
           callback: () => {
             ++updateCounter;
           },
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change((path) => path.info.age, 51, {
           callback: () => {
             ++updateCounter;
           },
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
       });
 
@@ -961,7 +961,7 @@ describe('useFormState', () => {
         });
         change('version', 1, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change((path) => path.info.age, 51, {
           callback: validateState,
@@ -995,15 +995,15 @@ describe('useFormState', () => {
         change('name', 'Alice', {
           touch: true,
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change('version', 1, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change((path) => path.info.age, 51, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
       });
 
@@ -1015,11 +1015,11 @@ describe('useFormState', () => {
         change('name', 'Allison', {
           touch: true,
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change('version', 2, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
       });
 
@@ -1050,15 +1050,15 @@ describe('useFormState', () => {
         change('name', 'Alice', {
           touch: true,
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change('version', 1, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change((path) => path.info.age, 51, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
       });
 
@@ -1070,11 +1070,11 @@ describe('useFormState', () => {
         change('name', 'Allison', {
           touch: true,
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change('version', 2, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
       });
 
@@ -1083,6 +1083,200 @@ describe('useFormState', () => {
       });
 
       expect(updateCounter).toBe(2);
+    });
+
+    it('should debounce dispatch without a callback', () => {
+      vi.useFakeTimers();
+
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+
+      const interval = 1000;
+
+      act(() => {
+        change('name', 'Alice', { debounceIntervalMs: interval });
+        change('version', 1, { debounceIntervalMs: interval });
+      });
+
+      // Data should not have changed yet (dispatch is pending).
+      expect(result.current.formState.data.name).toBe('John');
+      expect(result.current.formState.data.version).toBe(0);
+
+      act(() => {
+        vi.advanceTimersByTime(interval + 1);
+      });
+
+      // After the debounce period, both values should be applied.
+      expect(result.current.formState.data.name).toBe('Alice');
+      expect(result.current.formState.data.version).toBe(1);
+
+      function change(...args: Parameters<typeof result.current.formActions.change>) {
+        result.current.formActions.change(...args);
+      }
+    });
+
+    it('should cancel pending debounce when value reverts to original without a callback', () => {
+      vi.useFakeTimers();
+
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+
+      const interval = 1000;
+
+      act(() => {
+        change('name', 'Alice', { debounceIntervalMs: interval });
+      });
+
+      // Revert to the original value before debounce fires.
+      act(() => {
+        change('name', 'John', { debounceIntervalMs: interval });
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(interval * 5);
+      });
+
+      // The pending dispatch should have been cancelled; value stays at initial.
+      expect(result.current.formState.data.name).toBe('John');
+      expect(result.current.formState.dirty.name).toBe(false);
+
+      function change(...args: Parameters<typeof result.current.formActions.change>) {
+        result.current.formActions.change(...args);
+      }
+    });
+
+    it('should cancel only the reverted path and keep other pending changes without a callback', () => {
+      vi.useFakeTimers();
+
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+
+      const interval = 1000;
+
+      act(() => {
+        change('name', 'Alice', { debounceIntervalMs: interval });
+        change('version', 1, { debounceIntervalMs: interval });
+      });
+
+      // Revert only name; version should remain pending.
+      act(() => {
+        change('name', 'John', { debounceIntervalMs: interval });
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(interval + 1);
+      });
+
+      expect(result.current.formState.data.name).toBe('John');
+      expect(result.current.formState.data.version).toBe(1);
+
+      function change(...args: Parameters<typeof result.current.formActions.change>) {
+        result.current.formActions.change(...args);
+      }
+    });
+
+    it('should flush pending changes on cache eviction without a callback', () => {
+      vi.useFakeTimers();
+
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialState, debounceCacheCapacity: 1 })
+      );
+
+      const interval = 1000;
+
+      // First change uses the no-op cache key (no callback).
+      act(() => {
+        change('name', 'Alice', { debounceIntervalMs: interval });
+      });
+
+      // Data should still be pending.
+      expect(result.current.formState.data.name).toBe('John');
+
+      // A second change with a different callback evicts the first entry,
+      // flushing the no-callback pending change immediately.
+      const callback = vi.fn();
+
+      act(() => {
+        change('version', 1, { callback, debounceIntervalMs: interval });
+      });
+
+      // The evicted name change should have been dispatched immediately.
+      expect(result.current.formState.data.name).toBe('Alice');
+
+      // The callback-based change is still pending.
+      expect(result.current.formState.data.version).toBe(0);
+
+      act(() => {
+        vi.advanceTimersByTime(interval + 1);
+      });
+
+      expect(result.current.formState.data.version).toBe(1);
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      function change(...args: Parameters<typeof result.current.formActions.change>) {
+        result.current.formActions.change(...args);
+      }
+    });
+
+    it('should cancel pending debounce and call callback immediately when switching to non-debounced', () => {
+      vi.useFakeTimers();
+
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+
+      let updateCounter = 0;
+
+      const callback = () => {
+        ++updateCounter;
+      };
+
+      const interval = 1000;
+
+      // Debounced change — creates a pending entry for 'name'.
+      act(() => {
+        result.current.formActions.change('name', 'Alice', {
+          callback,
+          debounceIntervalMs: interval,
+        });
+      });
+
+      // Data should not have changed yet.
+      expect(result.current.formState.data.name).toBe('John');
+      expect(updateCounter).toBe(0);
+
+      // Non-debounced change for the same field and callback — should cancel
+      // the pending debounce, dispatch immediately, and call the callback.
+      act(() => {
+        result.current.formActions.change('name', 'Bob', {
+          callback,
+        });
+      });
+
+      expect(result.current.formState.data.name).toBe('Bob');
+      expect(updateCounter).toBe(1);
+
+      // Advancing timers should not trigger another callback.
+      act(() => {
+        vi.advanceTimersByTime(interval * 5);
+      });
+
+      expect(updateCounter).toBe(1);
     });
 
     it('should not called debounced change callbacks if unmounted', () => {
@@ -1105,15 +1299,15 @@ describe('useFormState', () => {
         change('name', 'Alice', {
           touch: true,
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change('version', 1, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
         change((path) => path.info.age, 51, {
           callback: validateState,
-          callbackInterval: interval,
+          debounceIntervalMs: interval,
         });
       });
 
@@ -1604,13 +1798,21 @@ describe('useFormState', () => {
       } = result.current;
 
       act(() => {
-        validate({ submit: true });
+        validate({
+          submit: true,
+          callback(state, status) {
+            expect(status.submitted).toBe(false);
+            expect(status.valid).toBe(false);
+            expect(state.errors.name).toBe('Name is required');
+          },
+        });
       });
 
-      const { formStatus } = result.current;
+      const { formState, formStatus } = result.current;
 
       expect(formStatus.submitted).toBe(false);
       expect(formStatus.valid).toBe(false);
+      expect(formState.errors.name).toBe('Name is required');
     });
 
     it('should not submit form with runtime errors', () => {
@@ -1630,13 +1832,21 @@ describe('useFormState', () => {
       });
 
       act(() => {
-        validate({ submit: true });
+        validate({
+          submit: true,
+          callback(state, status) {
+            expect(status.submitted).toBe(false);
+            expect(status.valid).toBe(false);
+            expect(state.errors.name).toBe('Name is required');
+          },
+        });
       });
 
-      const { formStatus } = result.current;
+      const { formState, formStatus } = result.current;
 
       expect(formStatus.submitted).toBe(false);
       expect(formStatus.valid).toBe(false);
+      expect(formState.errors.name).toBe('Name is required');
     });
 
     it('should not submit form with manual errors', () => {
@@ -1660,13 +1870,21 @@ describe('useFormState', () => {
       });
 
       act(() => {
-        validate({ submit: true });
+        validate({
+          submit: true,
+          callback(state, status) {
+            expect(status.submitted).toBe(false);
+            expect(status.valid).toBe(false);
+            expect(state.errors.getManual('custom')).toBe('Jonathan is not an acceptable name');
+          },
+        });
       });
 
-      const { formStatus } = result.current;
+      const { formState, formStatus } = result.current;
 
       expect(formStatus.submitted).toBe(false);
       expect(formStatus.valid).toBe(false);
+      expect(formState.errors.getManual('custom')).toBe('Jonathan is not an acceptable name');
     });
 
     it('should not submit form with manual errors without validation', () => {
@@ -1685,13 +1903,21 @@ describe('useFormState', () => {
       });
 
       act(() => {
-        validate({ submit: true });
+        validate({
+          submit: true,
+          callback(state, status) {
+            expect(status.submitted).toBe(false);
+            expect(status.valid).toBe(false);
+            expect(state.errors.getManual('custom')).toBe('Jonathan is not an acceptable name');
+          },
+        });
       });
 
-      const { formStatus } = result.current;
+      const { formState, formStatus } = result.current;
 
       expect(formStatus.submitted).toBe(false);
       expect(formStatus.valid).toBe(false);
+      expect(formState.errors.getManual('custom')).toBe('Jonathan is not an acceptable name');
     });
 
     it('should set and clear manual errors', () => {
@@ -1732,11 +1958,71 @@ describe('useFormState', () => {
         clearManualErrors();
       });
 
+      act(() => {
+        validate();
+      });
+
       const { formState: cleanFormState, formStatus: cleanFormStatus } = result.current;
 
       expect(cleanFormStatus.validSchema).toBe(true);
       expect(cleanFormStatus.valid).toBe(true);
       expect(cleanFormState.errors.getManual('id')).toBeUndefined();
+    });
+
+    it('should set and clear manual errors conditionally', () => {
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: ['a', 'b'],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { clearManualErrors, setError },
+      } = result.current;
+
+      const { formStatus: initialFormStatus } = result.current;
+
+      expect(initialFormStatus.validSchema).toBeNull();
+      expect(initialFormStatus.valid).toBeNull();
+
+      act(() => {
+        setError('id', 'Invalid ID', { validate: true });
+        setError((path) => path.isActive, 'What is active?', { validate: true });
+      });
+
+      const { formState: errorFormState, formStatus: errorFormStatus } = result.current;
+
+      expect(errorFormStatus.valid).toBe(false);
+      expect(errorFormState.errors.getManual('id')).toMatch('Invalid ID');
+      expect(errorFormState.errors.getManual('isActive')).toMatch('What is active?');
+
+      act(() => {
+        clearManualErrors({ predicate: (key) => key.toLowerCase() !== key, validate: true });
+      });
+
+      const { formState: cleanFormState, formStatus: cleanFormStatus } = result.current;
+
+      expect(cleanFormStatus.valid).toBe(false);
+      expect(cleanFormState.errors.getManual('id')).toMatch('Invalid ID');
+      expect(cleanFormState.errors.getManual('isActive')).toBeUndefined();
+    });
+
+    it('should clear manual errors and validate schema', () => {
+      const initialState: InitialSchema = {
+        info: { age: 30 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { clearManualErrors },
+      } = result.current;
+
+      act(() => {
+        clearManualErrors({ validate: true });
+      });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.valid).toBe(false);
     });
 
     it('should mark the form dirty with a manual key', () => {

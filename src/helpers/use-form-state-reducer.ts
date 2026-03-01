@@ -324,13 +324,24 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
         // clear manual errors event
         case 'clearManualErrors': {
+          const {
+            options: { predicate, validate },
+          } = action;
+
+          const hasPredicate = typeof predicate === 'function';
+
           const errors = parseAndCache(prevState.data).errors;
 
-          manualErrorsState.set();
+          if (hasPredicate) {
+            manualErrorsState.remove(predicate);
+          } else {
+            manualErrorsState.set();
+          }
 
           return {
             ...prevState,
-            errors,
+            errors: hasPredicate ? { ...errors, ...manualErrorsState.get() } : errors,
+            validated: prevState.validated || validate,
           } satisfies FormMutableState<State>;
         }
         // set the form mode

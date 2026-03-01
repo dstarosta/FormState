@@ -12,6 +12,7 @@
     "sourceMap": true,
     "inlineSources": true,
     "declaration": true,
+    "declarationMap": true,
     "emitDeclarationOnly": true,
 
     /* Bundler mode */
@@ -41,8 +42,7 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": true,
     "erasableSyntaxOnly": true,
-    "useUnknownInCatchVariables": true,
-    "removeComments": true
+    "useUnknownInCatchVariables": true
   },
   "include": ["src/**/*", "*.ts"],
   "exclude": ["node_modules", "dist"]

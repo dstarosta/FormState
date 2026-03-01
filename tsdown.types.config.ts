@@ -8,6 +8,7 @@ export default defineConfig({
   clean: false,
   dts: {
     emitDtsOnly: true,
+    sourcemap: true,
   },
   platform: 'neutral',
 });

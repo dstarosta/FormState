@@ -13,6 +13,11 @@ export const useManualErrorState = () => {
       set: (value: Readonly<Record<string, string>> = EMPTY_STORE) => {
         ref.current = value;
       },
+      remove: (predicate: (key: string) => boolean) => {
+        ref.current = Object.fromEntries(
+          Object.entries(ref.current).filter((entry) => !predicate(entry[0]))
+        );
+      },
     }),
     []
   );
