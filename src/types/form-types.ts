@@ -508,6 +508,7 @@ export type FormChangeOptions<T extends z.ZodMiniObject> = {
   callback?: (state: FormState<z.infer<T>>, status: FormStatus) => void;
   /**
    * An optional debounce interval in milliseconds for the provided `callback` parameter.
+   * Default: 0 - the callback interval is going to happen immediately.
    *
    * It is useful for making API calls on state change.
    */

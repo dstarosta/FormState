@@ -437,58 +437,54 @@ export function useFormState<T extends z.ZodMiniObject>(
     ]
   );
 
+  // Debounced change callback.
+  const performDebouncedCallback = useCallback(
+    (callback: (state: FormState<z.infer<T>>, status: FormStatus) => void, interval: number) => {
+      if ((interval <= 0 || debounceCacheCapacity <= 0) && !debounceCache.current.has(callback)) {
+        // Only add callback if it's not already being debounced.
+        changeCallbackRefs.current.push(callback);
+      } else if (interval > 0) {
+        // Use or create a debounced callback.
+        let debouncedCallback = debounceCache.current.get(callback);
+
+        if (debouncedCallback) {
+          // The Map object holds key-value pairs and remembers the original insertion order
+          // of the keys - JavaScript's Map specification document.
+          // Put the callback at the end of the set.
+          debounceCache.current.delete(callback);
+          debounceCache.current.set(callback, debouncedCallback);
+        } else {
+          // Cache eviction logic.
+          if (debounceCache.current.size >= debounceCacheCapacity) {
+            const firstKey = debounceCache.current.keys().next().value!;
+            const oldDebounced = debounceCache.current.get(firstKey);
+            oldDebounced?.cancel();
+            debounceCache.current.delete(firstKey);
+          }
+
+          debouncedCallback = debounce(
+            (currentState: FormState<State>, currentStatus: FormStatus) => {
+              // Only execute the callback if the component is still mounted.
+              /* v8 ignore if -- @preserve */
+              if (isMountedRef.current) {
+                callback(currentState, currentStatus);
+              }
+            },
+            interval
+          );
+
+          debounceCache.current.set(callback, debouncedCallback);
+        }
+
+        changeCallbackRefs.current.push(debouncedCallback);
+      }
+    },
+    [debounceCacheCapacity]
+  );
+
   // The memoized "change" function.
   const change = useCallback(
     (nameOrPath: FormPath<T>, value: unknown, options?: FormChangeOptions<T>) => {
-      const performDebounceCallback = () => {
-        const callback = options?.callback;
-
-        if (typeof callback === 'function') {
-          const interval = options?.callbackInterval ?? 0;
-
-          if (
-            (interval <= 0 || debounceCacheCapacity <= 0) &&
-            !debounceCache.current.has(callback)
-          ) {
-            // Only add callback if it's not already being debounced.
-            changeCallbackRefs.current.push(callback);
-          } else if (interval > 0) {
-            // Use or create a debounced callback.
-            let debouncedCallback = debounceCache.current.get(callback);
-
-            if (debouncedCallback) {
-              // The Map object holds key-value pairs and remembers the original insertion order
-              // of the keys - JavaScript's Map specification document.
-              // Put the callback at the end of the set.
-              debounceCache.current.delete(callback);
-              debounceCache.current.set(callback, debouncedCallback);
-            } else {
-              // Cache eviction logic.
-              if (debounceCache.current.size >= debounceCacheCapacity) {
-                const firstKey = debounceCache.current.keys().next().value!;
-                const oldDebounced = debounceCache.current.get(firstKey);
-                oldDebounced?.cancel();
-                debounceCache.current.delete(firstKey);
-              }
-
-              debouncedCallback = debounce(
-                (currentState: FormState<State>, currentStatus: FormStatus) => {
-                  // Only execute the callback if the component is still mounted.
-                  if (isMountedRef.current) {
-                    callback(currentState, currentStatus);
-                  }
-                },
-                interval
-              );
-
-              debounceCache.current.set(callback, debouncedCallback);
-            }
-
-            changeCallbackRefs.current.push(debouncedCallback);
-          }
-        }
-      };
-
       const path =
         typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : nameOrPath;
       const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
@@ -513,7 +509,9 @@ export function useFormState<T extends z.ZodMiniObject>(
         return;
       }
 
-      performDebounceCallback();
+      if (typeof options?.callback === 'function') {
+        performDebouncedCallback(options.callback, options.callbackInterval ?? 0);
+      }
 
       dispatch({
         type: 'change',
@@ -525,7 +523,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         },
       });
     },
-    [validateOnChange, formState.data, formState.touched, debounceCacheCapacity, dispatch]
+    [formState.data, formState.touched, dispatch, validateOnChange, performDebouncedCallback]
   );
 
   // The memoized "replace" function.
