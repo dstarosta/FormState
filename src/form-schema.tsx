@@ -128,6 +128,16 @@ export const lte = z.lte;
 export const describe = z.describe;
 
 /**
+ * Zod refine function.
+ */
+export const refine = z.refine;
+
+/**
+ * Zod superRefine function.
+ */
+export const superRefine = z.superRefine;
+
+/**
  * Zod trim function.
  */
 export const trim = z.trim;

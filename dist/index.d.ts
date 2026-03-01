@@ -192,7 +192,7 @@ type RangeResult<R> = R extends number | Date ? {
   format: string;
 } : undefined;
 declare namespace form_schema_d_exports {
-  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, _enum as enum, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, infer, length, lt, lte, maxLength, maximum, minLength, minimum, number, object, regex, regexes, strictObject, string, symbol, toLowerCase, toUpperCase, trim };
+  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, _enum as enum, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, infer, length, lt, lte, maxLength, maximum, minLength, minimum, number, object, refine, regex, regexes, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim };
 }
 type infer<T extends z.ZodMiniType> = z.infer<T>;
 declare const string: typeof z.string;
@@ -215,6 +215,8 @@ declare const gte: typeof z.core._gte;
 declare const lt: typeof z.core._lt;
 declare const lte: typeof z.core._lte;
 declare const describe: typeof z.core.describe;
+declare const refine: typeof z.refine;
+declare const superRefine: typeof z.superRefine;
 declare const trim: typeof z.core._trim;
 declare const toLowerCase: typeof z.core._toLowerCase;
 declare const toUpperCase: typeof z.core._toUpperCase;
