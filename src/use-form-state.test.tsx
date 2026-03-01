@@ -48,18 +48,15 @@ describe('useFormState', () => {
       })
       .with(z.describe('Info')),
     tags: z
-      .nonoptional(
-        z.formArray(
-          z
-            .string()
-            .check(z.maxLength(255), z.regex(/^[\w\\-]*$/))
-            .with(z.describe('Tag')),
-          {
-            required: true,
-            minLength: 0,
-            maxLength: 5,
-          }
-        )
+      .formArray(
+        z
+          .string()
+          .check(z.maxLength(255), z.regex(/^[\w\\-]*$/))
+          .with(z.describe('Tag')),
+        {
+          minLength: 0,
+          maxLength: 5,
+        }
       )
       .with(z.describe('Tags')),
     category: z.formValues(['legacy', 'unconfirmed']).with(z.describe('Category')),

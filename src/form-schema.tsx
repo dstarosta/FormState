@@ -142,16 +142,6 @@ export const toLowerCase = z.toLowerCase;
  */
 export const toUpperCase = z.toUpperCase;
 
-/**
- * Zod optional property function.
- */
-export const optional = z.optional;
-
-/**
- * Zod non-optional property function.
- */
-export const nonoptional = z.nonoptional;
-
 // Exported functions with reserved names.
 
 /**
@@ -198,6 +188,14 @@ export const advanced = {
    * Zod union.
    */
   union: z.union,
+  /**
+   * Zod optional.
+   */
+  optional: z.optional,
+  /**
+   * Zod non-optional.
+   */
+  nonoptional: z.nonoptional,
 };
 
 /**
@@ -205,13 +203,13 @@ export const advanced = {
  *
  * @param zodBoolean - The Zod boolean schema.
  * @param options - Options for the boolean schema.
- * @param options.required - Indicates whether a value is required.
+ * @param options.required - Indicates whether a value is required (default: false).
  * @param options.error - Optional custom error message for required validation.
  * @returns A Zod schema with preprocessing for boolean values.
  */
 export function formBoolean(
   zodBoolean: ZodDeepType<z.ZodMiniBoolean<boolean>>,
-  options?: { required: boolean; error?: string }
+  options?: { required?: boolean; error?: string }
 ) {
   return z.pipe(
     z.transform((value: unknown, ctx) => {
@@ -241,7 +239,7 @@ export function formBoolean(
  *
  * @param zodDate - The Zod date schema.
  * @param options - Options for the date schema.
- * @param options.required - Whether a value is required.
+ * @param options.required - Whether a value is required (default: false).
  * @param options.error - Optional custom error message for required validation.
  * @param options.dateFormat - Optional date format string (default: 'yyyy-MM-dd').
  * @param options.dateFormatError - Optional custom error for invalid dates.
@@ -250,7 +248,7 @@ export function formBoolean(
 export function formDate(
   zodDate: ZodDeepType<z.ZodMiniDate<Date>>,
   options?: {
-    required: boolean;
+    required?: boolean;
     error?: string;
     dateFormat?: FormDateFormat;
     dateFormatError?: string;
@@ -304,13 +302,13 @@ export function formDate(
  *
  * @param zodNumber - The Zod number schema.
  * @param options - Options for the number schema.
- * @param options.required - Whether a value is required.
+ * @param options.required - Whether a value is required (default: false).
  * @param options.error - Optional custom error message for required validation.
  * @returns A Zod schema with preprocessing for number values.
  */
 export function formNumber(
   zodNumber: ZodDeepType<z.ZodMiniNumber<number>>,
-  options?: { required: boolean; error?: string }
+  options?: { required?: boolean; error?: string }
 ) {
   return z.pipe(
     z.transform((value: unknown, ctx) => {
@@ -340,13 +338,13 @@ export function formNumber(
  *
  * @param zodString - The Zod string schema.
  * @param options - Options for the string schema.
- * @param options.required - Whether a value is required.
+ * @param options.required - Whether a value is required (default: false).
  * @param options.error - Optional custom error message for required validation.
  * @returns A Zod string schema with required or optional validation.
  */
 export function formString(
   zodString: ZodDeepType<z.ZodMiniString<string>>,
-  options?: { required: boolean; error?: string }
+  options?: { required?: boolean; error?: string }
 ) {
   return z.pipe(
     z.transform((value: unknown, ctx) => {
@@ -375,7 +373,7 @@ export function formString(
  * @typeParam T - Represents a generic tuple of strings for type inference.
  * @param values - An array of the string values. At least 1 non-empty value is required.
  * @param options - Options for the values schema.
- * @param options.required - Whether a non-empty value is required.
+ * @param options.required - Whether a non-empty value is required (default: false).
  * @param options.error - Optional custom error message for value validation.
  * @returns A Zod string schema that only allows the provided values.
  */
@@ -397,7 +395,7 @@ export function formValues<const T extends readonly [string, ...string[]]>(
  * @typeParam T - Represents a generic tuple of strings for type inference.
  * @param values - An array of the string values. At least 1 non-empty value is required.
  * @param options - Options for the values schema.
- * @param options.required - Whether a non-empty value is required.
+ * @param options.required - Whether a non-empty value is required (default: false).
  * @param options.error - Optional custom error message for value validation.
  * @returns A Zod string schema that only allows the provided values.
  */
@@ -455,7 +453,31 @@ export function formValues(
  *
  * @param elementSchema - Zod schema for the array elements (do not wrap in z.array()).
  * @param options - Options for the array schema.
- * @param options.required - Whether a value is required.
+ * @param options.required - Whether the array is required in the schema (default: true).
+ * @param options.error - Optional custom error message for required validation.
+ * @param options.lengthError - Optional custom error message for min/max validation.
+ * @throws If elementSchema is already a ZodArray.
+ * @returns A Zod array schema.
+ */
+export function formArray<T extends z.ZodMiniType>(
+  elementSchema: T extends z.ZodMiniObject | z.ZodMiniArray ? never : T,
+  options: {
+    required: false;
+    minLength?: number;
+    maxLength?: number;
+    error?: string;
+    lengthError?: string;
+  }
+): z.ZodMiniOptional<z.ZodMiniArray<T>>;
+
+/**
+ * Zod schema for an array form schema element of simple elements.
+ *
+ * Note: Use `z.array()` or `z.object()` to shape complex schemas.
+ *
+ * @param elementSchema - Zod schema for the array elements (do not wrap in z.array()).
+ * @param options - Options for the array schema.
+ * @param options.required - Whether the array is required in the schema (default: true).
  * @param options.error - Optional custom error message for required validation.
  * @param options.lengthError - Optional custom error message for min/max validation.
  * @throws If elementSchema is already a ZodArray.
@@ -464,7 +486,19 @@ export function formValues(
 export function formArray<T extends z.ZodMiniType>(
   elementSchema: T extends z.ZodMiniObject | z.ZodMiniArray ? never : T,
   options?: {
-    required: boolean;
+    required?: true;
+    minLength?: number;
+    maxLength?: number;
+    error?: string;
+    lengthError?: string;
+  }
+): z.ZodMiniArray<T>;
+
+// base overload
+export function formArray<T extends z.ZodMiniType>(
+  elementSchema: T extends z.ZodMiniObject | z.ZodMiniArray ? never : T,
+  options?: {
+    required?: boolean;
     minLength?: number;
     maxLength?: number;
     error?: string;
@@ -487,5 +521,5 @@ export function formArray<T extends z.ZodMiniType>(
     schema = schema.check(...(checks as z.core.$ZodCheck<z.output<typeof elementSchema>[]>[]));
   }
 
-  return options?.required ? schema : z.optional(schema);
+  return options?.required === false ? z.optional(schema) : schema;
 }

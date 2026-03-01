@@ -163,7 +163,7 @@ describe('form schema', () => {
 
   it('should initialize with ZodOptional values', () => {
     const testSchema = z.object({
-      value: z.optional(z.number()),
+      value: z.advanced.optional(z.number()),
     });
     const initialState: z.infer<typeof testSchema> = { value: 0 };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));
@@ -174,7 +174,7 @@ describe('form schema', () => {
 
   it('should initialize with ZodNonOptional values', () => {
     const testSchema = z.object({
-      value: z.nonoptional(z.number()),
+      value: z.advanced.nonoptional(z.number()),
     });
     const initialState: z.infer<typeof testSchema> = { value: 0 };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));

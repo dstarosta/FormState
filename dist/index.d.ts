@@ -191,7 +191,7 @@ type RangeResult<R> = R extends number | Date ? {
   format: string;
 } : undefined;
 declare namespace form_schema_d_exports {
-  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, _enum as enum, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, infer, length, lt, lte, maxLength, maximum, minLength, minimum, nonoptional, number, object, optional, regex, regexes, strictObject, string, symbol, toLowerCase, toUpperCase, trim };
+  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, _enum as enum, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, infer, length, lt, lte, maxLength, maximum, minLength, minimum, number, object, regex, regexes, strictObject, string, symbol, toLowerCase, toUpperCase, trim };
 }
 type infer<T extends z.ZodMiniType> = z.infer<T>;
 declare const string: typeof z.string;
@@ -217,8 +217,6 @@ declare const describe: typeof z.core.describe;
 declare const trim: typeof z.core._trim;
 declare const toLowerCase: typeof z.core._toLowerCase;
 declare const toUpperCase: typeof z.core._toUpperCase;
-declare const optional: typeof z.optional;
-declare const nonoptional: typeof z.nonoptional;
 declare const _enum: typeof z.enum;
 declare const _catch: typeof z.catch;
 declare const _default: typeof z._default;
@@ -229,23 +227,25 @@ declare const advanced: {
   pipe: typeof z.pipe;
   transform: typeof z.transform;
   union: typeof z.union;
+  optional: typeof z.optional;
+  nonoptional: typeof z.nonoptional;
 };
 declare function formBoolean(zodBoolean: ZodDeepType<z.ZodMiniBoolean<boolean>>, options?: {
-  required: boolean;
+  required?: boolean;
   error?: string;
 }): z.ZodMiniPipe<z.ZodMiniTransform<boolean | "", unknown>, z.ZodMiniBoolean<boolean> | z.ZodMiniUnion<readonly [z.ZodMiniBoolean<boolean>, z.ZodMiniLiteral<"">]>>;
 declare function formDate(zodDate: ZodDeepType<z.ZodMiniDate<Date>>, options?: {
-  required: boolean;
+  required?: boolean;
   error?: string;
   dateFormat?: FormDateFormat;
   dateFormatError?: string;
 }): z.ZodMiniPipe<z.ZodMiniTransform<string | Date, unknown>, z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>>;
 declare function formNumber(zodNumber: ZodDeepType<z.ZodMiniNumber<number>>, options?: {
-  required: boolean;
+  required?: boolean;
   error?: string;
 }): z.ZodMiniPipe<z.ZodMiniTransform<number | "", unknown>, z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<"">]>>;
 declare function formString(zodString: ZodDeepType<z.ZodMiniString<string>>, options?: {
-  required: boolean;
+  required?: boolean;
   error?: string;
 }): z.ZodMiniPipe<z.ZodMiniTransform<string, unknown>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<"">]>>;
 declare function formValues<const T extends readonly [string, ...string[]]>(values: T, options: {
@@ -256,17 +256,20 @@ declare function formValues<const T extends readonly [string, ...string[]]>(valu
   required?: false;
   error?: string;
 }): z.ZodMiniPipe<z.ZodMiniTransform, z.ZodMiniEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }> | z.ZodMiniLiteral<''>>;
-declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.ZodMiniObject | z.ZodMiniArray ? never : T, options?: {
-  required: boolean;
+declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.ZodMiniObject | z.ZodMiniArray ? never : T, options: {
+  required: false;
   minLength?: number;
   maxLength?: number;
   error?: string;
   lengthError?: string;
-}): z.ZodMiniArray<T extends z.ZodMiniArray<z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>> | z.ZodMiniObject<Readonly<{
-  [k: string]: z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
-}>, z.core.$strip> ? never : T> | z.ZodMiniOptional<z.ZodMiniArray<T extends z.ZodMiniArray<z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>> | z.ZodMiniObject<Readonly<{
-  [k: string]: z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
-}>, z.core.$strip> ? never : T>>;
+}): z.ZodMiniOptional<z.ZodMiniArray<T>>;
+declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.ZodMiniObject | z.ZodMiniArray ? never : T, options?: {
+  required?: true;
+  minLength?: number;
+  maxLength?: number;
+  error?: string;
+  lengthError?: string;
+}): z.ZodMiniArray<T>;
 //#endregion
 //#region src/use-form-state.d.ts
 declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
