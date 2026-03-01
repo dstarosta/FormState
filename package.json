@@ -14,9 +14,14 @@
   "version": "1.0.0",
   "scripts": {
     "lint": "eslint .",
+    "check-ts": "node -e \"const v=require('typescript').version; if(v<'5.9.0'){console.error('❌ TS version '+v+' is too low. Need >= 5.9.0');process.exit(1)}\"",
     "typecheck": "tsc --noEmit",
-    "build": "npm i && npm run typecheck && npm run lint && npm run test && tsdown && tsdown --config tsdown.types.config.ts",
+    "build": "npm i && npm run check-ts && npm run typecheck && npm run lint && npm run test && tsdown && tsdown --config tsdown.types.config.ts",
     "test": "vitest run --coverage"
+  },
+  "engines": {
+    "node": ">= 24",
+    "tsc": ">= 5.9.0"
   },
   "peerDependencies": {
     "react": ">= 19.2.0",
