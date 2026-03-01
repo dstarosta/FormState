@@ -54,6 +54,7 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
   validateOnTouch?: boolean;
   debounceCacheCapacity?: number;
   watch?: boolean;
+  CSSPrefix?: string;
 };
 type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
   schema: T;

@@ -88,6 +88,7 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  *                                        function. (default: 50). A non-positive value means no debouncing of
  *                                        change callbacks is allowed.
  * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
+ * @param options.CSSPrefix - Form CSS class prefix (default: "form-state").
  *
  * @returns A curried function to wrap the component.
  */

@@ -219,6 +219,12 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    * additional memory and has a minor overhead.
    */
   watch?: boolean;
+  /**
+   * Form CSS class prefix (default: "form-state").
+   *
+   * CSS class example: "form-state__touched"
+   */
+  CSSPrefix?: string;
 };
 
 export type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {

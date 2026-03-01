@@ -79,14 +79,15 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The initial hook parameters.
   const {
-    initialState,
-    initialTouched,
     initialMode = 'editable',
     resetTouchedOnFormReset = true,
     validateOnInit = false,
     validateOnChange = true,
     validateOnTouch = false,
     debounceCacheCapacity = 50,
+    CSSPrefix = 'form-state',
+    initialState,
+    initialTouched,
     watch,
   }: FormInitOptions<T> = formOptions ?? {};
 
@@ -405,20 +406,20 @@ export function useFormState<T extends z.ZodMiniObject>(
           ? getPath(formState.data, nameOrPath).join('.')
           : nameOrPath;
 
-      const classPrefix = options?.classPrefix?.trim() || 'form-state';
+      const prefix = options?.classPrefix?.trim() || CSSPrefix;
 
       if (formState.disabled) {
-        classes += `${classPrefix}__disabled `;
+        classes += `${prefix}__disabled `;
       } else if (formState.readOnly) {
-        classes += `${classPrefix}__readonly `;
+        classes += `${prefix}__readonly `;
       }
 
       if (formState.touched[pathNotation as keyof State]) {
-        classes += `${classPrefix}__touched `;
+        classes += `${prefix}__touched `;
       }
 
       if (formState.validated && formState.errors[pathNotation as keyof State]) {
-        classes += `${classPrefix}__error `;
+        classes += `${prefix}__error `;
       }
 
       if (!additionalClasses?.length) {
@@ -428,6 +429,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       return (classes.trim() + ' ' + additionalClasses).trim();
     },
     [
+      CSSPrefix,
       formState.data,
       formState.disabled,
       formState.errors,
