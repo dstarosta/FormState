@@ -779,6 +779,14 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      * Clears all manual errors.
      */
     clearManualErrors: () => void;
+    /**
+     * Infers the name of a specified form field. The value can be used in HTML element's "name" attribute as well as
+     * the argument in the `useWatch` hook.
+     *
+     * @param nameOrPath - Root level field name or a state path expression.
+     * @returns The inferred name.
+     */
+    inferName: (nameOrPath: FormPath<T>) => string;
   };
   /**
    * Form handler functions.

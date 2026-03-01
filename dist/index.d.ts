@@ -164,6 +164,7 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
     setMode: (mode: FormMode) => void;
     setError: (keyOrPath: string | ((data: z.infer<T>) => unknown), error?: string | null, options?: FormSetErrorOptions) => void;
     clearManualErrors: () => void;
+    inferName: (nameOrPath: FormPath<T>) => string;
   };
   formHandlers: {
     handleSubmit: (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions<T>) => (formData: FormData) => Promise<void>;

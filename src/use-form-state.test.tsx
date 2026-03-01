@@ -10,9 +10,11 @@ import {
   formatDate,
   z,
   type DeepPartial,
+  type FormMode,
+  type FormPath,
   type FormState,
+  type SubmitState,
 } from '.';
-import type { FormMode, SubmitState } from './types/form-types';
 
 describe('useFormState', () => {
   const schema = z.strictObject({
@@ -1828,12 +1830,18 @@ describe('useFormState', () => {
       errorFn.mockReset();
     });
 
-    const WatchedComponent = ({ useWatch }: { useWatch: (name: string) => string | undefined }) => {
-      const nameValue = useWatch('name');
-      const ageValue = useWatch('age');
-      const categoryValue = useWatch('category');
-      const activeValue = useWatch('active');
-      const archivedValue = useWatch('archived');
+    const WatchedComponent = ({
+      inferName,
+      useWatch,
+    }: {
+      inferName: (nameOrPath: FormPath<typeof schema>) => string;
+      useWatch: (name: string) => string | undefined;
+    }) => {
+      const nameValue = useWatch(inferName((x) => x.name));
+      const ageValue = useWatch(inferName((x) => x.info.age));
+      const categoryValue = useWatch(inferName((x) => x.category));
+      const activeValue = useWatch(inferName('isActive'));
+      const archivedValue = useWatch('archivedSelector');
 
       expect(() => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1869,7 +1877,7 @@ describe('useFormState', () => {
       const {
         formState: { data },
         formStatus,
-        formActions: { change, touch, setError },
+        formActions: { change, inferName, touch, setError },
         formHandlers: { handleSubmit },
         formClasses,
         Form,
@@ -1928,13 +1936,13 @@ describe('useFormState', () => {
           <p title="name" className={formClasses('name', 'block', { classPrefix: 'form-text' })}>
             {data.name}
           </p>
-          {watch !== false && <WatchedComponent useWatch={useWatch} />}
+          {watch !== false && <WatchedComponent inferName={inferName} useWatch={useWatch} />}
           <fieldset disabled={formStatus.disabled}>
             <label htmlFor="name">Name</label>
             <input
               type="text"
               id="name"
-              name="name"
+              name={inferName((path) => path.name)}
               className={formClasses((path) => path.name)}
               readOnly={formStatus.readOnly}
               value={data.name}
@@ -1944,7 +1952,7 @@ describe('useFormState', () => {
             <label htmlFor="age">Age</label>
             <textarea
               id="age"
-              name="age"
+              name={inferName((path) => path.info.age)}
               readOnly={formStatus.readOnly}
               defaultValue={data.info.age}
               onBlur={(event) =>
@@ -1955,11 +1963,17 @@ describe('useFormState', () => {
             />
             <label htmlFor="category">Category</label>
             {formStatus.readOnly ? (
-              <input type="readonly" id="category" name="category" readOnly value={data.category} />
+              <input
+                type="readonly"
+                id="category"
+                name={inferName((path) => path.category)}
+                readOnly
+                value={data.category}
+              />
             ) : (
               <select
                 id="category"
-                name="category"
+                name={inferName((path) => path.category)}
                 value={data.category}
                 onChange={(event) =>
                   change(
@@ -1982,9 +1996,9 @@ describe('useFormState', () => {
             )}
             <label htmlFor="active">Active</label>
             <input
-              id="active"
-              name="active"
               type="checkbox"
+              id="active"
+              name={inferName((path) => path.isActive)}
               readOnly={formStatus.readOnly}
               checked={Boolean(data.isActive)}
               onChange={(event) => {
@@ -1997,7 +2011,7 @@ describe('useFormState', () => {
                   type="radio"
                   className="cursor-pointer mr-1.5"
                   id="archivedYes"
-                  name="archived"
+                  name="archivedSelector"
                   data-testid="archivedYes"
                   readOnly={formStatus.readOnly}
                   value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
@@ -2011,7 +2025,7 @@ describe('useFormState', () => {
                   type="radio"
                   className="cursor-pointer mr-1.5"
                   id="archivedNo"
-                  name="archived"
+                  name="archivedSelector"
                   data-testid="archivedNo"
                   readOnly={formStatus.readOnly}
                   value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}

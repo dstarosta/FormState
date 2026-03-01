@@ -783,14 +783,17 @@ export function useFormState<T extends z.ZodMiniObject>(
     dispatch({ type: 'clearManualErrors' });
   }, [dispatch]);
 
-  const initialFormState = useMemo(
-    () => ({
-      data: freezeObject(formState.initialData) as Immutable<State>,
-      errors: freezeObject(formState.initialErrors) as Immutable<
-        Record<keyof State, string | undefined>
-      >,
-    }),
-    [formState.initialData, formState.initialErrors]
+  // Infers the name of the form field.
+  const inferName = useCallback(
+    (nameOrPath: FormPath<T>) => {
+      const pathNotation =
+        typeof nameOrPath === 'function'
+          ? getPath(formState.data, nameOrPath).join('.')
+          : nameOrPath;
+
+      return String(pathNotation);
+    },
+    [formState.data]
   );
 
   // The memoized Form component.
@@ -815,6 +818,16 @@ export function useFormState<T extends z.ZodMiniObject>(
       () => store.getValue(name)
     );
   };
+
+  const initialFormState = useMemo(
+    () => ({
+      data: freezeObject(formState.initialData) as Immutable<State>,
+      errors: freezeObject(formState.initialErrors) as Immutable<
+        Record<keyof State, string | undefined>
+      >,
+    }),
+    [formState.initialData, formState.initialErrors]
+  );
 
   const response = useMemo<FormStateResponse<T>>(
     () => ({
@@ -841,6 +854,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         setMode,
         setError,
         clearManualErrors,
+        inferName,
       },
       formHandlers: {
         handleSubmit,
@@ -872,6 +886,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       setMode,
       setError,
       clearManualErrors,
+      inferName,
       createComponent,
     ]
   );
