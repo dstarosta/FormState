@@ -123,19 +123,39 @@ export const lt = z.lt;
 export const lte = z.lte;
 
 /**
- * Zod describe function.
+ * Zod negative number validation function.
  */
-export const describe = z.describe;
+export const negative = z.negative;
 
 /**
- * Zod refine function.
+ * Zod non-negative number validation function.
  */
-export const refine = z.refine;
+export const nonnegative = z.nonnegative;
 
 /**
- * Zod superRefine function.
+ * Zod non-positive number validation function.
  */
-export const superRefine = z.superRefine;
+export const nonpositive = z.nonpositive;
+
+/**
+ * Zod positive number validation function.
+ */
+export const positive = z.positive;
+
+/**
+ * Zod "includes" string validation function.
+ */
+export const includes = z.includes;
+
+/**
+ * Zod "starts with" string validation function.
+ */
+export const startsWith = z.startsWith;
+
+/**
+ * Zod "ends with" string validation function.
+ */
+export const endsWith = z.endsWith;
 
 /**
  * Zod trim function.
@@ -152,40 +172,153 @@ export const toLowerCase = z.toLowerCase;
  */
 export const toUpperCase = z.toUpperCase;
 
-// Exported functions with reserved names.
+/**
+ * Zod describe function.
+ */
+export const describe = z.describe;
 
 /**
- * Zod enum.
+ * Zod refine function.
  */
-const _enum = z.enum;
+export const refine = z.refine;
+
 /**
- * Zod catch value.
+ * Zod superRefine function.
  */
-const _catch = z.catch;
+export const superRefine = z.superRefine;
+
+/**
+ * Zod prefault value.
+ */
+export const prefault = z.prefault;
+
+// Exported functions with reserved names.
+
 /**
  * Zod default value.
  */
 const _default = z._default;
 
+/**
+ * Zod catch value.
+ */
+const _catch = z.catch;
+
 // eslint-disable-next-line unicorn/no-named-default
-export { _enum as enum, _catch as catch, _default as default };
+export { _catch as catch, _default as default };
 
 /**
- * Advanced Zod transformations - not for direct schema use.
+ * Advanced Zod transformations - not recommended for direct schema use.
  */
 export const advanced = {
   /**
-   * Zod literal value.
+   * Zod catch all.
+   */
+  catchall: z.catchall,
+  /**
+   * Zod big int.
+   */
+  bigint: z.bigint,
+  /**
+   * Zod codec.
+   */
+  codec: z.codec,
+  /**
+   * Zod enum.
+   */
+  enum: z.enum,
+  /**
+   * Zod literal.
    */
   literal: z.literal,
   /**
-   * Zod nullable value.
+   * Zod string boolean.
+   */
+  stringbool: z.stringbool,
+  /**
+   * Zod file.
+   */
+  file: z.file,
+  /**
+   * Zod intersection.
+   */
+  intersection: z.intersection,
+  /**
+   * Zod function.
+   */
+  function: z.function,
+  /**
+   * Zod map.
+   */
+  map: z.map,
+  /**
+   * Zod record.
+   */
+  record: z.record,
+  /**
+   * Zod set.
+   */
+  set: z.set,
+  /**
+   * Zod tuple.
+   */
+  tuple: z.tuple,
+  /**
+   * Zod union.
+   */
+  union: z.union,
+  /**
+   * Zod discriminated union.
+   */
+  discriminatedUnion: z.discriminatedUnion,
+  /**
+   * Zod XOR union.
+   */
+  xor: z.xor,
+  /**
+   * Zod custom type.
+   */
+  custom: z.custom,
+  /**
+   * Zod unknown type.
+   */
+  unknown: z.unknown,
+  /**
+   * Zod never type.
+   */
+  never: z.never,
+  /**
+   * Zod null type.
+   */
+  null: z.null,
+  /**
+   * Zod undefined type.
+   */
+  undefined: z.undefined,
+  /**
+   * Zod read-only.
+   */
+  readonly: z.readonly,
+  /**
+   * Zod nullable.
    */
   nullable: z.nullable,
   /**
-   * Zod nullish value.
+   * Zod nullish.
    */
   nullish: z.nullish,
+  /**
+   * Zod optional.
+   */
+  optional: z.optional,
+  /**
+   * Zod exact optional.
+   */
+  exactOptional: z.exactOptional,
+  /**
+   * Zod non-optional.
+   */
+  nonoptional: z.nonoptional,
   /**
    * Zod pipe.
    */
@@ -195,17 +328,17 @@ export const advanced = {
    */
   transform: z.transform,
   /**
-   * Zod union.
+   * Zod lazy.
    */
-  union: z.union,
+  lazy: z.lazy,
   /**
-   * Zod optional.
+   * Zod JSON.
    */
-  optional: z.optional,
+  json: z.json,
   /**
-   * Zod non-optional.
+   * Zod instance of.
    */
-  nonoptional: z.nonoptional,
+  instanceof: z.instanceof,
 };
 
 /**

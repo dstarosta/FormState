@@ -387,7 +387,7 @@ type FormChangeOptions<T extends z.ZodMiniObject> = {
  */
 type FormReplaceOptions = {
   /**
-   * Indicates whether to validate the field (default: `false`).
+   * Indicates whether to validate the form state (default: `false`).
    */
   validate?: boolean;
 };
@@ -407,7 +407,7 @@ type FormTouchOptions = {
  */
 type FormSetErrorOptions = {
   /**
-   * Indicates whether to validate the field (default: `true` - uses the `change` action default).
+   * Indicates whether to validate the form state (default: `true` - uses the `change` action default).
    *
    * The default value can be overridden in the options of the `useFormState` hook.
    */
@@ -422,7 +422,7 @@ type FormClearErrorsOptions = {
    */
   predicate?: ((key: string) => boolean) | undefined;
   /**
-   * Indicates whether to validate the field (default: `true` - uses the `change` action default).
+   * Indicates whether to validate the form state (default: `true` - uses the `change` action default).
    *
    * The default value can be overridden in the options of the `useFormState` hook.
    */
@@ -763,7 +763,7 @@ type RangeResult<R> = R extends number | Date ? {
   format: string;
 } : undefined;
 declare namespace form_schema_d_exports {
-  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, _enum as enum, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, infer, length, lt, lte, maxLength, maximum, minLength, minimum, number, object, refine, regex, regexes, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim };
+  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim };
 }
 /**
  * Infers form state type from the schema.
@@ -861,17 +861,33 @@ declare const lt: typeof z.core._lt;
  */
 declare const lte: typeof z.core._lte;
 /**
- * Zod describe function.
+ * Zod negative number validation function.
  */
-declare const describe: typeof z.core.describe;
+declare const negative: typeof z.core._negative;
 /**
- * Zod refine function.
+ * Zod non-negative number validation function.
  */
-declare const refine: typeof z.refine;
+declare const nonnegative: typeof z.core._nonnegative;
 /**
- * Zod superRefine function.
+ * Zod non-positive number validation function.
  */
-declare const superRefine: typeof z.superRefine;
+declare const nonpositive: typeof z.core._nonpositive;
+/**
+ * Zod positive number validation function.
+ */
+declare const positive: typeof z.core._positive;
+/**
+ * Zod "includes" string validation function.
+ */
+declare const includes: typeof z.core._includes;
+/**
+ * Zod "starts with" string validation function.
+ */
+declare const startsWith: typeof z.core._startsWith;
+/**
+ * Zod "ends with" string validation function.
+ */
+declare const endsWith: typeof z.core._endsWith;
 /**
  * Zod trim function.
  */
@@ -885,33 +901,141 @@ declare const toLowerCase: typeof z.core._toLowerCase;
  */
 declare const toUpperCase: typeof z.core._toUpperCase;
 /**
- * Zod enum.
+ * Zod describe function.
  */
-declare const _enum: typeof z.enum;
+declare const describe: typeof z.core.describe;
 /**
- * Zod catch value.
+ * Zod refine function.
  */
-declare const _catch: typeof z.catch;
+declare const refine: typeof z.refine;
+/**
+ * Zod superRefine function.
+ */
+declare const superRefine: typeof z.superRefine;
+/**
+ * Zod prefault value.
+ */
+declare const prefault: typeof z.prefault;
 /**
  * Zod default value.
  */
 declare const _default: typeof z._default;
 /**
- * Advanced Zod transformations - not for direct schema use.
+ * Zod catch value.
+ */
+declare const _catch: typeof z.catch;
+/**
+ * Advanced Zod transformations - not recommended for direct schema use.
  */
 declare const advanced: {
   /**
-   * Zod literal value.
+   * Zod catch all.
+   */
+  catchall: typeof z.catchall;
+  /**
+   * Zod big int.
+   */
+  bigint: typeof z.bigint;
+  /**
+   * Zod codec.
+   */
+  codec: typeof z.codec;
+  /**
+   * Zod enum.
+   */
+  enum: typeof z.enum;
+  /**
+   * Zod literal.
    */
   literal: typeof z.literal;
   /**
-   * Zod nullable value.
+   * Zod string boolean.
+   */
+  stringbool: (_params?: string | z.core.$ZodStringBoolParams) => z.ZodMiniCodec<z.ZodMiniString, z.ZodMiniBoolean>;
+  /**
+   * Zod file.
+   */
+  file: typeof z.file;
+  /**
+   * Zod intersection.
+   */
+  intersection: typeof z.intersection;
+  /**
+   * Zod function.
+   */
+  function: typeof z._function;
+  /**
+   * Zod map.
+   */
+  map: typeof z.map;
+  /**
+   * Zod record.
+   */
+  record: typeof z.record;
+  /**
+   * Zod set.
+   */
+  set: typeof z.set;
+  /**
+   * Zod tuple.
+   */
+  tuple: typeof z.tuple;
+  /**
+   * Zod union.
+   */
+  union: typeof z.union;
+  /**
+   * Zod discriminated union.
+   */
+  discriminatedUnion: typeof z.discriminatedUnion;
+  /**
+   * Zod XOR union.
+   */
+  xor: typeof z.xor;
+  /**
+   * Zod custom type.
+   */
+  custom: typeof z.custom;
+  /**
+   * Zod unknown type.
+   */
+  unknown: typeof z.unknown;
+  /**
+   * Zod never type.
+   */
+  never: typeof z.never;
+  /**
+   * Zod null type.
+   */
+  null: typeof z.null;
+  /**
+   * Zod undefined type.
+   */
+  undefined: typeof z.undefined;
+  /**
+   * Zod read-only.
+   */
+  readonly: typeof z.readonly;
+  /**
+   * Zod nullable.
    */
   nullable: typeof z.nullable;
   /**
-   * Zod nullish value.
+   * Zod nullish.
    */
   nullish: typeof z.nullish;
+  /**
+   * Zod optional.
+   */
+  optional: typeof z.optional;
+  /**
+   * Zod exact optional.
+   */
+  exactOptional: typeof z.exactOptional;
+  /**
+   * Zod non-optional.
+   */
+  nonoptional: typeof z.nonoptional;
   /**
    * Zod pipe.
    */
@@ -921,17 +1045,17 @@ declare const advanced: {
    */
   transform: typeof z.transform;
   /**
-   * Zod union.
+   * Zod lazy.
    */
-  union: typeof z.union;
+  lazy: typeof z.lazy;
   /**
-   * Zod optional.
+   * Zod JSON.
    */
-  optional: typeof z.optional;
+  json: typeof z.json;
   /**
-   * Zod non-optional.
+   * Zod instance of.
    */
-  nonoptional: typeof z.nonoptional;
+  instanceof: typeof z.instanceof;
 };
 /**
  * Zod schema for a control with a boolean value that can optionally be an empty string.
@@ -1258,7 +1382,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *

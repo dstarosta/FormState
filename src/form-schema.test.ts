@@ -207,8 +207,8 @@ describe('form schema', () => {
 
   it('should initialize with ZodEnum values', () => {
     const testSchema = z.object({
-      value: z.enum(['a', 'b', 'c']),
-      value2: z.enum(['a', 'b', 'c']),
+      value: z.advanced.enum(['a', 'b', 'c']),
+      value2: z.advanced.enum(['a', 'b', 'c']),
     });
     const initialState: z.infer<typeof testSchema> = { value: 'a', value2: 'c' };
     const { result } = renderHook(() => useFormState(testSchema, { initialState }));

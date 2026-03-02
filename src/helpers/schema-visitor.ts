@@ -20,21 +20,41 @@ const getSchemaMaxLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
 
 const getNumericSchemaRange = (schema: z.ZodMiniNumber) => {
   const bag = schema._zod?.bag as Record<string, number | undefined> | undefined;
-  const rawMin = Math.max(
-    bag?.['minimum'] ?? Number.NEGATIVE_INFINITY,
-    bag?.['exclusiveMinimum'] ?? Number.NEGATIVE_INFINITY
-  );
-  const rawMax = Math.min(
-    bag?.['maximum'] ?? Number.POSITIVE_INFINITY,
-    bag?.['exclusiveMaximum'] ?? Number.POSITIVE_INFINITY
-  );
 
-  const minValue = Number.isFinite(rawMin) ? rawMin : undefined;
-  const maxValue = Number.isFinite(rawMax) ? rawMax : undefined;
+  let rawMin: number | undefined;
+  let rawMax: number | undefined;
+
+  let exclusiveMin = false;
+  let exclusiveMax = false;
+
+  if (bag?.['exclusiveMinimum'] !== undefined) {
+    rawMin = bag['exclusiveMinimum'];
+    exclusiveMin = true;
+  } else if (bag?.['minimum'] !== undefined) {
+    rawMin = bag['minimum'];
+  }
+
+  if (bag?.['exclusiveMaximum'] !== undefined) {
+    rawMax = bag['exclusiveMaximum'];
+    exclusiveMax = true;
+  } else if (bag?.['maximum'] !== undefined) {
+    rawMax = bag['maximum'];
+  }
+
+  let minValue = Number.isFinite(rawMin) ? rawMin : undefined;
+  let maxValue = Number.isFinite(rawMax) ? rawMax : undefined;
 
   const hasNonInteger =
     (minValue !== undefined && !Number.isInteger(minValue)) ||
     (maxValue !== undefined && !Number.isInteger(maxValue));
+
+  if (typeof minValue === 'number' && exclusiveMin) {
+    minValue += hasNonInteger ? 1e-9 : 1;
+  }
+
+  if (typeof maxValue === 'number' && exclusiveMax) {
+    maxValue -= hasNonInteger ? 1e-9 : 1;
+  }
 
   const numberFormat = hasNonInteger ? 'numeric' : 'integer';
 
