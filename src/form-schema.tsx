@@ -208,137 +208,46 @@ const _catch = z.catch;
 export { _catch as catch, _default as default };
 
 /**
- * Advanced Zod transformations - not recommended for direct schema use.
+ * Advanced Zod methods - not recommended for direct schema use
+ * because the library might not support them.
  */
 export const advanced = {
-  /**
-   * Zod catch all.
-   */
-  catchall: z.catchall,
-  /**
-   * Zod big int.
-   */
+  // Primitive/special types
   bigint: z.bigint,
-  /**
-   * Zod codec.
-   */
-  codec: z.codec,
-  /**
-   * Zod enum.
-   */
-  enum: z.enum,
-  /**
-   * Zod literal.
-   */
   literal: z.literal,
-  /**
-   * Zod string boolean.
-   */
-  stringbool: z.stringbool,
-  /**
-   * Zod file.
-   */
-  file: z.file,
-  /**
-   * Zod intersection.
-   */
-  intersection: z.intersection,
-  /**
-   * Zod function.
-   */
-  function: z.function,
-  /**
-   * Zod map.
-   */
-  map: z.map,
-  /**
-   * Zod record.
-   */
-  record: z.record,
-  /**
-   * Zod set.
-   */
-  set: z.set,
-  /**
-   * Zod tuple.
-   */
-  tuple: z.tuple,
-  /**
-   * Zod union.
-   */
-  union: z.union,
-  /**
-   * Zod discriminated union.
-   */
-  discriminatedUnion: z.discriminatedUnion,
-  /**
-   * Zod XOR union.
-   */
-  xor: z.xor,
-  /**
-   * Zod custom type.
-   */
-  custom: z.custom,
-  /**
-   * Zod unknown type.
-   */
+  enum: z.enum,
+  any: z.any,
   unknown: z.unknown,
-  /**
-   * Zod never type.
-   */
   never: z.never,
-  /**
-   * Zod null type.
-   */
+  void: z.void,
   null: z.null,
-  /**
-   * Zod undefined type.
-   */
   undefined: z.undefined,
-  /**
-   * Zod read-only.
-   */
-  readonly: z.readonly,
-  /**
-   * Zod nullable.
-   */
-  nullable: z.nullable,
-  /**
-   * Zod nullish.
-   */
-  nullish: z.nullish,
-  /**
-   * Zod optional.
-   */
-  optional: z.optional,
-  /**
-   * Zod exact optional.
-   */
-  exactOptional: z.exactOptional,
-  /**
-   * Zod non-optional.
-   */
-  nonoptional: z.nonoptional,
-  /**
-   * Zod pipe.
-   */
-  pipe: z.pipe,
-  /**
-   * Zod transformation.
-   */
-  transform: z.transform,
-  /**
-   * Zod lazy.
-   */
-  lazy: z.lazy,
-  /**
-   * Zod JSON.
-   */
+  union: z.union,
+  discriminatedUnion: z.discriminatedUnion,
+  intersection: z.intersection,
+  tuple: z.tuple,
+  partialRecord: z.record,
+  record: z.record,
+  map: z.map,
+  set: z.set,
+  promise: z.promise,
+  function: z.function,
   json: z.json,
-  /**
-   * Zod instance of.
-   */
+
+  // Optionality/nullability
+  optional: z.optional,
+  nonoptional: z.nonoptional,
+  nullable: z.nullable,
+  nullish: z.nullish,
+
+  // Input preprocessing & coercion
+  catchall: z.catchall,
+  coerce: z.coerce,
   instanceof: z.instanceof,
+  lazy: z.lazy,
+  overwrite: z.overwrite,
+  pipe: z.pipe,
+  transform: z.transform,
 };
 
 /**

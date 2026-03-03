@@ -925,137 +925,41 @@ declare const _default: typeof z._default;
  */
 declare const _catch: typeof z.catch;
 /**
- * Advanced Zod transformations - not recommended for direct schema use.
+ * Advanced Zod methods - not recommended for direct schema use
+ * because the library might not support them.
  */
 declare const advanced: {
-  /**
-   * Zod catch all.
-   */
-  catchall: typeof z.catchall;
-  /**
-   * Zod big int.
-   */
   bigint: typeof z.bigint;
-  /**
-   * Zod codec.
-   */
-  codec: typeof z.codec;
-  /**
-   * Zod enum.
-   */
-  enum: typeof z.enum;
-  /**
-   * Zod literal.
-   */
   literal: typeof z.literal;
-  /**
-   * Zod string boolean.
-   */
-  stringbool: (_params?: string | z.core.$ZodStringBoolParams) => z.ZodMiniCodec<z.ZodMiniString, z.ZodMiniBoolean>;
-  /**
-   * Zod file.
-   */
-  file: typeof z.file;
-  /**
-   * Zod intersection.
-   */
-  intersection: typeof z.intersection;
-  /**
-   * Zod function.
-   */
-  function: typeof z._function;
-  /**
-   * Zod map.
-   */
-  map: typeof z.map;
-  /**
-   * Zod record.
-   */
-  record: typeof z.record;
-  /**
-   * Zod set.
-   */
-  set: typeof z.set;
-  /**
-   * Zod tuple.
-   */
-  tuple: typeof z.tuple;
-  /**
-   * Zod union.
-   */
-  union: typeof z.union;
-  /**
-   * Zod discriminated union.
-   */
-  discriminatedUnion: typeof z.discriminatedUnion;
-  /**
-   * Zod XOR union.
-   */
-  xor: typeof z.xor;
-  /**
-   * Zod custom type.
-   */
-  custom: typeof z.custom;
-  /**
-   * Zod unknown type.
-   */
+  enum: typeof z.enum;
+  any: typeof z.any;
   unknown: typeof z.unknown;
-  /**
-   * Zod never type.
-   */
   never: typeof z.never;
-  /**
-   * Zod null type.
-   */
+  void: typeof z.void;
   null: typeof z.null;
-  /**
-   * Zod undefined type.
-   */
   undefined: typeof z.undefined;
-  /**
-   * Zod read-only.
-   */
-  readonly: typeof z.readonly;
-  /**
-   * Zod nullable.
-   */
-  nullable: typeof z.nullable;
-  /**
-   * Zod nullish.
-   */
-  nullish: typeof z.nullish;
-  /**
-   * Zod optional.
-   */
-  optional: typeof z.optional;
-  /**
-   * Zod exact optional.
-   */
-  exactOptional: typeof z.exactOptional;
-  /**
-   * Zod non-optional.
-   */
-  nonoptional: typeof z.nonoptional;
-  /**
-   * Zod pipe.
-   */
-  pipe: typeof z.pipe;
-  /**
-   * Zod transformation.
-   */
-  transform: typeof z.transform;
-  /**
-   * Zod lazy.
-   */
-  lazy: typeof z.lazy;
-  /**
-   * Zod JSON.
-   */
+  union: typeof z.union;
+  discriminatedUnion: typeof z.discriminatedUnion;
+  intersection: typeof z.intersection;
+  tuple: typeof z.tuple;
+  partialRecord: typeof z.record;
+  record: typeof z.record;
+  map: typeof z.map;
+  set: typeof z.set;
+  promise: typeof z.promise;
+  function: typeof z._function;
   json: typeof z.json;
-  /**
-   * Zod instance of.
-   */
+  optional: typeof z.optional;
+  nonoptional: typeof z.nonoptional;
+  nullable: typeof z.nullable;
+  nullish: typeof z.nullish;
+  catchall: typeof z.catchall;
+  coerce: typeof z.coerce;
   instanceof: typeof z.instanceof;
+  lazy: typeof z.lazy;
+  overwrite: typeof z.core._overwrite;
+  pipe: typeof z.pipe;
+  transform: typeof z.transform;
 };
 /**
  * Zod schema for a control with a boolean value that can optionally be an empty string.
