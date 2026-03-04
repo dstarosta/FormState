@@ -84,7 +84,7 @@ describe('useFormState', () => {
       .formArray(z.number().check(z.lte(9999)).with(z.describe('Previous version')))
       .with(z.describe('Previous versions')),
     specialNumber: z
-      .default(z.formNumber(z.number().check(z.minimum(3.1), z.maximum(3.15))), Math.PI)
+      .default(z.formNumber(z.number().check(z.gt(3.1), z.lt(3.15))), Math.PI)
       .with(z.describe('Special number')),
   });
 
@@ -562,7 +562,7 @@ describe('useFormState', () => {
         format: 'yyyy-MM-dd',
       },
       'previousVersions.0': { min: undefined, max: 9999, format: 'integer' },
-      specialNumber: { min: 3.1, max: 3.15, format: 'numeric' },
+      specialNumber: { min: 3.1 + 1e-9, max: 3.15 - 1e-9, format: 'numeric' },
     };
 
     const { get, ...actualRanges } = ranges;
@@ -693,7 +693,7 @@ describe('useFormState', () => {
 
       let updateCounter = 0;
 
-      const validateState = (state: FormState<Schema>) => {
+      const callback = (state: FormState<Schema>) => {
         ++updateCounter;
 
         expect(state.data.name).toBe('Alice');
@@ -739,13 +739,13 @@ describe('useFormState', () => {
         // all callbacks are going to receive the same state with all the state changes
         change('name', 'Alice', {
           touch: true,
-          callback: validateState,
+          callback: callback,
         });
         change('version', 1, {
-          callback: validateState,
+          callback: callback,
         });
         change((path) => path.info.age, 51, {
-          callback: validateState,
+          callback: callback,
         });
       });
 
@@ -838,7 +838,7 @@ describe('useFormState', () => {
       expect(touched.name).toBe(true);
     });
 
-    it('should call a debounced change callback once', () => {
+    it('should call a debounced change callback per field', () => {
       vi.useFakeTimers();
 
       const initialState: InitialSchema = {
@@ -853,7 +853,7 @@ describe('useFormState', () => {
 
       let updateCounter = 0;
 
-      const validateState = (state: FormState<Schema>) => {
+      const callback = (state: FormState<Schema>) => {
         ++updateCounter;
 
         expect(state.data.name).toBe('Alice');
@@ -867,15 +867,15 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Alice', {
           touch: true,
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
         change('version', 1, {
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
         change((path) => path.info.age, 51, {
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
       });
@@ -888,11 +888,13 @@ describe('useFormState', () => {
       expect(data.version).toBe(0);
       expect(data.info.age).toBe(18);
 
-      expect(updateCounter).toBe(1); // debounced callbacks
+      expect(updateCounter).toBe(3);
     });
 
-    it('should call an unstable debounced change callback n times while keeping cache size in check', () => {
+    it('should debounce unstable callbacks for the same field without extra calls but warn the user', () => {
       vi.useFakeTimers();
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn');
 
       const initialState: InitialSchema = {
         name: 'John',
@@ -910,20 +912,22 @@ describe('useFormState', () => {
       const interval = 1000;
 
       act(() => {
-        change('name', 'Alice', {
+        change('name', 'A', {
           touch: true,
           callback: () => {
             ++updateCounter;
           },
           debounceIntervalMs: interval,
         });
-        change('version', 1, {
+        change('name', 'Ali', {
+          touch: true,
           callback: () => {
             ++updateCounter;
           },
           debounceIntervalMs: interval,
         });
-        change((path) => path.info.age, 51, {
+        change('name', 'Alice', {
+          touch: true,
           callback: () => {
             ++updateCounter;
           },
@@ -935,90 +939,48 @@ describe('useFormState', () => {
         vi.advanceTimersByTime(interval * 5);
       });
 
-      expect(updateCounter).toBe(3); // debounced callbacks
+      expect(updateCounter).toBe(1);
+      expect(consoleWarnSpy).toBeCalledTimes(1);
+
+      consoleWarnSpy.mockReset();
     });
 
-    it('should call the second debounced change callback', () => {
+    it('should call the debounced change callback once for rapid same-field changes', () => {
       vi.useFakeTimers();
 
-      const { result } = renderHook(() => useFormState(schema));
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
         formActions: { change },
       } = result.current;
 
       let updateCounter = 0;
 
-      const validateState = () => {
+      const callback = (state: FormState<Schema>) => {
         ++updateCounter;
+
+        expect(state.data.name).toBe('Alice');
       };
 
       const interval = 1000;
 
       act(() => {
+        change('name', 'A', {
+          touch: true,
+          callback: callback,
+          debounceIntervalMs: interval,
+        });
+        change('name', 'Ali', {
+          touch: true,
+          callback: callback,
+          debounceIntervalMs: interval,
+        });
         change('name', 'Alice', {
           touch: true,
-          callback: validateState,
-        });
-        change('version', 1, {
-          callback: validateState,
-          debounceIntervalMs: interval,
-        });
-        change((path) => path.info.age, 51, {
-          callback: validateState,
-        });
-      });
-
-      act(() => {
-        vi.advanceTimersByTime(interval * 5);
-      });
-
-      expect(updateCounter).toBe(2);
-    });
-
-    it('should call the debounced change callback once for rapid changes', () => {
-      vi.useFakeTimers();
-
-      const { result } = renderHook(() => useFormState(schema));
-      const {
-        formActions: { change },
-      } = result.current;
-
-      let updateCounter = 0;
-
-      const validateState = () => {
-        ++updateCounter;
-      };
-
-      const interval = 1000;
-
-      act(() => {
-        change('name', 'Alice', {
-          touch: true,
-          callback: validateState,
-          debounceIntervalMs: interval,
-        });
-        change('version', 1, {
-          callback: validateState,
-          debounceIntervalMs: interval,
-        });
-        change((path) => path.info.age, 51, {
-          callback: validateState,
-          debounceIntervalMs: interval,
-        });
-      });
-
-      act(() => {
-        vi.advanceTimersByTime(interval / 5);
-      });
-
-      act(() => {
-        change('name', 'Allison', {
-          touch: true,
-          callback: validateState,
-          debounceIntervalMs: interval,
-        });
-        change('version', 2, {
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
       });
@@ -1030,17 +992,21 @@ describe('useFormState', () => {
       expect(updateCounter).toBe(1);
     });
 
-    it('should call the debounced change callback twice for sequential changes', () => {
+    it('should call the debounced change callback twice for sequential same-field changes', () => {
       vi.useFakeTimers();
 
-      const { result } = renderHook(() => useFormState(schema));
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
         formActions: { change },
       } = result.current;
 
       let updateCounter = 0;
 
-      const validateState = () => {
+      const callback = () => {
         ++updateCounter;
       };
 
@@ -1049,15 +1015,7 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Alice', {
           touch: true,
-          callback: validateState,
-          debounceIntervalMs: interval,
-        });
-        change('version', 1, {
-          callback: validateState,
-          debounceIntervalMs: interval,
-        });
-        change((path) => path.info.age, 51, {
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
       });
@@ -1069,11 +1027,7 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Allison', {
           touch: true,
-          callback: validateState,
-          debounceIntervalMs: interval,
-        });
-        change('version', 2, {
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
       });
@@ -1197,7 +1151,6 @@ describe('useFormState', () => {
 
       const interval = 1000;
 
-      // First change uses the no-op cache key (no callback).
       act(() => {
         change('name', 'Alice', { debounceIntervalMs: interval });
       });
@@ -1205,8 +1158,8 @@ describe('useFormState', () => {
       // Data should still be pending.
       expect(result.current.formState.data.name).toBe('John');
 
-      // A second change with a different callback evicts the first entry,
-      // flushing the no-callback pending change immediately.
+      // A second change for a different field evicts the first entry,
+      // flushing the pending change immediately.
       const callback = vi.fn();
 
       act(() => {
@@ -1225,6 +1178,50 @@ describe('useFormState', () => {
 
       expect(result.current.formState.data.version).toBe(1);
       expect(callback).toHaveBeenCalledTimes(1);
+
+      function change(...args: Parameters<typeof result.current.formActions.change>) {
+        result.current.formActions.change(...args);
+      }
+    });
+
+    it('should flush pending changes and call callback on cache eviction', () => {
+      vi.useFakeTimers();
+
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialState, debounceCacheCapacity: 1 })
+      );
+
+      const interval = 1000;
+      const evictedCallback = vi.fn();
+      const secondCallback = vi.fn();
+
+      act(() => {
+        change('name', 'Alice', { callback: evictedCallback, debounceIntervalMs: interval });
+      });
+
+      expect(result.current.formState.data.name).toBe('John');
+      expect(evictedCallback).not.toHaveBeenCalled();
+
+      act(() => {
+        change('version', 1, { callback: secondCallback, debounceIntervalMs: interval });
+      });
+
+      // The evicted entry's change should have been dispatched and its callback called.
+      expect(result.current.formState.data.name).toBe('Alice');
+      expect(evictedCallback).toHaveBeenCalledTimes(1);
+
+      expect(result.current.formState.data.version).toBe(0);
+
+      act(() => {
+        vi.advanceTimersByTime(interval + 1);
+      });
+
+      expect(result.current.formState.data.version).toBe(1);
+      expect(secondCallback).toHaveBeenCalledTimes(1);
 
       function change(...args: Parameters<typeof result.current.formActions.change>) {
         result.current.formActions.change(...args);
@@ -1289,7 +1286,7 @@ describe('useFormState', () => {
 
       let updateCounter = 0;
 
-      const validateState = () => {
+      const callback = () => {
         ++updateCounter;
       };
 
@@ -1298,15 +1295,15 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'Alice', {
           touch: true,
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
         change('version', 1, {
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
         change((path) => path.info.age, 51, {
-          callback: validateState,
+          callback: callback,
           debounceIntervalMs: interval,
         });
       });

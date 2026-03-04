@@ -64,6 +64,7 @@ import { formatErrors } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
 import { createFormStore } from './helpers/form-store';
+import { IS_DEVELOPMENT } from './helpers/development-helper';
 
 /**
  * Hook that manages form state.
@@ -172,27 +173,23 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
-  // A no-op callback for debouncing without a provided function.
-  const noopCallback = useRef<StateCallback<State>>(() => {}).current;
-
   // The debounce dispatch cache.
   const debounceCache = useRef<
     Map<
-      StateCallback<State>,
+      string,
       ((...args: []) => void) & {
         cancel: () => void;
-        pending: Map<
-          string,
-          {
-            path: keyof State | FormStatePath<State>;
-            value: unknown;
-            touch: boolean;
-            validate: boolean;
-          }
-        >;
+        path: keyof State | FormStatePath<State>;
+        value: unknown;
+        touch: boolean;
+        validate: boolean;
+        callback: StateCallback<State> | null;
       }
     >
   >(new Map());
+
+  // The set to dedupe "useCallback" warnings on debounce.
+  const debounceCallbackWarning = useRef(new Set<string>());
 
   // The main form state reducer.
   const [formState, dispatch] = useFormStateReducer(
@@ -467,21 +464,17 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       const unchanged = dotPathGet(formState.data, pathNotation) === value;
 
-      const callback = options?.callback;
+      const callback = options?.callback ?? null;
       const interval = options?.debounceIntervalMs ?? 0;
       const shouldDebounce = interval > 0 && debounceCacheCapacity > 0;
-      const cacheKey = callback ?? noopCallback;
 
       if (unchanged) {
         if (shouldDebounce) {
-          const entry = debounceCache.current.get(cacheKey);
+          const entry = debounceCache.current.get(pathNotation);
 
           if (entry) {
-            entry.pending.delete(pathNotation);
-
-            if (entry.pending.size === 0) {
-              entry.cancel();
-            }
+            entry.cancel();
+            debounceCache.current.delete(pathNotation);
           }
         }
 
@@ -503,14 +496,32 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
 
       if (shouldDebounce) {
-        let entry = debounceCache.current.get(cacheKey);
+        let entry = debounceCache.current.get(pathNotation);
 
         if (entry) {
-          // The Map object holds key-value pairs and remembers the original insertion order
-          // of the keys - JavaScript's Map specification document.
-          // Put the callback at the end of the set.
-          debounceCache.current.delete(cacheKey);
-          debounceCache.current.set(cacheKey, entry);
+          // Re-order the entry to the end of the map for LRU eviction.
+          debounceCache.current.delete(pathNotation);
+          debounceCache.current.set(pathNotation, entry);
+
+          if (
+            IS_DEVELOPMENT &&
+            callback &&
+            entry.callback &&
+            entry.callback !== callback &&
+            !debounceCallbackWarning.current.has(pathNotation)
+          ) {
+            console.warn(
+              `[useFormState] The callback reference for debounced field "${pathNotation}" changed between calls. ` +
+                'This usually means an inline function is being passed. Consider wrapping it with useCallback().'
+            );
+            debounceCallbackWarning.current.add(pathNotation);
+          }
+
+          entry.path = path as keyof State | FormStatePath<State>;
+          entry.value = value;
+          entry.touch = Boolean(options?.touch);
+          entry.validate = options?.validate ?? validateOnChange;
+          entry.callback = callback;
         } else {
           // Cache eviction logic.
           if (debounceCache.current.size >= debounceCacheCapacity) {
@@ -520,91 +531,70 @@ export function useFormState<T extends z.ZodMiniObject>(
             if (oldEntry) {
               oldEntry.cancel();
 
-              if (oldEntry.pending.size > 0) {
-                if (firstKey !== noopCallback) {
-                  changeCallbackRefs.current.push(firstKey);
-                }
-
-                for (const pendingChange of oldEntry.pending.values()) {
-                  dispatch({
-                    type: 'change',
-                    name: pendingChange.path,
-                    value: pendingChange.value,
-                    options: {
-                      touch: pendingChange.touch,
-                      validate: pendingChange.validate,
-                    },
-                  });
-                }
+              if (typeof oldEntry.callback === 'function') {
+                changeCallbackRefs.current.push(oldEntry.callback);
               }
+
+              dispatch({
+                type: 'change',
+                name: oldEntry.path,
+                value: oldEntry.value,
+                options: {
+                  touch: oldEntry.touch,
+                  validate: oldEntry.validate,
+                },
+              });
             }
 
             debounceCache.current.delete(firstKey);
           }
 
-          const pending = new Map<
-            string,
-            {
-              path: keyof State | FormStatePath<State>;
-              value: unknown;
-              touch: boolean;
-              validate: boolean;
-            }
-          >();
-
           const debouncedFn = debounce(() => {
             if (isMountedRef.current) {
-              const currentEntry = debounceCache.current.get(cacheKey);
+              const currentEntry = debounceCache.current.get(pathNotation);
 
-              if (currentEntry && currentEntry.pending.size > 0) {
-                if (typeof callback === 'function') {
-                  changeCallbackRefs.current.push(callback);
+              if (currentEntry) {
+                if (typeof currentEntry.callback === 'function') {
+                  changeCallbackRefs.current.push(currentEntry.callback);
                 }
 
-                for (const pendingChange of currentEntry.pending.values()) {
-                  dispatch({
-                    type: 'change',
-                    name: pendingChange.path,
-                    value: pendingChange.value,
-                    options: {
-                      touch: pendingChange.touch,
-                      validate: pendingChange.validate,
-                    },
-                  });
-                }
+                dispatch({
+                  type: 'change',
+                  name: currentEntry.path,
+                  value: currentEntry.value,
+                  options: {
+                    touch: currentEntry.touch,
+                    validate: currentEntry.validate,
+                  },
+                });
 
-                currentEntry.pending.clear();
+                debounceCache.current.delete(pathNotation);
               }
             }
           }, interval);
 
-          entry = Object.assign(debouncedFn, { pending });
+          entry = Object.assign(debouncedFn, {
+            path: path as keyof State | FormStatePath<State>,
+            value,
+            touch: Boolean(options?.touch),
+            validate: options?.validate ?? validateOnChange,
+            callback,
+          });
 
-          debounceCache.current.set(cacheKey, entry);
+          debounceCache.current.set(pathNotation, entry);
         }
-
-        entry.pending.set(pathNotation, {
-          path: path as keyof State | FormStatePath<State>,
-          value,
-          touch: Boolean(options?.touch),
-          validate: options?.validate ?? validateOnChange,
-        });
 
         entry();
       } else {
+        const entry = debounceCache.current.get(pathNotation);
+
+        if (entry) {
+          entry.cancel();
+          debounceCache.current.delete(pathNotation);
+        }
+
         if (typeof callback === 'function') {
-          const entry = debounceCache.current.get(cacheKey);
-
-          if (entry) {
-            entry.pending.delete(pathNotation);
-
-            if (entry.pending.size === 0) {
-              entry.cancel();
-              changeCallbackRefs.current.push(callback);
-            }
-          } else {
-            changeCallbackRefs.current.push(callback);
-          }
+          changeCallbackRefs.current.push(callback);
         }
 
         dispatch({
@@ -618,14 +608,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         });
       }
     },
-    [
-      formState.data,
-      formState.touched,
-      debounceCacheCapacity,
-      validateOnChange,
-      noopCallback,
-      dispatch,
-    ]
+    [formState.data, formState.touched, debounceCacheCapacity, validateOnChange, dispatch]
   );
 
   // The memoized "replace" function.

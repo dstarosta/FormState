@@ -16,6 +16,7 @@ import type {
 import { dotPathGet } from './dot-path';
 import { generateUniqueId } from './random-id-generator';
 import { getBaseType, getPath, getPathNotation, getSchemaType } from './schema-visitor';
+import { IS_DEVELOPMENT } from './development-helper';
 
 // Private functions
 
@@ -148,11 +149,6 @@ export const diffedState = <T extends z.ZodMiniObject>(
 
   return newState;
 };
-
-const IS_DEVELOPMENT =
-  typeof process === 'object' &&
-  process.env &&
-  process.env['NODE_ENV']?.toLowerCase() === 'development';
 
 export const freezeObject = (obj: object) => {
   return IS_DEVELOPMENT ? Object.freeze(obj) : obj;
