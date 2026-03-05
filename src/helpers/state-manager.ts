@@ -76,6 +76,10 @@ export const cleanEmpty = <T>(
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = (obj as UnknownObject)[key];
 
+      if (typeof value === 'function') {
+        continue;
+      }
+
       if (isNotRecordObject(value) && typeof value !== 'symbol' && typeof value !== 'string') {
         if (value !== undefined) {
           innerObj[key] = value;
