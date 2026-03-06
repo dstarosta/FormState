@@ -9,3 +9,17 @@ Object.defineProperty(HTMLElement.prototype, 'offsetParent', {
     return (this as Element)?.parentNode ?? null;
   },
 });
+
+const OriginalFormData = globalThis.FormData;
+
+globalThis.FormData = class extends OriginalFormData {
+  constructor(form?: HTMLFormElement, submitter?: HTMLElement | null) {
+    super(form, submitter);
+
+    if (form) {
+      const event = new Event('formdata', { bubbles: true });
+      Object.defineProperty(event, 'formData', { value: this });
+      form.dispatchEvent(event);
+    }
+  }
+};

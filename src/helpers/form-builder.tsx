@@ -60,7 +60,8 @@ export const createFormComponent = <T extends object>(
   function Form(props: React.ComponentPropsWithRef<'form'>) {
     const { ref: forwardedRef, ...restProps } = props;
 
-    const formRef = useRef<HTMLFormElement | null>(null);
+    const formRef = useRef<HTMLFormElement>(null);
+    const lastSubmitter = useRef<HTMLElement>(null);
 
     const resetStore = () => {
       // This condition should not be happening in a callback.
@@ -94,6 +95,21 @@ export const createFormComponent = <T extends object>(
       }
     }, []);
 
+    const handleSubmit = useCallback((event: SubmitEvent) => {
+      lastSubmitter.current = event.submitter;
+    }, []);
+
+    const handleFormData = useCallback((event: FormDataEvent) => {
+      const submitterName = lastSubmitter.current?.getAttribute('name');
+      const submitterValue = lastSubmitter.current?.getAttribute('value');
+
+      if (submitterName && submitterValue && !event.formData.has(submitterName)) {
+        event.formData.append(submitterName, submitterValue);
+      }
+
+      lastSubmitter.current = null;
+    }, []);
+
     const formRefCallback = useCallback(
       (node: HTMLFormElement | null) => {
         if (typeof forwardedRef === 'function') {
@@ -114,13 +130,17 @@ export const createFormComponent = <T extends object>(
 
         node.addEventListener('input', handleInputChange);
         node.addEventListener('change', handleInputChange);
+        node.addEventListener('formdata', handleFormData);
+        node.addEventListener('submit', handleSubmit, { capture: true });
 
         return () => {
+          node.removeEventListener('submit', handleSubmit, { capture: true });
+          node.removeEventListener('formdata', handleFormData);
           node.removeEventListener('change', handleInputChange);
           node.removeEventListener('input', handleInputChange);
         };
       },
-      [forwardedRef, handleInputChange]
+      [forwardedRef, handleInputChange, handleFormData, handleSubmit]
     );
 
     const handleReset = useCallback(() => {

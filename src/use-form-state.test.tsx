@@ -2220,6 +2220,12 @@ describe('useFormState', () => {
           <fieldset disabled={formStatus.disabled}>
             <label htmlFor="name">Name</label>
             <input
+              type="hidden"
+              name="id"
+              defaultValue={data.name}
+              onChange={(event) => change('name', event.target.value)}
+            />
+            <input
               type="text"
               id="name"
               name={inferName((path) => path.name)}
@@ -2317,8 +2323,15 @@ describe('useFormState', () => {
             </span>
             {!formStatus.disabled && !formStatus.readOnly && (
               <>
-                <button type="submit">Submit</button>
-                <button type="button" onClick={() => submitForm(formRef.current)}>
+                <button type="submit" name="submitter" value="submit">
+                  Submit
+                </button>
+                <button
+                  type="button"
+                  name="submitter"
+                  value="submitManual"
+                  onClick={() => submitForm(formRef.current)}
+                >
                   Submit Manually
                 </button>
                 <button type="button" onClick={() => formRef.current?.submit()}>
@@ -2428,6 +2441,12 @@ describe('useFormState', () => {
 
         expect(name).toContainHTML('John');
         expect(submittedInfo).toBeInTheDocument();
+
+        const formData = submitFn.mock.calls?.[0]?.[1] as FormData;
+        expect(formData).toBeInstanceOf(FormData);
+
+        expect(formData.has('id')).toBe(true);
+        expect(formData.get('submitter')).toBe('submit');
       });
     });
 
