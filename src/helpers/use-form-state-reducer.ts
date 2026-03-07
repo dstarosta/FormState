@@ -316,9 +316,15 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             manualErrorsState.set(draft);
           });
 
+          const currentErrors = { ...errors, ...manualErrors };
+
+          if (deepEqual(prevState.errors, currentErrors)) {
+            return prevState;
+          }
+
           return {
             ...prevState,
-            errors: { ...errors, ...manualErrors },
+            errors: currentErrors,
             validated: prevState.validated || options.validate,
           } satisfies FormMutableState<State>;
         }
@@ -327,6 +333,10 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const {
             options: { predicate, validate },
           } = action;
+
+          if (Object.keys(manualErrorsState.get()).length === 0) {
+            return prevState;
+          }
 
           const hasPredicate = typeof predicate === 'function';
 

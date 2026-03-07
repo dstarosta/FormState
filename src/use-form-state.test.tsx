@@ -1994,7 +1994,7 @@ describe('useFormState', () => {
       expect(errorFormState.errors.getManual('isActive')).toMatch('What is active?');
 
       act(() => {
-        clearManualErrors({ predicate: (key) => key.toLowerCase() !== key, validate: true });
+        clearManualErrors({ predicate: (key) => key.toLowerCase() !== key });
       });
 
       const { formState: cleanFormState, formStatus: cleanFormStatus } = result.current;
@@ -2010,16 +2010,60 @@ describe('useFormState', () => {
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
-        formActions: { clearManualErrors },
+        formActions: { clearManualErrors, setError },
       } = result.current;
 
       act(() => {
-        clearManualErrors({ validate: true });
+        setError('manual', 'error');
+      });
+
+      act(() => {
+        clearManualErrors();
       });
 
       const { formStatus } = result.current;
 
       expect(formStatus.valid).toBe(false);
+    });
+
+    it('should clear manual errors and do not validate schema', () => {
+      const initialState: InitialSchema = {
+        info: { age: 30 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { clearManualErrors, setError },
+      } = result.current;
+
+      act(() => {
+        setError('manual', 'error', { validate: false });
+      });
+
+      act(() => {
+        clearManualErrors({ validate: false });
+      });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.valid).toBeNull();
+    });
+
+    it('should try to clear manual errors but not validate schema since there are no errors', () => {
+      const initialState: InitialSchema = {
+        info: { age: 30 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { clearManualErrors },
+      } = result.current;
+
+      act(() => {
+        clearManualErrors();
+      });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.valid).toBeNull();
     });
 
     it('should mark the form dirty with a manual key', () => {
@@ -2323,14 +2367,19 @@ describe('useFormState', () => {
             </span>
             {!formStatus.disabled && !formStatus.readOnly && (
               <>
-                <button type="submit" name="submitter" value="submit">
+                <button name="submitter" value="submit">
                   Submit
                 </button>
                 <button
-                  type="button"
                   name="submitter"
                   value="submitManual"
-                  onClick={() => submitForm(formRef.current)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    submitForm(
+                      formRef.current,
+                      document.querySelector<HTMLElement>('button[value="submit"]')
+                    );
+                  }}
                 >
                   Submit Manually
                 </button>

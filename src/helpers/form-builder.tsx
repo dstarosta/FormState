@@ -103,6 +103,8 @@ export const createFormComponent = <T extends object>(
       const submitterName = lastSubmitter.current?.getAttribute('name');
       const submitterValue = lastSubmitter.current?.getAttribute('value');
 
+      // JSDOM always puts submit buttons in async actions unlike certain browser's DOMs.
+      /* v8 ignore if -- @preserve */
       if (submitterName && submitterValue && !event.formData.has(submitterName)) {
         event.formData.append(submitterName, submitterValue);
       }
@@ -187,7 +189,8 @@ export const formDataToURL = (formData: FormData) =>
  * This function supports asynchronous action forms.
  *
  * @param form - The form element.
+ * @param submitter - An optional submitter HTML submit button element.
  */
-export const submitForm = (form?: HTMLFormElement | null) => {
-  form?.requestSubmit();
+export const submitForm = (form?: HTMLFormElement | null, submitter?: HTMLElement | null) => {
+  form?.requestSubmit(submitter);
 };

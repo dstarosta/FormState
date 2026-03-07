@@ -1254,8 +1254,9 @@ declare const formDataToURL: (formData: FormData) => URLSearchParams;
  * This function supports asynchronous action forms.
  *
  * @param form - The form element.
+ * @param submitter - An optional submitter HTML submit button element.
  */
-declare const submitForm: (form?: HTMLFormElement | null) => void;
+declare const submitForm: (form?: HTMLFormElement | null, submitter?: HTMLElement | null) => void;
 declare namespace value_converter_d_exports {
   export { toBoolean, toDate, toFloat, toInt, toLiteral, toString };
 }
@@ -1286,7 +1287,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
