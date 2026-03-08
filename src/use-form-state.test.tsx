@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Ref } from 'react';
+import React, { useEffect, useRef, type Ref } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -2383,13 +2383,58 @@ describe('useFormState', () => {
                 >
                   Submit Manually
                 </button>
-                <button type="button" onClick={() => formRef.current?.submit()}>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    formRef.current?.submit();
+                  }}
+                >
                   Submit Fail
                 </button>
                 <button type="reset">Reset</button>
               </>
             )}
           </fieldset>
+        </Form>
+      );
+    };
+
+    const SimpleFormComponent = () => {
+      const {
+        formState: { data, errors },
+        formStatus: { submitted },
+        formActions: { change, validate },
+        Form,
+      } = useFormState(schema, {
+        initialState: {
+          name: 'John',
+          info: {
+            age: 30,
+          },
+        },
+      });
+
+      const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        validate({ submit: true });
+      };
+
+      return (
+        <Form onSubmit={handleSubmit}>
+          <p>Name: {data.name}</p>
+          <input
+            type="input"
+            data-testid="nameInput"
+            value={data.name}
+            onChange={(e) => {
+              change('name', e.target.value);
+            }}
+          />
+          {errors.name && <p data-testid="nameError">Error: {errors.name}</p>}
+          {submitted && <p>Submitted</p>}
+          <button>Submit Form</button>
         </Form>
       );
     };
@@ -2898,6 +2943,64 @@ describe('useFormState', () => {
       expect(resetButton).not.toBeInTheDocument();
 
       expect(nameInput.classList).toContain('form-state__disabled');
+    });
+
+    it('submits a simple form using onSubmit method', () => {
+      const { getByText, queryByTestId } = render(<SimpleFormComponent />);
+
+      const submitButton = getByText('Submit Form');
+      fireEvent.click(submitButton);
+
+      const nameError = queryByTestId('nameError');
+      const submittedElement = getByText('Submitted');
+
+      expect(nameError).not.toBeInTheDocument();
+      expect(submittedElement).toBeInTheDocument();
+    });
+
+    it('submits a simple form after changing the name', () => {
+      const { getByTestId, getByText, queryByTestId } = render(<SimpleFormComponent />);
+
+      const input = getByTestId('nameInput');
+      fireEvent.change(input, { target: { value: 'Todd' } });
+
+      const nameElement = getByText('Name: Todd');
+
+      const submitButton = getByText('Submit Form');
+      fireEvent.click(submitButton);
+
+      const nameError = queryByTestId('nameError');
+      const submittedElement = getByText('Submitted');
+
+      expect(nameElement).toBeInTheDocument();
+      expect(nameError).not.toBeInTheDocument();
+      expect(submittedElement).toBeInTheDocument();
+    });
+
+    it('fails to submit a simple form after clearing the name', () => {
+      const { getByTestId, getByText, queryByText } = render(<SimpleFormComponent />);
+
+      const input = getByTestId('nameInput');
+      fireEvent.change(input, { target: { value: '' } });
+
+      const submitButton = getByText('Submit Form');
+      fireEvent.click(submitButton);
+
+      const nameError = getByTestId('nameError');
+      const submittedElement = queryByText('Submitted');
+
+      expect(nameError).toBeInTheDocument();
+      expect(submittedElement).not.toBeInTheDocument();
+    });
+
+    it('fails to find the submit button in an unmounted form', () => {
+      const { queryByText, unmount } = render(<SimpleFormComponent />);
+
+      unmount();
+
+      const submitButton = queryByText('Submit Form');
+
+      expect(submitButton).not.toBeInTheDocument();
     });
   });
 });

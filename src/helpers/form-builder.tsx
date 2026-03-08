@@ -124,22 +124,34 @@ export const createFormComponent = <T extends object>(
 
         // Defensive check for a null node.
         /* v8 ignore if -- @preserve */
-        if (!store || !node) {
+        if (!node) {
           return;
         }
 
-        resetStore();
+        if (store) {
+          resetStore();
 
-        node.addEventListener('input', handleInputChange);
-        node.addEventListener('change', handleInputChange);
-        node.addEventListener('formdata', handleFormData);
-        node.addEventListener('submit', handleSubmit, { capture: true });
+          node.addEventListener('input', handleInputChange);
+          node.addEventListener('change', handleInputChange);
+        }
+
+        const hasAction = node.action?.includes('throw new Error');
+
+        if (hasAction) {
+          node.addEventListener('formdata', handleFormData);
+          node.addEventListener('submit', handleSubmit, { capture: true });
+        }
 
         return () => {
-          node.removeEventListener('submit', handleSubmit, { capture: true });
-          node.removeEventListener('formdata', handleFormData);
-          node.removeEventListener('change', handleInputChange);
-          node.removeEventListener('input', handleInputChange);
+          if (hasAction) {
+            node.removeEventListener('submit', handleSubmit, { capture: true });
+            node.removeEventListener('formdata', handleFormData);
+          }
+
+          if (store) {
+            node.removeEventListener('change', handleInputChange);
+            node.removeEventListener('input', handleInputChange);
+          }
         };
       },
       [forwardedRef, handleInputChange, handleFormData, handleSubmit]
