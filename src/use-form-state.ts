@@ -674,8 +674,8 @@ export function useFormState<T extends z.ZodMiniObject>(
           dispatch({
             type: 'submit',
             options: {
-              resetDirty: Boolean(options.resetDirty !== false),
-              resetTouched: Boolean(options.resetTouched !== false),
+              resetDirty: options.resetDirty !== false,
+              resetTouched: options.resetTouched !== false,
             },
           });
         }
@@ -710,7 +710,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           type: 'reset',
           options: {
             retainData: Boolean(options?.retainData),
-            resetTouched: Boolean(options?.resetTouched !== false),
+            resetTouched: Boolean(options?.resetTouched),
             resetSubmitted: Boolean(options?.resetSubmitted),
           },
         });
@@ -793,8 +793,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         dispatch({
           type: 'submit',
           options: {
-            resetDirty: Boolean(options?.resetDirty !== false),
-            resetTouched: Boolean(options?.resetTouched !== false),
+            resetDirty: options?.resetDirty !== false,
+            resetTouched: options?.resetTouched !== false,
           },
         });
       };
