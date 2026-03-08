@@ -425,9 +425,9 @@ export function useFormState<T extends z.ZodMiniObject>(
       const prefix = options?.classPrefix?.trim() || CSSPrefix;
 
       if (formState.disabled) {
-        classes += `${prefix}__disabled `;
+        return `${prefix}__disabled`;
       } else if (formState.readOnly) {
-        classes += `${prefix}__readonly `;
+        return `${prefix}__readonly`;
       }
 
       if (formState.touched[pathNotation as keyof State]) {
