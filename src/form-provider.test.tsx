@@ -160,7 +160,7 @@ describe('form provider', () => {
     expect(ageErrorAfterReset.textContent).toBe('Age must be > 0');
 
     expect(ageLabel.classList).toContain('form-state__error');
-    expect(ageLabel.classList).not.toContain('form-state__touched');
+    expect(ageLabel.classList).toContain('form-state__touched');
 
     expect(ageInput.value).toBe('0');
   });

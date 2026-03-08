@@ -83,7 +83,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The initial hook parameters.
   const {
     initialMode = 'editable',
-    resetTouchedOnFormReset = true,
+    resetTouchedOnFormReset = false,
     validateOnInit = false,
     validateOnChange = true,
     validateOnTouch = false,

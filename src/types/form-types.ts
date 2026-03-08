@@ -189,7 +189,7 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   initialMode?: FormMode | undefined;
   /**
-   * Reset the "touch" field status after the form has been reset  (default: `true`).
+   * Reset the "touch" field status after the form has been reset  (default: `false`).
    *
    * Note: This option is only applicable to a `Form` component without a provided
    * `onReset` handler.
@@ -598,8 +598,7 @@ export type FormResetOptions<T extends z.ZodMiniObject> = {
    */
   retainData?: boolean;
   /**
-   * Indicates whether to reset the touched state of the fields (default: `true` if the whole form is
-   * being reset, `false` if a list of names is provided).
+   * Indicates whether to reset the touched state of the fields (default: `false`).
    */
   resetTouched?: boolean;
   /**
@@ -626,11 +625,15 @@ export type FormValidateOptions<T extends z.ZodMiniObject> = {
    */
   resetDirty?: boolean;
   /**
-   * Indicates whether to reset the touched state of the fields (default: `true`).
+   * Indicates whether to reset the touched state of the fields after the form was
+   * submitted. (default: `true`).
+   *
+   * Note: this setting is applicable only when `submit` is set to true. Regular
+   * validations do not affect `touched` flags.
    */
   resetTouched?: boolean;
   /**
-   * Indicates whether to mark the form submitted if its state is valid.
+   * Indicates whether to mark the form submitted if its state is valid (default: `false`).
    */
   submit?: boolean;
   /**
