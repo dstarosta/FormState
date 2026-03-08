@@ -425,17 +425,16 @@ export function useFormState<T extends z.ZodMiniObject>(
       const prefix = options?.classPrefix?.trim() || CSSPrefix;
 
       if (formState.disabled) {
-        return `${prefix}__disabled`;
+        classes += `${prefix}__disabled `;
       } else if (formState.readOnly) {
-        return `${prefix}__readonly`;
-      }
-
-      if (formState.touched[pathNotation as keyof State]) {
-        classes += `${prefix}__touched `;
-      }
-
-      if (formState.validated && formState.errors[pathNotation as keyof State]) {
-        classes += `${prefix}__error `;
+        classes += `${prefix}__readonly `;
+      } else {
+        if (formState.touched[pathNotation as keyof State]) {
+          classes += `${prefix}__touched `;
+        }
+        if (formState.validated && formState.errors[pathNotation as keyof State]) {
+          classes += `${prefix}__error `;
+        }
       }
 
       if (!additionalClasses?.length) {
