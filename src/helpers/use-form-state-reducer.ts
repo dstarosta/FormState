@@ -195,14 +195,14 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             dirty: action.options.resetDirty ? { ...state.dirty } : { ...prevState.dirty },
             touched: action.options.resetTouched ? { ...state.touched } : { ...prevState.touched },
             validated: true,
-            submitted: true,
+            submitCount: prevState.submitCount + 1,
           } satisfies FormMutableState<State>;
         }
         // field reset event
         case 'resetFields': {
           const {
             names,
-            options: { retainData, resetSubmitted, resetTouched },
+            options: { retainData, resetTouched },
           } = action;
 
           const mergedData = { ...prevState.data };
@@ -248,7 +248,6 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           return diffedState(
             {
               ...prevState,
-              submitted: resetSubmitted ? state.submitted : prevState.submitted,
               data: mergedData,
               errors: { ...errors, ...manualErrors },
               dirty,
@@ -261,7 +260,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         case 'reset': {
           let errors: Record<keyof State, string>;
 
-          if (validateOnInit && !prevState.submitted) {
+          if (validateOnInit && prevState.submitCount === 0) {
             const safeData = schema.safeParse(prevState.initialData);
             errors = formatErrors<State>(safeData.error);
           } else {
@@ -275,8 +274,8 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             initialErrors: prevState.initialErrors,
             data: action.options.retainData ? prevState.data : prevState.initialData,
             replaced: prevState.replaced,
-            validated: prevState.submitted || validateOnInit,
-            submitted: action.options.resetSubmitted ? state.submitted : prevState.submitted,
+            validated: prevState.submitCount > 0 || validateOnInit,
+            submitCount: prevState.submitCount,
             dirty: { ...state.dirty },
             touched: action.options.resetTouched ? { ...state.touched } : { ...prevState.touched },
             readOnly: prevState.readOnly,

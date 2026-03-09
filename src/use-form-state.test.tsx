@@ -10,6 +10,7 @@ import {
   formatDate,
   z,
   type DeepPartial,
+  type FormEventType,
   type FormMode,
   type FormPath,
   type FormState,
@@ -1579,7 +1580,6 @@ describe('useFormState', () => {
         reset({
           names: ['name'],
           resetTouched: true,
-          resetSubmitted: true,
           callback: (state) => {
             expect(state.data.name).toBe('John');
             expect(state.data.info.age).toBe(29);
@@ -1691,7 +1691,7 @@ describe('useFormState', () => {
       });
 
       act(() => {
-        reset({ resetTouched: true, resetSubmitted: true });
+        reset({ resetTouched: true });
       });
 
       const { formState, formStatus } = result.current;
@@ -1700,33 +1700,6 @@ describe('useFormState', () => {
       expect(formState.data.info.age).toBe(30);
       expect(formStatus.dirty).toBe(false);
       expect(formStatus.touched).toBe(false);
-    });
-
-    it('should reset the form and reset submitted but retain data', () => {
-      const initialState: InitialSchema = {
-        name: 'John',
-        info: { age: 30 },
-      };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
-      const {
-        formActions: { change, reset },
-      } = result.current;
-
-      act(() => {
-        change('name', 'Jonathan', { touch: true });
-        change((path) => path.info.age, 29, { touch: true });
-      });
-
-      act(() => {
-        reset({ retainData: true, resetSubmitted: true, resetTouched: false });
-      });
-
-      const { formState, formStatus } = result.current;
-
-      expect(formState.data.name).toBe('Jonathan');
-      expect(formState.data.info.age).toBe(29);
-      expect(formStatus.dirty).toBe(false);
-      expect(formStatus.touched).toBe(true);
     });
 
     it('should submit form', () => {
@@ -2103,7 +2076,12 @@ describe('useFormState', () => {
 
     it('should subscribe to changes', () => {
       const callback = vi.fn(
-        (data: FormState<Schema>['data'], errors: FormState<Schema>['errors']) => {
+        (
+          type: FormEventType,
+          data: FormState<Schema>['data'],
+          errors: FormState<Schema>['errors']
+        ) => {
+          expect(type).toBeOneOf(['change', 'submit']);
           expect(data.toObject().info.age).toBe(42);
           expect(errors.get((path) => path.info.age)).toBeUndefined();
           expect(errors.getManual('age')).toBeUndefined();
@@ -2116,7 +2094,7 @@ describe('useFormState', () => {
       };
       const { result } = renderHook(() => useFormState(schema, { initialState }));
       const {
-        formActions: { change },
+        formActions: { change, validate },
         subscribe,
       } = result.current;
 
@@ -2129,10 +2107,12 @@ describe('useFormState', () => {
 
       expect(callback).toBeCalledTimes(1);
       expect(callback).toBeCalledWith(
+        'change',
         expect.objectContaining({
           info: expect.objectContaining({ age: 42 }) as object,
         }),
-        expect.objectContaining({})
+        expect.objectContaining({}),
+        0
       );
 
       act(() => {
@@ -2141,20 +2121,42 @@ describe('useFormState', () => {
 
       expect(callback).toBeCalledTimes(2);
       expect(callback).toBeCalledWith(
+        'change',
         expect.objectContaining({
           info: expect.objectContaining({ birthDate: new Date(2020, 11, 31) }) as object,
         }),
-        expect.objectContaining({})
+        expect.objectContaining({}),
+        0
+      );
+
+      act(() => {
+        validate({ submit: true });
+      });
+
+      const { formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(true);
+
+      expect(callback).toBeCalledTimes(3);
+      expect(callback).toBeCalledWith(
+        'submit',
+        expect.objectContaining({
+          info: expect.objectContaining({ age: 42, birthDate: new Date(2020, 11, 31) }) as object,
+        }),
+        expect.objectContaining({}),
+        1
       );
 
       act(() => {
         change('name', '');
       });
 
-      expect(callback).toBeCalledTimes(3);
+      expect(callback).toBeCalledTimes(4);
       expect(callback).toBeCalledWith(
+        'change',
         expect.objectContaining({ name: '' }),
-        expect.objectContaining({ name: 'Name is required' })
+        expect.objectContaining({ name: 'Name is required' }),
+        1
       );
 
       unsubscribe();
@@ -2163,7 +2165,7 @@ describe('useFormState', () => {
         change('name', 'Tom');
       });
 
-      expect(callback).toBeCalledTimes(3);
+      expect(callback).toBeCalledTimes(4);
     });
 
     it('should change the form mode', () => {

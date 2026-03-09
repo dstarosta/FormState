@@ -162,7 +162,6 @@ export const createFormComponent = <T extends object>(
         type: 'reset',
         options: {
           retainData: false,
-          resetSubmitted: false,
           resetTouched: resetTouchedOnFormReset,
         },
       });

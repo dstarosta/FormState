@@ -1,10 +1,12 @@
 export * as z from './form-schema';
 export type {
+  ChangeListener,
   DateParseResult,
   DeepPartial,
   FormChangeOptions,
   FormControlWithStateProps,
   FormDateFormat,
+  FormEventType,
   FormMode,
   FormPath,
   FormResetOptions,

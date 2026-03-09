@@ -106,12 +106,12 @@ export type FormAction<T extends object> =
     }
   | {
       type: 'reset';
-      options: { retainData: boolean; resetTouched: boolean; resetSubmitted: boolean };
+      options: { retainData: boolean; resetTouched: boolean };
     }
   | {
       type: 'resetFields';
       names: (keyof T)[];
-      options: { retainData: boolean; resetTouched: boolean; resetSubmitted: boolean };
+      options: { retainData: boolean; resetTouched: boolean };
     }
   | {
       type: 'submit';
@@ -143,9 +143,9 @@ export type FormMutableState<T extends object> = {
   ranges: Record<keyof T, { min: FieldRange; max: FieldRange; format: string }>;
   patterns: Record<keyof T, string | undefined>;
   descriptions: Record<keyof T, string | undefined>;
+  submitCount: number;
   replaced: boolean;
   validated: boolean;
-  submitted: boolean;
   readOnly: boolean;
   disabled: boolean;
 };
@@ -165,6 +165,27 @@ export type FormStore = {
 };
 
 // Public types
+
+/**
+ * Form event type for change listener callback functions.
+ */
+export type FormEventType = 'change' | 'submit';
+
+/**
+ * Callback function change listener type.
+ *
+ * @typeParam T - type of the form data.
+ * @param type - Event type ('change' or 'submit').
+ * @param data - Form state data.
+ * @param errors - Form errors.
+ * @param submitCount - A number indicating how many times the form has been submitted.
+ */
+export type ChangeListener<T extends object> = (
+  type: FormEventType,
+  data: FormState<T>['data'],
+  errors: FormState<T>['errors'],
+  submitCount: number
+) => void;
 
 /**
  * Form initialization options.
@@ -602,10 +623,6 @@ export type FormResetOptions<T extends z.ZodMiniObject> = {
    */
   resetTouched?: boolean;
   /**
-   * Indicates whether to reset the submitted state of the fields (default: `false`).
-   */
-  resetSubmitted?: boolean;
-  /**
    * An optional callback to run after the form state has been reset.
    *
    * @param state - Updated form state - data, errors, touched and dirty flags.
@@ -879,9 +896,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
    * @param listener - A callback function with form state `data` and `errors` parameters.
    * @returns An `unsubscribe()` function to stop the subscription.
    */
-  subscribe: (
-    listener: (data: FormState<z.infer<T>>['data'], errors: FormState<z.infer<T>>['errors']) => void
-  ) => () => void;
+  subscribe: (listener: ChangeListener<z.infer<T>>) => () => void;
   /**
    * A hook that watches a field based on the element's `name` HTML attribute.
    *

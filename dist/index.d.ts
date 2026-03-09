@@ -49,12 +49,26 @@ type FormMutableState<T extends object> = {
   }>;
   patterns: Record<keyof T, string | undefined>;
   descriptions: Record<keyof T, string | undefined>;
+  submitCount: number;
   replaced: boolean;
   validated: boolean;
-  submitted: boolean;
   readOnly: boolean;
   disabled: boolean;
 };
+/**
+ * Form event type for change listener callback functions.
+ */
+type FormEventType = 'change' | 'submit';
+/**
+ * Callback function change listener type.
+ *
+ * @typeParam T - type of the form data.
+ * @param type - Event type ('change' or 'submit').
+ * @param data - Form state data.
+ * @param errors - Form errors.
+ * @param submitCount - A number indicating how many times the form has been submitted.
+ */
+type ChangeListener<T extends object> = (type: FormEventType, data: FormState<T>['data'], errors: FormState<T>['errors'], submitCount: number) => void;
 /**
  * Form initialization options.
  *
@@ -447,10 +461,6 @@ type FormResetOptions<T extends z.ZodMiniObject> = {
    */
   resetTouched?: boolean;
   /**
-   * Indicates whether to reset the submitted state of the fields (default: `false`).
-   */
-  resetSubmitted?: boolean;
-  /**
    * An optional callback to run after the form state has been reset.
    *
    * @param state - Updated form state - data, errors, touched and dirty flags.
@@ -702,7 +712,7 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
    * @param listener - A callback function with form state `data` and `errors` parameters.
    * @returns An `unsubscribe()` function to stop the subscription.
    */
-  subscribe: (listener: (data: FormState<z.infer<T>>['data'], errors: FormState<z.infer<T>>['errors']) => void) => () => void;
+  subscribe: (listener: ChangeListener<z.infer<T>>) => () => void;
   /**
    * A hook that watches a field based on the element's `name` HTML attribute.
    *
@@ -1339,5 +1349,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createInitialState, createState, formConnect, formDataToURL, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createInitialState, createState, formConnect, formDataToURL, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

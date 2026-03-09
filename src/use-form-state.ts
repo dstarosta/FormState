@@ -14,10 +14,12 @@ import { dotPathGet } from './helpers/dot-path';
 import { createFormComponent } from './helpers/form-builder';
 
 import type {
+  DeepPartial,
+  ChangeListener,
+  FieldRange,
   FormChangeOptions,
   FormClassOptions,
   FormPath,
-  FieldRange,
   FormClearErrorsOptions,
   FormInitOptions,
   FormMode,
@@ -33,7 +35,6 @@ import type {
   FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
-  DeepPartial,
   Immutable,
   StateCallback,
   SubmitState,
@@ -149,12 +150,12 @@ export function useFormState<T extends z.ZodMiniObject>(
     const data = safeData.data ?? mergedData;
 
     return {
-      replaced: false,
-      validated: validateOnInit,
-      submitted: false,
-      initialData: data,
       disabled: initialMode === 'disabled',
       readOnly: initialMode === 'readOnly',
+      initialData: data,
+      replaced: false,
+      validated: validateOnInit,
+      submitCount: 0,
       data,
       initialErrors,
       errors,
@@ -173,9 +174,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
-  const changeListeners = useRef<
-    Set<(data: FormState<State>['data'], errors: FormState<State>['errors']) => void>
-  >(new Set());
+  const changeListeners = useRef<Set<ChangeListener<State>>>(new Set());
 
   // The debounce dispatch cache.
   const debounceCache = useRef<
@@ -249,7 +248,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       dirty: formDirty,
       touched: formTouched,
       submitting: isSubmitting,
-      submitted: formState.submitted,
+      submitted: formState.submitCount > 0,
       readOnly: formState.readOnly,
       disabled: formState.disabled,
       valid: formValid,
@@ -265,7 +264,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     formDirty,
     formTouched,
     isSubmitting,
-    formState.submitted,
+    formState.submitCount,
     formState.readOnly,
     formState.disabled,
     formValid,
@@ -373,36 +372,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formData, formErrors, touched, dirty, maxLengths, ranges, patterns, descriptions]
   );
 
-  const initialStateChanged = useMemo(
-    () => !deepEqual(formState.initialData, state.data),
-    [formState.initialData, state.data]
-  );
-
-  // Dispatches inital state changes.
-  useEffect(() => {
-    if (!formState.replaced && !formState.submitted && initialStateChanged) {
-      dispatch({ type: 'changeInitialState' });
-    }
-  }, [initialStateChanged, formState.replaced, formState.submitted, dispatch]);
-
-  // Calls the change callbacks on the form status change.
-  useEffect(() => {
-    if (changeCallbackRefs.current.length > 0) {
-      const callbacks = changeCallbackRefs.current;
-      changeCallbackRefs.current = [];
-
-      for (const callback of callbacks) {
-        callback(generateCallbackState(), formStatus);
-      }
-    }
-  }, [formState, formStatus, generateCallbackState]);
-
-  // Calls registered change listeners.
-  useEffect(() => {
-    if (changeListeners.current.size === 0) {
-      return;
-    }
-
+  const generateListenerState = useCallback(() => {
     const data = freezeObject({
       ...formStateRef.current.data,
       toObject: () => cleanEmpty(schema, formStateRef.current.data) as State,
@@ -418,10 +388,58 @@ export function useFormState<T extends z.ZodMiniObject>(
       getManual: (key: string) => dataErrors[key as keyof State],
     }) as FormState<State>['errors'];
 
-    for (const listener of changeListeners.current) {
-      listener(data, errors);
+    return { data, errors };
+  }, [schema]);
+
+  const initialStateChanged = useMemo(
+    () => !deepEqual(formState.initialData, state.data),
+    [formState.initialData, state.data]
+  );
+
+  // Dispatches inital state changes.
+  useEffect(() => {
+    if (!formState.replaced && formState.submitCount === 0 && initialStateChanged) {
+      dispatch({ type: 'changeInitialState' });
     }
-  }, [schema, formState.data]);
+  }, [initialStateChanged, formState.replaced, formState.submitCount, dispatch]);
+
+  // Calls the change callbacks on the form status change.
+  useEffect(() => {
+    if (changeCallbackRefs.current.length > 0) {
+      const callbacks = changeCallbackRefs.current;
+      changeCallbackRefs.current = [];
+
+      for (const callback of callbacks) {
+        callback(generateCallbackState(), formStatus);
+      }
+    }
+  }, [formState, formStatus, generateCallbackState]);
+
+  // Calls registered listeners on form change.
+  useEffect(() => {
+    if (changeListeners.current.size === 0) {
+      return;
+    }
+
+    const { data, errors } = generateListenerState();
+
+    for (const listener of changeListeners.current) {
+      listener('change', data, errors, formStateRef.current.submitCount);
+    }
+  }, [schema, formState.data, generateListenerState]);
+
+  // Calls registered listeners on form submission.
+  useEffect(() => {
+    if (formState.submitCount === 0) {
+      return;
+    }
+
+    const { data, errors } = generateListenerState();
+
+    for (const listener of changeListeners.current) {
+      listener('submit', data, errors, formStateRef.current.submitCount);
+    }
+  }, [schema, formState.submitCount, generateListenerState]);
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -731,7 +749,6 @@ export function useFormState<T extends z.ZodMiniObject>(
           options: {
             retainData: Boolean(options?.retainData),
             resetTouched: Boolean(options?.resetTouched),
-            resetSubmitted: Boolean(options?.resetSubmitted),
           },
         });
       } else {
@@ -740,7 +757,6 @@ export function useFormState<T extends z.ZodMiniObject>(
           options: {
             retainData: Boolean(options?.retainData),
             resetTouched: Boolean(options?.resetTouched),
-            resetSubmitted: Boolean(options?.resetSubmitted),
           },
         });
       }
@@ -919,16 +935,13 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   // Subscribes to state changes.
-  const subscribe = useCallback(
-    (listener: (data: FormState<State>['data'], errors: FormState<State>['errors']) => void) => {
-      changeListeners.current.add(listener);
+  const subscribe = useCallback((listener: ChangeListener<State>) => {
+    changeListeners.current.add(listener);
 
-      return () => {
-        changeListeners.current.delete(listener);
-      };
-    },
-    []
-  );
+    return () => {
+      changeListeners.current.delete(listener);
+    };
+  }, []);
 
   // The memoized Form component.
   const createComponent = useMemo(
