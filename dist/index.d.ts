@@ -696,6 +696,14 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
    */
   Form: (props: React.ComponentPropsWithRef<'form'>) => React.JSX.Element;
   /**
+   * Subscribes to form state changes.
+   *
+   * @typeParam T - form state type.
+   * @param listener - A callback function with form state `data` and `errors` parameters.
+   * @returns An `unsubscribe()` function to stop the subscription.
+   */
+  subscribe: (listener: (data: FormState<z.infer<T>>['data'], errors: FormState<z.infer<T>>['errors']) => void) => () => void;
+  /**
    * A hook that watches a field based on the element's `name` HTML attribute.
    *
    * Note: The `Form` component from this library must be used to track changes.

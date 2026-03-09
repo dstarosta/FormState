@@ -2101,6 +2101,71 @@ describe('useFormState', () => {
       expect(() => setDirty('test' as '#test')).toThrow(TypeError);
     });
 
+    it('should subscribe to changes', () => {
+      const callback = vi.fn(
+        (data: FormState<Schema>['data'], errors: FormState<Schema>['errors']) => {
+          expect(data.toObject().info.age).toBe(42);
+          expect(errors.get((path) => path.info.age)).toBeUndefined();
+          expect(errors.getManual('age')).toBeUndefined();
+        }
+      );
+
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const {
+        formActions: { change },
+        subscribe,
+      } = result.current;
+
+      const unsubscribe = subscribe(callback);
+
+      act(() => {
+        change((path) => path.info.age, 42);
+        change((path) => path.info.email, 'some@email.org');
+      });
+
+      expect(callback).toBeCalledTimes(1);
+      expect(callback).toBeCalledWith(
+        expect.objectContaining({
+          info: expect.objectContaining({ age: 42 }) as object,
+        }),
+        expect.objectContaining({})
+      );
+
+      act(() => {
+        change((path) => path.info.birthDate, '12/31/2020');
+      });
+
+      expect(callback).toBeCalledTimes(2);
+      expect(callback).toBeCalledWith(
+        expect.objectContaining({
+          info: expect.objectContaining({ birthDate: new Date(2020, 11, 31) }) as object,
+        }),
+        expect.objectContaining({})
+      );
+
+      act(() => {
+        change('name', '');
+      });
+
+      expect(callback).toBeCalledTimes(3);
+      expect(callback).toBeCalledWith(
+        expect.objectContaining({ name: '' }),
+        expect.objectContaining({ name: 'Name is required' })
+      );
+
+      unsubscribe();
+
+      act(() => {
+        change('name', 'Tom');
+      });
+
+      expect(callback).toBeCalledTimes(3);
+    });
+
     it('should change the form mode', () => {
       const initialState: InitialSchema = {
         name: 'John',

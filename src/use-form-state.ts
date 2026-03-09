@@ -173,6 +173,10 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
+  const changeListeners = useRef<
+    Set<(data: FormState<State>['data'], errors: FormState<State>['errors']) => void>
+  >(new Set());
+
   // The debounce dispatch cache.
   const debounceCache = useRef<
     Map<
@@ -392,6 +396,32 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     }
   }, [formState, formStatus, generateCallbackState]);
+
+  // Calls registered change listeners.
+  useEffect(() => {
+    if (changeListeners.current.size === 0) {
+      return;
+    }
+
+    const data = freezeObject({
+      ...formStateRef.current.data,
+      toObject: () => cleanEmpty(schema, formStateRef.current.data) as State,
+    }) as FormState<State>['data'];
+
+    const safeData = schema.safeParse(formStateRef.current.data);
+    const dataErrors = formatErrors<State>(safeData.error);
+
+    const errors = freezeObject({
+      ...dataErrors,
+      get: (expression: (data: State) => unknown) =>
+        getFieldError(dataErrors, getPath(formStateRef.current.data, expression)),
+      getManual: (key: string) => dataErrors[key as keyof State],
+    }) as FormState<State>['errors'];
+
+    for (const listener of changeListeners.current) {
+      listener(data, errors);
+    }
+  }, [schema, formState.data]);
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -888,6 +918,18 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.data]
   );
 
+  // Subscribes to state changes.
+  const subscribe = useCallback(
+    (listener: (data: FormState<State>['data'], errors: FormState<State>['errors']) => void) => {
+      changeListeners.current.add(listener);
+
+      return () => {
+        changeListeners.current.delete(listener);
+      };
+    },
+    []
+  );
+
   // The memoized Form component.
   const createComponent = useMemo(
     () => createFormComponent<State>(storeRef.current, dispatch, resetTouchedOnFormReset),
@@ -953,6 +995,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         handleReset,
       },
       Form: createComponent,
+      subscribe,
       useWatch,
     }),
     [
@@ -980,6 +1023,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       clearManualErrors,
       inferName,
       createComponent,
+      subscribe,
     ]
   );
 
