@@ -37,8 +37,8 @@ type FieldRange = number | Date | undefined;
 type FormMutableState<T extends object> = {
   initialData: T;
   data: T;
-  initialErrors: Record<keyof T, string | undefined>;
-  errors: Record<keyof T, string | undefined>;
+  initialErrors: Record<keyof T | '', string | undefined>;
+  errors: Record<keyof T | '', string | undefined>;
   dirty: Record<keyof T, boolean>;
   touched: Record<keyof T, boolean>;
   maxLengths: Record<keyof T, number>;
@@ -566,7 +566,7 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
     /**
      * Initial form state errors.
      */
-    errors: Immutable<Record<keyof z.infer<T>, string | undefined>>;
+    errors: Immutable<Record<keyof z.infer<T> | '', string | undefined>>;
   };
   /**
    * Form state - data, errors, touched and dirty flags as well as max lengths for strings and arrays.
@@ -784,7 +784,7 @@ type RangeResult<R> = R extends number | Date ? {
   format: string;
 } : undefined;
 declare namespace form_schema_d_exports {
-  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim };
+  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, everyItem, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, someItem, sortItems, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim, uniqueItems, validate };
 }
 /**
  * Infers form state type from the schema.
@@ -1106,6 +1106,67 @@ declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.Z
   error?: string;
   lengthError?: string;
 }): z.ZodMiniArray<T>;
+/**
+ * Defines a full schema validation rule.
+ *
+ * @param objectSchema - The form object schema.
+ * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
+ *                    whether the schema object passes the rule.
+ * @param params.path - An optional `errors` object key to store the error message with.
+ * @param params.error - An optional custom error message.
+ * @returns The object schema.
+ */
+declare function validate<T extends z.ZodMiniObject<Record<string, z.ZodMiniType>>>(objectSchema: T, predicate: (item: z.infer<T>) => boolean, params?: {
+  path?: PropertyKey[] | PropertyKey;
+  error?: string;
+}): T;
+/**
+ * Determines whether the specified callback function returns true for any element of an array.
+ *
+ * @typeParam T - The array item Zod type.
+ * @param arraySchema - The array schema.
+ * @param predicate - A function that accepts up to three arguments. The some method calls the predicate
+ *                    function for each element in the array until the predicate returns a value which
+ *                    is coercible to the `bool` value true, or until the end of the array.
+ * @param error - An optional error message if the array does not meet the predicate condition.
+ * @returns The array schema.
+ */
+declare function someItem<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, predicate: (item: z.infer<T>, index: number, items: z.infer<T>[]) => boolean, error?: string): z.ZodMiniArray<T>;
+/**
+ * Determines whether all the members of an array satisfy the specified test.
+ *
+ * @typeParam T - The array item Zod type.
+ * @param arraySchema - The array schema.
+ * @param predicate - A function that accepts up to three arguments. The every method calls the predicate
+ *                    function for each element in the array until the predicate returns a value which is
+ *                    coercible to the `bool` value false, or until the end of the array.
+ * @param error - An optional error message if the array does not meet the predicate condition.
+ * @returns The array schema.
+ */
+declare function everyItem<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, predicate: (item: z.infer<T>, index: number, items: z.infer<T>[]) => boolean, error?: string): z.ZodMiniArray<T>;
+/**
+ * Sorts items in the array schema.
+ *
+ * @typeParam T - The array item Zod type.
+ * @param arraySchema - The array schema.
+ * @param compareFn - Function used to determine the order of the elements. It is expected to return a negative
+ *                    value if the first argument is less than the second argument, zero if they're equal, and
+ *                    a positive value otherwise. If omitted, the elements are sorted in ascending, UTF-16 code
+ *                    unit order.
+ * @returns Zod pipe instance that transforms the array schema.
+ */
+declare function sortItems<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, compareFn?: (a: z.infer<T>, b: z.infer<T>) => number): z.ZodMiniPipe<z.ZodMiniArray<T>, z.ZodMiniTransform<z.core.output<T>[], z.core.output<T>[]>>;
+/**
+ * Ensures all items in the array schema are unique.
+ *
+ * @typeParam T - The array item Zod type.
+ * @param arraySchema - The array schema.
+ * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
+ *                       equality (default: `false`).
+ * @param error - An optional error message if the array does not meet the predicate condition.
+ * @returns The array schema.
+ */
+declare function uniqueItems<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, deepEquality?: boolean, error?: string): z.ZodMiniArray<T>;
 //#endregion
 //#region src/use-form-state.d.ts
 /**

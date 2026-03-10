@@ -135,8 +135,8 @@ export type FormAction<T extends object> =
 export type FormMutableState<T extends object> = {
   initialData: T;
   data: T;
-  initialErrors: Record<keyof T, string | undefined>;
-  errors: Record<keyof T, string | undefined>;
+  initialErrors: Record<keyof T | '', string | undefined>;
+  errors: Record<keyof T | '', string | undefined>;
   dirty: Record<keyof T, boolean>;
   touched: Record<keyof T, boolean>;
   maxLengths: Record<keyof T, number>;
@@ -732,7 +732,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     /**
      * Initial form state errors.
      */
-    errors: Immutable<Record<keyof z.infer<T>, string | undefined>>;
+    errors: Immutable<Record<keyof z.infer<T> | '', string | undefined>>;
   };
   /**
    * Form state - data, errors, touched and dirty flags as well as max lengths for strings and arrays.

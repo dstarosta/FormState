@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 
 import { formatErrors } from './helpers/error-formatter';
-import { useFormState, z } from '.';
+import { updateState, useFormState, z } from '.';
 
 describe('form schema', () => {
   it('formBoolean should parse values', () => {
@@ -444,5 +444,239 @@ describe('form schema', () => {
     const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
 
     expect(errors.status).toMatch(/^Only "active" and "inactive"/);
+  });
+
+  it('should validate object schema', () => {
+    const testSchema = z.validate(
+      z.validate(
+        z.object({
+          users: z.array(
+            z.object({
+              name: z.formString(z.string(), { required: false }),
+            })
+          ),
+        }),
+        (obj) => obj.users.length > 2
+      ),
+      (obj) => obj.users.filter((user) => user.name.startsWith('M')).length === 2
+    );
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(true);
+  });
+
+  it('should fail validating object schema', () => {
+    const error = 'Only 2 users are supported';
+
+    const testSchema = z.validate(
+      z.object({
+        users: z.array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        ),
+      }),
+      (obj) => obj.users.length === 2,
+      { path: 'users', error }
+    );
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(false);
+    expect(result.current.formState.errors.users).toBe(error);
+  });
+
+  it('should validate some items in a ZodArray', () => {
+    const testSchema = z.object({
+      users: z.someItem(
+        z.array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        ),
+        (arr) => arr.name === 'John'
+      ),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(true);
+  });
+
+  it('should fail validating some items in a ZodArray', () => {
+    const testSchema = z.object({
+      users: z.someItem(
+        z.array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        ),
+        (arr) => arr.name === 'Jonathan'
+      ),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(false);
+    expect(result.current.formState.errors.users).toBe('Invalid input');
+  });
+
+  it('should validate all items in a ZodArray', () => {
+    const testSchema = z.object({
+      users: z.everyItem(
+        z.array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        ),
+        (arr) => arr.name.includes('M')
+      ),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'Mary' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(true);
+  });
+
+  it('should fail validating all items in a ZodArray', () => {
+    const testSchema = z.object({
+      users: z.everyItem(
+        z.array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        ),
+        (arr) => arr.name.includes('M')
+      ),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(false);
+    expect(result.current.formState.errors.users).toBe('Invalid input');
+  });
+
+  it('should validate unique items in a ZodArray', () => {
+    const testSchema = z.object({
+      users: z.uniqueItems(
+        z.array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        ),
+        true
+      ),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(true);
+  });
+
+  it('should fail validating unique items in a ZodArray due to duplicates', () => {
+    const testSchema = z.object({
+      users: z.uniqueItems(
+        z.array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        ),
+        true
+      ),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mike' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(false);
+    expect(result.current.formState.errors.users).toBe('Invalid input');
+  });
+
+  it('should sort items in a ZodArray', () => {
+    const testSchema = z.object({
+      users: z.sortItems(
+        z.array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        ),
+        (a, b) => a.name.localeCompare(b.name)
+      ),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+    const {
+      formState,
+      formActions: { change },
+    } = result.current;
+
+    const newUsers = updateState(formState.data.users, (draft) => {
+      draft.push({ name: 'John' }, { name: 'Mary' });
+    });
+
+    act(() => {
+      change('users', newUsers);
+    });
+
+    const users = result.current.formState.data.users;
+
+    expect(users).toHaveLength(3);
+    expect(users[0]?.name).toBe('John');
+    expect(users[1]?.name).toBe('Mary');
+    expect(users[2]?.name).toBe('Mike');
   });
 });

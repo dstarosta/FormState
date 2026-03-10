@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { deepEqual } from 'fast-equals';
 
 import type { FormDateFormat, ZodDeepType } from './types/form-types';
 
@@ -574,4 +575,144 @@ export function formArray<T extends z.ZodMiniType>(
   }
 
   return options?.required === false ? z.optional(schema) : schema;
+}
+
+// Generic object validation.
+
+/**
+ * Defines a full schema validation rule.
+ *
+ * @param objectSchema - The form object schema.
+ * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
+ *                    whether the schema object passes the rule.
+ * @param params.path - An optional `errors` object key to store the error message with.
+ * @param params.error - An optional custom error message.
+ * @returns The object schema.
+ */
+export function validate<T extends z.ZodMiniObject<Record<string, z.ZodMiniType>>>(
+  objectSchema: T,
+  predicate: (item: z.infer<T>) => boolean,
+  params?: {
+    path?: PropertyKey[] | PropertyKey;
+    error?: string;
+  }
+) {
+  const path = params?.path ?? '';
+
+  return objectSchema.check(
+    z.refine<z.infer<T>>((obj) => predicate(obj), {
+      path: Array.isArray(path) ? path : [path],
+      error: params?.error,
+    })
+  );
+}
+
+// Array validations
+
+/**
+ * Determines whether the specified callback function returns true for any element of an array.
+ *
+ * @typeParam T - The array item Zod type.
+ * @param arraySchema - The array schema.
+ * @param predicate - A function that accepts up to three arguments. The some method calls the predicate
+ *                    function for each element in the array until the predicate returns a value which
+ *                    is coercible to the `bool` value true, or until the end of the array.
+ * @param error - An optional error message if the array does not meet the predicate condition.
+ * @returns The array schema.
+ */
+export function someItem<T extends z.ZodMiniType>(
+  arraySchema: z.ZodMiniArray<T>,
+  predicate: (item: z.infer<T>, index: number, items: z.infer<T>[]) => boolean,
+  error?: string
+) {
+  return arraySchema.check(
+    z.refine<z.infer<T>[]>(
+      (arr) => arr.some((item, index, items) => predicate(item, index, items)),
+      { error }
+    )
+  );
+}
+
+/**
+ * Determines whether all the members of an array satisfy the specified test.
+ *
+ * @typeParam T - The array item Zod type.
+ * @param arraySchema - The array schema.
+ * @param predicate - A function that accepts up to three arguments. The every method calls the predicate
+ *                    function for each element in the array until the predicate returns a value which is
+ *                    coercible to the `bool` value false, or until the end of the array.
+ * @param error - An optional error message if the array does not meet the predicate condition.
+ * @returns The array schema.
+ */
+export function everyItem<T extends z.ZodMiniType>(
+  arraySchema: z.ZodMiniArray<T>,
+  predicate: (item: z.infer<T>, index: number, items: z.infer<T>[]) => boolean,
+  error?: string
+) {
+  return arraySchema.check(
+    z.refine<z.infer<T>[]>(
+      (arr) => arr.every((item, index, items) => predicate(item, index, items)),
+      { error }
+    )
+  );
+}
+
+/**
+ * Sorts items in the array schema.
+ *
+ * @typeParam T - The array item Zod type.
+ * @param arraySchema - The array schema.
+ * @param compareFn - Function used to determine the order of the elements. It is expected to return a negative
+ *                    value if the first argument is less than the second argument, zero if they're equal, and
+ *                    a positive value otherwise. If omitted, the elements are sorted in ascending, UTF-16 code
+ *                    unit order.
+ * @returns Zod pipe instance that transforms the array schema.
+ */
+export function sortItems<T extends z.ZodMiniType>(
+  arraySchema: z.ZodMiniArray<T>,
+  compareFn?: (a: z.infer<T>, b: z.infer<T>) => number
+) {
+  return z.pipe(
+    arraySchema,
+    z.transform((arr) => arr.toSorted(compareFn))
+  );
+}
+
+/**
+ * Ensures all items in the array schema are unique.
+ *
+ * @typeParam T - The array item Zod type.
+ * @param arraySchema - The array schema.
+ * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
+ *                       equality (default: `false`).
+ * @param error - An optional error message if the array does not meet the predicate condition.
+ * @returns The array schema.
+ */
+export function uniqueItems<T extends z.ZodMiniType>(
+  arraySchema: z.ZodMiniArray<T>,
+  deepEquality: boolean = false,
+  error?: string
+) {
+  return arraySchema.check(
+    z.refine<z.infer<T>[]>(
+      (arr) => {
+        if (deepEquality) {
+          const seen: z.infer<T>[] = [];
+
+          for (const item of arr) {
+            if (seen.some((existing) => deepEqual(existing, item))) {
+              return false;
+            }
+
+            seen.push(item);
+          }
+
+          return true;
+        } else {
+          return arr.every((item, index, items) => items.indexOf(item) === index);
+        }
+      },
+      { error }
+    )
+  );
 }
