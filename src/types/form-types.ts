@@ -907,9 +907,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
    *  - textarea
    *
    * @param name - A `name` HTML attribute value of the element to watch.
+   * @param compute - An optional compute function to transform the value.
    * @returns The value of the element.
    */
-  useWatch: (name: string) => string | undefined;
+  useWatch: (name: string, compute?: (value: string) => string) => string;
 };
 
 /**

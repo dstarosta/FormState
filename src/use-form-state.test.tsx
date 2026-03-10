@@ -2226,10 +2226,13 @@ describe('useFormState', () => {
       useWatch,
     }: {
       inferName: (nameOrPath: FormPath<typeof schema>) => string;
-      useWatch: (name: string) => string | undefined;
+      useWatch: (name: string, compute?: (value: string) => string) => string;
     }) => {
       const nameValue = useWatch(inferName((path) => path.name));
-      const ageValue = useWatch(inferName((path) => path.info.age));
+      const ageValue = useWatch(
+        inferName((path) => path.info.age),
+        (value) => (value === '0' ? '' : value)
+      );
       const categoryValue = useWatch(inferName((path) => path.category));
       const activeValue = useWatch(inferName('isActive'));
       const archivedValue = useWatch('archivedSelector');

@@ -949,7 +949,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     [dispatch, resetTouchedOnFormReset]
   );
 
-  const useWatch = (name: string) => {
+  const useWatch = (name: string, compute?: (value: string) => string) => {
     if (!name?.trim()) {
       throw new TypeError('The "name" value cannot be empty.');
     }
@@ -962,7 +962,15 @@ export function useFormState<T extends z.ZodMiniObject>(
 
     return useSyncExternalStore(
       (listener) => store.subscribeToField(name, listener),
-      () => store.getValue(name)
+      () => {
+        const value = store.getValue(name) ?? '';
+
+        if (typeof compute === 'function') {
+          return compute(value);
+        }
+
+        return value;
+      }
     );
   };
 
