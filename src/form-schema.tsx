@@ -577,83 +577,107 @@ export function formArray<T extends z.ZodMiniType>(
   return options?.required === false ? z.optional(schema) : schema;
 }
 
-// Generic object validation.
+// Generic object validation
 
 /**
- * Defines a full schema validation rule.
+ * Creates a full schema validation check.
  *
- * @param objectSchema - The form object schema.
  * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
  *                    whether the schema object passes the rule.
  * @param params.path - An optional `errors` object key to store the error message with.
  * @param params.error - An optional custom error message.
  * @returns The object schema.
  */
-export function validate<T extends z.ZodMiniObject<Record<string, z.ZodMiniType>>>(
-  objectSchema: T,
-  predicate: (item: z.infer<T>) => boolean,
+export function validate<T>(
+  predicate: (item: NoInfer<T>) => boolean,
   params?: {
     path?: PropertyKey[] | PropertyKey;
     error?: string;
   }
-) {
+): z.core.$ZodCheck<T> {
   const path = params?.path ?? '';
 
-  return objectSchema.check(
-    z.refine<z.infer<T>>((obj) => predicate(obj), {
-      path: Array.isArray(path) ? path : [path],
-      error: params?.error,
-    })
-  );
+  return z.refine<T>((obj) => predicate(obj), {
+    path: Array.isArray(path) ? path : [path],
+    error: params?.error,
+  });
 }
 
 // Array validations
 
 /**
  * Determines whether the specified callback function returns true for any element of an array.
+ * Use with `.check()` on an array schema.
  *
- * @typeParam T - The array item Zod type.
- * @param arraySchema - The array schema.
+ * @typeParam T - The array item type.
  * @param predicate - A function that accepts up to three arguments. The some method calls the predicate
  *                    function for each element in the array until the predicate returns a value which
  *                    is coercible to the `bool` value true, or until the end of the array.
- * @param error - An optional error message if the array does not meet the predicate condition.
- * @returns The array schema.
+ * @param error - An optional custom error message.
+ * @returns A Zod check that can be passed to `.check()`.
  */
-export function someItem<T extends z.ZodMiniType>(
-  arraySchema: z.ZodMiniArray<T>,
-  predicate: (item: z.infer<T>, index: number, items: z.infer<T>[]) => boolean,
+export function someItem<T>(
+  predicate: (item: NoInfer<T>, index: number, items: NoInfer<T>[]) => boolean,
   error?: string
-) {
-  return arraySchema.check(
-    z.refine<z.infer<T>[]>(
-      (arr) => arr.some((item, index, items) => predicate(item, index, items)),
-      { error }
-    )
-  );
+): z.core.$ZodCheck<T[]> {
+  return z.refine<T[]>((arr) => arr.some((item, index, items) => predicate(item, index, items)), {
+    error,
+  });
 }
 
 /**
  * Determines whether all the members of an array satisfy the specified test.
+ * Use with `.check()` on an array schema.
  *
- * @typeParam T - The array item Zod type.
- * @param arraySchema - The array schema.
+ * @typeParam T - The array item type.
  * @param predicate - A function that accepts up to three arguments. The every method calls the predicate
  *                    function for each element in the array until the predicate returns a value which is
  *                    coercible to the `bool` value false, or until the end of the array.
- * @param error - An optional error message if the array does not meet the predicate condition.
- * @returns The array schema.
+ * @param error - An optional custom error message.
+ * @returns A Zod check that can be passed to `.check()`.
  */
-export function everyItem<T extends z.ZodMiniType>(
-  arraySchema: z.ZodMiniArray<T>,
-  predicate: (item: z.infer<T>, index: number, items: z.infer<T>[]) => boolean,
+export function everyItem<T>(
+  predicate: (item: NoInfer<T>, index: number, items: NoInfer<T>[]) => boolean,
   error?: string
-) {
-  return arraySchema.check(
-    z.refine<z.infer<T>[]>(
-      (arr) => arr.every((item, index, items) => predicate(item, index, items)),
-      { error }
-    )
+): z.core.$ZodCheck<T[]> {
+  return z.refine<T[]>((arr) => arr.every((item, index, items) => predicate(item, index, items)), {
+    error,
+  });
+}
+
+/**
+ * Ensures all items in the array schema are unique.
+ * Use with `.check()` on an array schema.
+ *
+ * @typeParam T - The array item type.
+ * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
+ *                       equality (default: `false`).
+ * @param error - An optional custom error message.
+ * @returns A Zod check that can be passed to `.check()`.
+ */
+export function uniqueItems<T>(
+  deepEquality: boolean = false,
+  error?: string
+): z.core.$ZodCheck<T[]> {
+  return z.refine<T[]>(
+    (arr) => {
+      if (deepEquality) {
+        const seen: T[] = [];
+
+        for (const item of arr) {
+          if (seen.some((existing) => deepEqual(existing, item))) {
+            return false;
+          }
+
+          seen.push(item);
+        }
+
+        return true;
+      } else {
+        return arr.every((item, index, items) => items.indexOf(item) === index);
+      }
+    },
+    { error }
   );
 }
 
@@ -675,44 +699,5 @@ export function sortItems<T extends z.ZodMiniType>(
   return z.pipe(
     arraySchema,
     z.transform((arr) => arr.toSorted(compareFn))
-  );
-}
-
-/**
- * Ensures all items in the array schema are unique.
- *
- * @typeParam T - The array item Zod type.
- * @param arraySchema - The array schema.
- * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
- *                       equality (default: `false`).
- * @param error - An optional error message if the array does not meet the predicate condition.
- * @returns The array schema.
- */
-export function uniqueItems<T extends z.ZodMiniType>(
-  arraySchema: z.ZodMiniArray<T>,
-  deepEquality: boolean = false,
-  error?: string
-) {
-  return arraySchema.check(
-    z.refine<z.infer<T>[]>(
-      (arr) => {
-        if (deepEquality) {
-          const seen: z.infer<T>[] = [];
-
-          for (const item of arr) {
-            if (seen.some((existing) => deepEqual(existing, item))) {
-              return false;
-            }
-
-            seen.push(item);
-          }
-
-          return true;
-        } else {
-          return arr.every((item, index, items) => items.indexOf(item) === index);
-        }
-      },
-      { error }
-    )
   );
 }

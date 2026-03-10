@@ -1107,43 +1107,53 @@ declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.Z
   lengthError?: string;
 }): z.ZodMiniArray<T>;
 /**
- * Defines a full schema validation rule.
+ * Creates a full schema validation check.
  *
- * @param objectSchema - The form object schema.
  * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
  *                    whether the schema object passes the rule.
  * @param params.path - An optional `errors` object key to store the error message with.
  * @param params.error - An optional custom error message.
  * @returns The object schema.
  */
-declare function validate<T extends z.ZodMiniObject<Record<string, z.ZodMiniType>>>(objectSchema: T, predicate: (item: z.infer<T>) => boolean, params?: {
+declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, params?: {
   path?: PropertyKey[] | PropertyKey;
   error?: string;
-}): T;
+}): z.core.$ZodCheck<T>;
 /**
  * Determines whether the specified callback function returns true for any element of an array.
+ * Use with `.check()` on an array schema.
  *
- * @typeParam T - The array item Zod type.
- * @param arraySchema - The array schema.
+ * @typeParam T - The array item type.
  * @param predicate - A function that accepts up to three arguments. The some method calls the predicate
  *                    function for each element in the array until the predicate returns a value which
  *                    is coercible to the `bool` value true, or until the end of the array.
- * @param error - An optional error message if the array does not meet the predicate condition.
- * @returns The array schema.
+ * @param error - An optional custom error message.
+ * @returns A Zod check that can be passed to `.check()`.
  */
-declare function someItem<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, predicate: (item: z.infer<T>, index: number, items: z.infer<T>[]) => boolean, error?: string): z.ZodMiniArray<T>;
+declare function someItem<T>(predicate: (item: NoInfer<T>, index: number, items: NoInfer<T>[]) => boolean, error?: string): z.core.$ZodCheck<T[]>;
 /**
  * Determines whether all the members of an array satisfy the specified test.
+ * Use with `.check()` on an array schema.
  *
- * @typeParam T - The array item Zod type.
- * @param arraySchema - The array schema.
+ * @typeParam T - The array item type.
  * @param predicate - A function that accepts up to three arguments. The every method calls the predicate
  *                    function for each element in the array until the predicate returns a value which is
  *                    coercible to the `bool` value false, or until the end of the array.
- * @param error - An optional error message if the array does not meet the predicate condition.
- * @returns The array schema.
+ * @param error - An optional custom error message.
+ * @returns A Zod check that can be passed to `.check()`.
  */
-declare function everyItem<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, predicate: (item: z.infer<T>, index: number, items: z.infer<T>[]) => boolean, error?: string): z.ZodMiniArray<T>;
+declare function everyItem<T>(predicate: (item: NoInfer<T>, index: number, items: NoInfer<T>[]) => boolean, error?: string): z.core.$ZodCheck<T[]>;
+/**
+ * Ensures all items in the array schema are unique.
+ * Use with `.check()` on an array schema.
+ *
+ * @typeParam T - The array item type.
+ * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
+ *                       equality (default: `false`).
+ * @param error - An optional custom error message.
+ * @returns A Zod check that can be passed to `.check()`.
+ */
+declare function uniqueItems<T>(deepEquality?: boolean, error?: string): z.core.$ZodCheck<T[]>;
 /**
  * Sorts items in the array schema.
  *
@@ -1156,17 +1166,6 @@ declare function everyItem<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<
  * @returns Zod pipe instance that transforms the array schema.
  */
 declare function sortItems<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, compareFn?: (a: z.infer<T>, b: z.infer<T>) => number): z.ZodMiniPipe<z.ZodMiniArray<T>, z.ZodMiniTransform<z.core.output<T>[], z.core.output<T>[]>>;
-/**
- * Ensures all items in the array schema are unique.
- *
- * @typeParam T - The array item Zod type.
- * @param arraySchema - The array schema.
- * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
- *                       equality (default: `false`).
- * @param error - An optional error message if the array does not meet the predicate condition.
- * @returns The array schema.
- */
-declare function uniqueItems<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, deepEquality?: boolean, error?: string): z.ZodMiniArray<T>;
 //#endregion
 //#region src/use-form-state.d.ts
 /**
