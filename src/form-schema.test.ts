@@ -488,7 +488,7 @@ describe('form schema', () => {
               name: z.formString(z.string(), { required: false }),
             })
           )
-          .check(z.validate((obj) => obj instanceof Object, { path: 'users' })),
+          .check(z.validate((obj) => obj instanceof Object, { path: ['users'] })),
       })
       .check(z.validate((obj) => obj.users.length === 2, { path: 'users', error }));
 
