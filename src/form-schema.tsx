@@ -652,32 +652,33 @@ export function everyItem<T>(
  * @typeParam T - The array item type.
  * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
  *                       equality (default: `false`).
- * @param error - An optional custom error message.
+ * @param params.mapFn - An optional mapping function to compare properties of items.
+ * @param params.error - An optional custom error message.
  * @returns A Zod check that can be passed to `.check()`.
  */
 export function uniqueItems<T>(
   deepEquality: boolean = false,
-  error?: string
+  params?: { mapFn?: (item: T) => unknown; error?: string }
 ): z.core.$ZodCheck<T[]> {
   return z.refine<T[]>(
     (arr) => {
-      if (deepEquality) {
-        const seen: T[] = [];
+      const seen: unknown[] = [];
 
-        for (const item of arr) {
-          if (seen.some((existing) => deepEqual(existing, item))) {
-            return false;
-          }
+      for (const item of arr) {
+        const value = typeof params?.mapFn === 'function' ? params.mapFn(item) : item;
 
-          seen.push(item);
+        if (
+          seen.some((existing) => (deepEquality ? deepEqual(existing, value) : existing === value))
+        ) {
+          return false;
         }
 
-        return true;
-      } else {
-        return arr.every((item, index, items) => items.indexOf(item) === index);
+        seen.push(value);
       }
+
+      return true;
     },
-    { error }
+    { error: params?.error }
   );
 }
 

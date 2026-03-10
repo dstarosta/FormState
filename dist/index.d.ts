@@ -1150,10 +1150,14 @@ declare function everyItem<T>(predicate: (item: NoInfer<T>, index: number, items
  * @typeParam T - The array item type.
  * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
  *                       equality (default: `false`).
- * @param error - An optional custom error message.
+ * @param params.mapFn - An optional mapping function to compare properties of items.
+ * @param params.error - An optional custom error message.
  * @returns A Zod check that can be passed to `.check()`.
  */
-declare function uniqueItems<T>(deepEquality?: boolean, error?: string): z.core.$ZodCheck<T[]>;
+declare function uniqueItems<T>(deepEquality?: boolean, params?: {
+  mapFn?: (item: T) => unknown;
+  error?: string;
+}): z.core.$ZodCheck<T[]>;
 /**
  * Sorts items in the array schema.
  *

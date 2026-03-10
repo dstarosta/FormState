@@ -642,6 +642,51 @@ describe('form schema', () => {
     expect(result.current.formStatus.valid).toBe(true);
   });
 
+  it('should validate unique items using a mapping function in a ZodArray', () => {
+    const testSchema = z.object({
+      users: z
+        .array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        )
+        .check(z.uniqueItems(false, { mapFn: (item) => item.name })),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(true);
+  });
+
+  it('should not validate unique items using a mapping function in a ZodArray', () => {
+    const testSchema = z.object({
+      users: z
+        .array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        )
+        .check(z.uniqueItems(false, { mapFn: (item) => item.name })),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mike' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnInit: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(false);
+    expect(result.current.formState.errors.users).toBe('Invalid input');
+  });
+
   it('should fail validating unique items in a ZodArray due to duplicates', () => {
     const error = 'There are duplicate items';
 
@@ -652,7 +697,7 @@ describe('form schema', () => {
             name: z.formString(z.string(), { required: false }),
           })
         )
-        .check(z.uniqueItems(true, error)),
+        .check(z.uniqueItems(true, { error })),
     });
 
     const initialState: z.infer<typeof testSchema> = {
