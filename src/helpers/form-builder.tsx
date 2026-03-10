@@ -180,14 +180,14 @@ export const createFormComponent = <T extends object>(
 // Public functions
 
 /**
- * Converts form data name/value pairs into the URL search parameters.
+ * URL encodes form data name/value pairs.
  *
- * Use `formDataToURL(formData).toString()` to get a string notation of the name/value pairs.
+ * Use `formDataEncode(formData).toString()` to get a string notation of the name/value pairs.
  *
  * @param formData - The form data.
  * @returns The `URLSearchParams` instance with the form data name/value pairs.
  */
-export const formDataToURL = (formData: FormData) =>
+export const formDataEncode = (formData: FormData) =>
   new URLSearchParams(
     Array.from(formData, ([key, value]): [string, string] => {
       return typeof value === 'string' ? [key, value] : [key, value.name];

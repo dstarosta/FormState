@@ -1331,14 +1331,14 @@ declare const validateState: <T extends z.ZodMiniObject>(schema: T, data: DeepPa
 //#endregion
 //#region src/helpers/form-builder.d.ts
 /**
- * Converts form data name/value pairs into the URL search parameters.
+ * URL encodes form data name/value pairs.
  *
- * Use `formDataToURL(formData).toString()` to get a string notation of the name/value pairs.
+ * Use `formDataEncode(formData).toString()` to get a string notation of the name/value pairs.
  *
  * @param formData - The form data.
  * @returns The `URLSearchParams` instance with the form data name/value pairs.
  */
-declare const formDataToURL: (formData: FormData) => URLSearchParams;
+declare const formDataEncode: (formData: FormData) => URLSearchParams;
 /**
  * Submits a form element.
  *
@@ -1378,7 +1378,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
@@ -1419,5 +1419,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createInitialState, createState, formConnect, formDataToURL, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createInitialState, createState, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

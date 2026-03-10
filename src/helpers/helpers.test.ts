@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { FormMutableState, Immutable } from '../types/form-types';
 
-import { formatDate, formDataToURL, safeParseDate, validateState, z } from '..';
+import { formatDate, formDataEncode, safeParseDate, validateState, z } from '..';
 import { cleanEmpty, createState, diffedState, getState, updateState } from './state-manager';
 import { getSchemaType } from './schema-visitor';
 import { isValidDate } from './date-formatter';
@@ -289,7 +289,7 @@ describe('helpers', () => {
       formData.append('param3', '');
       formData.append('param4', new File([], 'some<file>.txt'));
 
-      const urlParams = formDataToURL(formData).toString();
+      const urlParams = formDataEncode(formData).toString();
 
       expect(urlParams).toBe(
         'param1=Some+value&param2=value1&param2=value2&param3=&param4=some%3Cfile%3E.txt'

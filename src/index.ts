@@ -25,5 +25,5 @@ export { FormStateProvider, formConnect, useFormStateContext } from './form-prov
 export { createInitialState, createState, getState, updateState } from './helpers/state-manager';
 export { formatDate, safeParseDate } from './helpers/date-formatter';
 export { validateState } from './helpers/error-formatter';
-export { formDataToURL, submitForm } from './helpers/form-builder';
+export { formDataEncode, submitForm } from './helpers/form-builder';
 export * as convert from './helpers/value-converter';
