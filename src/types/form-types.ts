@@ -250,6 +250,10 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    * CSS class example: "form-state__touched"
    */
   CSSPrefix?: string;
+  /**
+   * Sets the default format for the `inferName` function (default: "bracket").
+   */
+  inferredNameFormat?: 'bracket' | 'dot';
 };
 
 export type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {

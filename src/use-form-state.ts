@@ -91,6 +91,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     validateOnTouch = false,
     debounceCacheCapacity = 50,
     CSSPrefix = 'form-state',
+    inferredNameFormat = 'bracket',
     initialState,
     initialTouched,
     watch,
@@ -924,15 +925,15 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Infers the name of the form field.
   const inferName = useCallback(
-    (nameOrPath: FormPath<T>, format: 'bracket' | 'dot' = 'bracket') => {
+    (nameOrPath: FormPath<T>, format?: 'bracket' | 'dot') => {
       const pathNotation =
         typeof nameOrPath === 'function'
-          ? getPathAsString(formState.data, nameOrPath, format)
+          ? getPathAsString(formState.data, nameOrPath, format ?? inferredNameFormat)
           : nameOrPath;
 
       return String(pathNotation);
     },
-    [formState.data]
+    [formState.data, inferredNameFormat]
   );
 
   // Subscribes to state changes.
