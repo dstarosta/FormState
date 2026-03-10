@@ -1130,6 +1130,15 @@ declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, params?: 
   error?: string;
 }): z.core.$ZodCheck<T>;
 /**
+ * Creates a full schema validation check.
+ *
+ * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
+ *                    whether the schema object passes the rule.
+ * @param error - A custom error message.
+ * @returns The object schema.
+ */
+declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, error: string): z.core.$ZodCheck<T>;
+/**
  * Determines whether the specified callback function returns true for any element of an array.
  * Use with `.check()` on an array schema.
  *

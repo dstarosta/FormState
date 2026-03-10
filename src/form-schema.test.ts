@@ -456,14 +456,17 @@ describe('form schema', () => {
                 .formString(z.string(), {
                   required: false,
                 })
-                .check(z.validate((name) => name.trim().length > 0)),
+                .check(z.validate((name) => name.trim().length > 0, 'Empty names are not allowed')),
             })
           )
           .check(z.validate((arr) => arr.length > 2)),
       })
       .check(
-        z.validate((obj) => obj.users.length > 2),
-        z.validate((obj) => obj.users.filter((user) => user.name.startsWith('M')).length === 2)
+        z.validate((obj) => obj.users.length > 2, { path: 'users' }),
+        z.validate((obj) => obj.users.filter((user) => user.name.startsWith('M')).length === 2, {
+          path: 'users',
+          error: 'No names that start with "M"',
+        })
       );
 
     const initialState: z.infer<typeof testSchema> = {

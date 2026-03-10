@@ -594,12 +594,37 @@ export function validate<T>(
     path?: PropertyKey[] | PropertyKey;
     error?: string;
   }
+): z.core.$ZodCheck<T>;
+
+/**
+ * Creates a full schema validation check.
+ *
+ * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
+ *                    whether the schema object passes the rule.
+ * @param error - A custom error message.
+ * @returns The object schema.
+ */
+export function validate<T>(
+  predicate: (item: NoInfer<T>) => boolean,
+  error: string
+): z.core.$ZodCheck<T>;
+
+export function validate<T>(
+  predicate: (item: NoInfer<T>) => boolean,
+  params?:
+    | {
+        path?: PropertyKey[] | PropertyKey;
+        error?: string;
+      }
+    | string
 ): z.core.$ZodCheck<T> {
-  const path = params?.path ?? '';
+  const paramsIsError = typeof params === 'string';
+  const path = paramsIsError ? undefined : params?.path;
+  const error = paramsIsError ? params : params?.error;
 
   return z.refine<T>((obj) => predicate(obj), {
-    path: Array.isArray(path) ? path : [path],
-    error: params?.error,
+    path: Array.isArray(path) || path === undefined ? path : [path],
+    error,
   });
 }
 
