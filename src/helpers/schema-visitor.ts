@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+
 import type { FieldRange, FormStatePath } from '../types/form-types';
 import { toUTC } from './date-formatter';
 
@@ -349,6 +350,32 @@ export const getPath = <T extends object>(_data: T, expression: (data: T) => unk
   }
 
   return [...pathParts] as FormStatePath<T>;
+};
+
+export const getPathAsString = <T extends object>(
+  _data: T,
+  expression: (data: T) => unknown,
+  format: 'bracket' | 'dot'
+) => {
+  const parts = getPath(_data, expression).map(String);
+
+  if (format === 'dot') {
+    return parts.join('.');
+  }
+
+  let result = '';
+
+  for (const part of parts) {
+    if (result === '') {
+      result = String(part);
+    } else if (Number.isInteger(Number(part))) {
+      result += `[${part}]`;
+    } else {
+      result += `["${part}"]`;
+    }
+  }
+
+  return result;
 };
 
 export const getPathNotation = <T extends z.ZodMiniObject>(path: FormStatePath<z.infer<T>>) => {

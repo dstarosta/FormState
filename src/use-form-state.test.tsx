@@ -2225,10 +2225,10 @@ describe('useFormState', () => {
       inferName,
       useWatch,
     }: {
-      inferName: (nameOrPath: FormPath<typeof schema>) => string;
+      inferName: (nameOrPath: FormPath<typeof schema>, format?: 'bracket' | 'dot') => string;
       useWatch: (name: string, compute?: (value: string) => string) => string;
     }) => {
-      const nameValue = useWatch(inferName((path) => path.name));
+      const nameValue = useWatch(inferName((path) => path.name, 'dot'));
       const ageValue = useWatch(
         inferName((path) => path.info.age),
         (value) => (value === '0' ? '' : value)
@@ -2236,6 +2236,7 @@ describe('useFormState', () => {
       const categoryValue = useWatch(inferName((path) => path.category));
       const activeValue = useWatch(inferName('isActive'));
       const archivedValue = useWatch('archivedSelector');
+      const tag0Value = useWatch(inferName((path) => path.tags[0]));
 
       expect(() => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -2249,6 +2250,7 @@ describe('useFormState', () => {
           <p data-testid="watched-category">{categoryValue}</p>
           <p data-testid="watched-active">{activeValue}</p>
           <p data-testid="watched-archived">{archivedValue}</p>
+          {tag0Value && <p data-testid="watched-tag-0">{tag0Value}</p>}
         </>
       );
     };
@@ -2342,7 +2344,7 @@ describe('useFormState', () => {
             <input
               type="text"
               id="name"
-              name={inferName((path) => path.name)}
+              name={inferName((path) => path.name, 'dot')}
               className={formClasses((path) => path.name)}
               readOnly={formStatus.readOnly}
               value={data.name}

@@ -663,9 +663,14 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * the argument in the `useWatch` hook.
      *
      * @param nameOrPath - Root level field name or a state path expression.
+     * @param format - Specifies the path format (default: "bracket").
+     *
+     *  - "bracket" - Ex: `'schema["addresses"][1]["street"]'`
+     *  - "dot" - Ex: `'schema.addresses.1.street'`
+     *
      * @returns The inferred name.
      */
-    inferName: (nameOrPath: FormPath<T>) => string;
+    inferName: (nameOrPath: FormPath<T>, format?: 'bracket' | 'dot') => string;
   };
   /**
    * Form handler functions.

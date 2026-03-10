@@ -46,6 +46,7 @@ import {
   collectPatterns,
   collectRanges,
   getPath,
+  getPathAsString,
 } from './helpers/schema-visitor';
 import { useDeepMemo } from './helpers/use-deep-memo';
 import { useManualErrorState } from './helpers/use-manual-error-state';
@@ -923,10 +924,10 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Infers the name of the form field.
   const inferName = useCallback(
-    (nameOrPath: FormPath<T>) => {
+    (nameOrPath: FormPath<T>, format: 'bracket' | 'dot' = 'bracket') => {
       const pathNotation =
         typeof nameOrPath === 'function'
-          ? getPath(formState.data, nameOrPath).join('.')
+          ? getPathAsString(formState.data, nameOrPath, format)
           : nameOrPath;
 
       return String(pathNotation);
