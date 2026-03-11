@@ -297,6 +297,21 @@ describe('helpers', () => {
     });
   });
 
+  describe('form builder', () => {
+    it('should convert FormData into URL parameters except for params 3 and 4', () => {
+      const formData = new FormData();
+      formData.append('param1', 'Some value');
+      formData.append('param2', 'value1');
+      formData.append('param2', 'value2');
+      formData.append('param3', '');
+      formData.append('param4', new File([], 'some<file>.txt'));
+
+      const urlParams = formDataEncode(formData, ['param4', 'param3']).toString();
+
+      expect(urlParams).toBe('param1=Some+value&param2=value1&param2=value2');
+    });
+  });
+
   describe('value-converter', () => {
     describe('toInt', () => {
       it('returns empty string for empty input', () => {

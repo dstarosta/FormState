@@ -1349,9 +1349,10 @@ declare const validateState: <T extends z.ZodMiniObject>(schema: T, data: DeepPa
  * Use `formDataEncode(formData).toString()` to get a string notation of the name/value pairs.
  *
  * @param formData - The form data.
+ * @param omitNames - An array of names that represent form data entries that should not be serialized.
  * @returns The `URLSearchParams` instance with the form data name/value pairs.
  */
-declare const formDataEncode: (formData: FormData) => URLSearchParams;
+declare const formDataEncode: (formData: FormData, omitNames?: string[]) => URLSearchParams;
 /**
  * Submits a form element.
  *
@@ -1391,7 +1392,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *

@@ -185,13 +185,18 @@ export const createFormComponent = <T extends object>(
  * Use `formDataEncode(formData).toString()` to get a string notation of the name/value pairs.
  *
  * @param formData - The form data.
+ * @param omitNames - An array of names that represent form data entries that should not be serialized.
  * @returns The `URLSearchParams` instance with the form data name/value pairs.
  */
-export const formDataEncode = (formData: FormData) =>
+export const formDataEncode = (formData: FormData, omitNames?: string[]) =>
   new URLSearchParams(
-    Array.from(formData, ([key, value]): [string, string] => {
-      return typeof value === 'string' ? [key, value] : [key, value.name];
-    })
+    [...formData.entries()]
+      .filter((entry) => {
+        return !omitNames?.length || !omitNames.includes(entry[0]);
+      })
+      .map((entry) => {
+        return typeof entry[1] === 'string' ? [entry[0], entry[1]] : [entry[0], entry[1].name];
+      })
   );
 
 /**
