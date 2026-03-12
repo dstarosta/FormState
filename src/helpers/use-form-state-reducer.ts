@@ -5,7 +5,7 @@ import type { FormAction, FormMutableState, ManualErrorState } from '../types/fo
 import { formatErrors } from './error-formatter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { deepEqual } from 'fast-equals';
-import { createInitialState, diffedState, updateState } from './state-manager';
+import { createInitialState, diffedState, difference, updateState } from './state-manager';
 
 export function useFormStateReducer<T extends z.ZodMiniObject>(
   schema: T,
@@ -327,9 +327,10 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name).trim();
 
-          const errors = shouldValidate
-            ? parseAndCache(prevState.data).errors
-            : { ...prevState.errors };
+          const errors = difference(
+            shouldValidate ? parseAndCache(prevState.data).errors : { ...prevState.errors },
+            prevManualErrors
+          );
 
           const manualErrors = updateState(prevManualErrors, (draft) => {
             if (error === null) {
@@ -367,9 +368,10 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const hasPredicate = typeof predicate === 'function';
 
-          const errors = shouldValidate
-            ? parseAndCache(prevState.data).errors
-            : { ...prevState.errors };
+          const errors = difference(
+            shouldValidate ? parseAndCache(prevState.data).errors : { ...prevState.errors },
+            prevManualErrors
+          );
 
           if (hasPredicate) {
             manualErrorsState.remove(predicate);

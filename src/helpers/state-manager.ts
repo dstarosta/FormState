@@ -158,6 +158,21 @@ export const freezeObject = (obj: object) => {
   return IS_DEVELOPMENT ? Object.freeze(obj) : obj;
 };
 
+export const difference = <T extends object>(obj1: T, obj2: Record<string, unknown>): T => {
+  const result: Partial<T> = {};
+
+  for (const key in obj1) {
+    if (
+      Object.prototype.hasOwnProperty.call(obj1, key) &&
+      (!(key in obj2) || obj1[key] !== obj2[key])
+    ) {
+      result[key as keyof T] = obj1[key];
+    }
+  }
+
+  return result as T;
+};
+
 // Public functions
 
 /**
