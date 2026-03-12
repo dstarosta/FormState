@@ -86,6 +86,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   const {
     initialMode = 'editable',
     resetTouchedOnFormReset = false,
+    validateBeforeSubmit = true,
     validateOnMount = false,
     validateOnChange = true,
     validateOnTouch = false,
@@ -209,6 +210,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     schema,
     state,
     manualErrorsState,
+    validateBeforeSubmit,
     validateOnMount
   );
 
@@ -519,7 +521,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : nameOrPath;
       const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
 
-      const unchanged = dotPathGet(formState.data, pathNotation) === value;
+      const unchanged = dotPathGet(formStateRef.current.data, pathNotation) === value;
 
       const callback = options?.callback ?? null;
       const interval = options?.debounceIntervalMs ?? 0;
@@ -717,12 +719,9 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
 
       if (options?.submit) {
-        const currentState = formStateRef.current;
-
-        const submittedErrors = currentState.validated
-          ? currentState.errors
-          : { ...currentState.initialErrors, ...manualErrorsState.get() };
-
+        const safeData = schema.safeParse(formStateRef.current.data);
+        const errors = formatErrors<State>(safeData.error);
+        const submittedErrors = { ...errors, ...manualErrorsState.get() };
         const hasErrors = Object.keys(submittedErrors).length > 0;
 
         if (hasErrors) {
@@ -742,7 +741,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       return true;
     },
-    [manualErrorsState, dispatch]
+    [schema, manualErrorsState, dispatch]
   );
 
   // The memoized "handleReset" function.
@@ -780,10 +779,9 @@ export function useFormState<T extends z.ZodMiniObject>(
       return async (submittedFormData: FormData) => {
         const currentState = formStateRef.current;
 
-        const submittedErrors = currentState.validated
-          ? currentState.errors
-          : { ...currentState.initialErrors, ...manualErrorsState.get() };
-
+        const safeData = schema.safeParse(currentState.data);
+        const errors = formatErrors<State>(safeData.error);
+        const submittedErrors = { ...errors, ...manualErrorsState.get() };
         const hasErrors = Object.keys(submittedErrors).length > 0;
 
         const submitState: SubmitState<State> = hasErrors

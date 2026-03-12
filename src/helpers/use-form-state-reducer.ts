@@ -11,6 +11,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
   schema: T,
   state: FormMutableState<z.infer<T>>,
   manualErrorsState: ManualErrorState,
+  validateBeforeSubmit: boolean,
   validateOnMount: boolean
 ) {
   type State = z.infer<T>;
@@ -81,20 +82,22 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             options: { validate, touch },
           } = action;
 
+          const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
+
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name);
           const field = Array.isArray(name) ? name[0] : name;
 
           const mergedData = dotPathSet<State>(prevState.data, pathNotation, value);
 
-          let finalData: State;
+          let changedData: State;
           let errors: Record<keyof State, string | undefined>;
 
-          if (validate) {
+          if (shouldValidate) {
             const cached = parseAndCache(mergedData);
-            finalData = cached.parsedData;
+            changedData = cached.parsedData;
             errors = cached.errors;
           } else {
-            finalData = mergedData;
+            changedData = mergedData;
             errors = prevState.errors;
           }
 
@@ -106,9 +109,9 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             isFieldDirty = !deepEqual(value, initialValue);
           } else if (
             typeof prevState.initialData[field] === 'object' ||
-            typeof finalData[field] === 'object'
+            typeof changedData[field] === 'object'
           ) {
-            isFieldDirty = !deepEqual(prevState.initialData[field], finalData[field]);
+            isFieldDirty = !deepEqual(prevState.initialData[field], changedData[field]);
           } else {
             isFieldDirty = value !== initialValue;
           }
@@ -122,9 +125,9 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           return diffedState(
             {
               ...prevState,
-              data: finalData,
+              data: changedData,
               errors: { ...errors, ...prevManualErrors },
-              validated: prevState.validated || validate,
+              validated: shouldValidate,
               dirty,
               touched,
             },
@@ -138,13 +141,15 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             options: { validate },
           } = action;
 
+          const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
+
           const replacedData = createInitialState(schema, data);
 
           const safeData = schema.safeParse(replacedData);
           const dataErrors = formatErrors<State>(safeData.error);
 
           const errors =
-            validate || Object.keys(prevState.errors).length > 0
+            shouldValidate || Object.keys(prevState.errors).length > 0
               ? dataErrors
               : { ...prevState.errors };
 
@@ -155,23 +160,30 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             initialErrors: dataErrors,
             errors: { ...errors, ...prevManualErrors },
             replaced: true,
-            validated: prevState.validated || validate,
+            validated: prevState.validated || shouldValidate,
           } satisfies FormMutableState<State>;
         }
         // field touch event
         case 'touch': {
-          const errors = action.options.validate
+          const {
+            name,
+            options: { validate },
+          } = action;
+
+          const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
+
+          const errors = shouldValidate
             ? parseAndCache(prevState.data).errors
             : { ...prevState.errors };
 
-          const pathNotation = Array.isArray(action.name) ? action.name.join('.') : action.name;
+          const pathNotation = Array.isArray(name) ? name.join('.') : name;
           const touched = { ...prevState.touched, [pathNotation]: true };
 
           return diffedState(
             {
               ...prevState,
               errors: { ...errors, ...prevManualErrors },
-              validated: prevState.validated || action.options.validate,
+              validated: prevState.validated || shouldValidate,
               touched,
             },
             prevState
@@ -179,21 +191,27 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
         // set dirty event
         case 'setDirty': {
+          const { name, dirty } = action;
+
           return diffedState(
             {
               ...prevState,
-              dirty: { ...prevState.dirty, [action.name]: action.dirty },
+              dirty: { ...prevState.dirty, [name]: dirty },
             },
             prevState
           );
         }
         // form submit event
         case 'submit': {
+          const {
+            options: { resetDirty, resetTouched },
+          } = action;
+
           return {
             ...prevState,
-            initialData: action.options.resetDirty ? prevState.data : prevState.initialData,
-            dirty: action.options.resetDirty ? { ...state.dirty } : { ...prevState.dirty },
-            touched: action.options.resetTouched ? { ...state.touched } : { ...prevState.touched },
+            initialData: resetDirty ? prevState.data : prevState.initialData,
+            dirty: resetDirty ? { ...state.dirty } : { ...prevState.dirty },
+            touched: resetTouched ? { ...state.touched } : { ...prevState.touched },
             validated: true,
             submitCount: prevState.submitCount + 1,
           } satisfies FormMutableState<State>;
@@ -258,26 +276,26 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
         // form reset event
         case 'reset': {
-          let errors: Record<keyof State, string>;
+          const {
+            options: { retainData, resetTouched },
+          } = action;
 
-          if (validateOnMount && prevState.submitCount === 0) {
-            const safeData = schema.safeParse(prevState.initialData);
-            errors = formatErrors<State>(safeData.error);
-          } else {
-            errors = {} as Record<keyof State, string>;
-          }
+          const errors =
+            validateOnMount && prevState.submitCount === 0
+              ? prevState.initialErrors
+              : ({} as Record<keyof State, string>);
 
           manualErrorsState.set();
 
           return {
             initialData: prevState.initialData,
             initialErrors: prevState.initialErrors,
-            data: action.options.retainData ? prevState.data : prevState.initialData,
+            data: retainData ? prevState.data : prevState.initialData,
             replaced: prevState.replaced,
             validated: prevState.submitCount > 0 || validateOnMount,
             submitCount: prevState.submitCount,
             dirty: { ...state.dirty },
-            touched: action.options.resetTouched ? { ...state.touched } : { ...prevState.touched },
+            touched: resetTouched ? { ...state.touched } : { ...prevState.touched },
             readOnly: prevState.readOnly,
             disabled: prevState.disabled,
             maxLengths: { ...state.maxLengths },
@@ -299,11 +317,19 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
         // set manual error event
         case 'setManualError': {
-          const { name, error, options } = action;
+          const {
+            name,
+            error,
+            options: { validate },
+          } = action;
+
+          const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
 
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name).trim();
 
-          const errors = parseAndCache(prevState.data).errors;
+          const errors = shouldValidate
+            ? parseAndCache(prevState.data).errors
+            : { ...prevState.errors };
 
           const manualErrors = updateState(prevManualErrors, (draft) => {
             if (error === null) {
@@ -324,7 +350,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           return {
             ...prevState,
             errors: currentErrors,
-            validated: prevState.validated || options.validate,
+            validated: prevState.validated || shouldValidate,
           } satisfies FormMutableState<State>;
         }
         // clear manual errors event
@@ -333,13 +359,17 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             options: { predicate, validate },
           } = action;
 
+          const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
+
           if (Object.keys(manualErrorsState.get()).length === 0) {
             return prevState;
           }
 
           const hasPredicate = typeof predicate === 'function';
 
-          const errors = parseAndCache(prevState.data).errors;
+          const errors = shouldValidate
+            ? parseAndCache(prevState.data).errors
+            : { ...prevState.errors };
 
           if (hasPredicate) {
             manualErrorsState.remove(predicate);
@@ -350,20 +380,22 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           return {
             ...prevState,
             errors: hasPredicate ? { ...errors, ...manualErrorsState.get() } : errors,
-            validated: prevState.validated || validate,
+            validated: prevState.validated || shouldValidate,
           } satisfies FormMutableState<State>;
         }
         // set the form mode
         case 'setMode': {
+          const { readOnly, disabled } = action;
+
           return {
             ...prevState,
-            readOnly: action.readOnly,
-            disabled: action.disabled,
+            readOnly,
+            disabled,
           } satisfies FormMutableState<State>;
         }
       }
     },
-    [schema, state, manualErrorsState, validateOnMount]
+    [schema, state, manualErrorsState, validateBeforeSubmit, validateOnMount]
   );
 
   return useActionState<FormMutableState<State>, FormAction<State>>(reducer, state);

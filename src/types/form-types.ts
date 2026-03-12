@@ -217,6 +217,14 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   resetTouchedOnFormReset?: boolean;
   /**
+   * Validate the schema before submission on "change", "touch", "replace" or "setError"/
+   * "clearManualErrors" form actions (default: `true`);
+   *
+   * Note: This option is only in affect while the "validated" form status has not been
+   * set by the "validateOnMount" option or the "validate" form action.
+   */
+  validateBeforeSubmit?: boolean;
+  /**
    * Validate the schema after the form mounts with the initial values (default: `false`).
    */
   validateOnMount?: boolean;

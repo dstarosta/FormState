@@ -275,6 +275,52 @@ describe('useFormState', () => {
       expect(formState.data.info.age).toBe(29);
     });
 
+    it('should not validate before submit when validateBeforeSubmit is false', () => {
+      const initialState: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: ['a', 'b'],
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialState, validateBeforeSubmit: false })
+      );
+      const {
+        formActions: { change, validate },
+      } = result.current;
+
+      act(() => {
+        change('name', '');
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.data.name).toBe('');
+      expect(formState.errors.name).toBeUndefined();
+      expect(formStatus.valid).toBeNull();
+
+      act(() => {
+        validate({
+          submit: true,
+        });
+      });
+
+      const { formState: submittedState, formStatus: submittedStatus } = result.current;
+
+      expect(submittedState.errors.name).toBe('Name is required');
+      expect(submittedStatus.submitted).toBe(false);
+      expect(submittedStatus.valid).toBe(false);
+
+      act(() => {
+        change('name', 'John');
+      });
+
+      const { formState: changedState, formStatus: changedStatus } = result.current;
+
+      expect(changedState.data.name).toBe('John');
+      expect(changedState.errors.name).toBeUndefined();
+      expect(changedStatus.valid).toBe(true);
+    });
+
     it('should handle number and date fields', () => {
       const initialState: InitialSchema = {
         name: 'John',

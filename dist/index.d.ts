@@ -99,6 +99,14 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   resetTouchedOnFormReset?: boolean;
   /**
+   * Validate the schema before submission on "change", "touch", "replace" or "setError"/
+   * "clearManualErrors" form actions (default: `true`);
+   *
+   * Note: This option is only in affect while the "validated" form status has not been
+   * set by the "validateOnMount" option or the "validate" form action.
+   */
+  validateBeforeSubmit?: boolean;
+  /**
    * Validate the schema after the form mounts with the initial values (default: `false`).
    */
   validateOnMount?: boolean;
@@ -1231,6 +1239,8 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  *                               will be marked as touched when the form is initialized.
  * @param options.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset
  *                                          (default: `true`).
+ * @param options.validateBeforeSubmit - Validate the schema before submission on "change", "touch", "replace" or
+ *                                       "setError"/"clearManualErrors" form actions (default: `true`);
  * @param options.validateOnMount - Validate the schema after the form mounts with the initial values (default: `false`).
  * @param options.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
  * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
@@ -1239,6 +1249,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  *                                        change callbacks is allowed.
  * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
  * @param options.CSSPrefix - Form CSS class prefix (default: "form-state").
+ * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  *
  * @returns A curried function to wrap the component.
  */
@@ -1392,7 +1403,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *

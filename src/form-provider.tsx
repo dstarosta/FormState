@@ -81,6 +81,8 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  *                               will be marked as touched when the form is initialized.
  * @param options.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset
  *                                          (default: `true`).
+ * @param options.validateBeforeSubmit - Validate the schema before submission on "change", "touch", "replace" or
+ *                                       "setError"/"clearManualErrors" form actions (default: `true`);
  * @param options.validateOnMount - Validate the schema after the form mounts with the initial values (default: `false`).
  * @param options.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
  * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
@@ -89,6 +91,7 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  *                                        change callbacks is allowed.
  * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
  * @param options.CSSPrefix - Form CSS class prefix (default: "form-state").
+ * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  *
  * @returns A curried function to wrap the component.
  */
