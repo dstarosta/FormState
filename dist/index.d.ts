@@ -99,9 +99,9 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   resetTouchedOnFormReset?: boolean;
   /**
-   * Validate the schema with the initial values (default: `false`).
+   * Validate the schema after the form mounts with the initial values (default: `false`).
    */
-  validateOnInit?: boolean;
+  validateOnMount?: boolean;
   /**
    * Validate the schema, by default, after a `change` action (default: `true`).
    */
@@ -1231,7 +1231,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  *                               will be marked as touched when the form is initialized.
  * @param options.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset
  *                                          (default: `true`).
- * @param options.validateOnInit - Validate the schema with the initial values (default: `false`).
+ * @param options.validateOnMount - Validate the schema after the form mounts with the initial values (default: `false`).
  * @param options.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
  * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
  * @param options.debounceCacheCapacity - Sets the capacity of the debounce callback cache used by the "change"

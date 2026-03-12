@@ -103,7 +103,7 @@ describe('form provider', () => {
     );
   };
 
-  const ConnectedForm = formConnect({ schema, initialState, validateOnInit: true })(FormComponent);
+  const ConnectedForm = formConnect({ schema, initialState, validateOnMount: true })(FormComponent);
 
   it('renders connected form', () => {
     render(<ConnectedForm />);

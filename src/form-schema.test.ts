@@ -311,7 +311,7 @@ describe('form schema', () => {
     });
     const initialState: z.infer<typeof testSchema> = { users: [{ name: '' }] };
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
     const { formState, formStatus } = result.current;
 
@@ -474,7 +474,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -500,7 +500,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -523,7 +523,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -547,7 +547,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -570,7 +570,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -594,7 +594,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -617,7 +617,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -639,7 +639,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -661,7 +661,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -683,7 +683,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -708,7 +708,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -732,7 +732,7 @@ describe('form schema', () => {
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnInit: true })
+      useFormState(testSchema, { initialState, validateOnMount: true })
     );
     const {
       formState,

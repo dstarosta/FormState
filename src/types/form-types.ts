@@ -217,9 +217,9 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   resetTouchedOnFormReset?: boolean;
   /**
-   * Validate the schema with the initial values (default: `false`).
+   * Validate the schema after the form mounts with the initial values (default: `false`).
    */
-  validateOnInit?: boolean;
+  validateOnMount?: boolean;
   /**
    * Validate the schema, by default, after a `change` action (default: `true`).
    */

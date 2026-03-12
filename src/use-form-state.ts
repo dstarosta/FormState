@@ -86,7 +86,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   const {
     initialMode = 'editable',
     resetTouchedOnFormReset = false,
-    validateOnInit = false,
+    validateOnMount = false,
     validateOnChange = true,
     validateOnTouch = false,
     debounceCacheCapacity = 50,
@@ -117,7 +117,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     const safeData = schema.safeParse(mergedData);
 
     const initialErrors = formatErrors<State>(safeData.error);
-    const errors = validateOnInit ? initialErrors : ({} as Record<keyof State, string>);
+    const errors = validateOnMount ? initialErrors : ({} as Record<keyof State, string>);
 
     const dirty: Record<keyof State, boolean> = {} as Record<keyof State, boolean>;
 
@@ -156,7 +156,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       readOnly: initialMode === 'readOnly',
       initialData: data,
       replaced: false,
-      validated: validateOnInit,
+      validated: validateOnMount,
       submitCount: 0,
       data,
       initialErrors,
@@ -168,7 +168,15 @@ export function useFormState<T extends z.ZodMiniObject>(
       patterns,
       descriptions,
     } satisfies FormMutableState<State>;
-  }, [schema, defaultData, initialData, initialState, initialTouched, initialMode, validateOnInit]);
+  }, [
+    schema,
+    defaultData,
+    initialData,
+    initialState,
+    initialTouched,
+    initialMode,
+    validateOnMount,
+  ]);
 
   // Tracks whether component is mounted.
   const isMountedRef = useRef(true);
@@ -201,7 +209,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     schema,
     state,
     manualErrorsState,
-    validateOnInit
+    validateOnMount
   );
 
   // Ref to avoid stale closures in validate/handleSubmit callbacks.

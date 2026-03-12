@@ -11,7 +11,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
   schema: T,
   state: FormMutableState<z.infer<T>>,
   manualErrorsState: ManualErrorState,
-  validateOnInit: boolean
+  validateOnMount: boolean
 ) {
   type State = z.infer<T>;
 
@@ -58,7 +58,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           };
 
           let errors: Record<keyof State, string | undefined>;
-          if (validateOnInit || Object.keys(prevState.errors).length > 0) {
+          if (validateOnMount || Object.keys(prevState.errors).length > 0) {
             const safeData = schema.safeParse(mergedData);
             errors = formatErrors<State>(safeData.error);
           } else {
@@ -260,7 +260,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         case 'reset': {
           let errors: Record<keyof State, string>;
 
-          if (validateOnInit && prevState.submitCount === 0) {
+          if (validateOnMount && prevState.submitCount === 0) {
             const safeData = schema.safeParse(prevState.initialData);
             errors = formatErrors<State>(safeData.error);
           } else {
@@ -274,7 +274,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             initialErrors: prevState.initialErrors,
             data: action.options.retainData ? prevState.data : prevState.initialData,
             replaced: prevState.replaced,
-            validated: prevState.submitCount > 0 || validateOnInit,
+            validated: prevState.submitCount > 0 || validateOnMount,
             submitCount: prevState.submitCount,
             dirty: { ...state.dirty },
             touched: action.options.resetTouched ? { ...state.touched } : { ...prevState.touched },
@@ -363,7 +363,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
       }
     },
-    [schema, state, manualErrorsState, validateOnInit]
+    [schema, state, manualErrorsState, validateOnMount]
   );
 
   return useActionState<FormMutableState<State>, FormAction<State>>(reducer, state);

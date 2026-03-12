@@ -99,7 +99,7 @@ describe('useFormState', () => {
 
   describe('state and status tests', () => {
     it('should initialize with default values', () => {
-      const { result } = renderHook(() => useFormState(schema, { validateOnInit: true }));
+      const { result } = renderHook(() => useFormState(schema, { validateOnMount: true }));
       const { formState, formStatus } = result.current;
 
       const expectedData: typeof formState.data = {
@@ -193,8 +193,8 @@ describe('useFormState', () => {
       expect(formStatus.valid).toBeNull();
     });
 
-    it('should validate on init when validateOnInit is true', () => {
-      const { result } = renderHook(() => useFormState(schema, { validateOnInit: true }));
+    it('should validate on init when validateOnMount is true', () => {
+      const { result } = renderHook(() => useFormState(schema, { validateOnMount: true }));
       const { formState, formStatus } = result.current;
 
       expect(formState.errors.name).toBe('Name is required');
@@ -202,7 +202,7 @@ describe('useFormState', () => {
       expect(formStatus.valid).toBe(false);
     });
 
-    it('should not produce errors on initial state change when validateOnInit is false', () => {
+    it('should not produce errors on initial state change when validateOnMount is false', () => {
       const initialState: InitialSchema = {
         name: '',
         info: { age: 30 },
@@ -216,13 +216,13 @@ describe('useFormState', () => {
       expect(formState.errors).not.toHaveProperty('age');
     });
 
-    it('should produce errors on initial state change when validateOnInit is true', () => {
+    it('should produce errors on initial state change when validateOnMount is true', () => {
       const initialState: InitialSchema = {
         name: '',
         info: { age: 0 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnInit: true })
+        useFormState(schema, { initialState, validateOnMount: true })
       );
 
       const { formState, formStatus } = result.current;
@@ -453,7 +453,7 @@ describe('useFormState', () => {
         updateDates: [new Date(2019, 11, 12), new Date(2020, 3, 15)],
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnInit: true })
+        useFormState(schema, { initialState, validateOnMount: true })
       );
       const {
         formState: { data },
@@ -606,7 +606,7 @@ describe('useFormState', () => {
   });
 
   describe('form actions', () => {
-    it('should produce errors on initial state change when validateOnInit is false but previous errors exist', () => {
+    it('should produce errors on initial state change when validateOnMount is false but previous errors exist', () => {
       let initialState: InitialSchema = {
         name: 'John',
         info: { age: 18 },
@@ -1438,7 +1438,7 @@ describe('useFormState', () => {
         info: { age: 30 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnInit: true })
+        useFormState(schema, { initialState, validateOnMount: true })
       );
       const {
         formActions: { change, reset },
@@ -1630,7 +1630,7 @@ describe('useFormState', () => {
         info: { age: 30 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnInit: true })
+        useFormState(schema, { initialState, validateOnMount: true })
       );
       const {
         formActions: { change, reset },
