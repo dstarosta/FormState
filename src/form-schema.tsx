@@ -1,7 +1,7 @@
 import * as z from 'zod/mini';
 import { deepEqual } from 'fast-equals';
 
-import type { FormDateFormat, ZodDeepType } from './types/form-types';
+import type { FormDateFormat, ZodDeepType, ZodValidationError } from './types/form-types';
 
 import { isValidDate, parseDate } from './helpers/date-formatter';
 
@@ -586,6 +586,10 @@ export function formArray<T extends z.ZodMiniType>(
  *
  * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
  *                    whether the schema object passes the rule.
+ * @param params.condition - An optional function that returns a `boolean` value indicating whether to perform
+ *                           the validation based on the existing schema validation errors.
+ *
+ *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
  * @param params.path - An optional `errors` object key to store the error message with.
  * @param params.error - An optional custom error message.
  * @returns The object schema.
@@ -593,6 +597,7 @@ export function formArray<T extends z.ZodMiniType>(
 export function validate<T>(
   predicate: (item: NoInfer<T>) => boolean,
   params?: {
+    condition?: (errors: ZodValidationError[]) => boolean;
     path?: PropertyKey[] | PropertyKey;
     error?: string;
   }
@@ -615,18 +620,39 @@ export function validate<T>(
   predicate: (item: NoInfer<T>) => boolean,
   params?:
     | {
+        condition?: (errors: ZodValidationError[]) => boolean;
         path?: PropertyKey[] | PropertyKey;
         error?: string;
       }
     | string
 ): z.core.$ZodCheck<T> {
   const paramsIsError = typeof params === 'string';
+  const condition = paramsIsError ? ALWAYS_VALIDATE : (params?.condition ?? ALWAYS_VALIDATE);
   const path = paramsIsError ? undefined : params?.path;
   const error = paramsIsError ? params : params?.error;
 
   return z.refine<T>((obj) => predicate(obj), {
-    when: ALWAYS_VALIDATE,
+    when: (payload) =>
+      condition(
+        payload.issues.map((issue) => ({
+          ...issue,
+          message:
+            issue.message ||
+            (typeof issue.params === 'object' &&
+            issue.params !== null &&
+            'message' in issue.params &&
+            typeof issue.params.message === 'string'
+              ? issue.params['message']
+              : 'Invalid input'),
+          pathNotation:
+            issue.path
+              ?.filter((part) => typeof part !== 'symbol')
+              .map((part) => part.toString())
+              .join('.') ?? '',
+        }))
+      ),
     path: Array.isArray(path) || path === undefined ? path : [path],
+    params: error ? { message: error } : undefined,
     error,
   });
 }
@@ -650,6 +676,7 @@ export function someItem<T>(
 ): z.core.$ZodCheck<T[]> {
   return z.refine<T[]>((arr) => arr.some((item, index, items) => predicate(item, index, items)), {
     when: ALWAYS_VALIDATE,
+    params: error ? { message: error } : undefined,
     error,
   });
 }
@@ -671,6 +698,7 @@ export function everyItem<T>(
 ): z.core.$ZodCheck<T[]> {
   return z.refine<T[]>((arr) => arr.every((item, index, items) => predicate(item, index, items)), {
     when: ALWAYS_VALIDATE,
+    params: error ? { message: error } : undefined,
     error,
   });
 }
@@ -718,7 +746,11 @@ export function uniqueItems<T>(
 
       return true;
     },
-    { when: ALWAYS_VALIDATE, error: params?.error }
+    {
+      when: ALWAYS_VALIDATE,
+      params: params?.error ? { message: params?.error } : undefined,
+      error: params?.error,
+    }
   );
 }
 

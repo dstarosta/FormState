@@ -167,6 +167,20 @@ export type FormStore = {
 // Public types
 
 /**
+ * Zod validation error.
+ */
+export type ZodValidationError = z.core.$ZodRawIssue & {
+  /**
+   * A standardized error message.
+   */
+  message: string;
+  /**
+   * Zod path as a string.
+   */
+  pathNotation: string;
+};
+
+/**
  * Form event type for change listener callback functions.
  */
 export type FormEventType = 'change' | 'submit';

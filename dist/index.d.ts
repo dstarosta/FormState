@@ -56,6 +56,19 @@ type FormMutableState<T extends object> = {
   disabled: boolean;
 };
 /**
+ * Zod validation error.
+ */
+type ZodValidationError = z.core.$ZodRawIssue & {
+  /**
+   * A standardized error message.
+   */
+  message: string;
+  /**
+   * Zod path as a string.
+   */
+  pathNotation: string;
+};
+/**
  * Form event type for change listener callback functions.
  */
 type FormEventType = 'change' | 'submit';
@@ -1129,11 +1142,16 @@ declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.Z
  *
  * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
  *                    whether the schema object passes the rule.
+ * @param params.condition - An optional function that returns a `boolean` value indicating whether to perform
+ *                           the validation based on the existing schema validation errors.
+ *
+ *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
  * @param params.path - An optional `errors` object key to store the error message with.
  * @param params.error - An optional custom error message.
  * @returns The object schema.
  */
 declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, params?: {
+  condition?: (errors: ZodValidationError[]) => boolean;
   path?: PropertyKey[] | PropertyKey;
   error?: string;
 }): z.core.$ZodCheck<T>;
@@ -1408,7 +1426,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
