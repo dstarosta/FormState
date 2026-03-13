@@ -459,13 +459,13 @@ describe('form schema', () => {
                 .check(z.validate((name) => name.trim().length > 0, 'Empty names are not allowed')),
             })
           )
-          .check(z.validate((arr) => arr.length > 2)),
+          .check(z.validate((arr) => arr.length > 2, 'Not enough names')),
       })
       .check(
-        z.validate((obj) => obj.users.length > 2, { path: 'users' }),
         z.validate((obj) => obj.users.filter((user) => user.name.startsWith('M')).length === 2, {
           path: 'users',
-          error: 'No names that start with "M"',
+          error: 'Not enough names that start with "M"',
+          condition: (errors) => errors.every((err) => err.pathNotation !== 'users'),
         })
       );
 
@@ -478,6 +478,76 @@ describe('form schema', () => {
     );
 
     expect(result.current.formStatus.valid).toBe(true);
+  });
+
+  it('should not validate object schema', () => {
+    const testSchema = z
+      .object({
+        users: z
+          .array(
+            z.object({
+              name: z
+                .formString(z.string(), {
+                  required: false,
+                })
+                .check(z.validate((name) => name.trim().length > 0, 'Empty names are not allowed')),
+            })
+          )
+          .check(z.validate((arr) => arr.length > 2, 'Not enough names')),
+      })
+      .check(
+        z.validate((obj) => obj.users.filter((user) => user.name.startsWith('M')).length === 2, {
+          path: 'users',
+          error: 'Not enough names that start with "M"',
+        })
+      );
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnMount: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(false);
+    expect(result.current.formState.errors.users).includes('Not enough names');
+    expect(result.current.formState.errors.users).includes('Not enough names that start with "M"');
+  });
+
+  it('should not validate object schema and show a conditional error', () => {
+    const testSchema = z
+      .object({
+        users: z
+          .array(
+            z.object({
+              name: z
+                .formString(z.string(), {
+                  required: false,
+                })
+                .check(z.validate((name) => name.trim().length > 0, 'Empty names are not allowed')),
+            })
+          )
+          .check(z.validate((arr) => arr.length > 2, 'Not enough names')),
+      })
+      .check(
+        z.validate((obj) => obj.users.filter((user) => user.name.startsWith('M')).length === 2, {
+          path: 'users',
+          error: 'No names that start with "M"',
+          condition: (errors) => errors.every((err) => err.pathNotation !== 'users'),
+        })
+      );
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'John' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnMount: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(false);
+    expect(result.current.formState.errors.users).toBe('Not enough names');
   });
 
   it('should fail validating object schema', () => {
