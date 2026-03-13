@@ -11,14 +11,14 @@ import * as react_jsx_runtime0 from "react/jsx-runtime";
  * @typeParam T - The form schema type.
  */
 declare class FormStateError<T extends object> extends Error {
-  readonly errors: Partial<Record<keyof T, string>>;
+  readonly errors: Record<keyof T | '', string | undefined>;
   /**
    * Initializes a new instance of the `FormStateError` class.
    *
    * @param message - The Zod error message in a pretty format.
    * @param errors - The object containing form error messages.
    */
-  constructor(message: string, errors?: Partial<Record<keyof T, string>>);
+  constructor(message: string, errors?: Record<keyof T | "", string | undefined>);
 }
 //#endregion
 //#region src/types/form-types.d.ts
@@ -1344,7 +1344,7 @@ declare function safeParseDate(input: string | undefined, format?: FormDateForma
  *          instance or the form state error.
  */
 declare const validateState: <T extends z.ZodMiniObject>(schema: T, data: DeepPartial<z.infer<T>>, populateDefaults?: boolean) => {
-  error: FormStateError<T>;
+  error: FormStateError<z.core.output<T>>;
   success: false;
   data?: never;
 } | {

@@ -8,6 +8,8 @@ import { isValidDate, parseDate } from './helpers/date-formatter';
 const EMPTY_STRING = '' as const;
 const Z_EMPTY_STRING = z.literal(EMPTY_STRING);
 
+const ALWAYS_VALIDATE = () => true;
+
 /**
  * Infers form state type from the schema.
  *
@@ -623,6 +625,7 @@ export function validate<T>(
   const error = paramsIsError ? params : params?.error;
 
   return z.refine<T>((obj) => predicate(obj), {
+    when: ALWAYS_VALIDATE,
     path: Array.isArray(path) || path === undefined ? path : [path],
     error,
   });
@@ -646,6 +649,7 @@ export function someItem<T>(
   error?: string
 ): z.core.$ZodCheck<T[]> {
   return z.refine<T[]>((arr) => arr.some((item, index, items) => predicate(item, index, items)), {
+    when: ALWAYS_VALIDATE,
     error,
   });
 }
@@ -666,6 +670,7 @@ export function everyItem<T>(
   error?: string
 ): z.core.$ZodCheck<T[]> {
   return z.refine<T[]>((arr) => arr.every((item, index, items) => predicate(item, index, items)), {
+    when: ALWAYS_VALIDATE,
     error,
   });
 }
@@ -703,7 +708,7 @@ export function uniqueItems<T>(
 
       return true;
     },
-    { error: params?.error }
+    { when: ALWAYS_VALIDATE, error: params?.error }
   );
 }
 

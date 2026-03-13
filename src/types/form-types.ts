@@ -1022,7 +1022,7 @@ export type StateValidationFailure<T extends z.ZodMiniObject> = {
   /**
    * The form state error instance, if the validation was unsuccessful.
    */
-  error: FormStateError<T>;
+  error: FormStateError<z.infer<T>>;
   /**
    * Indicates whether the validation was successful.
    */

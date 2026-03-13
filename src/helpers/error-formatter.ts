@@ -48,36 +48,42 @@ export const validateState = <T extends z.ZodMiniObject>(
 
 // Internal functions
 
-export const formatErrors = <T extends object>(
-  error?: z.core.$ZodError<object>
-): Record<keyof T, string> => {
+export const formatErrors = <T extends object>(error?: z.core.$ZodError<object>) => {
+  const errors = {} as Record<keyof T | '', string | undefined>;
+
   if (!error) {
-    return {} as Record<keyof T, string>;
+    return errors;
   }
-  const errors: Record<string, string> = {};
 
   const processIssue = (issue: z.core.$ZodIssue, prefix: string[] = []) => {
     const pathAsStrings = issue.path.map(String);
+    const path = [...prefix, ...pathAsStrings].join('.') as keyof T | '';
+
+    const addError = (message: string) => {
+      const errorValue = errors[path];
+
+      errors[path] =
+        typeof errorValue === 'string' && errorValue.trim().length > 0
+          ? `${errorValue}|${message}`
+          : message;
+    };
+
     if (issue.code === 'invalid_union' && Array.isArray(issue.errors)) {
       const flatErrors = issue.errors.flat();
 
-      const customErrors = flatErrors.find(
-        (err) => Boolean(err.message) && !isGenericMessage(err.message)
-      );
+      const flatIssue = flatErrors
+        .toSorted(
+          (err1, err2) =>
+            Number(isGenericMessage(err1.message)) - Number(isGenericMessage(err2.message))
+        )
+        .find((err) => Boolean(err.message));
 
-      if (customErrors && customErrors.message) {
-        errors[[...prefix, ...pathAsStrings].join('.')] = customErrors.message;
-        return;
-      }
-
-      const genericErrors = flatErrors.find((err) => Boolean(err.message));
-
-      if (genericErrors && genericErrors.message) {
-        errors[[...prefix, ...pathAsStrings].join('.')] = genericErrors.message;
+      if (flatIssue && flatIssue.message) {
+        addError(flatIssue.message);
         return;
       }
     } else if (issue.message) {
-      errors[[...prefix, ...pathAsStrings].join('.')] = issue.message;
+      addError(issue.message);
     }
   };
 
@@ -85,5 +91,5 @@ export const formatErrors = <T extends object>(
     processIssue(issue);
   }
 
-  return errors as Record<keyof T, string>;
+  return errors;
 };

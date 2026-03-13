@@ -20,7 +20,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
     schema: z.ZodMiniType;
     data: State;
     parsedData: State;
-    errors: Record<keyof State, string | undefined>;
+    errors: Record<keyof State | '', string | undefined>;
   } | null>(null);
 
   const reducer = useCallback(
@@ -58,7 +58,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             ),
           };
 
-          let errors: Record<keyof State, string | undefined>;
+          let errors: Record<keyof State | '', string | undefined>;
           if (validateOnMount || Object.keys(prevState.errors).length > 0) {
             const safeData = schema.safeParse(mergedData);
             errors = formatErrors<State>(safeData.error);
@@ -90,7 +90,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const mergedData = dotPathSet<State>(prevState.data, pathNotation, value);
 
           let changedData: State;
-          let errors: Record<keyof State, string | undefined>;
+          let errors: Record<keyof State | '', string | undefined>;
 
           if (shouldValidate) {
             const cached = parseAndCache(mergedData);
@@ -283,7 +283,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const errors =
             validateOnMount && prevState.submitCount === 0
               ? prevState.initialErrors
-              : ({} as Record<keyof State, string>);
+              : ({} as typeof prevState.initialErrors);
 
           manualErrorsState.set();
 

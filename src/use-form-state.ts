@@ -118,11 +118,12 @@ export function useFormState<T extends z.ZodMiniObject>(
     const safeData = schema.safeParse(mergedData);
 
     const initialErrors = formatErrors<State>(safeData.error);
-    const errors = validateOnMount ? initialErrors : ({} as Record<keyof State, string>);
+    const errors = validateOnMount
+      ? initialErrors
+      : ({} as Record<keyof State | '', string | undefined>);
 
-    const dirty: Record<keyof State, boolean> = {} as Record<keyof State, boolean>;
-
-    const touched: Record<keyof State, boolean> = {} as Record<keyof State, boolean>;
+    const dirty = {} as Record<keyof State, boolean>;
+    const touched = {} as Record<keyof State, boolean>;
 
     for (const field in mergedData) {
       if (Object.prototype.hasOwnProperty.call(mergedData, field)) {

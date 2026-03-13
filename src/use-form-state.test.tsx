@@ -20,10 +20,18 @@ import {
 describe('useFormState', () => {
   const schema = z.strictObject({
     name: z
-      .formString(z.string().check(z.regex(/^[\d'A-Za-z-]*$/), z.maxLength(25)), {
-        required: true,
-        error: 'Name is required',
-      })
+      .formString(
+        z
+          .string()
+          .check(
+            z.regex(/^[\d'A-Za-z-]*$/, 'Name contains invalid characters'),
+            z.maxLength(25, 'Name is too long')
+          ),
+        {
+          required: true,
+          error: 'Name is required',
+        }
+      )
       .with(z.describe('Name')),
     info: z
       .object({
@@ -52,7 +60,10 @@ describe('useFormState', () => {
       .formArray(
         z
           .string()
-          .check(z.maxLength(255), z.regex(/^[\w\\-]*$/))
+          .check(
+            z.maxLength(255, 'Tag is too long'),
+            z.regex(/^[\w\\-]*$/, 'Tag contains invalid characters')
+          )
           .with(z.describe('Tag')),
         {
           minLength: 0,
@@ -68,7 +79,12 @@ describe('useFormState', () => {
       .default(z.formBoolean(z.boolean()), false)
       .with(z.describe('Is record archived?')),
     version: z
-      .catch(z.formNumber(z.number().check(z.gte(0), z.lte(9999999))), 0)
+      .catch(
+        z.formNumber(
+          z.number().check(z.gte(0, 'Negative version'), z.lte(9999999, 'Version is too high'))
+        ),
+        0
+      )
       .with(z.describe('Record version')),
     registeredOn: z
       .formDate(z.date(), { required: false, dateFormat: 'MM/dd/yyyy' })
@@ -77,7 +93,7 @@ describe('useFormState', () => {
       .formArray(
         z
           .date()
-          .check(z.lte(new Date(2099, 11, 31)))
+          .check(z.lte(new Date(2099, 11, 31), 'Date is too early'))
           .with(z.describe('Update date'))
       )
       .with(z.describe('Update dates')),
@@ -85,7 +101,12 @@ describe('useFormState', () => {
       .formArray(z.number().check(z.lte(9999)).with(z.describe('Previous version')))
       .with(z.describe('Previous versions')),
     specialNumber: z
-      .default(z.formNumber(z.number().check(z.gt(3.1), z.lt(3.15))), Math.PI)
+      .default(
+        z.formNumber(
+          z.number().check(z.gt(3.1, 'Number is too short'), z.lt(3.15, 'Number is too long'))
+        ),
+        Math.PI
+      )
       .with(z.describe('Special number')),
   });
 
@@ -218,7 +239,7 @@ describe('useFormState', () => {
 
     it('should produce errors on initial state change when validateOnMount is true', () => {
       const initialState: InitialSchema = {
-        name: '',
+        name: 'Jonathan@somelongnamevalue...', // too long, contains invalid characters
         info: { age: 0 },
       };
       const { result } = renderHook(() =>
@@ -228,7 +249,9 @@ describe('useFormState', () => {
       const { formState, formStatus } = result.current;
 
       expect(formStatus.valid).toBe(false);
-      expect(formState.errors.name).toBe('Name is required');
+      expect(formState.errors.name).toMatch(/contains invalid characters/);
+      expect(formState.errors.name).toMatch(/too long/);
+      expect(formState.errors.name).includes('|');
       expect(formState.errors.get((path) => path.info.age)).toBe('Age must be > 0');
     });
 
