@@ -690,6 +690,28 @@ describe('form schema', () => {
     expect(result.current.formState.errors.users).toBe('Invalid input');
   });
 
+  it('should validate unique items using a mapping function in a ZodArray ignoring empty strings', () => {
+    const testSchema = z.object({
+      users: z
+        .array(
+          z.object({
+            name: z.formString(z.string(), { required: false }),
+          })
+        )
+        .check(z.uniqueItems(true, { mapFn: (value) => value.name, ignoreValues: [null, ''] })),
+    });
+
+    const initialState: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: '' }, { name: 'John' }, { name: 'Mary' }, { name: '' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialState, validateOnMount: true })
+    );
+
+    expect(result.current.formStatus.valid).toBe(true);
+  });
+
   it('should fail validating unique items in a ZodArray due to duplicates', () => {
     const error = 'There are duplicate items';
 

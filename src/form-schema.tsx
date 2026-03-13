@@ -682,22 +682,32 @@ export function everyItem<T>(
  * @typeParam T - The array item type.
  * @param deepEquality - A `bool` value indicating whether deep equality should be used instead of reference
  *                       equality (default: `false`).
- * @param params.mapFn - An optional mapping function to compare properties of items.
+ * @param params.mapFn - An optional mapping function to compare properties of items `(item: T, index: number) => unknown`.
  * @param params.error - An optional custom error message.
+ * @param params.ignoreValues - An optional array of values to ignore, typically empty string or `null` values.
+ *
+ *                              This only applies to array items, not their property values; use the `mapFn` parameter to compare
+ *                              property values.
  * @returns A Zod check that can be passed to `.check()`.
  */
 export function uniqueItems<T>(
   deepEquality: boolean = false,
-  params?: { mapFn?: (item: T) => unknown; error?: string }
+  params?: {
+    mapFn?: (item: T, index: number) => unknown;
+    error?: string;
+    ignoreValues?: unknown[];
+  }
 ): z.core.$ZodCheck<T[]> {
   return z.refine<T[]>(
     (arr) => {
       const seen: unknown[] = [];
+      const ignoredValues = new Set(params?.ignoreValues);
 
-      for (const item of arr) {
-        const value = typeof params?.mapFn === 'function' ? params.mapFn(item) : item;
+      for (const [index, item] of arr.entries()) {
+        const value = typeof params?.mapFn === 'function' ? params.mapFn(item, index) : item;
 
         if (
+          !ignoredValues.has(value) &&
           seen.some((existing) => (deepEquality ? deepEqual(existing, value) : existing === value))
         ) {
           return false;
