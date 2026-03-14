@@ -43,7 +43,7 @@
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-sonarjs": "^4.0.0",
+    "eslint-plugin-sonarjs": "^4.0.2",
     "eslint-plugin-unicorn": "^63.0.0",
     "fast-equals": "^6.0.0",
     "globals": "^17.3.0",
@@ -53,8 +53,5 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.0",
     "vitest": "^4.0.18"
-  },
-  "overrides": {
-    "minimatch": "^10.2.4"
   }
 }

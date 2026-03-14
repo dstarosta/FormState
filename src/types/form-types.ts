@@ -115,6 +115,7 @@ export type FormAction<T extends object> =
     }
   | {
       type: 'submit';
+      submittedData: SubmittedData<T>;
       options: { resetDirty: boolean; resetTouched: boolean };
     }
   | { type: 'changeInitialState' }
@@ -135,6 +136,7 @@ export type FormAction<T extends object> =
 export type FormMutableState<T extends object> = {
   initialData: T;
   data: T;
+  submittedData: SubmittedData<T>;
   initialErrors: Record<keyof T | '', string | undefined>;
   errors: Record<keyof T | '', string | undefined>;
   dirty: Record<keyof T, boolean>;
@@ -184,6 +186,25 @@ export type ZodValidationError = z.core.$ZodRawIssue & {
  * Form event type for change listener callback functions.
  */
 export type FormEventType = 'change' | 'submit';
+
+/**
+ * Submitted form data.
+ *
+ * @typeParam T - type of the form data.
+ */
+export type SubmittedData<T extends object> = {
+  /**
+   * The form data.
+   */
+  data: T;
+  /**
+   * The form data in the `FormData` format.
+   *
+   * The form must be submitted with the `handleSubmit` function for this value to get
+   * populated.
+   */
+  formData: FormData | null;
+} | null;
 
 /**
  * Callback function change listener type.
@@ -862,6 +883,13 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      * @param options - Options for clearing manual errors.
      */
     clearManualErrors: (options?: FormClearErrorsOptions) => void;
+    /**
+     * Gets the last submitted form data or `null`, if the form has never been submitted.
+     *
+     * @typeParam T - form state type.
+     * @returns - The last submitted data.
+     */
+    getSubmittedData: () => SubmittedData<z.core.output<T>>;
     /**
      * Infers the name of a specified form field. The value can be used in HTML element's "name" attribute as well as
      * the argument in the `useWatch` hook.

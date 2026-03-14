@@ -157,6 +157,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       disabled: initialMode === 'disabled',
       readOnly: initialMode === 'readOnly',
       initialData: data,
+      submittedData: null,
       replaced: false,
       validated: validateOnMount,
       submitCount: 0,
@@ -730,6 +731,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         } else {
           dispatch({
             type: 'submit',
+            submittedData: { data: formStateRef.current.data, formData: null },
             options: {
               resetDirty: options.resetDirty !== false,
               resetTouched: options.resetTouched !== false,
@@ -846,6 +848,10 @@ export function useFormState<T extends z.ZodMiniObject>(
 
         dispatch({
           type: 'submit',
+          submittedData: {
+            data: cleanEmpty(schema, currentState.data) as State,
+            formData: submittedFormData,
+          },
           options: {
             resetDirty: options?.resetDirty !== false,
             resetTouched: options?.resetTouched !== false,
@@ -929,6 +935,9 @@ export function useFormState<T extends z.ZodMiniObject>(
     },
     [validateOnChange, dispatch]
   );
+
+  // Returns the last submitted form data.
+  const getSubmittedData = useCallback(() => formState.submittedData, [formState.submittedData]);
 
   // Infers the name of the form field.
   const inferName = useCallback(
@@ -1018,6 +1027,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         setMode,
         setError,
         clearManualErrors,
+        getSubmittedData,
         inferName,
       },
       formHandlers: {
@@ -1045,13 +1055,14 @@ export function useFormState<T extends z.ZodMiniObject>(
       reset,
       touch,
       validate,
-      handleReset,
-      handleSubmit,
       setDirty,
       setMode,
       setError,
       clearManualErrors,
+      getSubmittedData,
       inferName,
+      handleSubmit,
+      handleReset,
       createComponent,
       subscribe,
     ]

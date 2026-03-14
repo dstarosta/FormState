@@ -204,6 +204,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         // form submit event
         case 'submit': {
           const {
+            submittedData,
             options: { resetDirty, resetTouched },
           } = action;
 
@@ -214,6 +215,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             touched: resetTouched ? { ...state.touched } : { ...prevState.touched },
             validated: true,
             submitCount: prevState.submitCount + 1,
+            submittedData,
           } satisfies FormMutableState<State>;
         }
         // field reset event
@@ -290,6 +292,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           return {
             initialData: prevState.initialData,
             initialErrors: prevState.initialErrors,
+            submittedData: prevState.submittedData,
             data: retainData ? prevState.data : prevState.initialData,
             replaced: prevState.replaced,
             validated: prevState.submitCount > 0 || validateOnMount,

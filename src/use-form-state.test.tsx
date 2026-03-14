@@ -2342,7 +2342,7 @@ describe('useFormState', () => {
       const {
         formState: { data },
         formStatus,
-        formActions: { change, inferName, touch, setError },
+        formActions: { change, inferName, touch, setError, getSubmittedData },
         formHandlers: { handleSubmit },
         formClasses,
         Form,
@@ -2397,7 +2397,7 @@ describe('useFormState', () => {
           aria-label="main-form"
         >
           {formStatus.submitting && <p>Submitting...</p>}
-          {formStatus.submitted && <p>Form Submitted</p>}
+          {formStatus.submitted && Boolean(getSubmittedData()?.data) && <p>Form Submitted</p>}
           <p title="name" className={formClasses('name', 'block', { classPrefix: 'form-text' })}>
             {data.name}
           </p>

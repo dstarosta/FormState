@@ -37,6 +37,7 @@ type FieldRange = number | Date | undefined;
 type FormMutableState<T extends object> = {
   initialData: T;
   data: T;
+  submittedData: SubmittedData<T>;
   initialErrors: Record<keyof T | '', string | undefined>;
   errors: Record<keyof T | '', string | undefined>;
   dirty: Record<keyof T, boolean>;
@@ -72,6 +73,24 @@ type ZodValidationError = z.core.$ZodRawIssue & {
  * Form event type for change listener callback functions.
  */
 type FormEventType = 'change' | 'submit';
+/**
+ * Submitted form data.
+ *
+ * @typeParam T - type of the form data.
+ */
+type SubmittedData<T extends object> = {
+  /**
+   * The form data.
+   */
+  data: T;
+  /**
+   * The form data in the `FormData` format.
+   *
+   * The form must be submitted with the `handleSubmit` function for this value to get
+   * populated.
+   */
+  formData: FormData | null;
+} | null;
 /**
  * Callback function change listener type.
  *
@@ -683,6 +702,13 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * @param options - Options for clearing manual errors.
      */
     clearManualErrors: (options?: FormClearErrorsOptions) => void;
+    /**
+     * Gets the last submitted form data or `null`, if the form has never been submitted.
+     *
+     * @typeParam T - form state type.
+     * @returns - The last submitted data.
+     */
+    getSubmittedData: () => SubmittedData<z.core.output<T>>;
     /**
      * Infers the name of a specified form field. The value can be used in HTML element's "name" attribute as well as
      * the argument in the `useWatch` hook.
@@ -1426,7 +1452,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
