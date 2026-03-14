@@ -38,6 +38,7 @@ import type {
   Immutable,
   StateCallback,
   SubmitState,
+  SubmittedData,
 } from './types/form-types';
 
 import {
@@ -937,7 +938,16 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   // Returns the last submitted form data.
-  const getSubmittedData = useCallback(() => formState.submittedData, [formState.submittedData]);
+  const getSubmittedData = useCallback(
+    () =>
+      formState.submittedData
+        ? ({
+            data: cleanEmpty(schema, formState.submittedData.data) as State,
+            formData: formState.submittedData.formData,
+          } as SubmittedData<State>)
+        : null,
+    [schema, formState.submittedData]
+  );
 
   // Infers the name of the form field.
   const inferName = useCallback(
