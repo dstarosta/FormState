@@ -1318,7 +1318,7 @@ declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderIni
  * @param schema - The form schema.
  * @returns A new instance of the initial state.
  */
-declare function createState<T extends z.ZodMiniObject>(schema: T): z.infer<T>;
+declare function createState<T extends z.ZodMiniObject>(schema: T): z.core.output<T>;
 /**
  * Creates strongly typed initial state based on the provided data.
  *

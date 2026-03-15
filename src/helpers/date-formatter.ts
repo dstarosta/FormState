@@ -155,21 +155,18 @@ export function formatDate(date: Date, format: FormDateFormat = 'yyyy-MM-dd') {
  * @returns An object containing the success flag and the date object, if the
  * operation was successful.
  */
-export function safeParseDate(
-  input: string | undefined,
-  format: FormDateFormat = 'yyyy-MM-dd'
-): DateParseResult {
+export function safeParseDate(input: string | undefined, format: FormDateFormat = 'yyyy-MM-dd') {
   const date = parseDate(input, format);
 
   if (!isValidDate(date)) {
     return {
       success: false,
       date: null,
-    };
+    } as DateParseResult;
   }
 
   return {
     success: true,
     date,
-  };
+  } as DateParseResult;
 }

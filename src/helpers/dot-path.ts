@@ -4,7 +4,7 @@
  * Convert a dot-separated string into an array of property names.
  * Handles escaped dots (e.g., "a\\.b.c" becomes ["a.b", "c"])
  */
-function propToArray(prop: string): string[] {
+function propToArray(prop: string) {
   // eslint-disable-next-line unicorn/no-array-reduce
   return prop.split('.').reduce<string[]>((ret, el, index, list) => {
     const last = index > 0 && list[index - 1];
@@ -24,7 +24,7 @@ function propToArray(prop: string): string[] {
  * Validate and return an array index.
  * Supports '$end' as an alias for the last index.
  */
-function getArrayIndex(head: string, obj: unknown[]): number {
+function getArrayIndex(head: string, obj: unknown[]) {
   if (head === '$end') {
     return Math.max(obj.length - 1, 0);
   }
@@ -42,10 +42,7 @@ function getArrayIndex(head: string, obj: unknown[]): number {
  * @param prop The path to value that should be returned.
  * @returns The value at the specified path, or undefined if not found.
  */
-export function dotPathGet<T = unknown>(
-  obj: object,
-  prop: string | number | string[]
-): T | undefined {
+export function dotPathGet<T = unknown>(obj: object, prop: string | number | string[]) {
   let propArray: string[];
   if (typeof prop === 'number') {
     propArray = propToArray(prop.toString());
@@ -59,7 +56,7 @@ export function dotPathGet<T = unknown>(
 
   for (const pathSegment of propArray) {
     if (current === null || typeof current !== 'object') {
-      return undefined;
+      return;
     }
 
     let head: string | number = pathSegment;
@@ -86,7 +83,7 @@ export function dotPathSet<T = unknown>(
   obj: object,
   prop: string | number | string[],
   value: unknown
-): T {
+) {
   let propArray: string[];
   if (typeof prop === 'number') {
     propArray = propToArray(prop.toString());

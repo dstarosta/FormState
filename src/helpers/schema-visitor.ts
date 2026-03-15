@@ -183,7 +183,7 @@ export const collectMaxLengths = (
   schema: z.ZodMiniType,
   field: string = '',
   parentKey: string = ''
-): Record<string, number> => {
+) => {
   const maxLengths: Record<string, number> = {};
   const key = parentKey ? `${parentKey}.${field}` : field;
 
@@ -218,7 +218,7 @@ export const collectRanges = (
   schema: z.ZodMiniType,
   field: string = '',
   parentKey: string = ''
-): Record<string, { min: FieldRange; max: FieldRange; format: string }> => {
+) => {
   const ranges: Record<string, { min: FieldRange; max: FieldRange; format: string }> = {};
   const key = parentKey ? `${parentKey}.${field}` : field;
 
@@ -263,7 +263,7 @@ export const collectDescriptions = (
   schema: z.ZodMiniType,
   field: string = '',
   parentKey: string = ''
-): Record<string, string | undefined> => {
+) => {
   const descriptions: Record<string, string | undefined> = {};
   const key = parentKey ? `${parentKey}.${field}` : field;
 
@@ -296,7 +296,7 @@ export const collectPatterns = (
   schema: z.ZodMiniType,
   field: string = '',
   parentKey: string = ''
-): Record<string, string | undefined> => {
+) => {
   const patterns: Record<string, string | undefined> = {};
   const key = parentKey ? `${parentKey}.${field}` : field;
 

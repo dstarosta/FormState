@@ -56,14 +56,14 @@ const isRecordObject = (value: unknown): value is Record<string, unknown> =>
 
 export const cleanEmpty = <T>(
   schema: z.ZodMiniType,
-  obj?: T | null,
+  obj?: T | T[] | null,
   field: string = '',
   parentKey: string = ''
-): DeepPartial<T> => {
+): DeepPartial<T> | DeepPartial<T>[] => {
   const path = parentKey ? `${parentKey}.${field}` : field;
 
   if (Array.isArray(obj)) {
-    return obj.map((item) => cleanEmpty(schema, item, '0', path) as unknown) as DeepPartial<T>;
+    return obj.map((item) => cleanEmpty(schema, item, '0', path)) as DeepPartial<T>[];
   }
 
   if (isNotRecordObject(obj)) {
@@ -158,7 +158,7 @@ export const freezeObject = (obj: object) => {
   return IS_DEVELOPMENT ? Object.freeze(obj) : obj;
 };
 
-export const difference = <T extends object>(obj1: T, obj2: Record<string, unknown>): T => {
+export const difference = <T extends object>(obj1: T, obj2: Record<string, unknown>) => {
   const result: Partial<T> = {};
 
   for (const key in obj1) {
@@ -194,7 +194,7 @@ export function createSymbol() {
  * @param schema - The form schema.
  * @returns A new instance of the initial state.
  */
-export function createState<T extends z.ZodMiniObject>(schema: T): z.infer<T> {
+export function createState<T extends z.ZodMiniObject>(schema: T) {
   type State = z.infer<T>;
 
   const shape = schema.shape as Record<keyof State, z.ZodMiniType>;

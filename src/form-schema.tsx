@@ -625,7 +625,7 @@ export function validate<T>(
         error?: string;
       }
     | string
-): z.core.$ZodCheck<T> {
+) {
   const paramsIsError = typeof params === 'string';
   const condition = paramsIsError ? ALWAYS_VALIDATE : (params?.condition ?? ALWAYS_VALIDATE);
   const path = paramsIsError ? undefined : params?.path;
@@ -673,7 +673,7 @@ export function validate<T>(
 export function someItem<T>(
   predicate: (item: NoInfer<T>, index: number, items: NoInfer<T>[]) => boolean,
   error?: string
-): z.core.$ZodCheck<T[]> {
+) {
   return z.refine<T[]>((arr) => arr.some((item, index, items) => predicate(item, index, items)), {
     when: ALWAYS_VALIDATE,
     params: error ? { message: error } : undefined,
@@ -695,7 +695,7 @@ export function someItem<T>(
 export function everyItem<T>(
   predicate: (item: NoInfer<T>, index: number, items: NoInfer<T>[]) => boolean,
   error?: string
-): z.core.$ZodCheck<T[]> {
+) {
   return z.refine<T[]>((arr) => arr.every((item, index, items) => predicate(item, index, items)), {
     when: ALWAYS_VALIDATE,
     params: error ? { message: error } : undefined,
@@ -725,7 +725,7 @@ export function uniqueItems<T>(
     error?: string;
     ignoreValues?: unknown[];
   }
-): z.core.$ZodCheck<T[]> {
+) {
   return z.refine<T[]>(
     (arr) => {
       const seen: unknown[] = [];
