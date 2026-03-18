@@ -187,14 +187,15 @@ export function createSymbol() {
 /**
  * Creates strongly typed initial state for a schema.
  *
- * This only populates properties one level deep. Use the `createInitialState`
- * function to initialize an object schema recursively.
- *
  * @typeParam T - schema type.
  * @param schema - The form schema.
+ * @param data - Optional partial data to merge into the initial state.
  * @returns A new instance of the initial state.
  */
-export function createState<T extends z.ZodMiniObject>(schema: T) {
+export function createState<T extends z.ZodMiniObject>(
+  schema: T,
+  data?: DeepPartial<z.infer<T>> | null
+): z.infer<T> {
   type State = z.infer<T>;
 
   const shape = schema.shape as Record<keyof State, z.ZodMiniType>;
@@ -238,73 +239,49 @@ export function createState<T extends z.ZodMiniObject>(schema: T) {
     }
   }
 
-  return result;
-}
+  if (isNullish(data)) {
+    return result;
+  }
 
-/**
- * Creates strongly typed initial state based on the provided data.
- *
- * Properties that need to be populated cannot have null or undefined
- * values.
- *
- * @typeParam T - schema type.
- * @param schema - The form schema.
- * @param data - The data instance that needs to be enriched to meet the schema requirements.
- * @returns A new instance of the initial state that meets the schema requirements.
- */
-export function createInitialState<T extends z.ZodMiniObject>(
-  schema: T,
-  data: DeepPartial<z.infer<T>> | null | undefined
-) {
-  const defaultState = createState(schema);
+  for (const key in data) {
+    if (Object.hasOwn(data, key)) {
+      const typedKey = key as keyof State;
+      const incomingValue = (data as State)[typedKey];
 
-  if (!isNullish(data)) {
-    const result = defaultState as Record<string | number | symbol, unknown>;
+      if (isNullish(incomingValue) || incomingValue === '' || typeof incomingValue === 'symbol') {
+        continue;
+      }
 
-    for (const key in data) {
-      if (Object.hasOwn(data, key)) {
-        const shape = schema.shape as Record<keyof z.infer<T>, z.ZodMiniType>;
-        const fieldSchema = shape[key];
+      const baseSchema = getBaseType(shape[typedKey]);
 
-        const baseSchema = getBaseType(fieldSchema);
-
-        const incomingValue = data[key as keyof typeof data];
-
-        if (isNullish(incomingValue) || incomingValue === '' || typeof incomingValue === 'symbol') {
+      if (baseSchema instanceof z.ZodMiniObject) {
+        result[typedKey] = createState(
+          baseSchema,
+          incomingValue as DeepPartial<z.infer<typeof baseSchema>>
+        ) as State[typeof typedKey];
+      } else if (baseSchema instanceof z.ZodMiniArray) {
+        // Defensive check for a null/undefined array that is unlikely to happen due to `createState(schema)`.
+        /* v8 ignore if -- @preserve */
+        if (!Array.isArray(incomingValue)) {
           continue;
         }
 
-        if (baseSchema instanceof z.ZodMiniObject) {
-          result[key] = createInitialState(
-            baseSchema,
-            incomingValue as DeepPartial<z.infer<typeof baseSchema>>
-          );
-        } else if (baseSchema instanceof z.ZodMiniArray) {
-          // Defensive check for a null/undefined array that is unlikely to happen due to `createState(schema)`.
-          /* v8 ignore if -- @preserve */
-          if (!Array.isArray(incomingValue)) {
-            continue;
-          }
+        const elementSchema = baseSchema.def.element;
 
-          const elementSchema = baseSchema.def.element;
-
-          result[key] =
-            elementSchema instanceof z.ZodMiniObject
-              ? incomingValue.map((item) => {
-                  return createInitialState(
-                    elementSchema,
-                    item as DeepPartial<z.infer<typeof elementSchema>>
-                  );
-                })
-              : [...incomingValue];
-        } else {
-          result[key] = incomingValue;
-        }
+        result[typedKey] = (
+          elementSchema instanceof z.ZodMiniObject
+            ? incomingValue.map((item) =>
+                createState(elementSchema, item as DeepPartial<z.infer<typeof elementSchema>>)
+              )
+            : [...incomingValue]
+        ) as State[typeof typedKey];
+      } else {
+        result[typedKey] = incomingValue;
       }
     }
   }
 
-  return defaultState;
+  return result;
 }
 
 /**

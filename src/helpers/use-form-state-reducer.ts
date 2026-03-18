@@ -5,7 +5,7 @@ import type { FormAction, FormMutableState, ManualErrorState } from '../types/fo
 import { formatErrors } from './error-formatter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { deepEqual } from 'fast-equals';
-import { createInitialState, diffedState, difference, updateState } from './state-manager';
+import { createState, diffedState, difference, updateState } from './state-manager';
 
 export function useFormStateReducer<T extends z.ZodMiniObject>(
   schema: T,
@@ -143,7 +143,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
 
-          const replacedData = createInitialState(schema, data);
+          const replacedData = createState(schema, data);
 
           const safeData = schema.safeParse(replacedData);
           const dataErrors = formatErrors<State>(safeData.error);

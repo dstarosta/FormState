@@ -1314,26 +1314,12 @@ declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderIni
 /**
  * Creates strongly typed initial state for a schema.
  *
- * This only populates properties one level deep. Use the `createInitialState`
- * function to initialize an object schema recursively.
- *
  * @typeParam T - schema type.
  * @param schema - The form schema.
+ * @param data - Optional partial data to merge into the initial state.
  * @returns A new instance of the initial state.
  */
-declare function createState<T extends z.ZodMiniObject>(schema: T): z.core.output<T>;
-/**
- * Creates strongly typed initial state based on the provided data.
- *
- * Properties that need to be populated cannot have null or undefined
- * values.
- *
- * @typeParam T - schema type.
- * @param schema - The form schema.
- * @param data - The data instance that needs to be enriched to meet the schema requirements.
- * @returns A new instance of the initial state that meets the schema requirements.
- */
-declare function createInitialState<T extends z.ZodMiniObject>(schema: T, data: DeepPartial<z.infer<T>> | null | undefined): z.core.output<T>;
+declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPartial<z.infer<T>> | null): z.infer<T>;
 /**
  * Gets strongly typed child data or field value based on the provided name or path.
  *
@@ -1496,5 +1482,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createInitialState, createState, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createState, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

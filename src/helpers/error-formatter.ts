@@ -5,7 +5,7 @@ import type {
   StateValidationFailure,
   StateValidationSuccess,
 } from '../types/form-types';
-import { createInitialState } from './state-manager';
+import { createState } from './state-manager';
 import { FormStateError } from './form-state-error';
 
 // Private functions
@@ -31,7 +31,7 @@ export const validateState = <T extends z.ZodMiniObject>(
   data: DeepPartial<z.infer<T>>,
   populateDefaults: boolean = true
 ) => {
-  const safeData = schema.safeParse(populateDefaults ? createInitialState(schema, data) : data);
+  const safeData = schema.safeParse(populateDefaults ? createState(schema, data) : data);
 
   if (!safeData.success) {
     return {

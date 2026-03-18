@@ -53,7 +53,6 @@ import { useDeepMemo } from './helpers/use-deep-memo';
 import { useManualErrorState } from './helpers/use-manual-error-state';
 import {
   cleanEmpty,
-  createInitialState,
   createState,
   freezeObject,
   getFieldDescription,
@@ -106,11 +105,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   const storeRef = useRef(watch ? createFormStore() : null);
 
   const defaultData = useMemo(() => createState(schema), [schema]);
-
-  const initialData = useDeepMemo(
-    () => createInitialState(schema, initialState),
-    [schema, initialState]
-  );
+  const initialData = useDeepMemo(() => createState(schema, initialState), [schema, initialState]);
 
   // The processed initial state with default property values and optional errors during the
   // initial validation.
