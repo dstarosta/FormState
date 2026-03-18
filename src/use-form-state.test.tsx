@@ -2249,6 +2249,7 @@ describe('useFormState', () => {
         formActions: { setMode },
       } = result.current;
 
+      expect(formStatus.mode).toBe('editable');
       expect(formStatus.disabled).toBe(false);
       expect(formStatus.readOnly).toBe(false);
 
@@ -2258,6 +2259,7 @@ describe('useFormState', () => {
 
       const { formStatus: readOnlyFormStatus } = result.current;
 
+      expect(readOnlyFormStatus.mode).toBe('readOnly');
       expect(readOnlyFormStatus.disabled).toBe(false);
       expect(readOnlyFormStatus.readOnly).toBe(true);
 
@@ -2267,6 +2269,7 @@ describe('useFormState', () => {
 
       const { formStatus: disabledFormStatus } = result.current;
 
+      expect(disabledFormStatus.mode).toBe('disabled');
       expect(disabledFormStatus.disabled).toBe(true);
       expect(disabledFormStatus.readOnly).toBe(false);
 
@@ -2276,6 +2279,7 @@ describe('useFormState', () => {
 
       const { formStatus: editableFormStatus } = result.current;
 
+      expect(editableFormStatus.mode).toBe('editable');
       expect(editableFormStatus.disabled).toBe(false);
       expect(editableFormStatus.readOnly).toBe(false);
     });

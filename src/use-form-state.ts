@@ -155,10 +155,9 @@ export function useFormState<T extends z.ZodMiniObject>(
     const data = safeData.data ?? mergedData;
 
     return {
-      disabled: initialMode === 'disabled',
-      readOnly: initialMode === 'readOnly',
       initialData: data,
       submittedData: null,
+      mode: initialMode,
       replaced: false,
       validated: validateOnMount,
       submitCount: 0,
@@ -260,12 +259,13 @@ export function useFormState<T extends z.ZodMiniObject>(
     let _validSchema: boolean | null = null;
 
     return {
+      mode: formState.mode,
+      readOnly: formState.mode === 'readOnly',
+      disabled: formState.mode === 'disabled',
       dirty: formDirty,
       touched: formTouched,
       submitting: isSubmitting,
       submitted: formState.submitCount > 0,
-      readOnly: formState.readOnly,
-      disabled: formState.disabled,
       valid: formValid,
       get validSchema() {
         // Expensive, computed only when accessed.
@@ -280,8 +280,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     formTouched,
     isSubmitting,
     formState.submitCount,
-    formState.readOnly,
-    formState.disabled,
+    formState.mode,
     formValid,
     isSchemaValid,
   ]);
@@ -487,9 +486,9 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       const prefix = options?.classPrefix?.trim() || CSSPrefix;
 
-      if (formState.disabled) {
+      if (formState.mode === 'disabled') {
         classes += `${prefix}__disabled `;
-      } else if (formState.readOnly) {
+      } else if (formState.mode === 'readOnly') {
         classes += `${prefix}__readonly `;
       } else {
         if (formState.touched[pathNotation as keyof State]) {
@@ -509,9 +508,8 @@ export function useFormState<T extends z.ZodMiniObject>(
     [
       CSSPrefix,
       formState.data,
-      formState.disabled,
+      formState.mode,
       formState.errors,
-      formState.readOnly,
       formState.touched,
       formState.validated,
     ]
@@ -889,20 +887,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const setMode = useCallback(
     (mode: FormMode) => {
-      switch (mode) {
-        case 'readOnly': {
-          dispatch({ type: 'setMode', readOnly: true, disabled: false });
-          break;
-        }
-        case 'disabled': {
-          dispatch({ type: 'setMode', readOnly: false, disabled: true });
-          break;
-        }
-        default: {
-          dispatch({ type: 'setMode', readOnly: false, disabled: false });
-          break;
-        }
-      }
+      dispatch({ type: 'setMode', mode });
     },
     [dispatch]
   );

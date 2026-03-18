@@ -294,13 +294,12 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             initialErrors: prevState.initialErrors,
             submittedData: prevState.submittedData,
             data: retainData ? prevState.data : prevState.initialData,
+            mode: prevState.mode,
             replaced: prevState.replaced,
             validated: prevState.submitCount > 0 || validateOnMount,
             submitCount: prevState.submitCount,
             dirty: { ...state.dirty },
             touched: resetTouched ? { ...state.touched } : { ...prevState.touched },
-            readOnly: prevState.readOnly,
-            disabled: prevState.disabled,
             maxLengths: { ...state.maxLengths },
             ranges: { ...state.ranges },
             patterns: { ...state.patterns },
@@ -390,12 +389,9 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
         // set the form mode
         case 'setMode': {
-          const { readOnly, disabled } = action;
-
           return {
             ...prevState,
-            readOnly,
-            disabled,
+            mode: action.mode,
           } satisfies FormMutableState<State>;
         }
       }

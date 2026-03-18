@@ -40,6 +40,7 @@ type FormMutableState<T extends object> = {
   submittedData: SubmittedData<T>;
   initialErrors: Record<keyof T | '', string | undefined>;
   errors: Record<keyof T | '', string | undefined>;
+  mode: FormMode;
   dirty: Record<keyof T, boolean>;
   touched: Record<keyof T, boolean>;
   maxLengths: Record<keyof T, number>;
@@ -53,8 +54,6 @@ type FormMutableState<T extends object> = {
   submitCount: number;
   replaced: boolean;
   validated: boolean;
-  readOnly: boolean;
-  disabled: boolean;
 };
 /**
  * Zod validation error.
@@ -337,6 +336,18 @@ type FormState<T extends object> = {
  */
 type FormStatus = {
   /**
+   * Whether the form mode as "editable" (default), "readOnly" or "disabled".
+   */
+  readonly mode: FormMode;
+  /**
+   * Whether the form is marked as read-only.
+   */
+  readonly readOnly: boolean;
+  /**
+   * Whether the form is marked as disabled.
+   */
+  readonly disabled: boolean;
+  /**
    * Whether any field in the form has been touched.
    */
   readonly touched: boolean;
@@ -366,14 +377,6 @@ type FormStatus = {
    * Whether the form has been submitted (initially or after the last form reset).
    */
   readonly submitted: boolean;
-  /**
-   * Whether the form is marked as read-only.
-   */
-  readonly readOnly: boolean;
-  /**
-   * Whether the form is marked as disabled.
-   */
-  readonly disabled: boolean;
 };
 /**
  * A form path that can be a field name or a state path expression.
