@@ -735,9 +735,9 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      *
      * @param onSubmit - A callback function to execute before submitting the form.
      *
-     * Callback return value: `false` - do not submit the form even if the form state has no errors.
-     * `true` - submit the form if there are no errors.
-     * `void` - no return value is treated as `true`.
+     * Callback return values:
+     * - `true`, if there are no errors
+     * - a hash object with error names and messages (an empty object `{}` also represents no errors)
      *
      * @param options - Options for form submission.
      */
