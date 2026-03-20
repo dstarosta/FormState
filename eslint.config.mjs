@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 import eslintPluginUnicorn from 'eslint-plugin-unicorn';
 import sonarjs from 'eslint-plugin-sonarjs';
-import react from 'eslint-plugin-react-hooks';
+import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 import { defineConfig, globalIgnores } from 'eslint/config';
@@ -18,6 +18,7 @@ export default defineConfig([
       eslintPluginUnicorn.configs.all,
       sonarjs.configs.recommended,
       react.configs.flat.recommended,
+      react.configs.flat['jsx-runtime'],
       reactHooks.configs.flat.recommended,
       eslintConfigPrettier,
     ],

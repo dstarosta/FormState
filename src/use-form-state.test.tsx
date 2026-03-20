@@ -1010,7 +1010,7 @@ describe('useFormState', () => {
       });
 
       expect(updateCounter).toBe(1);
-      expect(consoleWarnSpy).toBeCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
 
       consoleWarnSpy.mockReset();
     });
@@ -1247,7 +1247,7 @@ describe('useFormState', () => {
       });
 
       expect(result.current.formState.data.version).toBe(1);
-      expect(callback).toBeCalledTimes(1);
+      expect(callback).toHaveBeenCalledTimes(1);
 
       function change(...args: Parameters<typeof result.current.formActions.change>) {
         result.current.formActions.change(...args);
@@ -1274,7 +1274,7 @@ describe('useFormState', () => {
       });
 
       expect(result.current.formState.data.name).toBe('John');
-      expect(evictedCallback).not.toBeCalled();
+      expect(evictedCallback).not.toHaveBeenCalled();
 
       act(() => {
         change('version', 1, { callback: secondCallback, debounceIntervalMs: interval });
@@ -1282,7 +1282,7 @@ describe('useFormState', () => {
 
       // The evicted entry's change should have been dispatched and its callback called.
       expect(result.current.formState.data.name).toBe('Alice');
-      expect(evictedCallback).toBeCalledTimes(1);
+      expect(evictedCallback).toHaveBeenCalledTimes(1);
 
       expect(result.current.formState.data.version).toBe(0);
 
@@ -1291,7 +1291,7 @@ describe('useFormState', () => {
       });
 
       expect(result.current.formState.data.version).toBe(1);
-      expect(secondCallback).toBeCalledTimes(1);
+      expect(secondCallback).toHaveBeenCalledTimes(1);
 
       function change(...args: Parameters<typeof result.current.formActions.change>) {
         result.current.formActions.change(...args);
@@ -2176,8 +2176,8 @@ describe('useFormState', () => {
         change((path) => path.info.email, 'some@email.org');
       });
 
-      expect(callback).toBeCalledTimes(1);
-      expect(callback).toBeCalledWith(
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(
         'change',
         expect.objectContaining({
           info: expect.objectContaining({ age: 42 }) as object,
@@ -2190,8 +2190,8 @@ describe('useFormState', () => {
         change((path) => path.info.birthDate, '12/31/2020');
       });
 
-      expect(callback).toBeCalledTimes(2);
-      expect(callback).toBeCalledWith(
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(callback).toHaveBeenCalledWith(
         'change',
         expect.objectContaining({
           info: expect.objectContaining({ birthDate: new Date(2020, 11, 31) }) as object,
@@ -2208,8 +2208,8 @@ describe('useFormState', () => {
 
       expect(formStatus.submitted).toBe(true);
 
-      expect(callback).toBeCalledTimes(3);
-      expect(callback).toBeCalledWith(
+      expect(callback).toHaveBeenCalledTimes(3);
+      expect(callback).toHaveBeenCalledWith(
         'submit',
         expect.objectContaining({
           info: expect.objectContaining({ age: 42, birthDate: new Date(2020, 11, 31) }) as object,
@@ -2222,8 +2222,8 @@ describe('useFormState', () => {
         change('name', '');
       });
 
-      expect(callback).toBeCalledTimes(4);
-      expect(callback).toBeCalledWith(
+      expect(callback).toHaveBeenCalledTimes(4);
+      expect(callback).toHaveBeenCalledWith(
         'change',
         expect.objectContaining({ name: '' }),
         expect.objectContaining({ name: 'Name is required' }),
@@ -2236,7 +2236,7 @@ describe('useFormState', () => {
         change('name', 'Tom');
       });
 
-      expect(callback).toBeCalledTimes(4);
+      expect(callback).toHaveBeenCalledTimes(4);
     });
 
     it('should change the form mode', () => {
@@ -2316,7 +2316,7 @@ describe('useFormState', () => {
       expect(() => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
         useWatch(' ');
-      }).toThrowError(TypeError);
+      }).toThrow(TypeError);
 
       return (
         <>
@@ -2656,11 +2656,11 @@ describe('useFormState', () => {
       await waitFor(() => {
         expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
-        expect(submitFn).toBeCalledWith(
+        expect(submitFn).toHaveBeenCalledWith(
           expect.objectContaining({ name: 'John' }),
           expect.any(FormData)
         );
-        expect(errorFn).not.toBeCalled();
+        expect(errorFn).not.toHaveBeenCalled();
 
         expect(name).toContainHTML('John');
         expect(submittedInfo).toBeInTheDocument();
@@ -2688,11 +2688,11 @@ describe('useFormState', () => {
       await waitFor(() => {
         expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
-        expect(submitFn).toBeCalledWith(
+        expect(submitFn).toHaveBeenCalledWith(
           expect.objectContaining({ name: 'John' }),
           expect.any(FormData)
         );
-        expect(errorFn).not.toBeCalled();
+        expect(errorFn).not.toHaveBeenCalled();
 
         expect(name).toContainHTML('John');
         expect(submittedInfo).toBeInTheDocument();
@@ -2733,7 +2733,7 @@ describe('useFormState', () => {
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
 
-      expect(domConsoleSpy).toBeCalledTimes(1);
+      expect(domConsoleSpy).toHaveBeenCalledTimes(1);
 
       domConsoleSpy.mockReset();
     });
@@ -2750,8 +2750,8 @@ describe('useFormState', () => {
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(submitFn).not.toBeCalled();
-        expect(errorFn).toBeCalledWith(
+        expect(submitFn).not.toHaveBeenCalled();
+        expect(errorFn).toHaveBeenCalledWith(
           expect.objectContaining({
             errors: expect.objectContaining({
               name: 'The name Ivan is not allowed',
@@ -2784,8 +2784,8 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toBeCalled();
-          expect(errorFn).toBeCalledWith(
+          expect(submitFn).not.toHaveBeenCalled();
+          expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
@@ -2807,8 +2807,8 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toBeCalled();
-          expect(errorFn).toBeCalledWith(
+          expect(submitFn).not.toHaveBeenCalled();
+          expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
@@ -2834,8 +2834,8 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toBeCalled();
-          expect(errorFn).toBeCalledWith(
+          expect(submitFn).not.toHaveBeenCalled();
+          expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
@@ -2857,8 +2857,8 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toBeCalled();
-          expect(errorFn).toBeCalledWith(
+          expect(submitFn).not.toHaveBeenCalled();
+          expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
@@ -2886,8 +2886,8 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toBeCalled();
-          expect(errorFn).toBeCalledWith(
+          expect(submitFn).not.toHaveBeenCalled();
+          expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
             }),
@@ -2911,8 +2911,8 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toBeCalled();
-          expect(errorFn).toBeCalledWith(
+          expect(submitFn).not.toHaveBeenCalled();
+          expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
             }),
@@ -3040,9 +3040,7 @@ describe('useFormState', () => {
     });
 
     it('throws when watch is not enabled and useWatch is defined', () => {
-      expect(() => render(<FormComponent forwardRef={() => {}} />)).toThrowError(
-        /"watch" property/
-      );
+      expect(() => render(<FormComponent forwardRef={() => {}} />)).toThrow(/"watch" property/);
     });
 
     it('should render form is the editable mode', () => {

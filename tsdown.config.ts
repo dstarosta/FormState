@@ -15,10 +15,12 @@ export default defineConfig({
   ],
   entry: 'src/index.ts',
   clean: true,
+  deps: {
+    onlyBundle: ['fast-equals'],
+  },
   dts: {
     enabled: false,
   },
-  inlineOnly: ['fast-equals'],
   minify: true,
   sourcemap: 'hidden',
   treeshake: true,
