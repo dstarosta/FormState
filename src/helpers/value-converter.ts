@@ -78,7 +78,7 @@ export const toDate = (
  * @returns The converted value.
  */
 export const toBoolean = (value: string, options?: { strict?: boolean }) => {
-  const parsedValue = value?.toLowerCase();
+  const parsedValue = value.toLowerCase();
 
   if (options?.strict) {
     if (parsedValue === 'true') {

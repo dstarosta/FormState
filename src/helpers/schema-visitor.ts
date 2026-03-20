@@ -13,14 +13,14 @@ const getSchemaMaxLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
       : undefined;
 
   const check = checks?.find(
-    (chk): chk is z.core.$ZodCheckMaxLength => chk._zod?.def?.check === 'max_length'
+    (chk): chk is z.core.$ZodCheckMaxLength => chk._zod.def.check === 'max_length'
   )?._zod.def;
 
   return check?.maximum;
 };
 
 const getNumericSchemaRange = (schema: z.ZodMiniNumber) => {
-  const bag = schema._zod?.bag as Record<string, number | undefined> | undefined;
+  const bag = schema._zod.bag as Record<string, number | undefined> | undefined;
 
   let rawMin: number | undefined;
   let rawMax: number | undefined;
@@ -64,11 +64,11 @@ const getNumericSchemaRange = (schema: z.ZodMiniNumber) => {
 
 const getDateSchemaRange = (schema: z.ZodMiniDate) => {
   const minCheck = schema.def.checks?.find(
-    (chk): chk is z.core.$ZodCheckGreaterThan<Date> => chk._zod?.def?.check === 'greater_than'
+    (chk): chk is z.core.$ZodCheckGreaterThan<Date> => chk._zod.def.check === 'greater_than'
   )?._zod.def;
 
   const maxCheck = schema.def.checks?.find(
-    (chk): chk is z.core.$ZodCheckLessThan<Date> => chk._zod?.def?.check === 'less_than'
+    (chk): chk is z.core.$ZodCheckLessThan<Date> => chk._zod.def.check === 'less_than'
   )?._zod.def;
 
   const minDate = minCheck?.value instanceof Date ? minCheck.value : undefined;
@@ -90,7 +90,7 @@ const getSchemaPattern = (schema: z.ZodMiniString) => {
 
   if (Array.isArray(schema.def.checks)) {
     const check = schema.def.checks.find(
-      (chk): chk is z.core.$ZodCheckStringFormat => chk._zod?.def?.check === 'string_format'
+      (chk): chk is z.core.$ZodCheckStringFormat => chk._zod.def.check === 'string_format'
     )?._zod.def;
 
     if (check?.pattern instanceof RegExp) {
@@ -176,7 +176,7 @@ export function getSchemaType(schema: z.ZodMiniType, path: string) {
     }
   }
 
-  return current?.type;
+  return current.type;
 }
 
 export const collectMaxLengths = (
@@ -367,7 +367,7 @@ export const getPathAsString = <T extends object>(
 
   for (const part of parts) {
     if (result === '') {
-      result = String(part);
+      result = part;
     } else if (Number.isInteger(Number(part))) {
       result += `[${part}]`;
     } else {

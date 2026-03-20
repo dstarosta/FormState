@@ -101,7 +101,6 @@ describe('helpers', () => {
         z: { id: 2 },
       };
 
-      expect(getState(undefined as unknown as typeof formSchema, data, 'a')).toBeUndefined();
       expect(getState(formSchema, data, 'a')).toBe(data.a);
       expect(getState(formSchema, data, (path) => path.a)).toBe(data.a);
       expect(getState(formSchema, data, 'c' as unknown as 'a')).toBeUndefined();

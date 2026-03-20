@@ -58,8 +58,12 @@ describe('form provider', () => {
           name="name"
           value={data.info.name}
           maxLength={maxLengths.get((path) => path.info.name)}
-          onBlur={() => touch((path) => path.info.name)}
-          onChange={(evt) => change((path) => path.info.name, evt.target.value)}
+          onBlur={() => {
+            touch((path) => path.info.name);
+          }}
+          onChange={(evt) => {
+            change((path) => path.info.name, evt.target.value);
+          }}
         />
         {Boolean(errors.get((path) => path.info.name)) && (
           <p data-testid="name-error" className={formClasses((path) => path.info.name)}>
@@ -91,8 +95,12 @@ describe('form provider', () => {
           value={data.info.age}
           min={ranges.get((path) => path.info.age)?.min}
           max={ranges.get((path) => path.info.age)?.max}
-          onBlur={() => touch((path) => path.info.age)}
-          onChange={(evt) => change((path) => path.info.age, Number.parseInt(evt.target.value, 10))}
+          onBlur={() => {
+            touch((path) => path.info.age);
+          }}
+          onChange={(evt) => {
+            change((path) => path.info.age, Number.parseInt(evt.target.value, 10));
+          }}
         />
         {Boolean(errors.get((path) => path.info.age)) && (
           <p data-testid="age-error" className={formClasses((path) => path.info.age)}>
@@ -176,6 +184,6 @@ describe('form provider', () => {
   });
 
   it('throws an error when useFormStateContext has invalid arguments', () => {
-    expect(() => useFormStateContext(null as unknown as typeof schema)).toThrow(TypeError);
+    expect(() => useFormStateContext(null as unknown as typeof schema)).toThrow(Error);
   });
 });

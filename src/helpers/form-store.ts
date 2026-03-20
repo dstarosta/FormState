@@ -28,7 +28,7 @@ export function createFormStore() {
         fieldListeners.set(name, new Set());
       }
 
-      fieldListeners.get(name)!.add(listener);
+      fieldListeners.get(name)?.add(listener);
 
       return () => fieldListeners.get(name)?.delete(listener);
     },

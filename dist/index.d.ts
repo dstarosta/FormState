@@ -403,7 +403,7 @@ type FormClassOptions = {
    * - `[prefix]__error` (form-state__error)
    * - `[prefix]__touched` (form-state__touched)
    */
-  classPrefix?: string;
+  prefix?: string;
 };
 /**
  * Form change options.
@@ -1328,7 +1328,7 @@ declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPa
  * @param data - The strongly typed state data.
  * @returns The child data or the field value that is assigned to the provided name or path.
  */
-declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValue<T, P> | undefined;
+declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValue<T, P>;
 /**
  * Updates an immutable array state in a nested schema.
  *

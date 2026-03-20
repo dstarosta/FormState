@@ -561,7 +561,7 @@ export type FormClassOptions = {
    * - `[prefix]__error` (form-state__error)
    * - `[prefix]__touched` (form-state__touched)
    */
-  classPrefix?: string;
+  prefix?: string;
 };
 
 /**

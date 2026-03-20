@@ -49,19 +49,11 @@ export function FormStateProvider<T extends z.ZodMiniObject>(
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
 export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
-  if (!schema) {
-    throw new TypeError('No valid schema was provided.');
-  }
-
   const context = schemaToContext.get(schema);
 
   if (context) {
     // The `use` hook can be used conditionally.
-    const usableContext = use(context as Context<FormStateResponse<T>>);
-
-    if (usableContext) {
-      return usableContext;
-    }
+    return use(context as Context<FormStateResponse<T>>);
   }
 
   throw new Error(

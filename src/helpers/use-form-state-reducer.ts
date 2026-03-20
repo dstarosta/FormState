@@ -87,7 +87,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name);
           const field = Array.isArray(name) ? name[0] : name;
 
-          const mergedData = dotPathSet<State>(prevState.data, pathNotation, value);
+          const mergedData = dotPathSet(prevState.data, pathNotation, value) as State;
 
           let changedData: State;
           let errors: Record<keyof State | '', string | undefined>;
@@ -101,7 +101,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             errors = prevState.errors;
           }
 
-          const initialValue = dotPathGet<State>(prevState.initialData, pathNotation);
+          const initialValue = dotPathGet(prevState.initialData, pathNotation) as State;
 
           let isFieldDirty: boolean;
 
@@ -338,7 +338,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             if (error === null) {
               delete draft[pathNotation];
             } else {
-              draft[pathNotation] = error?.trim() || 'Error';
+              draft[pathNotation] = error.trim() || 'Error';
             }
 
             manualErrorsState.set(draft);

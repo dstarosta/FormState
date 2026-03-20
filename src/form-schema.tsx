@@ -347,7 +347,7 @@ export function formDate(
       return dateValue;
     }),
     options?.required
-      ? z.union([zodDateWithMeta, z.string().check(z.minLength(1, options?.error))])
+      ? z.union([zodDateWithMeta, z.string().check(z.minLength(1, options.error))])
       : z.union([zodDateWithMeta, z.string()])
   );
 }
@@ -472,7 +472,7 @@ export function formValues(
   values: readonly string[],
   options?: { required?: boolean; error?: string }
 ) {
-  if (!values?.length) {
+  if (values.length === 0) {
     throw new TypeError('At least one value is required');
   }
 
@@ -496,7 +496,7 @@ export function formValues(
       return value;
     }),
     options?.required
-      ? z.enum(values, options?.error)
+      ? z.enum(values, options.error)
       : z.enum([...values, EMPTY_STRING] as const, options?.error)
   );
 }
@@ -565,11 +565,11 @@ export function formArray<T extends z.ZodMiniType>(
   const checks: z.core.$ZodCheck[] = [];
 
   if (typeof options?.minLength === 'number' && Number.isInteger(options.minLength)) {
-    checks.push(z.minLength(options.minLength, options?.lengthError));
+    checks.push(z.minLength(options.minLength, options.lengthError));
   }
 
   if (typeof options?.maxLength === 'number' && Number.isInteger(options.maxLength)) {
-    checks.push(z.maxLength(options.maxLength, options?.lengthError));
+    checks.push(z.maxLength(options.maxLength, options.lengthError));
   }
 
   if (checks.length > 0) {
@@ -748,7 +748,7 @@ export function uniqueItems<T>(
     },
     {
       when: ALWAYS_VALIDATE,
-      params: params?.error ? { message: params?.error } : undefined,
+      params: params?.error ? { message: params.error } : undefined,
       error: params?.error,
     }
   );

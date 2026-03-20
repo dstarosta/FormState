@@ -116,42 +116,42 @@ export const cleanEmpty = <T>(
 export const getFieldError = <T extends z.ZodMiniObject>(
   errors: Record<keyof z.infer<T>, string | undefined>,
   path: FormStatePath<z.infer<T>>
-) => errors[path.join('.') as keyof z.infer<T>];
+) => errors[path.join('.')];
 
 export const wasFieldTouched = <T extends z.ZodMiniObject>(
   touched: Record<keyof z.infer<T>, boolean>,
   path: FormStatePath<z.infer<T>>
-) => Boolean(touched[path.join('.') as keyof z.infer<T>]);
+) => Boolean(touched[path.join('.')]);
 
 export const getFieldMaxLength = <T extends z.ZodMiniObject>(
   maxLengths: Record<keyof z.infer<T>, number | undefined>,
   path: FormStatePath<z.infer<T>>
-) => maxLengths[getPathNotation(path) as keyof z.infer<T>];
+) => maxLengths[getPathNotation(path)];
 
 export const getFieldRange = <T extends z.ZodMiniObject>(
   ranges: Record<keyof z.infer<T>, { min: FieldRange; max: FieldRange; format: string }>,
   path: FormStatePath<z.infer<T>>
-) => ranges[getPathNotation(path) as keyof z.infer<T>];
+) => ranges[getPathNotation(path)];
 
 export const getFieldPattern = <T extends z.ZodMiniObject>(
   patterns: Record<keyof z.infer<T>, string | undefined>,
   path: FormStatePath<z.infer<T>>
-) => patterns[getPathNotation(path) as keyof z.infer<T>] ?? '';
+) => patterns[getPathNotation(path)] ?? '';
 
 export const getFieldDescription = <T extends z.ZodMiniObject>(
   descriptions: Record<keyof z.infer<T>, string | undefined>,
   path: FormStatePath<z.infer<T>>
-) => descriptions[getPathNotation(path) as keyof z.infer<T>] ?? '';
+) => descriptions[getPathNotation(path)] ?? '';
 
 export const diffedState = <T extends z.ZodMiniObject>(
-  newState: FormMutableState<z.infer<T>>,
+  state: FormMutableState<z.infer<T>>,
   prevState: FormMutableState<z.infer<T>>
 ) => {
-  if (deepEqual(newState, prevState)) {
+  if (deepEqual(state, prevState)) {
     return prevState;
   }
 
-  return newState;
+  return state;
 };
 
 export const freezeObject = (obj: object) => {
@@ -166,7 +166,7 @@ export const difference = <T extends object>(obj1: T, obj2: Record<string, unkno
       Object.prototype.hasOwnProperty.call(obj1, key) &&
       (!(key in obj2) || obj1[key] !== obj2[key])
     ) {
-      result[key as keyof T] = obj1[key];
+      result[key] = obj1[key];
     }
   }
 
@@ -203,38 +203,37 @@ export function createState<T extends z.ZodMiniObject>(
 
   for (const key in shape) {
     if (Object.prototype.hasOwnProperty.call(shape, key)) {
-      const typedKey = key as keyof State;
-      const value = shape[typedKey];
+      const value = shape[key];
       const baseType = getBaseType(value);
 
       if (value instanceof z.ZodMiniCatch) {
-        result[typedKey] = value.def.catchValue({
+        result[key] = value.def.catchValue({
           value: undefined,
           issues: [],
           error: { issues: [] },
           input: undefined,
-        } as z.core.$ZodCatchCtx) as State[typeof typedKey];
+        } as z.core.$ZodCatchCtx) as State[typeof key];
       } else if (value instanceof z.ZodMiniDefault) {
-        result[typedKey] = value.def.defaultValue as State[typeof typedKey];
+        result[key] = value.def.defaultValue as State[typeof key];
       } else if (value instanceof z.ZodMiniObject) {
-        result[typedKey] = createState(value) as State[typeof typedKey];
+        result[key] = createState(value) as State[typeof key];
       } else if (
         baseType instanceof z.ZodMiniString ||
         (value instanceof z.ZodMiniUnion &&
           value.def.options.some((opt) => opt instanceof z.ZodMiniString))
       ) {
-        result[typedKey] = '' as State[typeof typedKey];
+        result[key] = '' as State[typeof key];
       } else if (baseType instanceof z.ZodMiniArray) {
-        result[typedKey] = [] as State[typeof typedKey];
+        result[key] = [] as State[typeof key];
       } else if (baseType instanceof z.ZodMiniSymbol) {
-        result[typedKey] = createSymbol() as State[typeof typedKey];
+        result[key] = createSymbol() as State[typeof key];
       } else if (
         value instanceof z.ZodMiniBoolean ||
         (value instanceof z.ZodMiniNonOptional && baseType instanceof z.ZodMiniBoolean)
       ) {
-        result[typedKey] = false as State[typeof typedKey];
+        result[key] = false as State[typeof key];
       } else {
-        result[typedKey] = '' as State[typeof typedKey];
+        result[key] = '' as State[typeof key];
       }
     }
   }
@@ -245,20 +244,19 @@ export function createState<T extends z.ZodMiniObject>(
 
   for (const key in data) {
     if (Object.hasOwn(data, key)) {
-      const typedKey = key as keyof State;
-      const incomingValue = (data as State)[typedKey];
+      const incomingValue = (data as State)[key];
 
       if (isNullish(incomingValue) || incomingValue === '' || typeof incomingValue === 'symbol') {
         continue;
       }
 
-      const baseSchema = getBaseType(shape[typedKey]);
+      const baseSchema = getBaseType(shape[key]);
 
       if (baseSchema instanceof z.ZodMiniObject) {
-        result[typedKey] = createState(
+        result[key] = createState(
           baseSchema,
           incomingValue as DeepPartial<z.infer<typeof baseSchema>>
-        ) as State[typeof typedKey];
+        ) as State[typeof key];
       } else if (baseSchema instanceof z.ZodMiniArray) {
         // Defensive check for a null/undefined array that is unlikely to happen due to `createState(schema)`.
         /* v8 ignore if -- @preserve */
@@ -268,15 +266,15 @@ export function createState<T extends z.ZodMiniObject>(
 
         const elementSchema = baseSchema.def.element;
 
-        result[typedKey] = (
+        result[key] = (
           elementSchema instanceof z.ZodMiniObject
             ? incomingValue.map((item) =>
                 createState(elementSchema, item as DeepPartial<z.infer<typeof elementSchema>>)
               )
             : [...incomingValue]
-        ) as State[typeof typedKey];
+        ) as State[typeof key];
       } else {
-        result[typedKey] = incomingValue;
+        result[key] = incomingValue;
       }
     }
   }
@@ -293,18 +291,15 @@ export function createState<T extends z.ZodMiniObject>(
  * @returns The child data or the field value that is assigned to the provided name or path.
  */
 export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
+  // @ts-expect-error: Used for type inference
   schema: T,
   data: z.infer<T>,
   nameOrPath: P
 ) {
-  if (!schema) {
-    return;
-  }
-
   const path = typeof nameOrPath === 'function' ? getPath(data, nameOrPath) : nameOrPath;
   const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
 
-  return dotPathGet<FormPathValue<T, P>>(data, pathNotation);
+  return dotPathGet(data, pathNotation) as FormPathValue<T, P>;
 }
 
 /**
@@ -351,6 +346,7 @@ export function updateState<T>(
 
     return draft;
   } else if (typeof state === 'object' && !isNullish(state)) {
+    // eslint-disable-next-line @typescript-eslint/no-misused-spread
     const draft = { ...state } as T;
     updater(draft);
 

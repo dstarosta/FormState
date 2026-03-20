@@ -14,10 +14,10 @@ const formProps: React.ComponentPropsWithRef<'form'> = {
     ) {
       const element = event.target;
       const isHidden =
-        !element?.offsetParent ||
+        !element.offsetParent ||
         element.getAttribute('aria-hidden') === 'true' ||
-        globalThis?.getComputedStyle(element).display === 'none' ||
-        globalThis?.getComputedStyle(element).visibility === 'hidden';
+        globalThis.getComputedStyle(element).display === 'none' ||
+        globalThis.getComputedStyle(element).visibility === 'hidden';
       if (!isHidden) {
         event.preventDefault();
       }
@@ -33,7 +33,7 @@ const getDefaultElementValue = (
   }
 
   if ('defaultValue' in element) {
-    return element.defaultValue ?? '';
+    return element.defaultValue;
   }
 
   return '';
@@ -44,7 +44,7 @@ const getElementValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLS
     return element.checked ? element.value || 'on' : '';
   }
 
-  return element.value ?? '';
+  return element.value;
 };
 
 // Internal functions
@@ -135,7 +135,7 @@ export const createFormComponent = <T extends object>(
           node.addEventListener('change', handleInputChange);
         }
 
-        const hasAction = node.action?.includes('throw new Error');
+        const hasAction = node.action.includes('throw new Error');
 
         if (hasAction) {
           node.addEventListener('formdata', handleFormData);

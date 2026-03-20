@@ -14,7 +14,7 @@ export class FormStateError<T extends object> extends Error {
    */
   constructor(message: string, errors = {} as Record<keyof T | '', string | undefined>) {
     super(message);
-    this.name = this.constructor.name;
+    this.name = 'FormStateError';
     this.errors = errors;
 
     Object.setPrototypeOf(this, new.target.prototype);

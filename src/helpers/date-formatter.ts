@@ -115,7 +115,7 @@ export const parseDate = (
  * @returns The formatted date string.
  */
 export function formatDate(date: Date, format: FormDateFormat = 'yyyy-MM-dd') {
-  if (!date || !isValidDate(date)) {
+  if (!isValidDate(date)) {
     throw new TypeError('Invalid date provided.');
   }
 

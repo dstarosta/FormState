@@ -122,6 +122,7 @@ describe('form schema', () => {
 
   it('formValues should not allow empty values', () => {
     expect(() => z.formValues(undefined as never)).toThrow(TypeError);
+    expect(() => z.formValues([] as never)).toThrow(TypeError);
     expect(() => z.formValues([''])).toThrow(TypeError);
     expect(() => z.formValues(['a', ''])).toThrow(TypeError);
   });
@@ -831,15 +832,19 @@ describe('form schema', () => {
       formActions: { change },
     } = result.current;
 
-    const newUsers = updateState(formState.data.users, (draft) => {
+    const updatedUsers = updateState(formState.data.users, (draft) => {
       draft.push({ name: 'John' }, { name: 'Mary' });
     });
 
     act(() => {
-      change('users', newUsers);
+      change('users', updatedUsers);
     });
 
-    const users = result.current.formState.data.users;
+    const {
+      formState: { data },
+    } = result.current;
+
+    const users = data.users;
 
     expect(users).toHaveLength(3);
     expect(users[0]?.name).toBe('John');

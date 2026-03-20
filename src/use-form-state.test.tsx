@@ -2140,7 +2140,9 @@ describe('useFormState', () => {
         formActions: { setDirty },
       } = result.current;
 
-      expect(() => setDirty('test' as '#test')).toThrow(TypeError);
+      expect(() => {
+        setDirty('test' as '#test');
+      }).toThrow(TypeError);
     });
 
     it('should subscribe to changes', () => {
@@ -2381,12 +2383,12 @@ describe('useFormState', () => {
           return {}; // the state already has errors
         }
 
-        if (submitState.data.name === 'Ivan') {
-          return { name: 'The name Ivan is not allowed', customError: 'true' };
+        if (!formStatus.valid) {
+          throw new Error('Mismatched form status');
         }
 
-        if (!formStatus.valid || !submitState.data) {
-          throw new Error('Mismatched form status');
+        if (submitState.data.name === 'Ivan') {
+          return { name: 'The name Ivan is not allowed', customError: 'true' };
         }
 
         await Promise.resolve(submitState.data);
@@ -2402,7 +2404,7 @@ describe('useFormState', () => {
         >
           {formStatus.submitting && <p>Submitting...</p>}
           {formStatus.submitted && Boolean(getSubmittedData()?.data) && <p>Form Submitted</p>}
-          <p title="name" className={formClasses('name', 'block', { classPrefix: 'form-text' })}>
+          <p title="name" className={formClasses('name', 'block', { prefix: 'form-text' })}>
             {data.name}
           </p>
           {watch !== false && <WatchedComponent inferName={inferName} useWatch={useWatch} />}
@@ -2412,7 +2414,9 @@ describe('useFormState', () => {
               type="hidden"
               name="id"
               defaultValue={data.name}
-              onChange={(event) => change('name', event.target.value)}
+              onChange={(event) => {
+                change('name', event.target.value);
+              }}
             />
             <input
               type="text"
@@ -2421,8 +2425,12 @@ describe('useFormState', () => {
               className={formClasses((path) => path.name)}
               readOnly={formStatus.readOnly}
               value={data.name}
-              onBlur={() => touch('name')}
-              onChange={(event) => change('name', event.target.value)}
+              onBlur={() => {
+                touch('name');
+              }}
+              onChange={(event) => {
+                change('name', event.target.value);
+              }}
             />
             <label htmlFor="age">Age</label>
             <textarea
@@ -2430,11 +2438,11 @@ describe('useFormState', () => {
               name={inferName((path) => path.info.age)}
               readOnly={formStatus.readOnly}
               defaultValue={data.info.age}
-              onBlur={(event) =>
+              onBlur={(event) => {
                 change((path) => path.info.age, convert.toInt(event.target.value), {
                   touch: true,
-                })
-              }
+                });
+              }}
             />
             <label htmlFor="category">Category</label>
             {formStatus.readOnly ? (
@@ -2450,7 +2458,7 @@ describe('useFormState', () => {
                 id="category"
                 name={inferName((path) => path.category)}
                 value={data.category}
-                onChange={(event) =>
+                onChange={(event) => {
                   change(
                     (path) => path.category,
                     convert.toLiteral<typeof data.category>(event.target.value, [
@@ -2461,8 +2469,8 @@ describe('useFormState', () => {
                     {
                       touch: true,
                     }
-                  )
-                }
+                  );
+                }}
               >
                 <option value="">None</option>
                 <option value="legacy">Legacy</option>
@@ -2491,7 +2499,9 @@ describe('useFormState', () => {
                   readOnly={formStatus.readOnly}
                   value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
                   checked={Boolean(data.isArchived)}
-                  onChange={() => change('isArchived', true, { touch: true })}
+                  onChange={() => {
+                    change('isArchived', true, { touch: true });
+                  }}
                 />
                 Yes
               </label>
@@ -2505,7 +2515,9 @@ describe('useFormState', () => {
                   readOnly={formStatus.readOnly}
                   value={convert.toString(data.isArchived, { emptyStringAsFalse: true })}
                   checked={!data.isArchived}
-                  onChange={() => change('isArchived', false, { touch: true })}
+                  onChange={() => {
+                    change('isArchived', false, { touch: true });
+                  }}
                 />
                 No
               </label>
@@ -2681,7 +2693,7 @@ describe('useFormState', () => {
         expect(name).toContainHTML('John');
         expect(submittedInfo).toBeInTheDocument();
 
-        const formData = submitFn.mock.calls?.[0]?.[1] as FormData;
+        const formData = submitFn.mock.calls[0]?.[1] as FormData;
         expect(formData).toBeInstanceOf(FormData);
 
         expect(formData.has('id')).toBe(true);

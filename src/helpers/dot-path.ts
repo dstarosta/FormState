@@ -10,8 +10,10 @@ function propToArray(prop: string) {
     const last = index > 0 && list[index - 1];
 
     if (last && /(?:^|[^\\])\\$/.test(last)) {
-      const prev = ret.pop()!;
-      ret.push(prev.slice(0, -1) + '.' + el);
+      const prev = ret.pop();
+      if (prev) {
+        ret.push(prev.slice(0, -1) + '.' + el);
+      }
     } else {
       ret.push(el);
     }
@@ -42,7 +44,7 @@ function getArrayIndex(head: string, obj: unknown[]) {
  * @param prop The path to value that should be returned.
  * @returns The value at the specified path, or undefined if not found.
  */
-export function dotPathGet<T = unknown>(obj: object, prop: string | number | string[]) {
+export function dotPathGet(obj: object, prop: string | number | string[]) {
   let propArray: string[];
   if (typeof prop === 'number') {
     propArray = propToArray(prop.toString());
@@ -68,7 +70,7 @@ export function dotPathGet<T = unknown>(obj: object, prop: string | number | str
     current = (current as Record<string | number, unknown>)[head];
   }
 
-  return current as T;
+  return current;
 }
 
 /**
@@ -79,12 +81,9 @@ export function dotPathGet<T = unknown>(obj: object, prop: string | number | str
  * @param value The value to set.
  * @returns A new object with the value set at the specified path.
  */
-export function dotPathSet<T = unknown>(
-  obj: object,
-  prop: string | number | string[],
-  value: unknown
-) {
+export function dotPathSet(obj: object, prop: string | number | string[], value: unknown) {
   let propArray: string[];
+
   if (typeof prop === 'number') {
     propArray = propToArray(prop.toString());
   } else if (typeof prop === 'string') {
@@ -126,5 +125,5 @@ export function dotPathSet<T = unknown>(
     return val;
   };
 
-  return setPropImmutableRec(obj, propArray, value, 0) as T;
+  return setPropImmutableRec(obj, propArray, value, 0);
 }

@@ -297,7 +297,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         ...formState.errors,
         get: (expression: (data: State) => unknown) =>
           getFieldError(formState.errors, getPath(formState.data, expression)),
-        getManual: (key: string) => formState.errors[key as keyof State],
+        getManual: (key: string) => formState.errors[key],
       }) as FormState<State>['errors'],
     [formState.data, formState.errors]
   );
@@ -307,7 +307,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     () =>
       freezeObject({
         ...formState.dirty,
-        get: (key: `#${string}`) => Boolean(formState.dirty[key as keyof State]),
+        get: (key: `#${string}`) => Boolean(formState.dirty[key]),
       }) as FormState<State>['dirty'],
     [formState.dirty]
   );
@@ -394,7 +394,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       ...dataErrors,
       get: (expression: (data: State) => unknown) =>
         getFieldError(dataErrors, getPath(formStateRef.current.data, expression)),
-      getManual: (key: string) => dataErrors[key as keyof State],
+      getManual: (key: string) => dataErrors[key],
     }) as FormState<State>['errors'];
 
     return { data, errors };
@@ -479,17 +479,17 @@ export function useFormState<T extends z.ZodMiniObject>(
           ? getPath(formState.data, nameOrPath).join('.')
           : nameOrPath;
 
-      const prefix = options?.classPrefix?.trim() || CSSPrefix;
+      const prefix = options?.prefix?.trim() || CSSPrefix;
 
       if (formState.mode === 'disabled') {
         classes += `${prefix}__disabled `;
       } else if (formState.mode === 'readOnly') {
         classes += `${prefix}__readonly `;
       } else {
-        if (formState.touched[pathNotation as keyof State]) {
+        if (formState.touched[pathNotation]) {
           classes += `${prefix}__touched `;
         }
-        if (formState.validated && formState.errors[pathNotation as keyof State]) {
+        if (formState.validated && formState.errors[pathNotation]) {
           classes += `${prefix}__error `;
         }
       }
@@ -572,7 +572,7 @@ export function useFormState<T extends z.ZodMiniObject>(
             debounceCallbackWarning.current.add(pathNotation);
           }
 
-          entry.path = path as keyof State | FormStatePath<State>;
+          entry.path = path;
           entry.value = value;
           entry.touch = Boolean(options?.touch);
           entry.validate = options?.validate ?? validateOnChange;
@@ -580,28 +580,30 @@ export function useFormState<T extends z.ZodMiniObject>(
         } else {
           // Cache eviction logic.
           if (debounceCache.current.size >= debounceCacheCapacity) {
-            const firstKey = debounceCache.current.keys().next().value!;
-            const oldEntry = debounceCache.current.get(firstKey);
+            const firstKey = debounceCache.current.keys().next().value;
+            if (firstKey) {
+              const oldEntry = debounceCache.current.get(firstKey);
 
-            if (oldEntry) {
-              oldEntry.cancel();
+              if (oldEntry) {
+                oldEntry.cancel();
 
-              if (typeof oldEntry.callback === 'function') {
-                changeCallbackRefs.current.push(oldEntry.callback);
+                if (typeof oldEntry.callback === 'function') {
+                  changeCallbackRefs.current.push(oldEntry.callback);
+                }
+
+                dispatch({
+                  type: 'change',
+                  name: oldEntry.path,
+                  value: oldEntry.value,
+                  options: {
+                    touch: oldEntry.touch,
+                    validate: oldEntry.validate,
+                  },
+                });
               }
 
-              dispatch({
-                type: 'change',
-                name: oldEntry.path,
-                value: oldEntry.value,
-                options: {
-                  touch: oldEntry.touch,
-                  validate: oldEntry.validate,
-                },
-              });
+              debounceCache.current.delete(firstKey);
             }
-
-            debounceCache.current.delete(firstKey);
           }
 
           const debouncedFn = debounce(() => {
@@ -629,7 +631,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           }, interval);
 
           entry = Object.assign(debouncedFn, {
-            path: path as keyof State | FormStatePath<State>,
+            path,
             value,
             touch: Boolean(options?.touch),
             validate: options?.validate ?? validateOnChange,
@@ -689,11 +691,11 @@ export function useFormState<T extends z.ZodMiniObject>(
       if (!path) {
         const names = Object.keys(formState.data) as (keyof State)[];
 
-        if (names.length === 0) {
+        if (names[0] === undefined) {
           return;
         }
 
-        path = names[0]!;
+        path = names[0];
       }
 
       dispatch({
@@ -753,8 +755,8 @@ export function useFormState<T extends z.ZodMiniObject>(
           type: 'resetFields',
           names: options.names,
           options: {
-            retainData: Boolean(options?.retainData),
-            resetTouched: Boolean(options?.resetTouched),
+            retainData: Boolean(options.retainData),
+            resetTouched: Boolean(options.resetTouched),
           },
         });
       } else {
@@ -788,7 +790,7 @@ export function useFormState<T extends z.ZodMiniObject>(
                 ...submittedErrors,
                 get: (expression: (data: State) => unknown) =>
                   getFieldError(submittedErrors, getPath(currentState.data, expression)),
-                getManual: (key: string) => submittedErrors[key as keyof State],
+                getManual: (key: string) => submittedErrors[key],
               }) as FormState<State>['errors'],
             }
           : {
@@ -800,12 +802,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
         const submissionErrors = await onSubmit(submitState, submittedFormData);
 
-        if (
-          hasErrors ||
-          (submissionErrors &&
-            submissionErrors !== true &&
-            Object.keys(submissionErrors).length > 0)
-        ) {
+        if (hasErrors || (submissionErrors !== true && Object.keys(submissionErrors).length > 0)) {
           if (typeof options?.onError === 'function') {
             changeCallbackRefs.current.push(options.onError);
           }
@@ -867,7 +864,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The memoized "setDirty" function.
   const setDirty = useCallback(
     (key: string, isDirty?: boolean) => {
-      if (!key?.trim()?.startsWith('#')) {
+      if (!key.trim().startsWith('#')) {
         throw new TypeError('A missing or invalid key was provided.');
       }
 
@@ -958,7 +955,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   const useWatch = (name: string, compute?: (value: string) => string) => {
-    if (!name?.trim()) {
+    if (!name.trim()) {
       throw new TypeError('The "name" value cannot be empty.');
     }
 

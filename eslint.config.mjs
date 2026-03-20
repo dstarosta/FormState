@@ -13,8 +13,8 @@ export default defineConfig([
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
-      tseslint.configs.recommendedTypeChecked,
-      eslintPluginUnicorn.configs.recommended,
+      tseslint.configs.strictTypeChecked,
+      eslintPluginUnicorn.configs.all,
       sonarjs.configs.recommended,
       reactHooks.configs.flat.recommended,
       eslintConfigPrettier,
@@ -27,33 +27,35 @@ export default defineConfig([
       },
     },
     rules: {
-      '@typescript-eslint/no-empty-object-type': [
-        'error',
-        {
-          allowInterfaces: 'always',
-          allowObjectTypes: 'never',
-        },
-      ],
+      // Non-recommended JS rules that can catch problems
+      'array-callback-return': 'error',
       'guard-for-in': 'error',
+      'no-await-in-loop': 'error',
+      'no-class-assign': 'error',
+      'no-control-regex': 'error',
+      'no-setter-return': 'error',
       'no-shadow': 'error',
-      'sonarjs/cognitive-complexity': 'off',
-      'sonarjs/function-return-type': 'off',
-      'sonarjs/no-nested-functions': 'off',
-      'sonarjs/todo-tag': 'warn',
-      'unicorn/filename-case': [
-        'error',
-        {
-          cases: {
-            kebabCase: true,
-            pascalCase: true,
-          },
-        },
-      ],
-      'unicorn/no-null': 'off',
-      'unicorn/no-useless-undefined': ['error', { checkArguments: false }],
-      'unicorn/numeric-separators-style': 'off',
-      'unicorn/prefer-string-replace-all': 'off',
-      'unicorn/prevent-abbreviations': 'off',
+      'no-template-curly-in-string': 'error',
+      'no-unreachable-loop': 'error',
+      'no-unsafe-finally': 'error',
+      'no-unsafe-optional-chaining': 'error',
+      'require-atomic-updates': 'error',
+      'use-isnan': 'error',
+      // TS rules
+      '@typescript-eslint/no-dynamic-delete': 'off', // mutable state objects cannot be replaced with Maps due to Zod and strongly typed paths
+      // Annoying Sonar rules
+      'sonarjs/cognitive-complexity': 'off', // reducers and schema visitors are difficult to break up into _readable_ small functions
+      'sonarjs/function-return-type': 'off', // different return types (ex: discriminated unions) are not an issue
+      'sonarjs/no-nested-functions': 'off', // nested functions are very useful for closures in TS/JS
+      'sonarjs/todo-tag': 'warn', // a TODO comment should not break the build; but it's a good idea to periodically remind you about it
+      /**
+       * Annoying Unicorn rules
+       */
+      'unicorn/no-null': 'off', // Douglas Crockford is wrong. "null" should be used as a literal when assigned manually, not "undefined".
+      'unicorn/no-useless-undefined': ['error', { checkArguments: false }], // you cannot omit function arguments in strict TS (in tests)
+      'unicorn/numeric-separators-style': 'off', // always forcing underscores in numeric constants makes no sense
+      'unicorn/prefer-string-replace-all': 'off', // replace(/[set of numbers]/g) is way more terse for fallback GUID generation
+      'unicorn/prevent-abbreviations': 'off', // "ref" and "args" abbreviations are commonly used
     },
   },
 ]);
