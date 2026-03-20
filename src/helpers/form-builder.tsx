@@ -1,29 +1,8 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 
-import type { FormAction, FormStore } from '../types/form-types';
+import type { FormAction, FormProps, FormStore } from '../types/form-types';
 
 // Private functions
-
-const formProps: React.ComponentPropsWithRef<'form'> = {
-  noValidate: true,
-  onKeyDown: (event: React.KeyboardEvent) => {
-    if (
-      event.key === 'Enter' &&
-      event.target instanceof HTMLInputElement &&
-      !event.target.onkeydown
-    ) {
-      const element = event.target;
-      const isHidden =
-        !element.offsetParent ||
-        element.getAttribute('aria-hidden') === 'true' ||
-        globalThis.getComputedStyle(element).display === 'none' ||
-        globalThis.getComputedStyle(element).visibility === 'hidden';
-      if (!isHidden) {
-        event.preventDefault();
-      }
-    }
-  },
-};
 
 const getDefaultElementValue = (
   element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -57,13 +36,39 @@ export const createFormComponent = <T extends object>(
   /**
    * The Form component with pre-wired reset logic.
    */
-  function Form(props: React.ComponentPropsWithRef<'form'>) {
-    const { ref: forwardedRef, ...restProps } = props;
+  function Form(props: FormProps) {
+    const { ref: forwardedRef, submitWithEnter, ...restProps } = props;
 
     const formRef = useRef<HTMLFormElement>(null);
     const lastSubmitter = useRef<HTMLElement>(null);
 
-    const resetStore = () => {
+    const formProps = useMemo(
+      () =>
+        ({
+          noValidate: true,
+          onKeyDown: (event: React.KeyboardEvent) => {
+            if (
+              !submitWithEnter &&
+              event.key === 'Enter' &&
+              event.target instanceof HTMLInputElement &&
+              !event.target.onkeydown
+            ) {
+              const element = event.target;
+              const isHidden =
+                !element.offsetParent ||
+                element.getAttribute('aria-hidden') === 'true' ||
+                globalThis.getComputedStyle(element).display === 'none' ||
+                globalThis.getComputedStyle(element).visibility === 'hidden';
+              if (!isHidden) {
+                event.preventDefault();
+              }
+            }
+          },
+        }) as FormProps,
+      [submitWithEnter]
+    );
+
+    const resetStore = useCallback(() => {
       // This condition should not be happening in a callback.
       /* v8 ignore if -- @preserve */
       if (!store || !formRef.current) {
@@ -80,7 +85,7 @@ export const createFormComponent = <T extends object>(
           store.setValue(element.name, getDefaultElementValue(element) || getElementValue(element));
         }
       }
-    };
+    }, []);
 
     const handleInputChange = useCallback((event: Event) => {
       const element = event.target;
@@ -154,7 +159,7 @@ export const createFormComponent = <T extends object>(
           }
         };
       },
-      [forwardedRef, handleInputChange, handleFormData, handleSubmit]
+      [forwardedRef, handleInputChange, handleFormData, handleSubmit, resetStore]
     );
 
     const handleReset = useCallback(() => {
@@ -169,7 +174,7 @@ export const createFormComponent = <T extends object>(
       setTimeout(() => {
         resetStore();
       }, 0);
-    }, []);
+    }, [resetStore]);
 
     return <form ref={formRefCallback} onReset={handleReset} {...formProps} {...restProps} />;
   }

@@ -760,10 +760,10 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
    * Native form validation has been disabled and Enter handling modified
    * for consistency.
    *
-   * @param props - `form` HTML element props.
+   * @param props - `Form` component props.
    * @returns `Form` React element.
    */
-  Form: (props: React.ComponentPropsWithRef<'form'>) => React.JSX.Element;
+  Form: (props: FormProps) => React.JSX.Element;
   /**
    * Subscribes to form state changes.
    *
@@ -791,6 +791,15 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
  * The date notation format in a string.
  */
 type FormDateFormat = 'yyyy-MM-dd' | 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'MM-dd-yyyy' | 'dd-MM-yyyy' | 'dd.MM.yyyy';
+/**
+ * Form props.
+ */
+type FormProps = React.ComponentPropsWithRef<'form'> & {
+  /**
+   * Allow forms to be submitted by pressing the "Enter" key (default: `false`).
+   */
+  submitWithEnter?: boolean;
+};
 /**
  * Component props that contain the form state.
  *
@@ -1047,7 +1056,7 @@ declare const advanced: {
  *
  * @param zodBoolean - The Zod boolean schema.
  * @param options - Options for the boolean schema.
- * @param options.required - Indicates whether a value is required (default: false).
+ * @param options.required - Indicates whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
  * @returns A Zod schema with preprocessing for boolean values.
  */
@@ -1060,7 +1069,7 @@ declare function formBoolean(zodBoolean: ZodDeepType<z.ZodMiniBoolean<boolean>>,
  *
  * @param zodDate - The Zod date schema.
  * @param options - Options for the date schema.
- * @param options.required - Whether a value is required (default: false).
+ * @param options.required - Whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
  * @param options.dateFormat - Optional date format string (default: 'yyyy-MM-dd').
  * @param options.dateFormatError - Optional custom error for invalid dates.
@@ -1077,7 +1086,7 @@ declare function formDate(zodDate: ZodDeepType<z.ZodMiniDate<Date>>, options?: {
  *
  * @param zodNumber - The Zod number schema.
  * @param options - Options for the number schema.
- * @param options.required - Whether a value is required (default: false).
+ * @param options.required - Whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
  * @returns A Zod schema with preprocessing for number values.
  */
@@ -1090,7 +1099,7 @@ declare function formNumber(zodNumber: ZodDeepType<z.ZodMiniNumber<number>>, opt
  *
  * @param zodString - The Zod string schema.
  * @param options - Options for the string schema.
- * @param options.required - Whether a value is required (default: false).
+ * @param options.required - Whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
  * @returns A Zod string schema with required or optional validation.
  */
@@ -1104,7 +1113,7 @@ declare function formString(zodString: ZodDeepType<z.ZodMiniString<string>>, opt
  * @typeParam T - Represents a generic tuple of strings for type inference.
  * @param values - An array of the string values. At least 1 non-empty value is required.
  * @param options - Options for the values schema.
- * @param options.required - Whether a non-empty value is required (default: false).
+ * @param options.required - Whether a non-empty value is required (default: `false`).
  * @param options.error - Optional custom error message for value validation.
  * @returns A Zod string schema that only allows the provided values.
  */
@@ -1118,7 +1127,7 @@ declare function formValues<const T extends readonly [string, ...string[]]>(valu
  * @typeParam T - Represents a generic tuple of strings for type inference.
  * @param values - An array of the string values. At least 1 non-empty value is required.
  * @param options - Options for the values schema.
- * @param options.required - Whether a non-empty value is required (default: false).
+ * @param options.required - Whether a non-empty value is required (default: `false`).
  * @param options.error - Optional custom error message for value validation.
  * @returns A Zod string schema that only allows the provided values.
  */

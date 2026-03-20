@@ -964,7 +964,7 @@ describe('useFormState', () => {
     it('should debounce unstable callbacks for the same field without extra calls but warn the user', () => {
       vi.useFakeTimers();
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn');
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const initialState: InitialSchema = {
         name: 'John',
@@ -1247,7 +1247,7 @@ describe('useFormState', () => {
       });
 
       expect(result.current.formState.data.version).toBe(1);
-      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toBeCalledTimes(1);
 
       function change(...args: Parameters<typeof result.current.formActions.change>) {
         result.current.formActions.change(...args);
@@ -1274,7 +1274,7 @@ describe('useFormState', () => {
       });
 
       expect(result.current.formState.data.name).toBe('John');
-      expect(evictedCallback).not.toHaveBeenCalled();
+      expect(evictedCallback).not.toBeCalled();
 
       act(() => {
         change('version', 1, { callback: secondCallback, debounceIntervalMs: interval });
@@ -1282,7 +1282,7 @@ describe('useFormState', () => {
 
       // The evicted entry's change should have been dispatched and its callback called.
       expect(result.current.formState.data.name).toBe('Alice');
-      expect(evictedCallback).toHaveBeenCalledTimes(1);
+      expect(evictedCallback).toBeCalledTimes(1);
 
       expect(result.current.formState.data.version).toBe(0);
 
@@ -1291,7 +1291,7 @@ describe('useFormState', () => {
       });
 
       expect(result.current.formState.data.version).toBe(1);
-      expect(secondCallback).toHaveBeenCalledTimes(1);
+      expect(secondCallback).toBeCalledTimes(1);
 
       function change(...args: Parameters<typeof result.current.formActions.change>) {
         result.current.formActions.change(...args);
@@ -2557,7 +2557,11 @@ describe('useFormState', () => {
       );
     };
 
-    const SimpleFormComponent = () => {
+    const SimpleFormComponent = ({
+      submitWithEnter,
+    }: {
+      submitWithEnter?: boolean | undefined;
+    }) => {
       const {
         formState: { data, errors },
         formStatus: { submitted },
@@ -2579,7 +2583,7 @@ describe('useFormState', () => {
       };
 
       return (
-        <Form onSubmit={handleSubmit}>
+        <Form onSubmit={handleSubmit} submitWithEnter={submitWithEnter === true}>
           <p>Name: {data.name}</p>
           <input
             type="input"
@@ -2652,7 +2656,7 @@ describe('useFormState', () => {
       await waitFor(() => {
         expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
-        expect(submitFn).toHaveBeenCalledWith(
+        expect(submitFn).toBeCalledWith(
           expect.objectContaining({ name: 'John' }),
           expect.any(FormData)
         );
@@ -2684,7 +2688,7 @@ describe('useFormState', () => {
       await waitFor(() => {
         expect(queryByText('Submitting...')).not.toBeInTheDocument();
 
-        expect(submitFn).toHaveBeenCalledWith(
+        expect(submitFn).toBeCalledWith(
           expect.objectContaining({ name: 'John' }),
           expect.any(FormData)
         );
@@ -2702,6 +2706,19 @@ describe('useFormState', () => {
     });
 
     it.each([true, false])('should fail to submit form using "submit"', async (watch) => {
+      const domConsoleSpy = vi
+        .spyOn(
+          (
+            globalThis as typeof globalThis & {
+              _virtualConsole: {
+                emit: ReturnType<typeof vi.fn>;
+              };
+            }
+          )._virtualConsole,
+          'emit'
+        )
+        .mockImplementation(() => {});
+
       const { getByLabelText, getByText, queryByText } = render(<FormComponent watch={watch} />);
 
       const input = getByLabelText('Name');
@@ -2715,6 +2732,10 @@ describe('useFormState', () => {
       await waitFor(() => {
         expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
+
+      expect(domConsoleSpy).toBeCalledTimes(1);
+
+      domConsoleSpy.mockReset();
     });
 
     it.each([true, false])('should fail to submit form with name "Ivan"', async (watch) => {
@@ -2730,7 +2751,7 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(submitFn).not.toBeCalled();
-        expect(errorFn).toHaveBeenCalledWith(
+        expect(errorFn).toBeCalledWith(
           expect.objectContaining({
             errors: expect.objectContaining({
               name: 'The name Ivan is not allowed',
@@ -2764,7 +2785,7 @@ describe('useFormState', () => {
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
-          expect(errorFn).toHaveBeenCalledWith(
+          expect(errorFn).toBeCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
@@ -2787,7 +2808,7 @@ describe('useFormState', () => {
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
-          expect(errorFn).toHaveBeenCalledWith(
+          expect(errorFn).toBeCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
@@ -2814,7 +2835,7 @@ describe('useFormState', () => {
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
-          expect(errorFn).toHaveBeenCalledWith(
+          expect(errorFn).toBeCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
@@ -2837,7 +2858,7 @@ describe('useFormState', () => {
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
-          expect(errorFn).toHaveBeenCalledWith(
+          expect(errorFn).toBeCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
@@ -2866,7 +2887,7 @@ describe('useFormState', () => {
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
-          expect(errorFn).toHaveBeenCalledWith(
+          expect(errorFn).toBeCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
             }),
@@ -2891,7 +2912,7 @@ describe('useFormState', () => {
 
         await waitFor(() => {
           expect(submitFn).not.toBeCalled();
-          expect(errorFn).toHaveBeenCalledWith(
+          expect(errorFn).toBeCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
             }),
@@ -3107,6 +3128,40 @@ describe('useFormState', () => {
 
       const submitButton = getByText('Submit Form');
       fireEvent.click(submitButton);
+
+      const nameError = queryByTestId('nameError');
+      const submittedElement = getByText('Submitted');
+
+      expect(nameError).not.toBeInTheDocument();
+      expect(submittedElement).toBeInTheDocument();
+    });
+
+    it('does not submit a simple form by pressing Enter', async () => {
+      const user = userEvent.setup();
+
+      const { getByTestId, queryByText } = render(<SimpleFormComponent />);
+
+      const input = getByTestId('nameInput');
+
+      await user.click(input);
+      await user.keyboard('{Enter}');
+
+      const submittedElement = queryByText('Submitted');
+
+      expect(submittedElement).not.toBeInTheDocument();
+    });
+
+    it('submits a simple form with the "submitWithEnter" prop by pressing Enter', async () => {
+      const user = userEvent.setup();
+
+      const { getByTestId, getByText, queryByTestId } = render(
+        <SimpleFormComponent submitWithEnter />
+      );
+
+      const input = getByTestId('nameInput');
+
+      await user.click(input);
+      await user.keyboard('{Enter}');
 
       const nameError = queryByTestId('nameError');
       const submittedElement = getByText('Submitted');

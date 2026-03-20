@@ -947,10 +947,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
    * Native form validation has been disabled and Enter handling modified
    * for consistency.
    *
-   * @param props - `form` HTML element props.
+   * @param props - `Form` component props.
    * @returns `Form` React element.
    */
-  Form: (props: React.ComponentPropsWithRef<'form'>) => React.JSX.Element;
+  Form: (props: FormProps) => React.JSX.Element;
   /**
    * Subscribes to form state changes.
    *
@@ -985,6 +985,16 @@ export type FormDateFormat =
   | 'MM-dd-yyyy'
   | 'dd-MM-yyyy'
   | 'dd.MM.yyyy';
+
+/**
+ * Form props.
+ */
+export type FormProps = React.ComponentPropsWithRef<'form'> & {
+  /**
+   * Allow forms to be submitted by pressing the "Enter" key (default: `false`).
+   */
+  submitWithEnter?: boolean;
+};
 
 /**
  * Component props that contain the form state.
