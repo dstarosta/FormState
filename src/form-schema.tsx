@@ -1,7 +1,13 @@
 import * as z from 'zod/mini';
 import { deepEqual } from 'fast-equals';
 
-import type { FormDateFormat, ZodDeepType, ZodValidationError } from './types/form-types';
+import type {
+  FormDateFormat,
+  FormDateOptions,
+  FormStringOptions,
+  FormTypeOptions,
+  ZodValidationError,
+} from './types/form-types';
 
 import { isValidDate, parseDate } from './helpers/date-formatter';
 
@@ -256,16 +262,15 @@ export const advanced = {
 /**
  * Zod schema for a control with a boolean value that can optionally be an empty string.
  *
- * @param zodBoolean - The Zod boolean schema.
  * @param options - Options for the boolean schema.
  * @param options.required - Indicates whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
+ * @param options.checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for boolean values.
  */
-export function formBoolean(
-  zodBoolean: ZodDeepType<z.ZodMiniBoolean<boolean>>,
-  options?: { required?: boolean; error?: string }
-) {
+export function formBoolean(options?: FormTypeOptions) {
+  const zodBoolean = options?.error ? z.boolean({ error: options.error }) : z.boolean();
+
   return z.pipe(
     z.transform((value: unknown, ctx) => {
       if (typeof value === 'boolean') {
@@ -293,29 +298,85 @@ export function formBoolean(
  * Zod schema for a control with a date value that can optionally be an empty string.
  *
  * @param zodDate - The Zod date schema.
+ * @returns A Zod schema with preprocessing for date values.
+ */
+export function formDate(): z.ZodMiniPipe<
+  z.ZodMiniTransform<string | Date>,
+  z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>
+>;
+
+/**
+ * Zod schema for a control with a date value that can optionally be an empty string.
+ *
+ * @param zodDate - The Zod date schema.
+ * @param options.checks - Zod checks.
+ * @returns A Zod schema with preprocessing for date values.
+ */
+export function formDate(
+  ...checks: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[]
+): z.ZodMiniPipe<
+  z.ZodMiniTransform<string | Date>,
+  z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>
+>;
+
+/**
+ * Zod schema for a control with a date value that can optionally be an empty string.
+ *
+ * @param zodDate - The Zod date schema.
  * @param options - Options for the date schema.
  * @param options.required - Whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
  * @param options.dateFormat - Optional date format string (default: 'yyyy-MM-dd').
  * @param options.dateFormatError - Optional custom error for invalid dates.
+ * @param options.checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for date values.
  */
 export function formDate(
-  zodDate: ZodDeepType<z.ZodMiniDate<Date>>,
-  options?: {
-    required?: boolean;
-    error?: string;
-    dateFormat?: FormDateFormat;
-    dateFormatError?: string;
-  }
+  options: FormDateOptions,
+  ...checks: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[]
+): z.ZodMiniPipe<
+  z.ZodMiniTransform<string | Date>,
+  z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>
+>;
+
+export function formDate(
+  first?: FormDateOptions | z.core.CheckFn<Date> | z.core.$ZodCheck<Date>,
+  ...rest: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[]
 ) {
-  const dateFormat = options?.dateFormat || 'yyyy-MM-dd';
+  let options: {
+    required?: boolean;
+    dateFormat?: FormDateFormat;
+    error?: string;
+    dateFormatError?: string;
+  };
+  let checks: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[] = [];
+
+  if (first === undefined) {
+    options = {};
+  } else if (
+    typeof first === 'object' &&
+    ('required' in first || 'dateFormat' in first || 'error' in first || 'dateFormatError' in first)
+  ) {
+    options = first;
+    checks = rest;
+  } else {
+    options = {};
+    checks = [first, ...rest];
+  }
+
+  let zodDate = options.error ? z.date({ error: options.error }) : z.date();
+
+  if (checks.length > 0) {
+    zodDate = zodDate.check(...checks);
+  }
+
+  const dateFormat = options.dateFormat || 'yyyy-MM-dd';
 
   const zodDateWithMeta = zodDate.check(z.meta({ format: dateFormat }));
 
   return z.pipe(
     z.transform((value: unknown, ctx) => {
-      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
+      if (options.required && options.error && (value === undefined || value === EMPTY_STRING)) {
         ctx.issues.push({
           code: 'invalid_type',
           expected: 'date',
@@ -336,7 +397,7 @@ export function formDate(
         ctx.issues.push({
           code: 'custom',
           message:
-            options?.dateFormatError ??
+            options.dateFormatError ??
             'Invalid input: "' + (value as Date | string).toString() + '".',
           input: value,
         } as z.core.$ZodRawIssue);
@@ -346,7 +407,7 @@ export function formDate(
 
       return dateValue;
     }),
-    options?.required
+    options.required
       ? z.union([zodDateWithMeta, z.string().check(z.minLength(1, options.error))])
       : z.union([zodDateWithMeta, z.string()])
   );
@@ -356,21 +417,74 @@ export function formDate(
  * Zod schema for a control with a numeric value that can optionally be an empty string.
  *
  * @param zodNumber - The Zod number schema.
- * @param options - Options for the number schema.
- * @param options.required - Whether a value is required (default: `false`).
- * @param options.error - Optional custom error message for required validation.
+ * @returns A Zod schema with preprocessing for number values.
+ */
+export function formNumber(): z.ZodMiniPipe<
+  z.ZodMiniTransform<number | ''>,
+  z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<''>]>
+>;
+
+/**
+ * Zod schema for a control with a numeric value that can optionally be an empty string.
+ *
+ * @param zodNumber - The Zod number schema.
+ * @param options.checks - Zod checks.
  * @returns A Zod schema with preprocessing for number values.
  */
 export function formNumber(
-  zodNumber: ZodDeepType<z.ZodMiniNumber<number>>,
-  options?: { required?: boolean; error?: string }
+  ...checks: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[]
+): z.ZodMiniPipe<
+  z.ZodMiniTransform<number | ''>,
+  z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<''>]>
+>;
+
+/**
+ * Zod schema for a control with a numeric value that can optionally be an empty string.
+ *
+ * @param zodNumber - The Zod number schema.
+ * @param options - Options for the number schema.
+ * @param options.required - Whether a value is required (default: `false`).
+ * @param options.error - Optional custom error message for required validation.
+ * @param options.checks - Optional Zod checks.
+ * @returns A Zod schema with preprocessing for number values.
+ */
+export function formNumber(
+  options: FormTypeOptions,
+  ...checks: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[]
+): z.ZodMiniPipe<
+  z.ZodMiniTransform<number | ''>,
+  z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<''>]>
+>;
+
+export function formNumber(
+  first?: FormTypeOptions | z.core.CheckFn<number> | z.core.$ZodCheck<number>,
+  ...rest: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[]
 ) {
+  let options: { required?: boolean; error?: string };
+  let checks: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[] = [];
+
+  if (first === undefined) {
+    options = {};
+  } else if (typeof first === 'object' && ('required' in first || 'error' in first)) {
+    options = first;
+    checks = rest;
+  } else {
+    options = {};
+    checks = [first, ...rest];
+  }
+
+  let zodNumber = options.error ? z.number({ error: options.error }) : z.number();
+
+  if (checks.length > 0) {
+    zodNumber = zodNumber.check(...checks);
+  }
+
   return z.pipe(
     z.transform((value: unknown, ctx) => {
       if (typeof value === 'number' && !Number.isNaN(value)) {
         return value;
       }
-      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
+      if (options.required && options.error && (value === undefined || value === EMPTY_STRING)) {
         ctx.issues.push({
           code: 'invalid_type',
           expected: 'number',
@@ -384,28 +498,81 @@ export function formNumber(
       }
       return Number(value);
     }),
-    options?.required ? zodNumber : z.union([zodNumber, Z_EMPTY_STRING])
+    options.required ? zodNumber : z.union([zodNumber, Z_EMPTY_STRING])
   );
 }
 
 /**
  * Zod schema for a control with a string value that can optionally be empty.
  *
- * @param zodString - The Zod string schema.
- * @param options - Options for the string schema.
- * @param options.required - Whether a value is required (default: `false`).
- * @param options.allowEmpty - Whether the `toObject()` method on the `data` form state property
- *                             should keep an empty string value (default: `true`).
- * @param options.error - Optional custom error message for required validation.
+ * @returns A Zod string schema with required or optional validation.
+ */
+export function formString(): z.ZodMiniPipe<
+  z.ZodMiniTransform<string>,
+  z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<''>]>
+>;
+
+/**
+ * Zod schema for a control with a string value that can optionally be empty.
+ *
+ * @param options.checks - Zod checks.
  * @returns A Zod string schema with required or optional validation.
  */
 export function formString(
-  zodString: ZodDeepType<z.ZodMiniString<string>>,
-  options?: { required?: boolean; allowEmpty?: boolean; error?: string }
+  ...checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]
+): z.ZodMiniPipe<
+  z.ZodMiniTransform<string>,
+  z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<''>]>
+>;
+
+/**
+ * Zod schema for a control with a string value that can optionally be empty.
+ *
+ * @param options - Options for the string schema.
+ * @param options.required - Indicates whether a value is required (default: `false`).
+ * @param options.allowEmpty - Indicates whether the `toObject()` method on the `data` form state
+ *                             property should keep an empty string value (default: `true`).
+ * @param options.error - Optional custom error message for required validation.
+ * @param options.checks - Optional Zod checks.
+ * @returns A Zod string schema with required or optional validation.
+ */
+export function formString(
+  options: FormStringOptions,
+  ...checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]
+): z.ZodMiniPipe<
+  z.ZodMiniTransform<string>,
+  z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<''>]>
+>;
+
+export function formString(
+  first?: FormStringOptions | z.core.CheckFn<string> | z.core.$ZodCheck<string>,
+  ...rest: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]
 ) {
+  let options: { required?: boolean; allowEmpty?: boolean; error?: string };
+  let checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[] = [];
+
+  if (first === undefined) {
+    options = {};
+  } else if (
+    typeof first === 'object' &&
+    ('required' in first || 'allowEmpty' in first || 'error' in first)
+  ) {
+    options = first;
+    checks = rest;
+  } else {
+    options = {};
+    checks = [first, ...rest];
+  }
+
+  let zodString = options.error ? z.string({ error: options.error }) : z.string();
+
+  if (checks.length > 0) {
+    zodString = zodString.check(...checks);
+  }
+
   return z.pipe(
     z.transform((value: unknown, ctx) => {
-      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
+      if (options.required && options.error && (value === undefined || value === EMPTY_STRING)) {
         ctx.issues.push({
           code: 'invalid_type',
           expected: 'string',
@@ -418,13 +585,13 @@ export function formString(
       }
       return value as string;
     }),
-    options?.required
+    options.required
       ? zodString.check(
           z.meta({ allowEmpty: options.allowEmpty !== false }),
           z.minLength(1, options.error)
         )
       : z.union([
-          zodString.check(z.meta({ allowEmpty: options?.allowEmpty !== false })),
+          zodString.check(z.meta({ allowEmpty: options.allowEmpty !== false })),
           Z_EMPTY_STRING,
         ])
   );

@@ -21,37 +21,32 @@ describe('useFormState', () => {
   const schema = z.strictObject({
     name: z
       .formString(
-        z
-          .string()
-          .check(
-            z.regex(/^[\d'A-Za-z-]*$/, 'Name contains invalid characters'),
-            z.maxLength(25, 'Name is too long')
-          ),
         {
           required: true,
           error: 'Name is required',
-        }
+        },
+        z.regex(/^[\d'A-Za-z-]*$/, 'Name contains invalid characters'),
+        z.maxLength(25, 'Name is too long')
       )
       .with(z.describe('Name')),
     info: z
       .object({
         uuid: z.symbol(),
         age: z
-          .formNumber(z.number().check(z.gte(1, 'Age must be > 0')), {
-            required: true,
-            error: 'Age is required',
-          })
+          .formNumber(
+            {
+              required: true,
+              error: 'Age is required',
+            },
+            z.gte(1, 'Age must be > 0')
+          )
           .with(z.describe('Age')),
-        email: z.formString(z.string({ error: 'Invalid email' })).with(z.describe('Email')),
+        email: z.formString({ error: 'Invalid email' }).with(z.describe('Email')),
         birthDate: z
           .formDate(
-            z
-              .date()
-              .check(
-                z.gte(new Date(2020, 0, 1), 'Invalid date range'),
-                z.lte(new Date(2039, 11, 31), 'Invalid date range')
-              ),
-            { required: false, dateFormat: 'MM/dd/yyyy' }
+            { required: false, dateFormat: 'MM/dd/yyyy' },
+            z.gte(new Date(2020, 0, 1), 'Invalid date range'),
+            z.lte(new Date(2039, 11, 31), 'Invalid date range')
           )
           .with(z.describe('Birth date')),
       })
@@ -73,21 +68,14 @@ describe('useFormState', () => {
       .with(z.describe('Tags')),
     category: z.formValues(['legacy', 'unconfirmed']).with(z.describe('Category')),
     isActive: z
-      .default(z.formBoolean(z.boolean(), { required: true, error: 'Is active is required' }), true)
+      .default(z.formBoolean({ required: true, error: 'Is active is required' }), true)
       .with(z.describe('Is record active?')),
-    isArchived: z
-      .default(z.formBoolean(z.boolean()), false)
-      .with(z.describe('Is record archived?')),
+    isArchived: z.default(z.formBoolean(), false).with(z.describe('Is record archived?')),
     version: z
-      .catch(
-        z.formNumber(
-          z.number().check(z.gte(0, 'Negative version'), z.lte(9999999, 'Version is too high'))
-        ),
-        0
-      )
+      .catch(z.formNumber(z.gte(0, 'Negative version'), z.lte(9999999, 'Version is too high')), 0)
       .with(z.describe('Record version')),
     registeredOn: z
-      .formDate(z.date(), { required: false, dateFormat: 'MM/dd/yyyy' })
+      .formDate({ required: false, dateFormat: 'MM/dd/yyyy' })
       .with(z.describe('Registered on')),
     updateDates: z
       .formArray(
@@ -102,9 +90,7 @@ describe('useFormState', () => {
       .with(z.describe('Previous versions')),
     specialNumber: z
       .default(
-        z.formNumber(
-          z.number().check(z.gt(3.1, 'Number is too short'), z.lt(3.15, 'Number is too long'))
-        ),
+        z.formNumber(z.gt(3.1, 'Number is too short'), z.lt(3.15, 'Number is too long')),
         Math.PI
       )
       .with(z.describe('Special number')),

@@ -31,7 +31,6 @@ type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
 type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
 type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
 type Immutable<T> = T extends ImmutablePrimitive ? T : T extends Array<infer U> ? ImmutableArray<U> : T extends Map<infer K, infer V> ? ImmutableMap<K, V> : T extends Set<infer M> ? ImmutableSet<M> : T extends object ? ImmutableObject<T> : T;
-type ZodDeepType<T extends z.ZodMiniType> = T extends z.ZodMiniOptional<infer U> | z.ZodMiniNullable<infer U> | z.ZodMiniDefault<infer U> | z.ZodMiniCatch<infer U> | z.ZodMiniPipe<infer U> | z.ZodMiniNonOptional<infer U> ? ZodDeepType<U extends z.ZodMiniType ? U : never> : T;
 type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 type FieldRange = number | Date | undefined;
 type FormMutableState<T extends object> = {
@@ -54,6 +53,47 @@ type FormMutableState<T extends object> = {
   submitCount: number;
   replaced: boolean;
   validated: boolean;
+};
+type FormTypeOptions = {
+  required: boolean;
+  error?: string;
+} | {
+  required?: boolean;
+  error: string;
+};
+type FormDateOptions = {
+  required: boolean;
+  dateFormat?: FormDateFormat;
+  error?: string;
+  dateFormatError?: string;
+} | {
+  required?: boolean;
+  dateFormat: FormDateFormat;
+  error?: string;
+  dateFormatError?: string;
+} | {
+  required?: boolean;
+  dateFormat?: FormDateFormat;
+  error: string;
+  dateFormatError?: string;
+} | {
+  required?: boolean;
+  dateFormat?: FormDateFormat;
+  error?: string;
+  dateFormatError: string;
+};
+type FormStringOptions = {
+  required: boolean;
+  allowEmpty?: boolean;
+  error?: string;
+} | {
+  required?: boolean;
+  allowEmpty: boolean;
+  error?: string;
+} | {
+  required?: boolean;
+  allowEmpty?: boolean;
+  error: string;
 };
 /**
  * Zod validation error.
@@ -799,6 +839,10 @@ type FormProps = React.ComponentPropsWithRef<'form'> & {
    * Allow forms to be submitted by pressing the "Enter" key (default: `false`).
    */
   submitWithEnter?: boolean;
+  /**
+   * Allows browser built-in validation (default: `false`).
+   */
+  nativeValidation?: boolean;
 };
 /**
  * Component props that contain the form state.
@@ -1054,16 +1098,28 @@ declare const advanced: {
 /**
  * Zod schema for a control with a boolean value that can optionally be an empty string.
  *
- * @param zodBoolean - The Zod boolean schema.
  * @param options - Options for the boolean schema.
  * @param options.required - Indicates whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
+ * @param options.checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for boolean values.
  */
-declare function formBoolean(zodBoolean: ZodDeepType<z.ZodMiniBoolean<boolean>>, options?: {
-  required?: boolean;
-  error?: string;
-}): z.ZodMiniPipe<z.ZodMiniTransform<boolean | "", unknown>, z.ZodMiniBoolean<boolean> | z.ZodMiniUnion<readonly [z.ZodMiniBoolean<boolean>, z.ZodMiniLiteral<"">]>>;
+declare function formBoolean(options?: FormTypeOptions): z.ZodMiniPipe<z.ZodMiniTransform<boolean | "", unknown>, z.ZodMiniBoolean<boolean> | z.ZodMiniUnion<readonly [z.ZodMiniBoolean<boolean>, z.ZodMiniLiteral<"">]>>;
+/**
+ * Zod schema for a control with a date value that can optionally be an empty string.
+ *
+ * @param zodDate - The Zod date schema.
+ * @returns A Zod schema with preprocessing for date values.
+ */
+declare function formDate(): z.ZodMiniPipe<z.ZodMiniTransform<string | Date>, z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>>;
+/**
+ * Zod schema for a control with a date value that can optionally be an empty string.
+ *
+ * @param zodDate - The Zod date schema.
+ * @param options.checks - Zod checks.
+ * @returns A Zod schema with preprocessing for date values.
+ */
+declare function formDate(...checks: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[]): z.ZodMiniPipe<z.ZodMiniTransform<string | Date>, z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>>;
 /**
  * Zod schema for a control with a date value that can optionally be an empty string.
  *
@@ -1073,14 +1129,25 @@ declare function formBoolean(zodBoolean: ZodDeepType<z.ZodMiniBoolean<boolean>>,
  * @param options.error - Optional custom error message for required validation.
  * @param options.dateFormat - Optional date format string (default: 'yyyy-MM-dd').
  * @param options.dateFormatError - Optional custom error for invalid dates.
+ * @param options.checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for date values.
  */
-declare function formDate(zodDate: ZodDeepType<z.ZodMiniDate<Date>>, options?: {
-  required?: boolean;
-  error?: string;
-  dateFormat?: FormDateFormat;
-  dateFormatError?: string;
-}): z.ZodMiniPipe<z.ZodMiniTransform<string | Date, unknown>, z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>>;
+declare function formDate(options: FormDateOptions, ...checks: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[]): z.ZodMiniPipe<z.ZodMiniTransform<string | Date>, z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>>;
+/**
+ * Zod schema for a control with a numeric value that can optionally be an empty string.
+ *
+ * @param zodNumber - The Zod number schema.
+ * @returns A Zod schema with preprocessing for number values.
+ */
+declare function formNumber(): z.ZodMiniPipe<z.ZodMiniTransform<number | ''>, z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<''>]>>;
+/**
+ * Zod schema for a control with a numeric value that can optionally be an empty string.
+ *
+ * @param zodNumber - The Zod number schema.
+ * @param options.checks - Zod checks.
+ * @returns A Zod schema with preprocessing for number values.
+ */
+declare function formNumber(...checks: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[]): z.ZodMiniPipe<z.ZodMiniTransform<number | ''>, z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<''>]>>;
 /**
  * Zod schema for a control with a numeric value that can optionally be an empty string.
  *
@@ -1088,28 +1155,35 @@ declare function formDate(zodDate: ZodDeepType<z.ZodMiniDate<Date>>, options?: {
  * @param options - Options for the number schema.
  * @param options.required - Whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
+ * @param options.checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for number values.
  */
-declare function formNumber(zodNumber: ZodDeepType<z.ZodMiniNumber<number>>, options?: {
-  required?: boolean;
-  error?: string;
-}): z.ZodMiniPipe<z.ZodMiniTransform<number | "", unknown>, z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<"">]>>;
+declare function formNumber(options: FormTypeOptions, ...checks: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[]): z.ZodMiniPipe<z.ZodMiniTransform<number | ''>, z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<''>]>>;
 /**
  * Zod schema for a control with a string value that can optionally be empty.
  *
- * @param zodString - The Zod string schema.
- * @param options - Options for the string schema.
- * @param options.required - Whether a value is required (default: `false`).
- * @param options.allowEmpty - Whether the `toObject()` method on the `data` form state property
- *                             should keep an empty string value (default: `true`).
- * @param options.error - Optional custom error message for required validation.
  * @returns A Zod string schema with required or optional validation.
  */
-declare function formString(zodString: ZodDeepType<z.ZodMiniString<string>>, options?: {
-  required?: boolean;
-  allowEmpty?: boolean;
-  error?: string;
-}): z.ZodMiniPipe<z.ZodMiniTransform<string, unknown>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<"">]>>;
+declare function formString(): z.ZodMiniPipe<z.ZodMiniTransform<string>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<''>]>>;
+/**
+ * Zod schema for a control with a string value that can optionally be empty.
+ *
+ * @param options.checks - Zod checks.
+ * @returns A Zod string schema with required or optional validation.
+ */
+declare function formString(...checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]): z.ZodMiniPipe<z.ZodMiniTransform<string>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<''>]>>;
+/**
+ * Zod schema for a control with a string value that can optionally be empty.
+ *
+ * @param options - Options for the string schema.
+ * @param options.required - Indicates whether a value is required (default: `false`).
+ * @param options.allowEmpty - Indicates whether the `toObject()` method on the `data` form state
+ *                             property should keep an empty string value (default: `true`).
+ * @param options.error - Optional custom error message for required validation.
+ * @param options.checks - Optional Zod checks.
+ * @returns A Zod string schema with required or optional validation.
+ */
+declare function formString(options: FormStringOptions, ...checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]): z.ZodMiniPipe<z.ZodMiniTransform<string>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<''>]>>;
 /**
  * Zod schema for a control with a limited number of literal string values.
  *
@@ -1453,7 +1527,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *

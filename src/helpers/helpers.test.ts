@@ -21,14 +21,14 @@ describe('helpers', () => {
           i: z.number(),
         })
       ),
-      b: z.formBoolean(z.boolean()),
+      b: z.formBoolean(),
       b2: z.boolean(),
-      n: z.formNumber(z.number()),
-      s: z.formString(z.string()),
-      s2: z.formString(z.string(), { allowEmpty: false }),
+      n: z.formNumber(),
+      s: z.formString(),
+      s2: z.formString({ allowEmpty: false }),
       v: z.formValues(['a', 'b']),
       z: z.object({
-        id: z.formNumber(z.number()),
+        id: z.formNumber(),
       }),
     });
 
@@ -261,13 +261,13 @@ describe('helpers', () => {
       a: z.array(
         z.object({
           id: z.symbol(),
-          i: z.formNumber(z.number(), { required: true }),
+          i: z.formNumber({ required: true }),
         })
       ),
-      n: z.formNumber(z.number(), { required: true }),
+      n: z.formNumber({ required: true }),
       v: z.formValues(['a', 'b'], { required: true }),
       z: z.object({
-        id: z.formNumber(z.number()),
+        id: z.formNumber(),
       }),
     });
 

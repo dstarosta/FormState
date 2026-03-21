@@ -46,6 +46,7 @@ export default defineConfig([
       'use-isnan': 'error',
       // TS rules
       '@typescript-eslint/no-dynamic-delete': 'off', // mutable state objects cannot be replaced with Maps due to Zod and strongly typed paths
+      '@typescript-eslint/unified-signatures': 'off', // allow various overloads
       // Annoying Sonar rules
       'sonarjs/cognitive-complexity': 'off', // reducers and schema visitors are difficult to break up into _readable_ small functions
       'sonarjs/function-return-type': 'off', // different return types (ex: discriminated unions) are not an issue

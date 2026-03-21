@@ -37,7 +37,7 @@ export const createFormComponent = <T extends object>(
    * The Form component with pre-wired reset logic.
    */
   function Form(props: FormProps) {
-    const { ref: forwardedRef, submitWithEnter, ...restProps } = props;
+    const { ref: forwardedRef, nativeValidation, submitWithEnter, ...restProps } = props;
 
     const formRef = useRef<HTMLFormElement>(null);
     const lastSubmitter = useRef<HTMLElement>(null);
@@ -45,7 +45,7 @@ export const createFormComponent = <T extends object>(
     const formProps = useMemo(
       () =>
         ({
-          noValidate: true,
+          noValidate: !nativeValidation,
           onKeyDown: (event: React.KeyboardEvent) => {
             if (
               !submitWithEnter &&
@@ -65,7 +65,7 @@ export const createFormComponent = <T extends object>(
             }
           },
         }) as FormProps,
-      [submitWithEnter]
+      [nativeValidation, submitWithEnter]
     );
 
     const resetStore = useCallback(() => {

@@ -56,16 +56,6 @@ export type Immutable<T> = T extends ImmutablePrimitive
           ? ImmutableObject<T>
           : T;
 
-export type ZodDeepType<T extends z.ZodMiniType> = T extends
-  | z.ZodMiniOptional<infer U>
-  | z.ZodMiniNullable<infer U>
-  | z.ZodMiniDefault<infer U>
-  | z.ZodMiniCatch<infer U>
-  | z.ZodMiniPipe<infer U>
-  | z.ZodMiniNonOptional<infer U>
-  ? ZodDeepType<U extends z.ZodMiniType ? U : never>
-  : T;
-
 export type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 
 export type UnknownObject = Record<string | number | symbol, unknown>;
@@ -164,6 +154,21 @@ export type FormStore = {
   setValue: (name: string, value: string) => void;
   subscribeToField: (name: string, listener: () => void) => () => boolean | undefined;
 };
+
+export type FormTypeOptions =
+  | { required: boolean; error?: string }
+  | { required?: boolean; error: string };
+
+export type FormDateOptions =
+  | { required: boolean; dateFormat?: FormDateFormat; error?: string; dateFormatError?: string }
+  | { required?: boolean; dateFormat: FormDateFormat; error?: string; dateFormatError?: string }
+  | { required?: boolean; dateFormat?: FormDateFormat; error: string; dateFormatError?: string }
+  | { required?: boolean; dateFormat?: FormDateFormat; error?: string; dateFormatError: string };
+
+export type FormStringOptions =
+  | { required: boolean; allowEmpty?: boolean; error?: string }
+  | { required?: boolean; allowEmpty: boolean; error?: string }
+  | { required?: boolean; allowEmpty?: boolean; error: string };
 
 // Public types
 
@@ -994,6 +999,10 @@ export type FormProps = React.ComponentPropsWithRef<'form'> & {
    * Allow forms to be submitted by pressing the "Enter" key (default: `false`).
    */
   submitWithEnter?: boolean;
+  /**
+   * Allows browser built-in validation (default: `false`).
+   */
+  nativeValidation?: boolean;
 };
 
 /**

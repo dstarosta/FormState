@@ -6,7 +6,7 @@ import { updateState, useFormState, z } from '.';
 
 describe('form schema', () => {
   it('formBoolean should parse values', () => {
-    const fieldSchema = z.formBoolean(z.boolean());
+    const fieldSchema = z.formBoolean();
 
     expect(fieldSchema.safeParse(false).success).toBe(true);
     expect(fieldSchema.safeParse(false).data).toBe(false);
@@ -21,7 +21,7 @@ describe('form schema', () => {
     expect(fieldSchema.safeParse('abcdefg').success).toBe(true);
     expect(fieldSchema.safeParse('abcdefg').data).toBe(true);
 
-    const requiredFieldSchema = z.formBoolean(z.boolean(), {
+    const requiredFieldSchema = z.formBoolean({
       required: true,
       error: 'Field required',
     });
@@ -37,7 +37,7 @@ describe('form schema', () => {
   });
 
   it('formNumeric should parse values', () => {
-    const fieldSchema = z.formNumber(z.number());
+    const fieldSchema = z.formNumber();
 
     expect(fieldSchema.safeParse(1).success).toBe(true);
     expect(fieldSchema.safeParse(1).data).toBe(1);
@@ -50,7 +50,7 @@ describe('form schema', () => {
     expect(fieldSchema.safeParse('').success).toBe(true);
     expect(fieldSchema.safeParse('').data).toBe('');
 
-    const requiredFieldSchema = z.formNumber(z.number(), {
+    const requiredFieldSchema = z.formNumber({
       required: true,
       error: 'Field required',
     });
@@ -70,7 +70,10 @@ describe('form schema', () => {
   });
 
   it('formDate should parse values', () => {
-    const fieldSchema = z.formDate(z.date(), { required: false, dateFormat: 'MM-dd-yyyy' });
+    const fieldSchema = z.formDate({
+      dateFormat: 'MM-dd-yyyy',
+      dateFormatError: 'Invalid date format',
+    });
 
     const date = new Date(2025, 11, 31);
 
@@ -85,7 +88,22 @@ describe('form schema', () => {
     expect(fieldSchema.safeParse('').success).toBe(true);
     expect(fieldSchema.safeParse('').data).toBe('');
 
-    const requiredFieldSchema = z.formDate(z.date(), {
+    const defaultFieldSchema = z.formDate();
+
+    expect(defaultFieldSchema.safeParse(date).success).toBe(true);
+    expect(defaultFieldSchema.safeParse(date).data).toBe(date);
+    expect(defaultFieldSchema.safeParse('2025-12-31').success).toBe(true);
+    expect(defaultFieldSchema.safeParse('2025-12-31').data).toEqual(date);
+    expect(defaultFieldSchema.safeParse('12-31-2025').success).toBe(false);
+    expect(defaultFieldSchema.safeParse('12-31-2025').error).toBeDefined();
+    expect(defaultFieldSchema.safeParse(new Date(Number.NaN)).success).toBe(false);
+    expect(defaultFieldSchema.safeParse(new Date(Number.NaN)).error).toBeDefined();
+    expect(defaultFieldSchema.safeParse('').success).toBe(true);
+    expect(defaultFieldSchema.safeParse('').error).toBeUndefined();
+    expect(defaultFieldSchema.safeParse(undefined).success).toBe(true);
+    expect(defaultFieldSchema.safeParse(undefined).error).toBeUndefined();
+
+    const requiredFieldSchema = z.formDate({
       required: true,
       error: 'Field required',
       // dateFormat: 'yyyy-MM-dd' - default
@@ -103,17 +121,31 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse('').error).toBeDefined();
     expect(requiredFieldSchema.safeParse(undefined).success).toBe(false);
     expect(requiredFieldSchema.safeParse(undefined).error).toBeDefined();
+
+    const refinedFieldSchema = z.formDate(z.refine((val) => val.getDate() !== 31));
+
+    expect(refinedFieldSchema.safeParse(date).success).toBe(false);
+    expect(refinedFieldSchema.safeParse(date).data).toBeUndefined();
+  });
+
+  it('formDate should not parse values that fail validation', () => {
+    const date = new Date(2025, 11, 31);
+
+    const refinedFieldSchema = z.formDate(z.refine((val) => val.getDate() !== 31));
+
+    expect(refinedFieldSchema.safeParse(date).success).toBe(false);
+    expect(refinedFieldSchema.safeParse(date).data).toBeUndefined();
   });
 
   it('formBoolean should parse values', () => {
-    const stringSchema = z.formString(z.string());
+    const stringSchema = z.formString();
 
     expect(stringSchema.safeParse(null).success).toBe(true);
     expect(stringSchema.safeParse('').success).toBe(true);
     expect(stringSchema.safeParse('test').success).toBe(true);
     expect(stringSchema.safeParse(/test/).success).toBe(false);
 
-    const requiredStringSchema = z.formString(z.string(), { required: true });
+    const requiredStringSchema = z.formString({ required: true });
 
     expect(requiredStringSchema.safeParse(null).success).toBe(false);
     expect(requiredStringSchema.safeParse('').success).toBe(false);
@@ -130,7 +162,7 @@ describe('form schema', () => {
   it('should initialize with ZodDefault values', () => {
     const schema_default = z.object({
       foo: z.default(z.string(), 'bar'),
-      age: z.default(z.formNumber(z.number()), 99),
+      age: z.default(z.formNumber(), 99),
     });
     const { result } = renderHook(() => useFormState(schema_default));
     const { formState } = result.current;
@@ -142,7 +174,7 @@ describe('form schema', () => {
   it('should initialize with ZodCatch values', () => {
     const schemaWithCatch = z.object({
       foo: z.catch(z.string(), 'fallback'),
-      age: z.catch(z.formNumber(z.number()), 123),
+      age: z.catch(z.formNumber(), 123),
     });
     const { result } = renderHook(() => useFormState(schemaWithCatch));
     const { formState } = result.current;
@@ -291,7 +323,7 @@ describe('form schema', () => {
       user: z.object({
         name: z.default(z.string(), 'anon'),
         profile: z.object({
-          age: z.default(z.formNumber(z.number()), 18),
+          age: z.default(z.formNumber(), 18),
         }),
       }),
     });
@@ -306,7 +338,7 @@ describe('form schema', () => {
     const testSchema = z.object({
       users: z.array(
         z.object({
-          name: z.default(z.formString(z.string(), { required: false }), 'anon'),
+          name: z.default(z.formString({ required: false }), 'anon'),
         })
       ),
     });
@@ -326,10 +358,10 @@ describe('form schema', () => {
 
     const unionSchema = z.object({
       arr: z.formArray(z.string(), { required: true, error }),
-      bool: z.formBoolean(z.boolean(), { required: true, error }),
-      date: z.formDate(z.date(), { required: true, error }),
-      num: z.formNumber(z.number(), { required: true, error }),
-      string: z.formString(z.string(), { required: true, error }),
+      bool: z.formBoolean({ required: true, error }),
+      date: z.formDate({ required: true, error }),
+      num: z.formNumber({ required: true, error }),
+      string: z.formString({ required: true, error }),
       value: z.formValues(['a', 'b'], { required: true, error }),
     });
 
@@ -351,11 +383,11 @@ describe('form schema', () => {
 
     const unionSchema = z.object({
       arr: z.formArray(z.string(), { required: false, error }),
-      bool: z.formBoolean(z.boolean(), { required: false, error }),
-      date: z.formDate(z.date(), { required: false, error }),
-      num: z.formNumber(z.number(), { required: false, error }),
-      string: z.formString(z.string(), { required: false, error }),
-      value: z.formValues(['a', 'b'], { required: false, error }),
+      bool: z.formBoolean({ error }),
+      date: z.formDate({ error }),
+      num: z.formNumber({ error }),
+      string: z.formString({ error }),
+      value: z.formValues(['a', 'b'], { error }),
     });
 
     const result = unionSchema.safeParse({});
@@ -454,9 +486,7 @@ describe('form schema', () => {
           .array(
             z.object({
               name: z
-                .formString(z.string(), {
-                  required: false,
-                })
+                .formString({ required: false })
                 .check(z.validate((name) => name.trim().length > 0, 'Empty names are not allowed')),
             })
           )
@@ -488,9 +518,7 @@ describe('form schema', () => {
           .array(
             z.object({
               name: z
-                .formString(z.string(), {
-                  required: false,
-                })
+                .formString({ required: false })
                 .check(z.validate((name) => name.trim().length > 0, 'Empty names are not allowed')),
             })
           )
@@ -523,9 +551,7 @@ describe('form schema', () => {
           .array(
             z.object({
               name: z
-                .formString(z.string(), {
-                  required: false,
-                })
+                .formString({ required: false })
                 .check(z.validate((name) => name.trim().length > 0, 'Empty names are not allowed')),
             })
           )
@@ -559,7 +585,7 @@ describe('form schema', () => {
         users: z
           .array(
             z.object({
-              name: z.formString(z.string(), { required: false }),
+              name: z.formString({ required: false }),
             })
           )
           .check(z.validate((obj) => obj instanceof Object, { path: ['users'] })),
@@ -583,7 +609,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.someItem((arr) => arr.name === 'John')),
@@ -607,7 +633,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.someItem((arr) => arr.name === 'Jonathan', error)),
@@ -630,7 +656,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.everyItem((arr) => arr.name.includes('M'))),
@@ -654,7 +680,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.everyItem((arr) => arr.name.includes('M'), error)),
@@ -677,7 +703,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.uniqueItems(true)),
@@ -699,7 +725,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.uniqueItems()),
@@ -721,7 +747,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.uniqueItems(false, { mapFn: (item) => item.name })),
@@ -743,7 +769,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.uniqueItems(false, { mapFn: (item) => item.name })),
@@ -766,7 +792,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.uniqueItems(true, { mapFn: (value) => value.name, ignoreValues: [null, ''] })),
@@ -790,7 +816,7 @@ describe('form schema', () => {
       users: z
         .array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         )
         .check(z.uniqueItems(true, { error })),
@@ -813,7 +839,7 @@ describe('form schema', () => {
       users: z.sortItems(
         z.array(
           z.object({
-            name: z.formString(z.string(), { required: false }),
+            name: z.formString({ required: false }),
           })
         ),
         (a, b) => a.name.localeCompare(b.name)

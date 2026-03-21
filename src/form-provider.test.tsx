@@ -5,11 +5,13 @@ import { useFormStateContext, formConnect, z } from './';
 
 describe('form provider', () => {
   const schema = z.object({
-    id: z.formNumber(z.number(), { required: true }).with(z.describe('ID')),
+    id: z.formNumber({ required: true }).with(z.describe('ID')),
     info: z.object({
-      name: z.formString(z.string().check(z.maxLength(50))).with(z.describe("Person's Name")),
+      name: z
+        .formString(z.maxLength(50, 'Name must be 50 characters or less'))
+        .with(z.describe("Person's Name")),
       age: z
-        .formNumber(z.number().check(z.gte(1, 'Age must be > 0'), z.lte(125, 'Age must be < 125')))
+        .formNumber(z.gte(1, 'Age must be > 0'), z.lte(125, 'Age must be < 125'))
         .with(z.describe("Person's Age")),
     }),
   });
@@ -178,7 +180,7 @@ describe('form provider', () => {
   });
 
   it('throws an error when useFormStateContext was not registered with the provided schema', () => {
-    const otherSchema = z.object({ name: z.formString(z.string()) });
+    const otherSchema = z.object({ name: z.formString() });
 
     expect(() => useFormStateContext(otherSchema)).toThrow(Error);
   });
