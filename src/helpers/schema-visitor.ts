@@ -124,6 +124,30 @@ const recursiveCollect = <T>(
   }
 };
 
+const getSchema = (schema: z.ZodMiniType, path: string) => {
+  let current: z.ZodMiniType = getBaseType(schema);
+
+  const parts = path.split('.');
+
+  for (const part of parts) {
+    if (current instanceof z.ZodMiniObject) {
+      current = current.shape[part] ? getBaseType(current.shape[part]) : z.undefined();
+    } else if (current instanceof z.ZodMiniArray && /^\d+$/.test(part)) {
+      current = getBaseType(current.def.element);
+    }
+
+    if (
+      current instanceof z.ZodMiniEnum &&
+      typeof current.def.entries === 'object' &&
+      typeof Object.values(current.def.entries)[0] === 'string'
+    ) {
+      current = z.string();
+    }
+  }
+
+  return current;
+};
+
 // Internal functions
 
 export const getBaseType = (value: unknown) => {
@@ -156,27 +180,14 @@ export const getBaseType = (value: unknown) => {
 };
 
 export function getSchemaType(schema: z.ZodMiniType, path: string) {
-  let current: z.ZodMiniType = getBaseType(schema);
+  return getSchema(schema, path).type;
+}
 
-  const parts = path.split('.');
+export function allowEmptyString(schema: z.ZodMiniType, path: string) {
+  const pathSchema = getSchema(schema, path);
+  const meta = z.globalRegistry.get(pathSchema);
 
-  for (const part of parts) {
-    if (current instanceof z.ZodMiniObject) {
-      current = current.shape[part] ? getBaseType(current.shape[part]) : z.undefined();
-    } else if (current instanceof z.ZodMiniArray && /^\d+$/.test(part)) {
-      current = getBaseType(current.def.element);
-    }
-
-    if (
-      current instanceof z.ZodMiniEnum &&
-      typeof current.def.entries === 'object' &&
-      typeof Object.values(current.def.entries)[0] === 'string'
-    ) {
-      current = z.string();
-    }
-  }
-
-  return current.type;
+  return meta?.['allowEmpty'] !== false;
 }
 
 export const collectMaxLengths = (

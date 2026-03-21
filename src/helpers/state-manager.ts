@@ -15,7 +15,13 @@ import type {
 
 import { dotPathGet } from './dot-path';
 import { generateUniqueId } from './random-id-generator';
-import { getBaseType, getPath, getPathNotation, getSchemaType } from './schema-visitor';
+import {
+  allowEmptyString,
+  getBaseType,
+  getPath,
+  getPathNotation,
+  getSchemaType,
+} from './schema-visitor';
 import { IS_DEVELOPMENT } from './development-helper';
 
 // Private functions
@@ -102,9 +108,10 @@ export const cleanEmpty = <T>(
       const valuePath = path ? `${path}.${key}` : key;
 
       const isEmptyString = typeof cleanedValue === 'string' && cleanedValue === '';
-      const hasStringSchema = getSchemaType(schema, valuePath) === 'string';
+      const hasEmptyStringSchema =
+        getSchemaType(schema, valuePath) === 'string' && allowEmptyString(schema, valuePath);
 
-      if (typeof cleanedValue !== 'symbol' && (!isEmptyString || hasStringSchema)) {
+      if (typeof cleanedValue !== 'symbol' && (!isEmptyString || hasEmptyStringSchema)) {
         innerObj[key] = cleanedValue;
       }
     }

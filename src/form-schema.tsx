@@ -394,12 +394,14 @@ export function formNumber(
  * @param zodString - The Zod string schema.
  * @param options - Options for the string schema.
  * @param options.required - Whether a value is required (default: `false`).
+ * @param options.allowEmpty - Whether the `toObject()` method on the `data` form state property
+ *                             should keep an empty string value (default: `true`).
  * @param options.error - Optional custom error message for required validation.
  * @returns A Zod string schema with required or optional validation.
  */
 export function formString(
   zodString: ZodDeepType<z.ZodMiniString<string>>,
-  options?: { required?: boolean; error?: string }
+  options?: { required?: boolean; allowEmpty?: boolean; error?: string }
 ) {
   return z.pipe(
     z.transform((value: unknown, ctx) => {
@@ -417,8 +419,14 @@ export function formString(
       return value as string;
     }),
     options?.required
-      ? zodString.check(z.minLength(1, options.error))
-      : z.union([zodString, Z_EMPTY_STRING])
+      ? zodString.check(
+          z.meta({ allowEmpty: options.allowEmpty !== false }),
+          z.minLength(1, options.error)
+        )
+      : z.union([
+          zodString.check(z.meta({ allowEmpty: options?.allowEmpty !== false })),
+          Z_EMPTY_STRING,
+        ])
   );
 }
 

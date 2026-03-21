@@ -1100,11 +1100,14 @@ declare function formNumber(zodNumber: ZodDeepType<z.ZodMiniNumber<number>>, opt
  * @param zodString - The Zod string schema.
  * @param options - Options for the string schema.
  * @param options.required - Whether a value is required (default: `false`).
+ * @param options.allowEmpty - Whether the `toObject()` method on the `data` form state property
+ *                             should keep an empty string value (default: `true`).
  * @param options.error - Optional custom error message for required validation.
  * @returns A Zod string schema with required or optional validation.
  */
 declare function formString(zodString: ZodDeepType<z.ZodMiniString<string>>, options?: {
   required?: boolean;
+  allowEmpty?: boolean;
   error?: string;
 }): z.ZodMiniPipe<z.ZodMiniTransform<string, unknown>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<"">]>>;
 /**

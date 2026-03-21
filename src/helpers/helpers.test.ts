@@ -25,6 +25,7 @@ describe('helpers', () => {
       b2: z.boolean(),
       n: z.formNumber(z.number()),
       s: z.formString(z.string()),
+      s2: z.formString(z.string(), { allowEmpty: false }),
       v: z.formValues(['a', 'b']),
       z: z.object({
         id: z.formNumber(z.number()),
@@ -49,7 +50,16 @@ describe('helpers', () => {
     it('should clean state data correctly', () => {
       const state: Immutable<z.infer<typeof formSchema>> = createState(formSchema);
 
-      expect(state).toEqual({ a: [], b: '', b2: false, n: '', s: '', v: '', z: { id: '' } });
+      expect(state).toEqual({
+        a: [],
+        b: '',
+        b2: false,
+        n: '',
+        s: '',
+        s2: '',
+        v: '',
+        z: { id: '' },
+      });
       expect(cleanEmpty(formSchema, state)).toEqual({ a: [], b2: false, s: '', v: '' });
 
       expect(cleanEmpty(formSchema, null)).toBeNull();
@@ -61,7 +71,16 @@ describe('helpers', () => {
 
       const state: Immutable<z.infer<typeof formSchema>> = createState(formSchema);
 
-      expect(state).toEqual({ a: [], b: '', b2: false, n: '', s: '', v: '', z: { id: '' } });
+      expect(state).toEqual({
+        a: [],
+        b: '',
+        b2: false,
+        n: '',
+        s: '',
+        s2: '',
+        v: '',
+        z: { id: '' },
+      });
 
       const itemState: Immutable<z.infer<typeof formSchema.shape.a.def.element>> = createState(
         formSchema.shape.a.def.element
@@ -97,6 +116,7 @@ describe('helpers', () => {
         b2: true,
         n: 4,
         s: 'a',
+        s2: 'aa',
         v: 'b',
         z: { id: 2 },
       };
