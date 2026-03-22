@@ -2635,9 +2635,8 @@ describe('useFormState', () => {
 
       fireEvent.click(submitButton);
 
-      expect(getByText('Submitting...')).toBeInTheDocument();
-
-      const submittedInfo = await findByText('Form Submitted');
+      const submittingInfo = await findByText('Submitting...');
+      expect(submittingInfo).toBeInTheDocument();
 
       await waitFor(() => {
         expect(queryByText('Submitting...')).not.toBeInTheDocument();
@@ -2649,6 +2648,8 @@ describe('useFormState', () => {
         expect(errorFn).not.toHaveBeenCalled();
 
         expect(name).toContainHTML('John');
+
+        const submittedInfo = getByText('Form Submitted');
         expect(submittedInfo).toBeInTheDocument();
       });
     });
@@ -2667,9 +2668,8 @@ describe('useFormState', () => {
 
       fireEvent.click(submitButton);
 
-      expect(getByText('Submitting...')).toBeInTheDocument();
-
-      const submittedInfo = await findByText('Form Submitted');
+      const submittingInfo = await findByText('Submitting...');
+      expect(submittingInfo).toBeInTheDocument();
 
       await waitFor(() => {
         expect(queryByText('Submitting...')).not.toBeInTheDocument();
@@ -2681,6 +2681,8 @@ describe('useFormState', () => {
         expect(errorFn).not.toHaveBeenCalled();
 
         expect(name).toContainHTML('John');
+
+        const submittedInfo = getByText('Form Submitted');
         expect(submittedInfo).toBeInTheDocument();
 
         const formData = submitFn.mock.calls[0]?.[1] as FormData;
