@@ -10,6 +10,7 @@ import type {
   FormStatePath,
   ImmutableArray,
   ImmutableObject,
+  RemovePredicate,
   UnknownObject,
 } from '../types/form-types';
 
@@ -361,4 +362,66 @@ export function updateState<T>(
   }
 
   throw new TypeError('No valid state was provided.');
+}
+
+/**
+ * Appends one or more items to an array in an immutable state.
+ *
+ * @typeParam T - schema type.
+ * @param state - The state array property.
+ * @param items - A sequence of one or more items.
+ * @returns A new array containing the modified state.
+ */
+export function appendState<T>(state: ImmutableArray<T>, ...items: T[]) {
+  return updateState(state, (draft) => {
+    draft.push(...items);
+  });
+}
+
+/**
+ * Insert one or more item to an array in an immutable state.
+ *
+ * @typeParam T - schema type.
+ * @param state - The state array property.
+ * @param index - The array index.
+ * @param items - A sequence of 1 or more items.
+ * @returns A new array containing the modified state.
+ */
+export function insertState<T>(state: ImmutableArray<T>, index: number, ...items: T[]) {
+  return updateState(state, (draft) => {
+    draft.splice(index, 0, ...items);
+  });
+}
+
+/**
+ * Removes an item from an array by an index or a predicate condition.
+ *
+ * @typeParam T - schema type.
+ * @param state - The state array property.
+ * @param indexOrPredicate - The array index or a predicate condition.
+ * @returns A new array containing the modified state.
+ */
+export function removeState<T>(
+  state: ImmutableArray<T>,
+  indexOrPredicate: number | RemovePredicate<T>
+) {
+  return updateState(state, (draft) => {
+    if (typeof indexOrPredicate === 'number') {
+      draft.splice(indexOrPredicate, 1);
+      return;
+    }
+
+    let writeIndex = 0;
+
+    for (let readIndex = 0; readIndex < draft.length; readIndex++) {
+      const value = draft[readIndex];
+
+      if (value && !indexOrPredicate(value, readIndex)) {
+        draft[writeIndex] = value;
+        writeIndex++;
+      }
+    }
+
+    draft.length = writeIndex;
+  });
 }

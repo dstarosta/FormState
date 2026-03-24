@@ -170,6 +170,8 @@ export type FormStringOptions =
   | { required?: boolean; allowEmpty: boolean; error?: string }
   | { required?: boolean; allowEmpty?: boolean; error: string };
 
+export type RemovePredicate<T> = (value: T, index: number) => boolean;
+
 // Public types
 
 /**

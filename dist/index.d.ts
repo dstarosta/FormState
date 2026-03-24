@@ -95,6 +95,7 @@ type FormStringOptions = {
   allowEmpty?: boolean;
   error: string;
 };
+type RemovePredicate<T> = (value: T, index: number) => boolean;
 /**
  * Zod validation error.
  */
@@ -1433,6 +1434,34 @@ declare function updateState<T>(state: ImmutableArray<T> | undefined, updater: (
  * @returns A new object containing the modified state.
  */
 declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: (draft: T) => void): T;
+/**
+ * Appends one or more items to an array in an immutable state.
+ *
+ * @typeParam T - schema type.
+ * @param state - The state array property.
+ * @param items - A sequence of one or more items.
+ * @returns A new array containing the modified state.
+ */
+declare function appendState<T>(state: ImmutableArray<T>, ...items: T[]): T[];
+/**
+ * Insert one or more item to an array in an immutable state.
+ *
+ * @typeParam T - schema type.
+ * @param state - The state array property.
+ * @param index - The array index.
+ * @param items - A sequence of 1 or more items.
+ * @returns A new array containing the modified state.
+ */
+declare function insertState<T>(state: ImmutableArray<T>, index: number, ...items: T[]): T[];
+/**
+ * Removes an item from an array by an index or a predicate condition.
+ *
+ * @typeParam T - schema type.
+ * @param state - The state array property.
+ * @param indexOrPredicate - The array index or a predicate condition.
+ * @returns A new array containing the modified state.
+ */
+declare function removeState<T>(state: ImmutableArray<T>, indexOrPredicate: number | RemovePredicate<T>): T[];
 //#endregion
 //#region src/helpers/date-formatter.d.ts
 /**
@@ -1527,7 +1556,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
@@ -1568,5 +1597,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createState, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, appendState, value_converter_d_exports as convert, createState, formConnect, formDataEncode, formatDate, getState, insertState, removeState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

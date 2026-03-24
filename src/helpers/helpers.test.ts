@@ -3,7 +3,16 @@ import { describe, expect, it } from 'vitest';
 import type { FormMutableState, Immutable } from '../types/form-types';
 
 import { formatDate, formDataEncode, safeParseDate, validateState, z } from '..';
-import { cleanEmpty, createState, diffedState, getState, updateState } from './state-manager';
+import {
+  appendState,
+  cleanEmpty,
+  createState,
+  diffedState,
+  getState,
+  insertState,
+  removeState,
+  updateState,
+} from './state-manager';
 import { getSchemaType } from './schema-visitor';
 import { isValidDate } from './date-formatter';
 import { toInt, toFloat, toDate, toBoolean, toLiteral, toString } from './value-converter';
@@ -107,6 +116,41 @@ describe('helpers', () => {
 
       expect(updatedArrayState).toHaveLength(1);
       expect(updatedArrayState[0]).toBe(updatedItemState);
+    });
+
+    it('should append, insert and remove array state correctly', () => {
+      const data: Partial<z.infer<typeof formSchema>> = {
+        a: [{ i: 1, id: Symbol(1) }],
+      };
+
+      const state1 = appendState(data.a ?? [], { i: 2, id: Symbol(2) }, { i: 3, id: Symbol(3) });
+
+      expect(state1.findIndex((item) => item.i === 1)).toBe(0);
+      expect(state1.findIndex((item) => item.i === 2)).toBe(1);
+      expect(state1.findIndex((item) => item.i === 3)).toBe(2);
+      expect(state1.length).toBe(3);
+
+      const state2 = insertState(state1, 0, { i: 4, id: Symbol(4) }, { i: 5, id: Symbol(5) });
+
+      expect(state2.findIndex((item) => item.i === 1)).toBe(2);
+      expect(state2.findIndex((item) => item.i === 2)).toBe(3);
+      expect(state2.findIndex((item) => item.i === 3)).toBe(4);
+      expect(state2.findIndex((item) => item.i === 4)).toBe(0);
+      expect(state2.findIndex((item) => item.i === 5)).toBe(1);
+      expect(state2.length).toBe(5);
+
+      const state3 = removeState(state2, (item) => item.i % 2 === 0);
+
+      expect(state3.findIndex((item) => item.i === 1)).toBe(1);
+      expect(state3.findIndex((item) => item.i === 3)).toBe(2);
+      expect(state3.findIndex((item) => item.i === 5)).toBe(0);
+      expect(state3.length).toBe(3);
+
+      const state4 = removeState(state3, 0);
+
+      expect(state4.findIndex((item) => item.i === 1)).toBe(0);
+      expect(state4.findIndex((item) => item.i === 3)).toBe(1);
+      expect(state4.length).toBe(2);
     });
 
     it('should get state correctly', () => {
