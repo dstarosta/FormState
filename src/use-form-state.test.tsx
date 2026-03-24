@@ -1757,6 +1757,24 @@ describe('useFormState', () => {
       expect(formStatus.touched).toBe(false);
     });
 
+    it('should validate form', () => {
+      const { result } = renderHook(() => useFormState(schema));
+      const {
+        formState,
+        formActions: { validate },
+      } = result.current;
+
+      expect(formState.errors.name).toBeUndefined();
+
+      act(() => {
+        validate();
+      });
+
+      const { formState: validatedState } = result.current;
+
+      expect(validatedState.errors.name).toBe('Name is required');
+    });
+
     it('should submit form', () => {
       const initialState: InitialSchema = {
         name: 'John',
