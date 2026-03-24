@@ -5,6 +5,7 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
+import testingLibrary from 'eslint-plugin-testing-library';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 
@@ -20,6 +21,7 @@ export default defineConfig([
       react.configs.flat.recommended,
       react.configs.flat['jsx-runtime'],
       reactHooks.configs.flat.recommended,
+      testingLibrary.configs['flat/dom'],
       eslintConfigPrettier,
     ],
     languageOptions: {
@@ -52,9 +54,7 @@ export default defineConfig([
       'sonarjs/function-return-type': 'off', // different return types (ex: discriminated unions) are not an issue
       'sonarjs/no-nested-functions': 'off', // nested functions are very useful for closures in TS/JS
       'sonarjs/todo-tag': 'warn', // a TODO comment should not break the build; but it's a good idea to periodically remind you about it
-      /**
-       * Annoying Unicorn rules
-       */
+      // Annoying Unicorn rules
       'unicorn/no-null': 'off', // Douglas Crockford is wrong. "null" should be used as a literal when assigned manually, not "undefined".
       'unicorn/no-useless-undefined': ['error', { checkArguments: false }], // you cannot omit function arguments in strict TS (in tests)
       'unicorn/numeric-separators-style': 'off', // always forcing underscores in numeric constants makes no sense

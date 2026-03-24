@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, type Ref } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import {
@@ -2536,10 +2544,7 @@ describe('useFormState', () => {
                   value="submitManual"
                   onClick={(e) => {
                     e.preventDefault();
-                    submitForm(
-                      formRef.current,
-                      document.querySelector<HTMLElement>('button[value="submit"]')
-                    );
+                    submitForm(formRef.current, screen.getByText('Submit', { selector: 'button' }));
                   }}
                 >
                   Submit Manually
@@ -2605,14 +2610,12 @@ describe('useFormState', () => {
     };
 
     it.each([true, false])('should render form with properties', (watch) => {
-      const { getByLabelText, getByRole, getByTitle, queryByText } = render(
-        <FormComponent watch={watch} />
-      );
+      render(<FormComponent watch={watch} />);
 
-      const form = getByRole('form');
-      const input = getByLabelText('Name');
-      const name = getByTitle('name');
-      const submittedInfo = queryByText('Form Submitted');
+      const form = screen.getByRole('form');
+      const input = screen.getByLabelText('Name');
+      const name = screen.getByTitle('name');
+      const submittedInfo = screen.queryByText('Form Submitted');
 
       fireEvent.change(input, { target: { value: 'John' } });
       fireEvent.keyDown(input, { key: 'Enter' });
@@ -2623,12 +2626,10 @@ describe('useFormState', () => {
     });
 
     it.each([true, false])('should add error and touched CSS classes', (watch) => {
-      const { getByLabelText, getByTitle } = render(
-        <FormComponent initialValue="John" watch={watch} />
-      );
+      render(<FormComponent initialValue="John" watch={watch} />);
 
-      const input = getByLabelText('Name');
-      const name = getByTitle('name');
+      const input = screen.getByLabelText('Name');
+      const name = screen.getByTitle('name');
 
       fireEvent.change(input, { target: { value: '' } });
       fireEvent.blur(input);
@@ -2640,75 +2641,71 @@ describe('useFormState', () => {
     });
 
     it.each([true, false])('should submit form programatically', async (watch) => {
-      const { getByLabelText, getByText, getByTitle, queryByText, findByText } = render(
-        <FormComponent watch={watch} />
-      );
+      render(<FormComponent watch={watch} />);
 
-      const input = getByLabelText('Name');
-      const name = getByTitle('name');
-      const submitButton = getByText('Submit Manually');
+      const input = screen.getByLabelText('Name');
+      const name = screen.getByTitle('name');
+      const submitButton = screen.getByText('Submit Manually');
 
       fireEvent.change(input, { target: { value: 'John' } });
       fireEvent.keyDown(input, { key: 'Enter' });
 
       fireEvent.click(submitButton);
 
-      const submittingInfo = await findByText('Submitting...');
+      const submittingInfo = await screen.findByText('Submitting...');
       expect(submittingInfo).toBeInTheDocument();
 
       await waitFor(() => {
-        expect(queryByText('Submitting...')).not.toBeInTheDocument();
-
-        expect(submitFn).toHaveBeenCalledWith(
-          expect.objectContaining({ name: 'John' }),
-          expect.any(FormData)
-        );
-        expect(errorFn).not.toHaveBeenCalled();
-
-        expect(name).toContainHTML('John');
-
-        const submittedInfo = getByText('Form Submitted');
-        expect(submittedInfo).toBeInTheDocument();
+        expect(submittingInfo).not.toBeInTheDocument();
       });
+
+      expect(submitFn).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'John' }),
+        expect.any(FormData)
+      );
+      expect(errorFn).not.toHaveBeenCalled();
+
+      expect(name).toContainHTML('John');
+
+      const submittedInfo = screen.getByText('Form Submitted');
+      expect(submittedInfo).toBeInTheDocument();
     });
 
     it.each([true, false])('should submit form with "handleSubmit"', async (watch) => {
-      const { getByLabelText, getByTitle, getByText, queryByText, findByText } = render(
-        <FormComponent watch={watch} />
-      );
+      render(<FormComponent watch={watch} />);
 
-      const input = getByLabelText('Name');
-      const name = getByTitle('name');
-      const submitButton = getByText('Submit');
+      const input = screen.getByLabelText('Name');
+      const name = screen.getByTitle('name');
+      const submitButton = screen.getByText('Submit');
 
       fireEvent.change(input, { target: { value: 'John' } });
       fireEvent.keyDown(input, { key: 'Enter' });
 
       fireEvent.click(submitButton);
 
-      const submittingInfo = await findByText('Submitting...');
+      const submittingInfo = await screen.findByText('Submitting...');
       expect(submittingInfo).toBeInTheDocument();
 
       await waitFor(() => {
-        expect(queryByText('Submitting...')).not.toBeInTheDocument();
-
-        expect(submitFn).toHaveBeenCalledWith(
-          expect.objectContaining({ name: 'John' }),
-          expect.any(FormData)
-        );
-        expect(errorFn).not.toHaveBeenCalled();
-
-        expect(name).toContainHTML('John');
-
-        const submittedInfo = getByText('Form Submitted');
-        expect(submittedInfo).toBeInTheDocument();
-
-        const formData = submitFn.mock.calls[0]?.[1] as FormData;
-        expect(formData).toBeInstanceOf(FormData);
-
-        expect(formData.has('id')).toBe(true);
-        expect(formData.get('submitter')).toBe('submit');
+        expect(submittingInfo).not.toBeInTheDocument();
       });
+
+      expect(submitFn).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'John' }),
+        expect.any(FormData)
+      );
+      expect(errorFn).not.toHaveBeenCalled();
+
+      expect(name).toContainHTML('John');
+
+      const submittedInfo = screen.getByText('Form Submitted');
+      expect(submittedInfo).toBeInTheDocument();
+
+      const formData = submitFn.mock.calls[0]?.[1] as FormData;
+      expect(formData).toBeInstanceOf(FormData);
+
+      expect(formData.has('id')).toBe(true);
+      expect(formData.get('submitter')).toBe('submit');
     });
 
     it.each([true, false])('should fail to submit form using "submit"', async (watch) => {
@@ -2725,10 +2722,10 @@ describe('useFormState', () => {
         )
         .mockImplementation(() => {});
 
-      const { getByLabelText, getByText, queryByText } = render(<FormComponent watch={watch} />);
+      render(<FormComponent watch={watch} />);
 
-      const input = getByLabelText('Name');
-      const submitButton = getByText('Submit Fail');
+      const input = screen.getByLabelText('Name');
+      const submitButton = screen.getByText('Submit Fail');
 
       fireEvent.change(input, { target: { value: 'John' } });
       fireEvent.keyDown(input, { key: 'Enter' });
@@ -2736,7 +2733,7 @@ describe('useFormState', () => {
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
+        expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
       });
 
       expect(domConsoleSpy).toHaveBeenCalledTimes(1);
@@ -2745,10 +2742,10 @@ describe('useFormState', () => {
     });
 
     it.each([true, false])('should fail to submit form with name "Ivan"', async (watch) => {
-      const { getByLabelText, getByText, queryByText } = render(<FormComponent watch={watch} />);
+      render(<FormComponent watch={watch} />);
 
-      const input = getByLabelText('Name');
-      const submitButton = getByText('Submit');
+      const input = screen.getByLabelText('Name');
+      const submitButton = screen.getByText('Submit');
 
       fireEvent.change(input, { target: { value: 'Ivan' } });
       fireEvent.keyDown(input, { key: 'Enter' });
@@ -2756,7 +2753,6 @@ describe('useFormState', () => {
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(submitFn).not.toHaveBeenCalled();
         expect(errorFn).toHaveBeenCalledWith(
           expect.objectContaining({
             errors: expect.objectContaining({
@@ -2766,20 +2762,19 @@ describe('useFormState', () => {
           }),
           expect.objectContaining({ valid: false, submitted: false })
         );
-
-        expect(queryByText('Form Submitted')).not.toBeInTheDocument();
       });
+
+      expect(submitFn).not.toHaveBeenCalled();
+      expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
     });
 
     it.each([true, false])(
       'should not submit form with "handleSubmit" with errors',
       async (watch) => {
-        const { getByLabelText, getByText, queryByText } = render(
-          <FormComponent initialValue="John" watch={watch} />
-        );
+        render(<FormComponent initialValue="John" watch={watch} />);
 
-        const input = getByLabelText('Name');
-        const submitButton = getByText('Submit');
+        const input = screen.getByLabelText('Name');
+        const submitButton = screen.getByText('Submit');
 
         fireEvent.change(input, { target: { value: '' } });
         fireEvent.blur(input);
@@ -2790,49 +2785,49 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toHaveBeenCalled();
           expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
             expect.objectContaining({ valid: false, submitted: false })
           );
-
-          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
         });
+
+        expect(submitFn).not.toHaveBeenCalled();
+        expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
       }
     );
 
     it.each([true, false])(
       'should not submit form with "handleSubmit" with errors without validation',
       async (watch) => {
-        const { getByText, queryByText } = render(<FormComponent watch={watch} />);
+        render(<FormComponent watch={watch} />);
 
-        const submitButton = getByText('Submit');
+        const submitButton = screen.getByText('Submit');
 
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toHaveBeenCalled();
           expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
             expect.objectContaining({ valid: false, submitted: false })
           );
-
-          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
         });
+
+        expect(submitFn).not.toHaveBeenCalled();
+        expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
       }
     );
 
     it.each([true, false])(
       'should not submit form with "handleSubmit" with initial errors',
       async (watch) => {
-        const { getByLabelText, getByText, queryByText } = render(<FormComponent watch={watch} />);
+        render(<FormComponent watch={watch} />);
 
-        const input = getByLabelText('Name');
-        const submitButton = getByText('Submit');
+        const input = screen.getByLabelText('Name');
+        const submitButton = screen.getByText('Submit');
 
         fireEvent.change(input, { target: { value: '' } });
         fireEvent.blur(input);
@@ -2840,51 +2835,49 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toHaveBeenCalled();
           expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
             expect.objectContaining({ valid: false, submitted: false })
           );
-
-          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
         });
+
+        expect(submitFn).not.toHaveBeenCalled();
+        expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
       }
     );
 
     it.each([true, false])(
       'should not submit form with "handleSubmit" with initial errors without validations',
       async (watch) => {
-        const { getByText, queryByText } = render(<FormComponent watch={watch} />);
+        render(<FormComponent watch={watch} />);
 
-        const submitButton = getByText('Submit');
+        const submitButton = screen.getByText('Submit');
 
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toHaveBeenCalled();
           expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ name: 'Name is required' }) as object,
             }),
             expect.objectContaining({ valid: false, submitted: false })
           );
-
-          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
         });
+
+        expect(submitFn).not.toHaveBeenCalled();
+        expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
       }
     );
 
     it.each([true, false])(
       'should not submit form with "handleSubmit" with manual errors',
       async (watch) => {
-        const { getByLabelText, getByText, queryByText } = render(
-          <FormComponent manualError="A manual error" watch={watch} />
-        );
+        render(<FormComponent manualError="A manual error" watch={watch} />);
 
-        const input = getByLabelText('Name');
-        const submitButton = getByText('Submit');
+        const input = screen.getByLabelText('Name');
+        const submitButton = screen.getByText('Submit');
 
         fireEvent.change(input, { target: { value: 'John' } });
         fireEvent.keyDown(input, { key: 'Enter' });
@@ -2892,50 +2885,48 @@ describe('useFormState', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toHaveBeenCalled();
           expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
             }),
             expect.objectContaining({ valid: false, submitted: false })
           );
-
-          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
         });
+
+        expect(submitFn).not.toHaveBeenCalled();
+        expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
       }
     );
 
     it.each([true, false])(
       'should not submit form with "handleSubmit" with manual errors without validations',
       async (watch) => {
-        const { getByText, queryByText } = render(
-          <FormComponent initialValue="John" manualError="A manual error" watch={watch} />
-        );
+        render(<FormComponent initialValue="John" manualError="A manual error" watch={watch} />);
 
-        const submitButton = getByText('Submit');
+        const submitButton = screen.getByText('Submit');
 
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-          expect(submitFn).not.toHaveBeenCalled();
           expect(errorFn).toHaveBeenCalledWith(
             expect.objectContaining({
               errors: expect.objectContaining({ someProp: 'A manual error' }) as object,
             }),
             expect.objectContaining({ valid: false, submitted: false })
           );
-
-          expect(queryByText('Form Submitted')).not.toBeInTheDocument();
         });
+
+        expect(submitFn).not.toHaveBeenCalled();
+        expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
       }
     );
 
     it.each([true, false])('should reset form with properties', (watch) => {
-      const { getByLabelText, getByText, getByTitle } = render(<FormComponent watch={watch} />);
+      render(<FormComponent watch={watch} />);
 
-      const input = getByLabelText('Name');
-      const name = getByTitle('name');
-      const resetButton = getByText('Reset');
+      const input = screen.getByLabelText('Name');
+      const name = screen.getByTitle('name');
+      const resetButton = screen.getByText('Reset');
 
       fireEvent.change(input, { target: { value: 'John' } });
       fireEvent.keyDown(input, { key: 'Enter' });
@@ -2950,23 +2941,21 @@ describe('useFormState', () => {
     it('should watch the changes', async () => {
       const user = userEvent.setup();
 
-      const { getByLabelText, getByTestId, getByText } = render(
-        <FormComponent initialValue="Tom" watch />
-      );
+      render(<FormComponent initialValue="Tom" watch />);
 
-      const nameInput = getByLabelText('Name');
-      const ageInput = getByLabelText('Age');
-      const categorySelect = getByLabelText('Category');
-      const activeCheckbox = getByLabelText('Active');
-      const archivedYesRadio = getByTestId('archivedYes');
-      const archivedNoRadio = getByTestId('archivedNo');
-      const resetButton = getByText('Reset');
+      const nameInput = screen.getByLabelText('Name');
+      const ageInput = screen.getByLabelText('Age');
+      const categorySelect = screen.getByLabelText('Category');
+      const activeCheckbox = screen.getByLabelText('Active');
+      const archivedYesRadio = screen.getByTestId('archivedYes');
+      const archivedNoRadio = screen.getByTestId('archivedNo');
+      const resetButton = screen.getByText('Reset');
 
-      const watchedName = getByTestId('watched-name');
-      const watchedAge = getByTestId('watched-age');
-      const watchedCategory = getByTestId('watched-category');
-      const watchedActive = getByTestId('watched-active');
-      const watchedArchived = getByTestId('watched-archived');
+      const watchedName = screen.getByTestId('watched-name');
+      const watchedAge = screen.getByTestId('watched-age');
+      const watchedCategory = screen.getByTestId('watched-category');
+      const watchedActive = screen.getByTestId('watched-active');
+      const watchedArchived = screen.getByTestId('watched-archived');
 
       expect(nameInput).toHaveValue('Tom');
       expect(watchedName).toHaveTextContent('Tom');
@@ -3033,10 +3022,10 @@ describe('useFormState', () => {
     it('should watch the changes with a custom ref', async () => {
       const user = userEvent.setup();
 
-      const { getByLabelText, getByTestId } = render(<FormComponent forwardRef={() => {}} watch />);
+      render(<FormComponent forwardRef={() => {}} watch />);
 
-      const input = getByLabelText('Name');
-      const watchedName = getByTestId('watched-name');
+      const input = screen.getByLabelText('Name');
+      const watchedName = screen.getByTestId('watched-name');
 
       await user.click(input);
       await user.keyboard('John{Enter}');
@@ -3050,10 +3039,10 @@ describe('useFormState', () => {
     });
 
     it('should render form is the editable mode', () => {
-      const { getByLabelText } = render(<FormComponent watch={false} />);
+      render(<FormComponent watch={false} />);
 
-      const nameInput = getByLabelText('Name');
-      const categorySelect = getByLabelText('Category');
+      const nameInput = screen.getByLabelText('Name');
+      const categorySelect = screen.getByLabelText('Category');
 
       expect(nameInput).toBeEnabled();
       expect(nameInput).not.toHaveAttribute('readonly');
@@ -3064,10 +3053,10 @@ describe('useFormState', () => {
     });
 
     it('should render form is the editable mode when the mode is set', () => {
-      const { getByLabelText } = render(<FormComponent initialMode="editable" watch={false} />);
+      render(<FormComponent initialMode="editable" watch={false} />);
 
-      const nameInput = getByLabelText('Name');
-      const categorySelect = getByLabelText('Category');
+      const nameInput = screen.getByLabelText('Name');
+      const categorySelect = screen.getByLabelText('Category');
 
       expect(nameInput).toBeEnabled();
       expect(nameInput).not.toHaveAttribute('readonly');
@@ -3078,17 +3067,15 @@ describe('useFormState', () => {
     });
 
     it('should mark inputs readonly and hide selects/buttons when the form is readOnly', () => {
-      const { getByLabelText, getByTestId, queryByText } = render(
-        <FormComponent initialMode="readOnly" watch={false} />
-      );
+      render(<FormComponent initialMode="readOnly" watch={false} />);
 
-      const nameInput = getByLabelText('Name');
-      const ageInput = getByLabelText('Age');
-      const categorySelect = getByLabelText('Category');
-      const activeCheckbox = getByLabelText('Active');
-      const archivedYesRadio = getByTestId('archivedYes');
-      const archivedNoRadio = getByTestId('archivedNo');
-      const resetButton = queryByText('Reset');
+      const nameInput = screen.getByLabelText('Name');
+      const ageInput = screen.getByLabelText('Age');
+      const categorySelect = screen.getByLabelText('Category');
+      const activeCheckbox = screen.getByLabelText('Active');
+      const archivedYesRadio = screen.getByTestId('archivedYes');
+      const archivedNoRadio = screen.getByTestId('archivedNo');
+      const resetButton = screen.queryByText('Reset');
 
       expect(nameInput).toHaveAttribute('readonly');
       expect(ageInput).toHaveAttribute('readonly');
@@ -3103,17 +3090,15 @@ describe('useFormState', () => {
     });
 
     it('should disable inputs and hide buttons when the form is disabled', () => {
-      const { getByLabelText, getByTestId, queryByText } = render(
-        <FormComponent initialMode="disabled" watch={false} />
-      );
+      render(<FormComponent initialMode="disabled" watch={false} />);
 
-      const nameInput = getByLabelText('Name');
-      const ageInput = getByLabelText('Age');
-      const categorySelect = getByLabelText('Category');
-      const activeCheckbox = getByLabelText('Active');
-      const archivedYesRadio = getByTestId('archivedYes');
-      const archivedNoRadio = getByTestId('archivedNo');
-      const resetButton = queryByText('Reset');
+      const nameInput = screen.getByLabelText('Name');
+      const ageInput = screen.getByLabelText('Age');
+      const categorySelect = screen.getByLabelText('Category');
+      const activeCheckbox = screen.getByLabelText('Active');
+      const archivedYesRadio = screen.getByTestId('archivedYes');
+      const archivedNoRadio = screen.getByTestId('archivedNo');
+      const resetButton = screen.queryByText('Reset');
 
       expect(nameInput).toBeDisabled();
       expect(ageInput).toBeDisabled();
@@ -3128,13 +3113,13 @@ describe('useFormState', () => {
     });
 
     it('submits a simple form using onSubmit method', () => {
-      const { getByText, queryByTestId } = render(<SimpleFormComponent />);
+      render(<SimpleFormComponent />);
 
-      const submitButton = getByText('Submit Form');
+      const submitButton = screen.getByText('Submit Form');
       fireEvent.click(submitButton);
 
-      const nameError = queryByTestId('nameError');
-      const submittedElement = getByText('Submitted');
+      const nameError = screen.queryByTestId('nameError');
+      const submittedElement = screen.getByText('Submitted');
 
       expect(nameError).not.toBeInTheDocument();
       expect(submittedElement).toBeInTheDocument();
@@ -3143,14 +3128,14 @@ describe('useFormState', () => {
     it('does not submit a simple form by pressing Enter', async () => {
       const user = userEvent.setup();
 
-      const { getByTestId, queryByText } = render(<SimpleFormComponent />);
+      render(<SimpleFormComponent />);
 
-      const input = getByTestId('nameInput');
+      const input = screen.getByTestId('nameInput');
 
       await user.click(input);
       await user.keyboard('{Enter}');
 
-      const submittedElement = queryByText('Submitted');
+      const submittedElement = screen.queryByText('Submitted');
 
       expect(submittedElement).not.toBeInTheDocument();
     });
@@ -3158,35 +3143,33 @@ describe('useFormState', () => {
     it('submits a simple form with the "submitWithEnter" prop by pressing Enter', async () => {
       const user = userEvent.setup();
 
-      const { getByTestId, getByText, queryByTestId } = render(
-        <SimpleFormComponent submitWithEnter />
-      );
+      render(<SimpleFormComponent submitWithEnter />);
 
-      const input = getByTestId('nameInput');
+      const input = screen.getByTestId('nameInput');
 
       await user.click(input);
       await user.keyboard('{Enter}');
 
-      const nameError = queryByTestId('nameError');
-      const submittedElement = getByText('Submitted');
+      const nameError = screen.queryByTestId('nameError');
+      const submittedElement = screen.getByText('Submitted');
 
       expect(nameError).not.toBeInTheDocument();
       expect(submittedElement).toBeInTheDocument();
     });
 
     it('submits a simple form after changing the name', () => {
-      const { getByTestId, getByText, queryByTestId } = render(<SimpleFormComponent />);
+      render(<SimpleFormComponent />);
 
-      const input = getByTestId('nameInput');
+      const input = screen.getByTestId('nameInput');
       fireEvent.change(input, { target: { value: 'Todd' } });
 
-      const nameElement = getByText('Name: Todd');
+      const nameElement = screen.getByText('Name: Todd');
 
-      const submitButton = getByText('Submit Form');
+      const submitButton = screen.getByText('Submit Form');
       fireEvent.click(submitButton);
 
-      const nameError = queryByTestId('nameError');
-      const submittedElement = getByText('Submitted');
+      const nameError = screen.queryByTestId('nameError');
+      const submittedElement = screen.getByText('Submitted');
 
       expect(nameElement).toBeInTheDocument();
       expect(nameError).not.toBeInTheDocument();
@@ -3194,27 +3177,27 @@ describe('useFormState', () => {
     });
 
     it('fails to submit a simple form after clearing the name', () => {
-      const { getByTestId, getByText, queryByText } = render(<SimpleFormComponent />);
+      render(<SimpleFormComponent />);
 
-      const input = getByTestId('nameInput');
+      const input = screen.getByTestId('nameInput');
       fireEvent.change(input, { target: { value: '' } });
 
-      const submitButton = getByText('Submit Form');
+      const submitButton = screen.getByText('Submit Form');
       fireEvent.click(submitButton);
 
-      const nameError = getByTestId('nameError');
-      const submittedElement = queryByText('Submitted');
+      const nameError = screen.getByTestId('nameError');
+      const submittedElement = screen.queryByText('Submitted');
 
       expect(nameError).toBeInTheDocument();
       expect(submittedElement).not.toBeInTheDocument();
     });
 
     it('fails to find the submit button in an unmounted form', () => {
-      const { queryByText, unmount } = render(<SimpleFormComponent />);
+      const { unmount } = render(<SimpleFormComponent />);
 
       unmount();
 
-      const submitButton = queryByText('Submit Form');
+      const submitButton = screen.queryByText('Submit Form');
 
       expect(submitButton).not.toBeInTheDocument();
     });
