@@ -14,9 +14,11 @@ import { dotPathGet } from './helpers/dot-path';
 import { createFormComponent } from './helpers/form-builder';
 
 import type {
-  DeepPartial,
+  ArrayElement,
   ChangeListener,
+  DeepPartial,
   FieldRange,
+  FormChangeArrayOptions,
   FormChangeOptions,
   FormClassOptions,
   FormPath,
@@ -24,6 +26,7 @@ import type {
   FormInitOptions,
   FormMode,
   FormMutableState,
+  FormPathValue,
   FormReplaceOptions,
   FormResetOptions,
   FormSetErrorOptions,
@@ -36,6 +39,7 @@ import type {
   FormTouchOptions,
   FormValidateOptions,
   Immutable,
+  ImmutableArray,
   StateCallback,
   SubmitState,
   SubmittedData,
@@ -60,6 +64,8 @@ import {
   getFieldMaxLength,
   getFieldPattern,
   getFieldRange,
+  getState,
+  updateState,
   wasFieldTouched,
 } from './helpers/state-manager';
 import { formatErrors } from './helpers/error-formatter';
@@ -67,6 +73,8 @@ import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
 import { createFormStore } from './helpers/form-store';
 import { IS_DEVELOPMENT } from './helpers/development-helper';
+
+const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an array type.';
 
 /**
  * Hook that manages form state.
@@ -709,6 +717,258 @@ export function useFormState<T extends z.ZodMiniObject>(
     [validateOnTouch, formState.data, dispatch]
   );
 
+  const append = useCallback(
+    <P extends FormPath<T>, I = FormPathValue<T, P>>(
+      nameOrPath: P,
+      items: ArrayElement<I>[] | ArrayElement<I>,
+      options?: FormChangeArrayOptions<T>
+    ) => {
+      const path =
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : (nameOrPath as keyof State);
+      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
+
+      if (!Array.isArray(pathState)) {
+        throw new TypeError(NON_ARRAY_PATH_ERROR);
+      }
+
+      const updatedState = updateState(pathState as ImmutableArray<ArrayElement<I>>, (draft) => {
+        if (Array.isArray(items)) {
+          draft.push(...items);
+        } else {
+          draft.push(items);
+        }
+      });
+
+      dispatch({
+        type: 'change',
+        name: path,
+        value: updatedState,
+        options: {
+          touch: Boolean(options?.touch),
+          validate: options?.validate ?? validateOnChange,
+        },
+      });
+    },
+    [schema, validateOnChange, dispatch]
+  );
+
+  const insert = useCallback(
+    <P extends FormPath<T>, I = FormPathValue<T, P>>(
+      nameOrPath: P,
+      index: number,
+      items: ArrayElement<I>[] | ArrayElement<I>,
+      options?: FormChangeArrayOptions<T>
+    ) => {
+      const path =
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : (nameOrPath as keyof State);
+      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
+
+      if (!Array.isArray(pathState)) {
+        throw new TypeError(NON_ARRAY_PATH_ERROR);
+      }
+
+      const updatedState = updateState(pathState as ImmutableArray<ArrayElement<I>>, (draft) => {
+        if (Array.isArray(items)) {
+          draft.splice(index, 0, ...items);
+        } else {
+          draft.splice(index, 0, items);
+        }
+      });
+
+      dispatch({
+        type: 'change',
+        name: path,
+        value: updatedState,
+        options: {
+          touch: Boolean(options?.touch),
+          validate: options?.validate ?? validateOnChange,
+        },
+      });
+    },
+    [schema, validateOnChange, dispatch]
+  );
+
+  const update = useCallback(
+    <P extends FormPath<T>, I = FormPathValue<T, P>>(
+      nameOrPath: P,
+      index: number,
+      item: ArrayElement<I>,
+      options?: FormChangeArrayOptions<T>
+    ) => {
+      const path =
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : (nameOrPath as keyof State);
+      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
+
+      if (!Array.isArray(pathState)) {
+        throw new TypeError(NON_ARRAY_PATH_ERROR);
+      }
+
+      const updatedState = updateState(pathState as ImmutableArray<ArrayElement<I>>, (draft) => {
+        draft.splice(index, 1, item);
+      });
+
+      dispatch({
+        type: 'change',
+        name: path,
+        value: updatedState,
+        options: {
+          touch: Boolean(options?.touch),
+          validate: options?.validate ?? validateOnChange,
+        },
+      });
+    },
+    [schema, validateOnChange, dispatch]
+  );
+
+  const swap = useCallback(
+    (nameOrPath: FormPath<T>, from: number, to: number, options?: FormChangeArrayOptions<T>) => {
+      const path =
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : (nameOrPath as keyof State);
+      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
+
+      if (!Array.isArray(pathState)) {
+        throw new TypeError(NON_ARRAY_PATH_ERROR);
+      }
+
+      const updatedState = updateState(pathState as unknown[], (draft) => {
+        if (from < 0 || to < 0 || from >= draft.length || to >= draft.length) {
+          throw new Error(
+            `Index out of bounds: fromIndex=${String(from)}, toIndex=${String(to)}, array length=${String(draft.length)}`
+          );
+        }
+
+        if (from !== to) {
+          const temp = draft[from];
+          draft[from] = draft[to];
+          draft[to] = temp;
+        }
+      });
+
+      dispatch({
+        type: 'change',
+        name: path,
+        value: updatedState,
+        options: {
+          touch: Boolean(options?.touch),
+          validate: options?.validate ?? validateOnChange,
+        },
+      });
+    },
+    [schema, validateOnChange, dispatch]
+  );
+
+  const sort = useCallback(
+    <P extends FormPath<T>, I = FormPathValue<T, P>>(
+      nameOrPath: P,
+      sortFn: (item1: ArrayElement<I>, item2: ArrayElement<I>) => number,
+      options?: FormChangeArrayOptions<T>
+    ) => {
+      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
+
+      if (!Array.isArray(pathState)) {
+        throw new TypeError(NON_ARRAY_PATH_ERROR);
+      }
+
+      const updatedState = updateState(pathState as ImmutableArray<ArrayElement<I>>, (draft) => {
+        draft.sort(sortFn);
+      });
+
+      change(nameOrPath, updatedState, options);
+    },
+    [schema, change]
+  );
+
+  const remove = useCallback(
+    <P extends FormPath<T>>(
+      nameOrPath: P,
+      indexOrPredicate:
+        | number
+        | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
+      options?: FormChangeArrayOptions<T>
+    ) => {
+      const path =
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : (nameOrPath as keyof State);
+      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
+
+      if (!Array.isArray(pathState)) {
+        throw new TypeError(NON_ARRAY_PATH_ERROR);
+      }
+
+      const updatedState = updateState(
+        pathState as ImmutableArray<ArrayElement<FormPathValue<T, P>>>,
+        (draft) => {
+          if (typeof indexOrPredicate === 'number') {
+            draft.splice(indexOrPredicate, 1);
+            return;
+          }
+
+          let writeIndex = 0;
+
+          for (let readIndex = 0; readIndex < draft.length; readIndex++) {
+            const value = draft[readIndex];
+
+            if (value && !indexOrPredicate(value, readIndex)) {
+              draft[writeIndex] = value;
+              writeIndex++;
+            }
+          }
+
+          draft.length = writeIndex;
+        }
+      );
+
+      dispatch({
+        type: 'change',
+        name: path,
+        value: updatedState,
+        options: {
+          touch: Boolean(options?.touch),
+          validate: options?.validate ?? validateOnChange,
+        },
+      });
+    },
+    [schema, validateOnChange, dispatch]
+  );
+
+  const clear = useCallback(
+    (nameOrPath: FormPath<T>, options?: FormChangeArrayOptions<T>) => {
+      const path =
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : (nameOrPath as keyof State);
+      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
+
+      if (!Array.isArray(pathState)) {
+        throw new TypeError(NON_ARRAY_PATH_ERROR);
+      }
+
+      const updatedState = updateState(pathState as unknown[], (draft) => {
+        draft.length = 0;
+      });
+
+      dispatch({
+        type: 'change',
+        name: path,
+        value: updatedState,
+        options: {
+          touch: Boolean(options?.touch),
+          validate: options?.validate ?? validateOnChange,
+        },
+      });
+    },
+    [schema, validateOnChange, dispatch]
+  );
+
   // The memoized "validate" function.
   const validate = useCallback(
     (options?: FormValidateOptions<T>) => {
@@ -1007,15 +1267,24 @@ export function useFormState<T extends z.ZodMiniObject>(
       formActions: {
         change,
         replace,
-        reset,
         touch,
         validate,
+        reset,
         setDirty,
         setMode,
         setError,
         clearManualErrors,
         getSubmittedData,
         inferName,
+        array: {
+          append,
+          insert,
+          update,
+          swap,
+          sort,
+          remove,
+          clear,
+        },
       },
       formHandlers: {
         handleSubmit,
@@ -1039,9 +1308,16 @@ export function useFormState<T extends z.ZodMiniObject>(
       formClasses,
       change,
       replace,
-      reset,
       touch,
+      append,
+      insert,
+      update,
+      swap,
+      sort,
+      remove,
+      clear,
       validate,
+      reset,
       setDirty,
       setMode,
       setError,

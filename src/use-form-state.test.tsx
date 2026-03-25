@@ -385,16 +385,158 @@ describe('useFormState', () => {
     it('should handle array fields', () => {
       const { result } = renderHook(() => useFormState(schema));
       const {
-        formActions: { change },
+        formActions: {
+          change,
+          array: { append, clear, insert, remove, sort, swap, update },
+        },
       } = result.current;
 
       act(() => {
-        change('tags', ['x', 'y']);
+        change('tags', ['a', 'b']);
       });
 
       const { formState } = result.current;
+      expect(formState.data.tags).toStrictEqual(['a', 'b']);
 
-      expect(formState.data.tags).toStrictEqual(['x', 'y']);
+      act(() => {
+        append('tags', ['c', 'd'], {
+          callback: (state) => {
+            expect(state.data.tags).toStrictEqual(['a', 'b', 'c', 'd']);
+          },
+        });
+      });
+
+      act(() => {
+        append((path) => path.tags, 'e');
+      });
+
+      const { formState: appendedState } = result.current;
+      expect(appendedState.data.tags).toStrictEqual(['a', 'b', 'c', 'd', 'e']);
+
+      act(() => {
+        insert('tags', 0, ['e', 'f'], {
+          callback: (state) => {
+            expect(state.data.tags).toStrictEqual(['e', 'f', 'a', 'b', 'c', 'd', 'e']);
+          },
+        });
+      });
+
+      act(() => {
+        insert((path) => path.tags, 2, 'g');
+      });
+
+      const { formState: insertedState } = result.current;
+      expect(insertedState.data.tags).toStrictEqual(['e', 'f', 'g', 'a', 'b', 'c', 'd', 'e']);
+
+      act(() => {
+        update((path) => path.tags, -1, 'h');
+      });
+
+      act(() => {
+        update('tags', 1, insertedState.data.tags[1] ?? 'N/A');
+      });
+
+      const { formState: updatedState } = result.current;
+      expect(updatedState.data.tags).toStrictEqual(['e', 'f', 'g', 'a', 'b', 'c', 'd', 'h']);
+
+      act(() => {
+        swap('tags', 2, 7);
+      });
+
+      act(() => {
+        swap((path) => path.tags, 5, 5);
+      });
+
+      const { formState: swappedState } = result.current;
+      expect(swappedState.data.tags).toStrictEqual(['e', 'f', 'h', 'a', 'b', 'c', 'd', 'g']);
+
+      act(() => {
+        remove('tags', (value) => value.toUpperCase() === 'C');
+      });
+
+      act(() => {
+        remove((path) => path.tags, 2);
+      });
+
+      const { formState: removedState } = result.current;
+      expect(removedState.data.tags).toStrictEqual(['e', 'f', 'a', 'b', 'd', 'g']);
+
+      act(() => {
+        sort('tags', (a, b) => b.localeCompare(a));
+      });
+
+      act(() => {
+        sort(
+          (path) => path.tags,
+          (a, b) => a.length - b.length
+        );
+      });
+
+      const { formState: sortedState } = result.current;
+      expect(sortedState.data.tags).toStrictEqual(['g', 'f', 'e', 'd', 'b', 'a']);
+
+      act(() => {
+        clear('tags');
+        clear((path) => path.tags);
+      });
+
+      const { formState: clearedState } = result.current;
+      expect(clearedState.data.tags).toStrictEqual([]);
+    });
+
+    it('should throw on non-array fields', () => {
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialState: { tags: ['a', 'b'] } })
+      );
+      const {
+        formActions: {
+          array: { append, clear, insert, remove, sort, swap, update },
+        },
+      } = result.current;
+
+      expect(() => {
+        append('isArchived', true as never);
+      }).toThrow(TypeError);
+
+      expect(() => {
+        insert('info', 0, true as never);
+      }).toThrow(TypeError);
+
+      expect(() => {
+        update('name', 0, true as never);
+      }).toThrow(TypeError);
+
+      expect(() => {
+        swap('registeredOn', 0, 1);
+      }).toThrow(TypeError);
+
+      expect(() => {
+        swap('tags', 0, -1);
+      }).toThrow(Error);
+
+      expect(() => {
+        swap('tags', -1, 1);
+      }).toThrow(Error);
+
+      expect(() => {
+        swap('tags', 0, 9999);
+      }).toThrow(Error);
+
+      expect(() => {
+        swap('tags', 9999, 0);
+      }).toThrow(Error);
+
+      expect(() => {
+        remove('version', 0);
+      }).toThrow(TypeError);
+
+      expect(() => {
+        sort('category', (a, b) => (a === b ? 0 : 1));
+      }).toThrow(TypeError);
+
+      expect(() => {
+        clear('specialNumber');
+      }).toThrow(TypeError);
     });
 
     it('should update initial state reactively', () => {

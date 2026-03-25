@@ -5,7 +5,7 @@ import type * as z from 'zod/mini';
 
 import { FormStateError } from '../helpers/form-state-error';
 
-// Internal types
+// Private types
 
 type TypeIteration = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...0[]];
 
@@ -25,6 +25,8 @@ type RangeOf<T> =
   | number
   | (IsUnion<T, Date | string> extends true ? Date | string : never)
   | (IsUnion<T, number | ''> extends true ? number | '' : never);
+
+// Internal types
 
 export type ImmutablePrimitive =
   | undefined
@@ -57,6 +59,8 @@ export type Immutable<T> = T extends ImmutablePrimitive
           : T;
 
 export type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
+
+export type ArrayElement<A> = A extends readonly (infer U)[] ? U : never;
 
 export type UnknownObject = Record<string | number | symbol, unknown>;
 
@@ -170,7 +174,8 @@ export type FormStringOptions =
   | { required?: boolean; allowEmpty: boolean; error?: string }
   | { required?: boolean; allowEmpty?: boolean; error: string };
 
-export type RemovePredicate<T> = (value: T, index: number) => boolean;
+export type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> =
+  P extends FormPath<T> ? FormPathValue<T, P> : unknown;
 
 // Public types
 
@@ -536,9 +541,9 @@ export type FormStatus = {
  *
  * @typeParam T - form state type.
  */
-export type FormPath<T extends z.ZodMiniObject> =
-  | keyof z.infer<T>
-  | ((data: z.infer<T>) => unknown);
+// "any" allows inference to flow forward.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type FormPath<T extends z.ZodMiniObject> = keyof z.infer<T> | ((data: z.infer<T>) => any);
 
 /**
  * Helper type to resolve the value type from a FormPath.
@@ -609,6 +614,14 @@ export type FormChangeOptions<T extends z.ZodMiniObject> = {
    */
   callback?: ((state: FormState<z.infer<T>>, status: FormStatus) => void) | undefined;
 };
+
+/**
+ * Form array data change options.
+ */
+export type FormChangeArrayOptions<T extends z.ZodMiniObject> = Omit<
+  FormChangeOptions<T>,
+  'debounceIntervalMs'
+>;
 
 /**
  * Form data replace options.
@@ -913,6 +926,122 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      * @returns The inferred name.
      */
     inferName: (nameOrPath: FormPath<T>, format?: 'bracket' | 'dot') => string;
+    /**
+     * Array data change operations.
+     */
+    array: {
+      /**
+       * Appends an item to the end of an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param items - An item or an array of items to append.
+       * @param options - Options for the corresponding change event.
+       */
+      append: <P extends FormPath<T>, I = FormPathValue<T, P>>(
+        nameOrPath: P,
+        items: ArrayElement<I>[] | ArrayElement<I>,
+        options?: FormChangeArrayOptions<T>
+      ) => void;
+      /**
+       * Inserts an item at the specified index in an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param index - An array index.
+       * @param items - An item or an array of items to append.
+       * @param options - Options for the corresponding change event.
+       */
+      insert: <P extends FormPath<T>, I = FormPathValue<T, P>>(
+        nameOrPath: P,
+        index: number,
+        items: ArrayElement<I>[] | ArrayElement<I>,
+        options?: FormChangeArrayOptions<T>
+      ) => void;
+      /**
+       * Updates an item at the specified index of an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param index - An array index.
+       * @param items - An item or an array of items to append.
+       * @param options - Options for the corresponding change event.
+       */
+      update: <P extends FormPath<T>, I = FormPathValue<T, P>>(
+        nameOrPath: P,
+        index: number,
+        item: ArrayElement<I>,
+        options?: FormChangeArrayOptions<T>
+      ) => void;
+      /**
+       * Sorts items of an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param sortFn - Function used to determine the order of the elements.
+       *                 It is expected to return a negative value if the first argument is less than
+       *                 the second argument, zero if they're equal, and a positive value otherwise.
+       * @param options - Options for the corresponding change event.
+       */
+      sort: <P extends FormPath<T>, I = FormPathValue<T, P>>(
+        nameOrPath: P,
+        sortFn: (item1: ArrayElement<I>, item2: ArrayElement<I>) => number,
+        options?: FormChangeArrayOptions<T>
+      ) => void;
+      /**
+       * Swaps 2 items with the specified indexes in an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param from - The swapped item's array index.
+       * @param to - The target item's array index.
+       * @param options - Options for the corresponding change event.
+       */
+      swap: (
+        nameOrPath: FormPath<T>,
+        from: number,
+        to: number,
+        options?: FormChangeArrayOptions<T>
+      ) => void;
+      /**
+       * Removes items from an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param indexOrPredicate - An array index number, or a predicate function that returns a
+       *                           `boolean` value that indicates that the item should be removed.
+       * @param options - Options for the corresponding change event.
+       */
+      remove: <P extends FormPath<T>>(
+        nameOrPath: P,
+        indexOrPredicate:
+          | number
+          | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
+        options?: FormChangeArrayOptions<T>
+      ) => void;
+      /**
+       * Removes all items from an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param options - Options for the corresponding change event.
+       */
+      clear: (nameOrPath: FormPath<T>, options?: FormChangeArrayOptions<T>) => void;
+    };
   };
   /**
    * Form handler functions.

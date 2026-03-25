@@ -32,6 +32,7 @@ type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
 type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
 type Immutable<T> = T extends ImmutablePrimitive ? T : T extends Array<infer U> ? ImmutableArray<U> : T extends Map<infer K, infer V> ? ImmutableMap<K, V> : T extends Set<infer M> ? ImmutableSet<M> : T extends object ? ImmutableObject<T> : T;
 type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
+type ArrayElement<A> = A extends readonly (infer U)[] ? U : never;
 type FieldRange = number | Date | undefined;
 type FormMutableState<T extends object> = {
   initialData: T;
@@ -95,7 +96,7 @@ type FormStringOptions = {
   allowEmpty?: boolean;
   error: string;
 };
-type RemovePredicate<T> = (value: T, index: number) => boolean;
+type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> = P extends FormPath<T> ? FormPathValue<T, P> : unknown;
 /**
  * Zod validation error.
  */
@@ -424,7 +425,7 @@ type FormStatus = {
  *
  * @typeParam T - form state type.
  */
-type FormPath<T extends z.ZodMiniObject> = keyof z.infer<T> | ((data: z.infer<T>) => unknown);
+type FormPath<T extends z.ZodMiniObject> = keyof z.infer<T> | ((data: z.infer<T>) => any);
 /**
  * Helper type to resolve the value type from a FormPath.
  *
@@ -484,6 +485,10 @@ type FormChangeOptions<T extends z.ZodMiniObject> = {
    */
   callback?: ((state: FormState<z.infer<T>>, status: FormStatus) => void) | undefined;
 };
+/**
+ * Form array data change options.
+ */
+type FormChangeArrayOptions<T extends z.ZodMiniObject> = Omit<FormChangeOptions<T>, 'debounceIntervalMs'>;
 /**
  * Form data replace options.
  */
@@ -766,6 +771,93 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * @returns The inferred name.
      */
     inferName: (nameOrPath: FormPath<T>, format?: 'bracket' | 'dot') => string;
+    /**
+     * Array data change operations.
+     */
+    array: {
+      /**
+       * Appends an item to the end of an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param items - An item or an array of items to append.
+       * @param options - Options for the corresponding change event.
+       */
+      append: <P extends FormPath<T>, I = FormPathValue<T, P>>(nameOrPath: P, items: ArrayElement<I>[] | ArrayElement<I>, options?: FormChangeArrayOptions<T>) => void;
+      /**
+       * Inserts an item at the specified index in an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param index - An array index.
+       * @param items - An item or an array of items to append.
+       * @param options - Options for the corresponding change event.
+       */
+      insert: <P extends FormPath<T>, I = FormPathValue<T, P>>(nameOrPath: P, index: number, items: ArrayElement<I>[] | ArrayElement<I>, options?: FormChangeArrayOptions<T>) => void;
+      /**
+       * Updates an item at the specified index of an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param index - An array index.
+       * @param items - An item or an array of items to append.
+       * @param options - Options for the corresponding change event.
+       */
+      update: <P extends FormPath<T>, I = FormPathValue<T, P>>(nameOrPath: P, index: number, item: ArrayElement<I>, options?: FormChangeArrayOptions<T>) => void;
+      /**
+       * Sorts items of an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param sortFn - Function used to determine the order of the elements.
+       *                 It is expected to return a negative value if the first argument is less than
+       *                 the second argument, zero if they're equal, and a positive value otherwise.
+       * @param options - Options for the corresponding change event.
+       */
+      sort: <P extends FormPath<T>, I = FormPathValue<T, P>>(nameOrPath: P, sortFn: (item1: ArrayElement<I>, item2: ArrayElement<I>) => number, options?: FormChangeArrayOptions<T>) => void;
+      /**
+       * Swaps 2 items with the specified indexes in an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param from - The swapped item's array index.
+       * @param to - The target item's array index.
+       * @param options - Options for the corresponding change event.
+       */
+      swap: (nameOrPath: FormPath<T>, from: number, to: number, options?: FormChangeArrayOptions<T>) => void;
+      /**
+       * Removes items from an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param indexOrPredicate - An array index number, or a predicate function that returns a
+       *                           `boolean` value that indicates that the item should be removed.
+       * @param options - Options for the corresponding change event.
+       */
+      remove: <P extends FormPath<T>>(nameOrPath: P, indexOrPredicate: number | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean), options?: FormChangeArrayOptions<T>) => void;
+      /**
+       * Removes all items from an array data property.
+       *
+       * @typeParam T - form state type.
+       * @typeParam P - the form path type.
+       * @typeParam I - the array item type.
+       * @param nameOrPath - Root level field name or a state path expression.
+       * @param options - Options for the corresponding change event.
+       */
+      clear: (nameOrPath: FormPath<T>, options?: FormChangeArrayOptions<T>) => void;
+    };
   };
   /**
    * Form handler functions.
@@ -1415,7 +1507,7 @@ declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPa
  * @param data - The strongly typed state data.
  * @returns The child data or the field value that is assigned to the provided name or path.
  */
-declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValue<T, P>;
+declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValueOrUnknown<T, P>;
 /**
  * Updates an immutable array state in a nested schema.
  *
@@ -1434,34 +1526,6 @@ declare function updateState<T>(state: ImmutableArray<T> | undefined, updater: (
  * @returns A new object containing the modified state.
  */
 declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: (draft: T) => void): T;
-/**
- * Appends one or more items to an array in an immutable state.
- *
- * @typeParam T - schema type.
- * @param state - The state array property.
- * @param items - A sequence of one or more items.
- * @returns A new array containing the modified state.
- */
-declare function appendState<T>(state: ImmutableArray<T>, ...items: T[]): T[];
-/**
- * Insert one or more item to an array in an immutable state.
- *
- * @typeParam T - schema type.
- * @param state - The state array property.
- * @param index - The array index.
- * @param items - A sequence of 1 or more items.
- * @returns A new array containing the modified state.
- */
-declare function insertState<T>(state: ImmutableArray<T>, index: number, ...items: T[]): T[];
-/**
- * Removes an item from an array by an index or a predicate condition.
- *
- * @typeParam T - schema type.
- * @param state - The state array property.
- * @param indexOrPredicate - The array index or a predicate condition.
- * @returns A new array containing the modified state.
- */
-declare function removeState<T>(state: ImmutableArray<T>, indexOrPredicate: number | RemovePredicate<T>): T[];
 //#endregion
 //#region src/helpers/date-formatter.d.ts
 /**
@@ -1556,7 +1620,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
@@ -1597,5 +1661,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, appendState, value_converter_d_exports as convert, createState, formConnect, formDataEncode, formatDate, getState, insertState, removeState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type ChangeListener, type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type SubmitState, value_converter_d_exports as convert, createState, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map
