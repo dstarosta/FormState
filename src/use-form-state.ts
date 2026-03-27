@@ -224,6 +224,9 @@ export function useFormState<T extends z.ZodMiniObject>(
   const formStateRef = useRef(formState);
   formStateRef.current = formState;
 
+  // Ref to store the last submittedFormData.
+  const lastSubmittedFormData = useRef<FormData | undefined>(undefined);
+
   // The pending state during the form submit action.
   const [isSubmitting, setIsSubmitting] = useOptimistic(false);
 
@@ -455,7 +458,13 @@ export function useFormState<T extends z.ZodMiniObject>(
     const { data, errors } = generateListenerState();
 
     for (const listener of changeListeners.current) {
-      listener('submit', data, errors, formStateRef.current.submitCount);
+      listener(
+        'submit',
+        data,
+        errors,
+        formStateRef.current.submitCount,
+        lastSubmittedFormData.current
+      );
     }
   }, [schema, formState.submitCount, generateListenerState]);
 
@@ -986,6 +995,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         if (hasErrors) {
           dispatch({ type: 'validate' });
         } else {
+          lastSubmittedFormData.current = undefined;
+
           dispatch({
             type: 'submit',
             submittedData: { data: formStateRef.current.data, formData: null },
@@ -1097,6 +1108,8 @@ export function useFormState<T extends z.ZodMiniObject>(
             );
           });
         }
+
+        lastSubmittedFormData.current = submittedFormData;
 
         dispatch({
           type: 'submit',

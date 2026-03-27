@@ -2992,12 +2992,30 @@ describe('useFormState', () => {
     });
 
     it('should listen to form changes', async () => {
-      const actionMock = vi.fn<ChangeListener<Schema>>((type, data, errors) => {
-        expect(type).toBeOneOf(['change', 'submit']);
-        expect(data.toObject().name).toBe('John');
-        expect(errors.get((path) => path.name)).toBeUndefined();
-        expect(errors.getManual('name')).toBeUndefined();
-      });
+      const actionMock = vi.fn<ChangeListener<Schema>>(
+        (type, data, errors, submitCount, formData) => {
+          expect(type).toBeOneOf(['change', 'submit']);
+          expect(data.toObject().name).toBe('John');
+          expect(errors.get((path) => path.name)).toBeUndefined();
+          expect(errors.getManual('name')).toBeUndefined();
+          expect(submitCount).toBeOneOf([0, 1]);
+
+          if (type === 'submit') {
+            expect(formData).toBeInstanceOf(FormData);
+
+            if (formData) {
+              expect(formData.get('name')).toBe(data.name);
+              expect(formData.get('info["age"]')).toBe(data.info.age.toString());
+              expect(formData.get('category')).toBe(data.category);
+              expect(formData.get('archivedSelector')).toBe(convert.toString(data.isArchived));
+              expect(formData.get('isActive')).toBe('on');
+              expect(formData.get('submitter')).toBe('submit');
+            }
+          } else {
+            expect(formData).toBeUndefined();
+          }
+        }
+      );
 
       const listener: ChangeListener<Schema> = (...args) => {
         actionMock(...args);
@@ -3045,6 +3063,17 @@ describe('useFormState', () => {
         );
       });
 
+      fireEvent.click(activeCheckbox);
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.stringMatching('change'),
+          expect.objectContaining({ name: 'John', category: 'legacy', isActive: true }),
+          expect.any(Object),
+          0
+        );
+      });
+
       fireEvent.click(archivedYesRadio);
 
       await waitFor(() => {
@@ -3053,7 +3082,7 @@ describe('useFormState', () => {
           expect.objectContaining({
             name: 'John',
             category: 'legacy',
-            isActive: false,
+            isActive: true,
             isArchived: true,
           }),
           expect.any(Object),
@@ -3069,11 +3098,12 @@ describe('useFormState', () => {
           expect.objectContaining({
             name: 'John',
             category: 'legacy',
-            isActive: false,
+            isActive: true,
             isArchived: true,
           }),
           expect.any(Object),
-          1 // submit count
+          1, // submit count
+          expect.any(FormData)
         );
       });
 
@@ -3085,7 +3115,7 @@ describe('useFormState', () => {
           expect.objectContaining({
             name: 'John',
             category: 'unconfirmed',
-            isActive: false,
+            isActive: true,
             isArchived: true,
           }),
           expect.any(Object),
@@ -3101,7 +3131,7 @@ describe('useFormState', () => {
           expect.objectContaining({
             name: 'John',
             category: 'legacy',
-            isActive: false,
+            isActive: true,
             isArchived: true,
           }),
           expect.any(Object),
@@ -3109,7 +3139,7 @@ describe('useFormState', () => {
         );
       });
 
-      expect(actionMock).toHaveBeenCalledTimes(7);
+      expect(actionMock).toHaveBeenCalledTimes(8);
     });
 
     it('should detect unstable listener function', () => {

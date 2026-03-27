@@ -140,8 +140,9 @@ type SubmittedData<T extends object> = {
  * @param data - Form state data.
  * @param errors - Form errors.
  * @param submitCount - A number indicating how many times the form has been submitted.
+ * @param formData - Form data in the `FormData` format (only in 'submit' events).
  */
-type ChangeListener<T extends object> = (type: FormEventType, data: FormState<T>['data'], errors: FormState<T>['errors'], submitCount: number) => void;
+type ChangeListener<T extends object> = (type: FormEventType, data: FormState<T>['data'], errors: FormState<T>['errors'], submitCount: number, formData?: FormData) => void;
 /**
  * Form initialization options.
  *
