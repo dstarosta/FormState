@@ -72,6 +72,7 @@ import { formatErrors } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
 import { createFormStore } from './helpers/form-store';
+import { createUseListener } from './helpers/use-listener-builder';
 import { IS_DEVELOPMENT } from './helpers/development-helper';
 
 const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an array type.';
@@ -575,7 +576,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           ) {
             console.warn(
               `[useFormState] The callback reference for debounced field "${pathNotation}" changed between calls. ` +
-                'This usually means an inline function is being passed. Consider wrapping it with useCallback().'
+                'This usually means an inline function is getting passed. Consider wrapping it with useCallback().'
             );
             debounceCallbackWarning.current.add(pathNotation);
           }
@@ -1199,21 +1200,13 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.data, inferredNameFormat]
   );
 
-  // Subscribes to state changes.
-  const subscribe = useCallback((listener: ChangeListener<State>) => {
-    changeListeners.current.add(listener);
-
-    return () => {
-      changeListeners.current.delete(listener);
-    };
-  }, []);
-
   // The memoized Form component.
   const createComponent = useMemo(
     () => createFormComponent<State>(storeRef.current, dispatch, resetTouchedOnFormReset),
     [dispatch, resetTouchedOnFormReset]
   );
 
+  // The watch hook.
   const useWatch = (name: string, compute?: (value: string) => string) => {
     if (!name.trim()) {
       throw new TypeError('The "name" value cannot be empty.');
@@ -1291,7 +1284,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         handleReset,
       },
       Form: createComponent,
-      subscribe,
+      useListener: createUseListener(changeListeners.current),
       useWatch,
     }),
     [
@@ -1309,13 +1302,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       change,
       replace,
       touch,
-      append,
-      insert,
-      update,
-      swap,
-      sort,
-      remove,
-      clear,
       validate,
       reset,
       setDirty,
@@ -1324,10 +1310,16 @@ export function useFormState<T extends z.ZodMiniObject>(
       clearManualErrors,
       getSubmittedData,
       inferName,
+      append,
+      insert,
+      update,
+      swap,
+      sort,
+      remove,
+      clear,
       handleSubmit,
       handleReset,
       createComponent,
-      subscribe,
     ]
   );
 

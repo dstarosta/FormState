@@ -17,8 +17,8 @@ import {
   convert,
   formatDate,
   z,
+  type ChangeListener,
   type DeepPartial,
-  type FormEventType,
   type FormMode,
   type FormPath,
   type FormState,
@@ -2299,100 +2299,6 @@ describe('useFormState', () => {
       }).toThrow(TypeError);
     });
 
-    it('should subscribe to changes', () => {
-      const callback = vi.fn(
-        (
-          type: FormEventType,
-          data: FormState<Schema>['data'],
-          errors: FormState<Schema>['errors']
-        ) => {
-          expect(type).toBeOneOf(['change', 'submit']);
-          expect(data.toObject().info.age).toBe(42);
-          expect(errors.get((path) => path.info.age)).toBeUndefined();
-          expect(errors.getManual('age')).toBeUndefined();
-        }
-      );
-
-      const initialState: InitialSchema = {
-        name: 'John',
-        info: { age: 30 },
-      };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
-      const {
-        formActions: { change, validate },
-        subscribe,
-      } = result.current;
-
-      const unsubscribe = subscribe(callback);
-
-      act(() => {
-        change((path) => path.info.age, 42);
-        change((path) => path.info.email, 'some@email.org');
-      });
-
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith(
-        'change',
-        expect.objectContaining({
-          info: expect.objectContaining({ age: 42 }) as object,
-        }),
-        expect.objectContaining({}),
-        0
-      );
-
-      act(() => {
-        change((path) => path.info.birthDate, '12/31/2020');
-      });
-
-      expect(callback).toHaveBeenCalledTimes(2);
-      expect(callback).toHaveBeenCalledWith(
-        'change',
-        expect.objectContaining({
-          info: expect.objectContaining({ birthDate: new Date(2020, 11, 31) }) as object,
-        }),
-        expect.objectContaining({}),
-        0
-      );
-
-      act(() => {
-        validate({ submit: true });
-      });
-
-      const { formStatus } = result.current;
-
-      expect(formStatus.submitted).toBe(true);
-
-      expect(callback).toHaveBeenCalledTimes(3);
-      expect(callback).toHaveBeenCalledWith(
-        'submit',
-        expect.objectContaining({
-          info: expect.objectContaining({ age: 42, birthDate: new Date(2020, 11, 31) }) as object,
-        }),
-        expect.objectContaining({}),
-        1
-      );
-
-      act(() => {
-        change('name', '');
-      });
-
-      expect(callback).toHaveBeenCalledTimes(4);
-      expect(callback).toHaveBeenCalledWith(
-        'change',
-        expect.objectContaining({ name: '' }),
-        expect.objectContaining({ name: 'Name is required' }),
-        1
-      );
-
-      unsubscribe();
-
-      act(() => {
-        change('name', 'Tom');
-      });
-
-      expect(callback).toHaveBeenCalledTimes(4);
-    });
-
     it('should change the form mode', () => {
       const initialState: InitialSchema = {
         name: 'John',
@@ -2489,12 +2395,14 @@ describe('useFormState', () => {
       initialMode,
       manualError,
       forwardRef,
+      listener,
       watch,
     }: {
       initialValue?: string;
       initialMode?: FormMode;
       manualError?: string;
       forwardRef?: Ref<HTMLFormElement>;
+      listener?: ChangeListener<Schema>;
       watch?: boolean;
     }) => {
       const formRef = useRef<HTMLFormElement>(null);
@@ -2506,6 +2414,7 @@ describe('useFormState', () => {
         formHandlers: { handleSubmit },
         formClasses,
         Form,
+        useListener,
         useWatch,
       } = useFormState(schema, {
         initialState: {
@@ -2517,6 +2426,8 @@ describe('useFormState', () => {
         initialMode,
         watch: watch === true,
       });
+
+      useListener(listener);
 
       useEffect(() => {
         if (manualError) {
@@ -2557,7 +2468,7 @@ describe('useFormState', () => {
           aria-label="main-form"
         >
           {formStatus.submitting && <p>Submitting...</p>}
-          {formStatus.submitted && Boolean(getSubmittedData()?.data) && <p>Form Submitted</p>}
+          {Boolean(getSubmittedData()?.data) && <p>Form Submitted</p>}
           <p title="name" className={formClasses('name', 'block', { prefix: 'form-text' })}>
             {data.name}
           </p>
@@ -3078,6 +2989,159 @@ describe('useFormState', () => {
       fireEvent.click(resetButton);
 
       expect(name).toContainHTML('');
+    });
+
+    it('should listen to form changes', async () => {
+      const actionMock = vi.fn<ChangeListener<Schema>>((type, data, errors) => {
+        expect(type).toBeOneOf(['change', 'submit']);
+        expect(data.toObject().name).toBe('John');
+        expect(errors.get((path) => path.name)).toBeUndefined();
+        expect(errors.getManual('name')).toBeUndefined();
+      });
+
+      const listener: ChangeListener<Schema> = (...args) => {
+        actionMock(...args);
+      };
+
+      render(<FormComponent initialValue="Tom" watch={false} listener={listener} />);
+
+      const nameInput = screen.getByLabelText('Name');
+      const categorySelect = screen.getByLabelText('Category');
+      const activeCheckbox = screen.getByLabelText('Active');
+      const archivedYesRadio = screen.getByTestId('archivedYes');
+      const submitButton = screen.getByText('Submit');
+      const resetButton = screen.getByText('Reset');
+
+      fireEvent.change(nameInput, { target: { value: 'John' } });
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.stringMatching('change'),
+          expect.objectContaining({ name: 'John' }),
+          expect.any(Object),
+          0
+        );
+      });
+
+      fireEvent.change(categorySelect, { target: { value: 'legacy' } });
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.stringMatching('change'),
+          expect.objectContaining({ name: 'John', category: 'legacy' }),
+          expect.any(Object),
+          0
+        );
+      });
+
+      fireEvent.click(activeCheckbox);
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.stringMatching('change'),
+          expect.objectContaining({ name: 'John', category: 'legacy', isActive: false }),
+          expect.any(Object),
+          0
+        );
+      });
+
+      fireEvent.click(archivedYesRadio);
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.stringMatching('change'),
+          expect.objectContaining({
+            name: 'John',
+            category: 'legacy',
+            isActive: false,
+            isArchived: true,
+          }),
+          expect.any(Object),
+          0
+        );
+      });
+
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.stringMatching('submit'),
+          expect.objectContaining({
+            name: 'John',
+            category: 'legacy',
+            isActive: false,
+            isArchived: true,
+          }),
+          expect.any(Object),
+          1 // submit count
+        );
+      });
+
+      fireEvent.change(categorySelect, { target: { value: 'unconfirmed' } });
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.stringMatching('change'),
+          expect.objectContaining({
+            name: 'John',
+            category: 'unconfirmed',
+            isActive: false,
+            isArchived: true,
+          }),
+          expect.any(Object),
+          1 // submit count
+        );
+      });
+
+      fireEvent.click(resetButton);
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.stringMatching('change'),
+          expect.objectContaining({
+            name: 'John',
+            category: 'legacy',
+            isActive: false,
+            isArchived: true,
+          }),
+          expect.any(Object),
+          1 // submit count
+        );
+      });
+
+      expect(actionMock).toHaveBeenCalledTimes(7);
+    });
+
+    it('should detect unstable listener function', () => {
+      vi.useFakeTimers();
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const actionMock = vi.fn();
+
+      const { rerender } = render(
+        <FormComponent
+          initialValue="Tom"
+          watch={false}
+          listener={(...args) => {
+            actionMock(...args);
+          }}
+        />
+      );
+
+      rerender(
+        <FormComponent
+          initialValue="Tom"
+          watch={false}
+          listener={(...args) => {
+            actionMock(...args);
+          }}
+        />
+      );
+
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+
+      consoleWarnSpy.mockReset();
     });
 
     it('should watch the changes', async () => {
