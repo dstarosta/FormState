@@ -15,7 +15,7 @@ import { createFormComponent } from './helpers/form-builder';
 
 import type {
   ArrayElement,
-  ChangeListener,
+  StateChangeListener,
   DeepPartial,
   FieldRange,
   FormChangeArrayOptions,
@@ -191,7 +191,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
-  const changeListeners = useRef<Set<ChangeListener<State>>>(new Set());
+  const changeListeners = useRef<Set<StateChangeListener<State>>>(new Set());
 
   // The debounce dispatch cache.
   const debounceCache = useRef<
@@ -445,7 +445,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     const { data, errors } = generateListenerState();
 
     for (const listener of changeListeners.current) {
-      listener('change', data, errors, formStateRef.current.submitCount);
+      listener({ type: 'change', data, errors, submitCount: formStateRef.current.submitCount });
     }
   }, [schema, formState.data, generateListenerState]);
 
@@ -458,13 +458,13 @@ export function useFormState<T extends z.ZodMiniObject>(
     const { data, errors } = generateListenerState();
 
     for (const listener of changeListeners.current) {
-      listener(
-        'submit',
+      listener({
+        type: 'submit',
+        formData: lastSubmittedFormData.current,
+        submitCount: formStateRef.current.submitCount,
         data,
         errors,
-        formStateRef.current.submitCount,
-        lastSubmittedFormData.current
-      );
+      });
     }
   }, [schema, formState.submitCount, generateListenerState]);
 

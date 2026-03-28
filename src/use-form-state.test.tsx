@@ -17,11 +17,12 @@ import {
   convert,
   formatDate,
   z,
-  type ChangeListener,
   type DeepPartial,
   type FormMode,
   type FormPath,
   type FormState,
+  type StateChangeEvent,
+  type StateChangeListener,
   type SubmitState,
 } from '.';
 
@@ -2402,7 +2403,7 @@ describe('useFormState', () => {
       initialMode?: FormMode;
       manualError?: string;
       forwardRef?: Ref<HTMLFormElement>;
-      listener?: ChangeListener<Schema>;
+      listener?: StateChangeListener<Schema>;
       watch?: boolean;
     }) => {
       const formRef = useRef<HTMLFormElement>(null);
@@ -2992,13 +2993,18 @@ describe('useFormState', () => {
     });
 
     it('should listen to form changes', async () => {
-      const actionMock = vi.fn<ChangeListener<Schema>>(
-        (type, data, errors, submitCount, formData) => {
+      const actionMock = vi.fn<StateChangeListener<Schema>>(
+        ({ type, data, formData, errors, submitCount }) => {
           expect(type).toBeOneOf(['change', 'submit']);
-          expect(data.toObject().name).toBe('John');
-          expect(errors.get((path) => path.name)).toBeUndefined();
-          expect(errors.getManual('name')).toBeUndefined();
+          expect(data.toObject().name).toBeOneOf(['John', '']);
           expect(submitCount).toBeOneOf([0, 1]);
+
+          if (data.name === '') {
+            expect(errors['name']).toBe('Name is required');
+          } else {
+            expect(errors.get((path) => path.name)).toBeUndefined();
+            expect(errors.getManual('name')).toBeUndefined();
+          }
 
           if (type === 'submit') {
             expect(formData).toBeInstanceOf(FormData);
@@ -3017,7 +3023,7 @@ describe('useFormState', () => {
         }
       );
 
-      const listener: ChangeListener<Schema> = (...args) => {
+      const listener: StateChangeListener<Schema> = (...args) => {
         actionMock(...args);
       };
 
@@ -3034,10 +3040,11 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(actionMock).toHaveBeenCalledWith(
-          expect.stringMatching('change'),
-          expect.objectContaining({ name: 'John' }),
-          expect.any(Object),
-          0
+          expect.objectContaining({
+            type: 'change',
+            data: expect.objectContaining({ name: 'John' }) as StateChangeEvent<Schema>['data'],
+            submitCount: 0,
+          })
         );
       });
 
@@ -3045,10 +3052,14 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(actionMock).toHaveBeenCalledWith(
-          expect.stringMatching('change'),
-          expect.objectContaining({ name: 'John', category: 'legacy' }),
-          expect.any(Object),
-          0
+          expect.objectContaining({
+            type: 'change',
+            data: expect.objectContaining({
+              name: 'John',
+              category: 'legacy',
+            }) as StateChangeEvent<Schema>['data'],
+            submitCount: 0,
+          })
         );
       });
 
@@ -3056,10 +3067,15 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(actionMock).toHaveBeenCalledWith(
-          expect.stringMatching('change'),
-          expect.objectContaining({ name: 'John', category: 'legacy', isActive: false }),
-          expect.any(Object),
-          0
+          expect.objectContaining({
+            type: 'change',
+            data: expect.objectContaining({
+              name: 'John',
+              category: 'legacy',
+              isActive: false,
+            }) as StateChangeEvent<Schema>['data'],
+            submitCount: 0,
+          })
         );
       });
 
@@ -3067,10 +3083,15 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(actionMock).toHaveBeenCalledWith(
-          expect.stringMatching('change'),
-          expect.objectContaining({ name: 'John', category: 'legacy', isActive: true }),
-          expect.any(Object),
-          0
+          expect.objectContaining({
+            type: 'change',
+            data: expect.objectContaining({
+              name: 'John',
+              category: 'legacy',
+              isActive: true,
+            }) as StateChangeEvent<Schema>['data'],
+            submitCount: 0,
+          })
         );
       });
 
@@ -3078,15 +3099,16 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(actionMock).toHaveBeenCalledWith(
-          expect.stringMatching('change'),
           expect.objectContaining({
-            name: 'John',
-            category: 'legacy',
-            isActive: true,
-            isArchived: true,
-          }),
-          expect.any(Object),
-          0
+            type: 'change',
+            data: expect.objectContaining({
+              name: 'John',
+              category: 'legacy',
+              isActive: true,
+              isArchived: true,
+            }) as StateChangeEvent<Schema>['data'],
+            submitCount: 0,
+          })
         );
       });
 
@@ -3094,16 +3116,16 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(actionMock).toHaveBeenCalledWith(
-          expect.stringMatching('submit'),
           expect.objectContaining({
-            name: 'John',
-            category: 'legacy',
-            isActive: true,
-            isArchived: true,
-          }),
-          expect.any(Object),
-          1, // submit count
-          expect.any(FormData)
+            type: 'submit',
+            data: expect.objectContaining({
+              name: 'John',
+              category: 'legacy',
+              isActive: true,
+              isArchived: true,
+            }) as StateChangeEvent<Schema>['data'],
+            submitCount: 1,
+          })
         );
       });
 
@@ -3111,15 +3133,16 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(actionMock).toHaveBeenCalledWith(
-          expect.stringMatching('change'),
           expect.objectContaining({
-            name: 'John',
-            category: 'unconfirmed',
-            isActive: true,
-            isArchived: true,
-          }),
-          expect.any(Object),
-          1 // submit count
+            type: 'change',
+            data: expect.objectContaining({
+              name: 'John',
+              category: 'unconfirmed',
+              isActive: true,
+              isArchived: true,
+            }) as StateChangeEvent<Schema>['data'],
+            submitCount: 1,
+          })
         );
       });
 
@@ -3127,19 +3150,60 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(actionMock).toHaveBeenCalledWith(
-          expect.stringMatching('change'),
           expect.objectContaining({
-            name: 'John',
-            category: 'legacy',
-            isActive: true,
-            isArchived: true,
-          }),
-          expect.any(Object),
-          1 // submit count
+            type: 'change',
+            data: expect.objectContaining({
+              name: 'John',
+              category: 'legacy',
+              isActive: true,
+              isArchived: true,
+            }) as StateChangeEvent<Schema>['data'],
+            submitCount: 1,
+          })
         );
       });
 
-      expect(actionMock).toHaveBeenCalledTimes(8);
+      fireEvent.change(nameInput, { target: { value: '' } });
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'change',
+            data: expect.objectContaining({
+              name: '',
+              category: 'legacy',
+              isActive: true,
+              isArchived: true,
+            }) as StateChangeEvent<Schema>['data'],
+            errors: expect.objectContaining({
+              name: 'Name is required',
+            }) as StateChangeEvent<Schema>['errors'],
+            submitCount: 1,
+          })
+        );
+      });
+
+      expect(actionMock).toHaveBeenCalledTimes(9);
+
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'change',
+            data: expect.objectContaining({
+              name: '',
+              category: 'legacy',
+              isActive: true,
+              isArchived: true,
+            }) as StateChangeEvent<Schema>['data'],
+            errors: expect.objectContaining({
+              name: 'Name is required',
+            }) as StateChangeEvent<Schema>['errors'],
+            submitCount: 1,
+          })
+        );
+      });
     });
 
     it('should detect unstable listener function', () => {

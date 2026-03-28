@@ -217,23 +217,37 @@ export type SubmittedData<T extends object> = {
   formData: FormData | null;
 } | null;
 
+export type StateChangeEvent<T extends object> = {
+  /**
+   * Event type ('change' or 'submit').
+   */
+  type: FormEventType;
+  /**
+   * Form state data.
+   */
+  data: FormState<T>['data'];
+  /**
+   * Optional form data in the `FormData` format.
+   *
+   * Note: form data is only available in `submit` events.
+   */
+  formData?: FormData | undefined;
+  /**
+   * A number indicating how many times the form has been submitted.
+   */
+  submitCount: number;
+  /**
+   * Form errors.
+   */
+  errors: FormState<T>['errors'];
+};
+
 /**
- * Callback function change listener type.
+ * Form change event listener type.
  *
  * @typeParam T - type of the form data.
- * @param type - Event type ('change' or 'submit').
- * @param data - Form state data.
- * @param errors - Form errors.
- * @param submitCount - A number indicating how many times the form has been submitted.
- * @param formData - Form data in the `FormData` format (only in 'submit' events).
  */
-export type ChangeListener<T extends object> = (
-  type: FormEventType,
-  data: FormState<T>['data'],
-  errors: FormState<T>['errors'],
-  submitCount: number,
-  formData?: FormData
-) => void;
+export type StateChangeListener<T extends object> = (event: StateChangeEvent<T>) => void;
 
 /**
  * Form initialization options.
@@ -1094,7 +1108,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
    *
    * @param listener - A listener function.
    */
-  useListener: (listener?: ChangeListener<z.infer<T>>) => void;
+  useListener: (listener?: StateChangeListener<z.infer<T>>) => void;
   /**
    * A hook that watches a field based on the element's `name` HTML attribute.
    *

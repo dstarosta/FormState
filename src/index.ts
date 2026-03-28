@@ -1,6 +1,5 @@
 export * as z from './form-schema';
 export type {
-  ChangeListener,
   DateParseResult,
   DeepPartial,
   FormChangeOptions,
@@ -17,6 +16,8 @@ export type {
   FormStatus,
   FormSubmitOptions,
   FormTouchOptions,
+  StateChangeEvent,
+  StateChangeListener,
   SubmitState,
 } from './types/form-types';
 export { FormStateError } from './helpers/form-state-error';

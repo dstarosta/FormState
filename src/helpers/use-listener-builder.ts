@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useRef } from 'react';
 
 import { IS_DEVELOPMENT } from './development-helper';
-import type { ChangeListener } from '../types/form-types';
+import type { StateChangeListener } from '../types/form-types';
 
 /**
  * Creates the "useListener" hook.
@@ -9,9 +9,9 @@ import type { ChangeListener } from '../types/form-types';
  * @param listeners a set of form listeners.
  * @returns The "useListener" hook.
  */
-export function createUseListener<T extends object>(listeners: Set<ChangeListener<T>>) {
-  function useListener(listener?: ChangeListener<T>) {
-    const listenerRef = useRef<ChangeListener<T> | undefined>(listener);
+export function createUseListener<T extends object>(listeners: Set<StateChangeListener<T>>) {
+  function useListener(listener?: StateChangeListener<T>) {
+    const listenerRef = useRef<StateChangeListener<T> | undefined>(listener);
 
     useEffect(() => {
       if (IS_DEVELOPMENT && listener && listener !== listenerRef.current) {
@@ -25,7 +25,7 @@ export function createUseListener<T extends object>(listeners: Set<ChangeListene
       listenerRef.current = listener;
     }, [listener]);
 
-    const eventListener = useEffectEvent<ChangeListener<T>>((...args) => {
+    const eventListener = useEffectEvent<StateChangeListener<T>>((...args) => {
       listenerRef.current?.(...args);
     });
 
