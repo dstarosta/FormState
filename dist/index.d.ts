@@ -1523,6 +1523,12 @@ declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderIni
 //#endregion
 //#region src/helpers/state-manager.d.ts
 /**
+ * Creates a unique symbol instance based on UUID v4.
+ *
+ * @returns The symbol.
+ */
+declare function createSymbol(): symbol;
+/**
  * Creates strongly typed initial state for a schema.
  *
  * @typeParam T - schema type.
@@ -1695,5 +1701,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type StateChangeEvent, type StateChangeListener, type SubmitState, value_converter_d_exports as convert, createState, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type StateChangeEvent, type StateChangeListener, type SubmitState, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map
