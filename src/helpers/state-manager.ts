@@ -125,6 +125,14 @@ export const getFieldError = <T extends z.ZodMiniObject>(
   path: FormStatePath<z.infer<T>>
 ) => errors[path.join('.')];
 
+export const getFieldErrors = <T extends z.ZodMiniObject>(
+  errors: Record<keyof z.infer<T>, string | undefined>,
+  errorMessageSeparator: string
+) =>
+  Object.values(errors)
+    .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
+    .flatMap((error) => error.split(errorMessageSeparator));
+
 export const wasFieldTouched = <T extends z.ZodMiniObject>(
   touched: Record<keyof z.infer<T>, boolean>,
   path: FormStatePath<z.infer<T>>

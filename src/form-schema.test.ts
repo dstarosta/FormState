@@ -368,7 +368,7 @@ describe('form schema', () => {
     const result = unionSchema.safeParse({});
     expect(result.success).toBe(false);
 
-    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
+    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error, '|');
 
     expect(errors.arr).toBe(error);
     expect(errors.bool).toBe(error);
@@ -393,7 +393,7 @@ describe('form schema', () => {
     const result = unionSchema.safeParse({});
     expect(result.success).toBe(true);
 
-    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
+    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error, '|');
 
     expect(errors.arr).toBeUndefined();
     expect(errors.bool).toBeUndefined();
@@ -411,7 +411,7 @@ describe('form schema', () => {
     const result = unionSchema.safeParse({ value: '' });
     expect(result.success).toBe(false);
 
-    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
+    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error, '|');
 
     expect(errors.value).toBe('Wrong value provided');
   });
@@ -427,7 +427,7 @@ describe('form schema', () => {
     result = unionSchema.safeParse({ value: 'z' });
     expect(result.success).toBe(false);
 
-    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
+    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error, '|');
 
     expect(errors.value).toMatch(/invalid/i);
   });
@@ -443,7 +443,7 @@ describe('form schema', () => {
     const result = unionSchema.safeParse({ value: 1 });
     expect(result.success).toBe(false);
 
-    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
+    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error, '|');
 
     expect(errors.value).toBe('Very small');
   });
@@ -456,7 +456,7 @@ describe('form schema', () => {
     const result = unionSchema.safeParse({ value: 1 });
     expect(result.success).toBe(false);
 
-    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
+    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error, '|');
 
     expect(errors.value).toMatch(/invalid/i);
   });
@@ -474,7 +474,7 @@ describe('form schema', () => {
     const result = unionSchema.safeParse({ status: 'pending' });
     expect(result.success).toBe(false);
 
-    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error);
+    const errors = formatErrors<z.infer<typeof unionSchema>>(result.error, '|');
 
     expect(errors.status).toMatch(/^Only "active" and "inactive"/);
   });

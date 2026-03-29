@@ -286,7 +286,7 @@ describe('helpers', () => {
     });
 
     it('validates state unsuccessfully without defaults', () => {
-      const result = validateState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' }, false);
+      const result = validateState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' }, false, ';');
 
       expect(result.success).toBe(false);
       expect(result.data).toBeUndefined();

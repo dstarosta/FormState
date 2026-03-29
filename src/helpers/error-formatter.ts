@@ -23,19 +23,25 @@ const isGenericMessage = (message: string) => message === 'Invalid input';
  *                           such as empty strings for optional fields and symbols for strong IDs.
  *                           Those values would have been populated by the form state initializer
  *                           automatically and do not result in errors.
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
  * @returns The object containing the validation result as well as the validated data object
  *          instance or the form state error.
  */
 export const validateState = <T extends z.ZodMiniObject>(
   schema: T,
   data: DeepPartial<z.infer<T>>,
-  populateDefaults: boolean = true
+  populateDefaults: boolean = true,
+  errorMessageSeparator: string = '|'
 ) => {
   const safeData = schema.safeParse(populateDefaults ? createState(schema, data) : data);
 
   if (!safeData.success) {
     return {
-      error: new FormStateError(z.prettifyError(safeData.error), formatErrors(safeData.error)),
+      error: new FormStateError(
+        z.prettifyError(safeData.error),
+        formatErrors(safeData.error, errorMessageSeparator)
+      ),
       success: false,
     } satisfies StateValidationFailure<T>;
   }
@@ -48,7 +54,10 @@ export const validateState = <T extends z.ZodMiniObject>(
 
 // Internal functions
 
-export const formatErrors = <T extends object>(error?: z.core.$ZodError<object>) => {
+export const formatErrors = <T extends object>(
+  error: z.core.$ZodError<object> | undefined,
+  errorMessageSeparator: string
+) => {
   const errors = {} as Record<keyof T | '', string | undefined>;
 
   if (!error) {
@@ -64,7 +73,7 @@ export const formatErrors = <T extends object>(error?: z.core.$ZodError<object>)
 
       errors[path] =
         typeof errorValue === 'string' && errorValue.trim().length > 0
-          ? `${errorValue}|${message}`
+          ? `${errorValue}${errorMessageSeparator}${message}`
           : message;
     };
 

@@ -325,6 +325,11 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    * Sets the default format for the `inferName` function (default: "bracket").
    */
   inferredNameFormat?: 'bracket' | 'dot';
+  /**
+   * Sets the default error message separator when multiple errors occur for the
+   * same state property (default: "|").
+   */
+  errorMessageSeparator?: string;
 };
 
 export type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {

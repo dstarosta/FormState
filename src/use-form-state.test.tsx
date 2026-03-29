@@ -249,7 +249,8 @@ describe('useFormState', () => {
       expect(formState.errors.name).includes('|');
       expect(formState.errors.get((path) => path.info.age)).toBe('Age must be > 0');
       expect(formState.errors.getAll()).toStrictEqual([
-        'Name contains invalid characters|Name is too long',
+        'Name contains invalid characters',
+        'Name is too long',
         'Age must be > 0',
       ]);
     });

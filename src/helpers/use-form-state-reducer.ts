@@ -12,7 +12,8 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
   state: FormMutableState<z.infer<T>>,
   manualErrorsState: ManualErrorState,
   validateBeforeSubmit: boolean,
-  validateOnMount: boolean
+  validateOnMount: boolean,
+  errorMessageSeparator: string
 ) {
   type State = z.infer<T>;
 
@@ -39,7 +40,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
 
         const safeData = schema.safeParse(data);
-        const errors = formatErrors<State>(safeData.error);
+        const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
         const parsedData = safeData.data ?? data;
 
         validationCacheRef.current = { schema, data, parsedData, errors };
@@ -61,7 +62,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           let errors: Record<keyof State | '', string | undefined>;
           if (validateOnMount || Object.keys(prevState.errors).length > 0) {
             const safeData = schema.safeParse(mergedData);
-            errors = formatErrors<State>(safeData.error);
+            errors = formatErrors<State>(safeData.error, errorMessageSeparator);
           } else {
             errors = { ...prevState.errors };
           }
@@ -147,7 +148,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const replacedData = createState(schema, data);
 
           const safeData = schema.safeParse(replacedData);
-          const dataErrors = formatErrors<State>(safeData.error);
+          const dataErrors = formatErrors<State>(safeData.error, errorMessageSeparator);
 
           const errors =
             shouldValidate || Object.keys(prevState.errors).length > 0
@@ -251,7 +252,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           }
 
           const safeData = schema.safeParse(mergedData);
-          const errors = formatErrors<State>(safeData.error);
+          const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
 
           const manualErrors = updateState(prevManualErrors, (draft) => {
             for (const key in draft) {
@@ -399,7 +400,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
       }
     },
-    [schema, state, manualErrorsState, validateBeforeSubmit, validateOnMount]
+    [schema, state, manualErrorsState, errorMessageSeparator, validateBeforeSubmit, validateOnMount]
   );
 
   return useActionState<FormMutableState<State>, FormAction<State>>(reducer, state);

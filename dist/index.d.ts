@@ -238,6 +238,11 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    * Sets the default format for the `inferName` function (default: "bracket").
    */
   inferredNameFormat?: 'bracket' | 'dot';
+  /**
+   * Sets the default error message separator when multiple errors occur for the
+   * same state property (default: "|").
+   */
+  errorMessageSeparator?: string;
 };
 type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
   schema: T;
@@ -1584,10 +1589,12 @@ declare function safeParseDate(input: string | undefined, format?: FormDateForma
  *                           such as empty strings for optional fields and symbols for strong IDs.
  *                           Those values would have been populated by the form state initializer
  *                           automatically and do not result in errors.
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
  * @returns The object containing the validation result as well as the validated data object
  *          instance or the form state error.
  */
-declare const validateState: <T extends z.ZodMiniObject>(schema: T, data: DeepPartial<z.infer<T>>, populateDefaults?: boolean) => {
+declare const validateState: <T extends z.ZodMiniObject>(schema: T, data: DeepPartial<z.infer<T>>, populateDefaults?: boolean, errorMessageSeparator?: string) => {
   error: FormStateError<z.core.output<T>>;
   success: false;
   data?: never;

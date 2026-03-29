@@ -61,6 +61,7 @@ import {
   freezeObject,
   getFieldDescription,
   getFieldError,
+  getFieldErrors,
   getFieldMaxLength,
   getFieldPattern,
   getFieldRange,
@@ -102,6 +103,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     debounceCacheCapacity = 50,
     CSSPrefix = 'form-state',
     inferredNameFormat = 'bracket',
+    errorMessageSeparator = '|',
     initialState,
     initialTouched,
     watch,
@@ -122,7 +124,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     const mergedData = initialState ? initialData : defaultData;
     const safeData = schema.safeParse(mergedData);
 
-    const initialErrors = formatErrors<State>(safeData.error);
+    const initialErrors = formatErrors<State>(safeData.error, errorMessageSeparator);
     const errors = validateOnMount
       ? initialErrors
       : ({} as Record<keyof State | '', string | undefined>);
@@ -179,11 +181,12 @@ export function useFormState<T extends z.ZodMiniObject>(
   }, [
     schema,
     defaultData,
-    initialData,
     initialState,
+    initialData,
     initialTouched,
     initialMode,
     validateOnMount,
+    errorMessageSeparator,
   ]);
 
   // Tracks whether component is mounted.
@@ -218,7 +221,8 @@ export function useFormState<T extends z.ZodMiniObject>(
     state,
     manualErrorsState,
     validateBeforeSubmit,
-    validateOnMount
+    validateOnMount,
+    errorMessageSeparator
   );
 
   // Ref to avoid stale closures in validate/handleSubmit callbacks.
@@ -311,12 +315,9 @@ export function useFormState<T extends z.ZodMiniObject>(
         get: (expression: (data: State) => unknown) =>
           getFieldError(formState.errors, getPath(formState.data, expression)),
         getManual: (key: string) => formState.errors[key],
-        getAll: () =>
-          Object.values(formState.errors).filter(
-            (error) => typeof error === 'string' && error.trim().length > 0
-          ) as string[],
+        getAll: () => getFieldErrors(formState.errors, errorMessageSeparator),
       }) as FormState<State>['errors'],
-    [formState.data, formState.errors]
+    [formState.data, formState.errors, errorMessageSeparator]
   );
 
   // The memoized "dirty" object of the form state.
@@ -405,21 +406,18 @@ export function useFormState<T extends z.ZodMiniObject>(
     }) as FormState<State>['data'];
 
     const safeData = schema.safeParse(formStateRef.current.data);
-    const dataErrors = formatErrors<State>(safeData.error);
+    const dataErrors = formatErrors<State>(safeData.error, errorMessageSeparator);
 
     const errors = freezeObject({
       ...dataErrors,
       get: (expression: (data: State) => unknown) =>
         getFieldError(dataErrors, getPath(formStateRef.current.data, expression)),
       getManual: (key: string) => dataErrors[key],
-      getAll: () =>
-        Object.values(dataErrors).filter(
-          (error) => typeof error === 'string' && error.trim().length > 0
-        ) as string[],
+      getAll: () => getFieldErrors(dataErrors, errorMessageSeparator),
     }) as FormState<State>['errors'];
 
     return { data, errors };
-  }, [schema]);
+  }, [errorMessageSeparator, schema]);
 
   const initialStateChanged = useMemo(
     () => !deepEqual(formState.initialData, state.data),
@@ -1001,7 +999,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       if (options?.submit) {
         const safeData = schema.safeParse(formStateRef.current.data);
-        const errors = formatErrors<State>(safeData.error);
+        const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
         const submittedErrors = { ...errors, ...manualErrorsState.get() };
         const hasErrors = Object.keys(submittedErrors).length > 0;
 
@@ -1025,7 +1023,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       return true;
     },
-    [schema, manualErrorsState, dispatch]
+    [schema, manualErrorsState, errorMessageSeparator, dispatch]
   );
 
   // The memoized "handleReset" function.
@@ -1064,7 +1062,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         const currentState = formStateRef.current;
 
         const safeData = schema.safeParse(currentState.data);
-        const errors = formatErrors<State>(safeData.error);
+        const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
         const submittedErrors = { ...errors, ...manualErrorsState.get() };
         const hasErrors = Object.keys(submittedErrors).length > 0;
 
@@ -1076,10 +1074,7 @@ export function useFormState<T extends z.ZodMiniObject>(
                 get: (expression: (data: State) => unknown) =>
                   getFieldError(submittedErrors, getPath(currentState.data, expression)),
                 getManual: (key: string) => submittedErrors[key],
-                getAll: () =>
-                  Object.values(submittedErrors).filter(
-                    (error) => typeof error === 'string' && error.trim().length > 0
-                  ) as string[],
+                getAll: () => getFieldErrors(submittedErrors, errorMessageSeparator),
               }) as FormState<State>['errors'],
             }
           : {
@@ -1141,7 +1136,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         });
       };
     },
-    [schema, manualErrorsState, dispatch, setIsSubmitting]
+    [schema, manualErrorsState, errorMessageSeparator, setIsSubmitting, dispatch]
   );
 
   // The memoized "reset" function.
