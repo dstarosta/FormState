@@ -52,6 +52,7 @@ type FormMutableState<T extends object> = {
   patterns: Record<keyof T, string | undefined>;
   descriptions: Record<keyof T, string | undefined>;
   submitCount: number;
+  changed: boolean;
   replaced: boolean;
   validated: boolean;
 };
@@ -281,6 +282,10 @@ type SubmitState<T extends object> = {
      * @returns Error message for the specified key, or `undefined` if there is no error.
      */
     getManual: (key: string) => string | undefined;
+    /**
+     * Gets an array of all error messages.
+     */
+    getAll: () => string[];
   }>;
 };
 /**
@@ -319,6 +324,10 @@ type FormState<T extends object> = {
      * @returns Error message for the specified key, or `undefined` if there is no error.
      */
     getManual: (key: string) => string | undefined;
+    /**
+     * Gets an array of all error messages.
+     */
+    getAll: () => string[];
   }>;
   /**
    * Dirty status for each field in the form.

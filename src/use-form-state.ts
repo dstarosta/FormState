@@ -162,6 +162,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       initialData: data,
       submittedData: null,
       mode: initialMode,
+      changed: false,
       replaced: false,
       validated: validateOnMount,
       submitCount: 0,
@@ -310,6 +311,10 @@ export function useFormState<T extends z.ZodMiniObject>(
         get: (expression: (data: State) => unknown) =>
           getFieldError(formState.errors, getPath(formState.data, expression)),
         getManual: (key: string) => formState.errors[key],
+        getAll: () =>
+          Object.values(formState.errors).filter(
+            (error) => typeof error === 'string' && error.trim().length > 0
+          ) as string[],
       }) as FormState<State>['errors'],
     [formState.data, formState.errors]
   );
@@ -407,6 +412,10 @@ export function useFormState<T extends z.ZodMiniObject>(
       get: (expression: (data: State) => unknown) =>
         getFieldError(dataErrors, getPath(formStateRef.current.data, expression)),
       getManual: (key: string) => dataErrors[key],
+      getAll: () =>
+        Object.values(dataErrors).filter(
+          (error) => typeof error === 'string' && error.trim().length > 0
+        ) as string[],
     }) as FormState<State>['errors'];
 
     return { data, errors };
@@ -417,7 +426,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.initialData, state.data]
   );
 
-  // Dispatches inital state changes.
+  // Dispatches initial state changes.
   useEffect(() => {
     if (!formState.replaced && formState.submitCount === 0 && initialStateChanged) {
       dispatch({ type: 'changeInitialState' });
@@ -438,6 +447,10 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Calls registered listeners on form change.
   useEffect(() => {
+    if (!formState.changed) {
+      return;
+    }
+
     if (changeListeners.current.size === 0) {
       return;
     }
@@ -447,7 +460,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     for (const listener of changeListeners.current) {
       listener({ type: 'change', data, errors, submitCount: formStateRef.current.submitCount });
     }
-  }, [schema, formState.data, generateListenerState]);
+  }, [schema, formState.data, formState.changed, generateListenerState]);
 
   // Calls registered listeners on form submission.
   useEffect(() => {
@@ -1063,6 +1076,10 @@ export function useFormState<T extends z.ZodMiniObject>(
                 get: (expression: (data: State) => unknown) =>
                   getFieldError(submittedErrors, getPath(currentState.data, expression)),
                 getManual: (key: string) => submittedErrors[key],
+                getAll: () =>
+                  Object.values(submittedErrors).filter(
+                    (error) => typeof error === 'string' && error.trim().length > 0
+                  ) as string[],
               }) as FormState<State>['errors'],
             }
           : {

@@ -248,6 +248,10 @@ describe('useFormState', () => {
       expect(formState.errors.name).toMatch(/too long/);
       expect(formState.errors.name).includes('|');
       expect(formState.errors.get((path) => path.info.age)).toBe('Age must be > 0');
+      expect(formState.errors.getAll()).toStrictEqual([
+        'Name contains invalid characters|Name is too long',
+        'Age must be > 0',
+      ]);
     });
 
     it('should change initial state after submit', () => {
@@ -2440,6 +2444,7 @@ describe('useFormState', () => {
         if (!submitState.valid) {
           if (
             formStatus.valid ||
+            submitState.errors.getAll().length === 0 ||
             (!submitState.errors.get((path) => path.name) &&
               !submitState.errors.getManual('someProp'))
           ) {
@@ -3001,6 +3006,7 @@ describe('useFormState', () => {
 
           if (data.name === '') {
             expect(errors['name']).toBe('Name is required');
+            expect(errors.getAll()).toStrictEqual(['Name is required']);
           } else {
             expect(errors.get((path) => path.name)).toBeUndefined();
             expect(errors.getManual('name')).toBeUndefined();
