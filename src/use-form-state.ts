@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useOptimistic,
-  useRef,
-  useSyncExternalStore,
-  type SyntheticEvent,
-} from 'react';
+import { useCallback, useEffect, useMemo, useOptimistic, useRef, type SyntheticEvent } from 'react';
 import { deepEqual } from 'fast-equals';
 import * as z from 'zod/mini';
 
@@ -74,6 +66,7 @@ import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
 import { createFormStore } from './helpers/form-store';
 import { createUseListener } from './helpers/use-listener-builder';
+import { createUseWatch } from './helpers/use-watch-builder';
 import { IS_DEVELOPMENT } from './helpers/development-helper';
 
 const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an array type.';
@@ -195,7 +188,12 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
+  // Change listeners.
   const changeListeners = useRef<Set<StateChangeListener<State>>>(new Set());
+
+  // Form hooks refs.
+  const listenerHookRef = useRef(createUseListener(changeListeners.current));
+  const watchHookRef = useRef(createUseWatch(storeRef.current));
 
   // The debounce dispatch cache.
   const debounceCache = useRef<
@@ -1231,32 +1229,6 @@ export function useFormState<T extends z.ZodMiniObject>(
     [dispatch, resetTouchedOnFormReset]
   );
 
-  // The watch hook.
-  const useWatch = (name: string, compute?: (value: string) => string) => {
-    if (!name.trim()) {
-      throw new TypeError('The "name" value cannot be empty.');
-    }
-
-    const store = storeRef.current;
-
-    if (!store) {
-      throw new Error('The "watch" property has not been set to "true" in the options.');
-    }
-
-    return useSyncExternalStore(
-      (listener) => store.subscribeToField(name, listener),
-      () => {
-        const value = store.getValue(name) ?? '';
-
-        if (typeof compute === 'function') {
-          return compute(value);
-        }
-
-        return value;
-      }
-    );
-  };
-
   const initialFormState = useMemo(
     () => ({
       data: freezeObject(formState.initialData) as Immutable<State>,
@@ -1309,8 +1281,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         handleReset,
       },
       Form: createComponent,
-      useListener: createUseListener(changeListeners.current),
-      useWatch,
+      useListener: listenerHookRef.current,
+      useWatch: watchHookRef.current,
     }),
     [
       initialFormState,

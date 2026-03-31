@@ -2,7 +2,7 @@
 import { useRef } from 'react';
 import { deepEqual } from 'fast-equals';
 
-export const useDeepMemo = <T>(factory: () => T, deps: React.DependencyList) => {
+export function useDeepMemo<T>(factory: () => T, deps: React.DependencyList) {
   const ref = useRef<{ deps: React.DependencyList; value: T }>(null);
 
   if (!ref.current || !deepEqual(deps, ref.current.deps)) {
@@ -13,4 +13,4 @@ export const useDeepMemo = <T>(factory: () => T, deps: React.DependencyList) => 
   }
 
   return ref.current.value;
-};
+}

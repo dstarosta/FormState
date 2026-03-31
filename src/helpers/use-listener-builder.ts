@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from 'react';
+import { useDebugValue, useEffect, useEffectEvent, useRef } from 'react';
 
 import { IS_DEVELOPMENT } from './development-helper';
 import type { StateChangeListener } from '../types/form-types';
@@ -11,6 +11,8 @@ import type { StateChangeListener } from '../types/form-types';
  */
 export function createUseListener<T extends object>(listeners: Set<StateChangeListener<T>>) {
   function useListener(listener?: StateChangeListener<T>) {
+    useDebugValue('FormStateListener');
+
     const listenerRef = useRef<StateChangeListener<T> | undefined>(listener);
 
     useEffect(() => {
