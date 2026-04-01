@@ -372,7 +372,7 @@ export function formDate(
 
   const dateFormat = options.dateFormat || 'yyyy-MM-dd';
 
-  const zodDateWithMeta = zodDate.check(z.meta({ format: dateFormat }));
+  const zodDateWithMeta = zodDate.with(z.meta({ format: dateFormat }));
 
   return z.pipe(
     z.transform((value: unknown, ctx) => {
@@ -586,12 +586,11 @@ export function formString(
       return value as string;
     }),
     options.required
-      ? zodString.check(
-          z.meta({ allowEmpty: options.allowEmpty !== false }),
-          z.minLength(1, options.error)
-        )
+      ? zodString
+          .check(z.minLength(1, options.error))
+          .with(z.meta({ allowEmpty: options.allowEmpty !== false }))
       : z.union([
-          zodString.check(z.meta({ allowEmpty: options.allowEmpty !== false })),
+          zodString.with(z.meta({ allowEmpty: options.allowEmpty !== false })),
           Z_EMPTY_STRING,
         ])
   );
@@ -671,8 +670,10 @@ export function formValues(
       return value;
     }),
     options?.required
-      ? z.enum(values, options.error)
-      : z.enum([...values, EMPTY_STRING] as const, options?.error)
+      ? z.enum(values, options.error).with(z.meta({ allowEmpty: false }))
+      : z
+          .enum([...values, EMPTY_STRING] as const, options?.error)
+          .with(z.meta({ allowEmpty: false }))
   );
 }
 

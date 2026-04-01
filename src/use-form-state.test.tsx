@@ -24,6 +24,7 @@ import {
   type StateChangeEvent,
   type StateChangeListener,
   type SubmitState,
+  type SubmitSuccessState,
 } from '.';
 
 describe('useFormState', () => {
@@ -2722,8 +2723,11 @@ describe('useFormState', () => {
       });
 
       expect(submitFn).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'John' }),
-        expect.any(FormData)
+        expect.objectContaining({
+          data: expect.objectContaining({ name: 'John' }) as object,
+          dataAsObject: expect.objectContaining({ name: 'John' }) as object,
+          formData: expect.any(FormData) as FormData,
+        })
       );
       expect(errorFn).not.toHaveBeenCalled();
 
@@ -2753,8 +2757,11 @@ describe('useFormState', () => {
       });
 
       expect(submitFn).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'John' }),
-        expect.any(FormData)
+        expect.objectContaining({
+          data: expect.objectContaining({ name: 'John' }) as object,
+          dataAsObject: expect.objectContaining({ name: 'John' }) as object,
+          formData: expect.any(FormData) as FormData,
+        })
       );
       expect(errorFn).not.toHaveBeenCalled();
 
@@ -2763,11 +2770,11 @@ describe('useFormState', () => {
       const submittedInfo = screen.getByText('Form Submitted');
       expect(submittedInfo).toBeInTheDocument();
 
-      const formData = submitFn.mock.calls[0]?.[1] as FormData;
-      expect(formData).toBeInstanceOf(FormData);
+      const submittedState = submitFn.mock.calls[0]?.[0] as SubmitSuccessState<Schema>;
 
-      expect(formData.has('id')).toBe(true);
-      expect(formData.get('submitter')).toBe('submit');
+      expect(submittedState).toBeDefined();
+      expect(submittedState.formData.has('id')).toBe(true);
+      expect(submittedState.formData.get('submitter')).toBe('submit');
     });
 
     it.each([true, false])('should fail to submit form using "submit"', async (watch) => {

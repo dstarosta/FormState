@@ -24,6 +24,8 @@ declare class FormStateError<T extends object> extends Error {
 //#region src/types/form-types.d.ts
 type PathValue<T, P extends string> = P extends keyof T ? T[P] : P extends `${infer K}.${infer R}` ? K extends keyof T ? PathValue<T[K], R> : never : never;
 type IsUnion<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
+type Flatten<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+type ReplaceEmptyWithUndefined<T> = T extends '' ? undefined : T;
 type RangeOf<T> = undefined | Date | number | (IsUnion<T, Date | string> extends true ? Date | string : never) | (IsUnion<T, number | ''> extends true ? number | '' : never);
 type ImmutablePrimitive = undefined | null | boolean | string | number | symbol | Date | Error | Function | RegExp | Promise<unknown>;
 type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
@@ -124,7 +126,7 @@ type SubmittedData<T extends object> = {
   /**
    * The form data.
    */
-  data: T;
+  data: FormState<T>['data'];
   /**
    * The form data in the `FormData` format.
    *
@@ -248,6 +250,10 @@ type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
   schema: T;
 };
 /**
+ * Type of schema with stripped empty literals from form types.
+ */
+type StripEmptyLiterals<T> = T extends ImmutablePrimitive ? ReplaceEmptyWithUndefined<T> : T extends unknown[] ? T extends (infer Item)[] ? StripEmptyLiterals<ReplaceEmptyWithUndefined<Item>>[] : T : Flatten<{ [K in keyof T as T[K] extends object ? K : ReplaceEmptyWithUndefined<T[K]> extends never ? never : undefined extends ReplaceEmptyWithUndefined<T[K]> ? never : K]: T[K] extends object ? StripEmptyLiterals<T[K]> : ReplaceEmptyWithUndefined<T[K]> } & { [K in keyof T as T[K] extends object ? never : ReplaceEmptyWithUndefined<T[K]> extends never ? never : undefined extends ReplaceEmptyWithUndefined<T[K]> ? K : never]?: ReplaceEmptyWithUndefined<T[K]> }>;
+/**
  * Form state on submission.
  *
  * @typeParam T - type of the form data.
@@ -258,11 +264,15 @@ type SubmitState<T extends object> = {
    */
   valid: true;
   /**
-   * The transformed form state data into an object without empty strings for API processing
+   * Form state data that includes form union types.
+   */
+  data: T;
+  /**
+   * Transformed form state data into an object without empty strings for API processing
    * (see: `formState.data.toObject()`). This value is `undefined` when the form state has
    * errors.
    */
-  data: T;
+  dataAsObject: StripEmptyLiterals<T>;
 } | {
   /**
    * Indicates whether the state is valid.
@@ -272,26 +282,7 @@ type SubmitState<T extends object> = {
    * The errors for each field in the form. This value is `undefined` when the form state has
    * no errors.
    */
-  errors: Immutable<FormMutableState<T>['errors'] & {
-    /**
-     * Gets an error message for a nested field.
-     *
-     * @param path - Form state path expression.
-     * @returns Error message for the specified field, or `undefined` if there is no error.
-     */
-    get: (expression: (data: T) => unknown) => string | undefined;
-    /**
-     * Gets a manual error message with an arbitrary string key.
-     *
-     * @param key - Manual error key.
-     * @returns Error message for the specified key, or `undefined` if there is no error.
-     */
-    getManual: (key: string) => string | undefined;
-    /**
-     * Gets an array of all error messages.
-     */
-    getAll: () => string[];
-  }>;
+  errors: FormState<T>['errors'];
 };
 /**
  * Form state type made immutable and extended with the `get(expression)` functions.
@@ -309,7 +300,7 @@ type FormState<T extends object> = {
      * This is useful for sending the data to JSON APIs.
      * @returns The transformed form data.
      */
-    toObject: () => T;
+    toObject: () => StripEmptyLiterals<T>;
   }>;
   /**
    * Errors for each field in the form.
@@ -626,6 +617,27 @@ type FormValidateOptions<T extends z.ZodMiniObject> = {
   callback?: ((state: FormState<z.infer<T>>, status: FormStatus) => void) | undefined;
 };
 /**
+ * Form state on submission.
+ *
+ * @typeParam T - type of the form data.
+ */
+type SubmitSuccessState<T extends object> = {
+  /**
+   * Form state data that includes form union types.
+   */
+  data: T;
+  /**
+   * Transformed form state data into an object without empty strings for API processing
+   * (see: `formState.data.toObject()`). This value is `undefined` when the form state has
+   * errors.
+   */
+  dataAsObject: StripEmptyLiterals<T>;
+  /**
+   * Submitted form data as a `FormData` instance.
+   */
+  formData: FormData;
+};
+/**
  * Form submission options.
  *
  * @typeParam T - form state type.
@@ -642,10 +654,14 @@ type FormSubmitOptions<T extends z.ZodMiniObject> = {
   /**
    * An optional callback to run after the form state has been submitted.
    *
-   * @param data - Strongly typed submitted form data.
-   * @param formData - Submitted form data as a `FormData` instance.
+   * @param state - Submitted form state.
+   * @param state.data - Form state data that includes form union types.
+   * @param state.dataAsObject - Transformed form state data into an object without empty strings for API processing
+   *                             (see: `formState.data.toObject()`). This value is `undefined` when the form state has
+   *                             errors.
+   * @param state.formData - Submitted form data as a `FormData` instance.
    */
-  onSuccess?: ((data: z.infer<T>, formData: FormData) => void) | undefined;
+  onSuccess?: ((state: SubmitSuccessState<z.infer<T>>) => void) | undefined;
   /**
    * An optional callback to run if the form was not submitted due to errors
    * or the `onSubmit` function returning `false`.
@@ -1701,5 +1717,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type StateChangeEvent, type StateChangeListener, type SubmitState, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type StateChangeEvent, type StateChangeListener, type StripEmptyLiterals, type SubmitState, type SubmitSuccessState, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

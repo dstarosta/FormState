@@ -9,7 +9,6 @@ import type {
   ArrayElement,
   StateChangeListener,
   DeepPartial,
-  FieldRange,
   FormChangeArrayOptions,
   FormChangeOptions,
   FormClassOptions,
@@ -22,7 +21,6 @@ import type {
   FormReplaceOptions,
   FormResetOptions,
   FormSetErrorOptions,
-  FormState,
   FormStatePath,
   FormStateResponse,
   FormStatus,
@@ -30,11 +28,11 @@ import type {
   FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
-  Immutable,
   ImmutableArray,
   StateCallback,
   SubmitState,
   SubmittedData,
+  StripEmptyLiterals,
 } from './types/form-types';
 
 import {
@@ -49,17 +47,18 @@ import { useDeepMemo } from './helpers/use-deep-memo';
 import { useManualErrorState } from './helpers/use-manual-error-state';
 import {
   cleanEmpty,
+  createImmutableData,
+  createImmutableDescriptions,
+  createImmutableDirty,
+  createImmutableErrors,
+  createImmutableMaxLengths,
+  createImmutablePatterns,
+  createImmutableRanges,
+  createImmutableTouched,
   createState,
   freezeObject,
-  getFieldDescription,
-  getFieldError,
-  getFieldErrors,
-  getFieldMaxLength,
-  getFieldPattern,
-  getFieldRange,
   getState,
   updateState,
-  wasFieldTouched,
 } from './helpers/state-manager';
 import { formatErrors } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
@@ -143,17 +142,13 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     }
 
-    const maxLengths = collectMaxLengths(schema) as Record<keyof State, number>;
-    const ranges = collectRanges(schema) as Record<
-      keyof State,
-      { min: FieldRange; max: FieldRange; format: string }
-    >;
-    const patterns = collectPatterns(schema) as Record<keyof State, string | undefined>;
-    const descriptions = collectDescriptions(schema) as Record<keyof State, string | undefined>;
-
     const data = safeData.data ?? mergedData;
 
     return {
+      maxLengths: collectMaxLengths(schema),
+      ranges: collectRanges(schema),
+      patterns: collectPatterns(schema),
+      descriptions: collectDescriptions(schema),
       initialData: data,
       submittedData: null,
       mode: initialMode,
@@ -166,10 +161,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       errors,
       dirty,
       touched,
-      maxLengths,
-      ranges,
-      patterns,
-      descriptions,
     } satisfies FormMutableState<State>;
   }, [
     schema,
@@ -297,90 +288,47 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The memoized form state data.
   const formData = useMemo(
-    () =>
-      freezeObject({
-        ...formState.data,
-        toObject: () => cleanEmpty(schema, formState.data) as State,
-      }) as FormState<State>['data'],
+    () => createImmutableData(schema, formState.data),
     [schema, formState.data]
   );
 
   // The memoized "errors" object of the form state.
   const formErrors = useMemo(
-    () =>
-      freezeObject({
-        ...formState.errors,
-        get: (expression: (data: State) => unknown) =>
-          getFieldError(formState.errors, getPath(formState.data, expression)),
-        getManual: (key: string) => formState.errors[key],
-        getAll: () => getFieldErrors(formState.errors, errorMessageSeparator),
-      }) as FormState<State>['errors'],
-    [formState.data, formState.errors, errorMessageSeparator]
+    () => createImmutableErrors(formState.errors, formState.data, errorMessageSeparator),
+    [formState.errors, formState.data, errorMessageSeparator]
   );
 
   // The memoized "dirty" object of the form state.
-  const dirty = useMemo(
-    () =>
-      freezeObject({
-        ...formState.dirty,
-        get: (key: `#${string}`) => Boolean(formState.dirty[key]),
-      }) as FormState<State>['dirty'],
-    [formState.dirty]
-  );
+  const dirty = useMemo(() => createImmutableDirty(formState.dirty), [formState.dirty]);
 
   // The memoized "touched" object of the form state.
   const touched = useMemo(
-    () =>
-      freezeObject({
-        ...formState.touched,
-        get: (expression: (data: State) => unknown) =>
-          wasFieldTouched(formState.touched, getPath(formState.data, expression)),
-      }) as FormState<State>['touched'],
+    () => createImmutableTouched(formState.touched, formState.data),
     [formState.touched, formState.data]
   );
 
   // The memoized "maxLengths" object of the form state.
   const maxLengths = useMemo(
-    () =>
-      freezeObject({
-        ...formState.maxLengths,
-        get: (expression: (data: State) => unknown) =>
-          getFieldMaxLength(formState.maxLengths, getPath(formState.data, expression)),
-      }) as FormState<State>['maxLengths'],
+    () => createImmutableMaxLengths(formState.maxLengths, formState.data),
     [formState.maxLengths, formState.data]
   );
 
   // The memoized "ranges" object of the form state.
   const ranges = useMemo(
-    () =>
-      freezeObject({
-        ...formState.ranges,
-        get: (expression: (data: State) => unknown) =>
-          getFieldRange(formState.ranges, getPath(formState.data, expression)),
-      }) as FormState<State>['ranges'],
-    [formState.data, formState.ranges]
+    () => createImmutableRanges(formState.ranges, formState.data),
+    [formState.ranges, formState.data]
   );
 
   // The memoized "patterns" object of the form state.
   const patterns = useMemo(
-    () =>
-      freezeObject({
-        ...formState.patterns,
-        get: (expression: (data: State) => unknown) =>
-          getFieldPattern(formState.patterns, getPath(formState.data, expression)),
-      }) as FormState<State>['patterns'],
-    [formState.data, formState.patterns]
+    () => createImmutablePatterns(formState.patterns, formState.data),
+    [formState.patterns, formState.data]
   );
 
   // The memoized "descriptions" object of the form state.
   const descriptions = useMemo(
-    () =>
-      freezeObject({
-        ...formState.descriptions,
-        get: (expression: (data: State) => unknown) =>
-          getFieldDescription(formState.descriptions, getPath(formState.data, expression)),
-      }) as FormState<State>['descriptions'],
-    [formState.data, formState.descriptions]
+    () => createImmutableDescriptions(formState.descriptions, formState.data),
+    [formState.descriptions, formState.data]
   );
 
   const generateCallbackState = useCallback(
@@ -398,21 +346,16 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   const generateListenerState = useCallback(() => {
-    const data = freezeObject({
-      ...formStateRef.current.data,
-      toObject: () => cleanEmpty(schema, formStateRef.current.data) as State,
-    }) as FormState<State>['data'];
+    const data = createImmutableData(schema, formStateRef.current.data);
 
     const safeData = schema.safeParse(formStateRef.current.data);
-    const dataErrors = formatErrors<State>(safeData.error, errorMessageSeparator);
 
-    const errors = freezeObject({
-      ...dataErrors,
-      get: (expression: (data: State) => unknown) =>
-        getFieldError(dataErrors, getPath(formStateRef.current.data, expression)),
-      getManual: (key: string) => dataErrors[key],
-      getAll: () => getFieldErrors(dataErrors, errorMessageSeparator),
-    }) as FormState<State>['errors'];
+    const dataErrors = formatErrors<State>(safeData.error, errorMessageSeparator);
+    const errors = createImmutableErrors(
+      dataErrors,
+      formStateRef.current.data,
+      errorMessageSeparator
+    );
 
     return { data, errors };
   }, [errorMessageSeparator, schema]);
@@ -1008,7 +951,10 @@ export function useFormState<T extends z.ZodMiniObject>(
 
           dispatch({
             type: 'submit',
-            submittedData: { data: formStateRef.current.data, formData: null },
+            submittedData: {
+              data: createImmutableData(schema, formStateRef.current.data),
+              formData: null,
+            },
             options: {
               resetDirty: options.resetDirty !== false,
               resetTouched: options.resetTouched !== false,
@@ -1021,7 +967,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       return true;
     },
-    [schema, manualErrorsState, errorMessageSeparator, dispatch]
+    [schema, errorMessageSeparator, manualErrorsState, dispatch]
   );
 
   // The memoized "handleReset" function.
@@ -1067,17 +1013,16 @@ export function useFormState<T extends z.ZodMiniObject>(
         const submitState: SubmitState<State> = hasErrors
           ? {
               valid: false,
-              errors: freezeObject({
-                ...submittedErrors,
-                get: (expression: (data: State) => unknown) =>
-                  getFieldError(submittedErrors, getPath(currentState.data, expression)),
-                getManual: (key: string) => submittedErrors[key],
-                getAll: () => getFieldErrors(submittedErrors, errorMessageSeparator),
-              }) as FormState<State>['errors'],
+              errors: createImmutableErrors(
+                submittedErrors,
+                currentState.data,
+                errorMessageSeparator
+              ),
             }
           : {
               valid: true,
               data: cleanEmpty(schema, currentState.data) as State,
+              dataAsObject: cleanEmpty(schema, currentState.data) as StripEmptyLiterals<State>,
             };
 
         setIsSubmitting(true);
@@ -1112,10 +1057,11 @@ export function useFormState<T extends z.ZodMiniObject>(
 
         if (typeof options?.onSuccess === 'function') {
           changeCallbackRefs.current.push((submittedState) => {
-            options.onSuccess?.(
-              cleanEmpty(schema, submittedState.data) as State,
-              submittedFormData
-            );
+            options.onSuccess?.({
+              data: cleanEmpty(schema, submittedState.data) as State,
+              dataAsObject: cleanEmpty(schema, submittedState.data) as StripEmptyLiterals<State>,
+              formData: submittedFormData,
+            });
           });
         }
 
@@ -1124,7 +1070,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         dispatch({
           type: 'submit',
           submittedData: {
-            data: cleanEmpty(schema, currentState.data) as State,
+            data: createImmutableData(schema, currentState.data),
             formData: submittedFormData,
           },
           options: {
@@ -1134,7 +1080,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         });
       };
     },
-    [schema, manualErrorsState, errorMessageSeparator, setIsSubmitting, dispatch]
+    [schema, errorMessageSeparator, manualErrorsState, setIsSubmitting, dispatch]
   );
 
   // The memoized "reset" function.
@@ -1203,11 +1149,11 @@ export function useFormState<T extends z.ZodMiniObject>(
     () =>
       formState.submittedData
         ? ({
-            data: cleanEmpty(schema, formState.submittedData.data) as State,
+            data: formState.submittedData.data,
             formData: formState.submittedData.formData,
-          } as SubmittedData<State>)
+          } satisfies SubmittedData<State>)
         : null,
-    [schema, formState.submittedData]
+    [formState.submittedData]
   );
 
   // Infers the name of the form field.
@@ -1231,10 +1177,8 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const initialFormState = useMemo(
     () => ({
-      data: freezeObject(formState.initialData) as Immutable<State>,
-      errors: freezeObject(formState.initialErrors) as Immutable<
-        Record<keyof State, string | undefined>
-      >,
+      data: freezeObject(formState.initialData),
+      errors: freezeObject(formState.initialErrors),
     }),
     [formState.initialData, formState.initialErrors]
   );

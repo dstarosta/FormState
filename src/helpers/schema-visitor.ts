@@ -124,7 +124,7 @@ const recursiveCollect = <T>(
   }
 };
 
-const getSchema = (schema: z.ZodMiniType, path: string) => {
+const getSchema = (schema: z.ZodMiniType, path: string, extractEnum: boolean) => {
   let current: z.ZodMiniType = getBaseType(schema);
 
   const parts = path.split('.');
@@ -137,6 +137,7 @@ const getSchema = (schema: z.ZodMiniType, path: string) => {
     }
 
     if (
+      extractEnum &&
       current instanceof z.ZodMiniEnum &&
       typeof current.def.entries === 'object' &&
       typeof Object.values(current.def.entries)[0] === 'string'
@@ -180,18 +181,18 @@ export const getBaseType = (value: unknown) => {
 };
 
 export function getSchemaType(schema: z.ZodMiniType, path: string) {
-  return getSchema(schema, path).type;
+  return getSchema(schema, path, true).type;
 }
 
 export function allowEmptyString(schema: z.ZodMiniType, path: string) {
-  const pathSchema = getSchema(schema, path);
+  const pathSchema = getSchema(schema, path, false);
   const meta = z.globalRegistry.get(pathSchema);
 
   return meta?.['allowEmpty'] !== false;
 }
 
-export const collectMaxLengths = (
-  schema: z.ZodMiniType,
+export const collectMaxLengths = <T extends z.ZodMiniType>(
+  schema: T,
   field: string = '',
   parentKey: string = ''
 ) => {
@@ -222,11 +223,11 @@ export const collectMaxLengths = (
 
   recursiveCollect(baseSchema, maxLengths, key, collectMaxLengths);
 
-  return maxLengths;
+  return maxLengths as Record<keyof z.infer<T>, number>;
 };
 
-export const collectRanges = (
-  schema: z.ZodMiniType,
+export const collectRanges = <T extends z.ZodMiniType>(
+  schema: T,
   field: string = '',
   parentKey: string = ''
 ) => {
@@ -267,44 +268,11 @@ export const collectRanges = (
 
   recursiveCollect(baseSchema, ranges, key, collectRanges);
 
-  return ranges;
+  return ranges as Record<keyof z.infer<T>, { min: FieldRange; max: FieldRange; format: string }>;
 };
 
-export const collectDescriptions = (
-  schema: z.ZodMiniType,
-  field: string = '',
-  parentKey: string = ''
-) => {
-  const descriptions: Record<string, string | undefined> = {};
-  const key = parentKey ? `${parentKey}.${field}` : field;
-
-  const baseSchema = getBaseType(schema);
-
-  let description = z.globalRegistry.get(schema)?.description;
-
-  if (!description && baseSchema instanceof z.ZodMiniType) {
-    description = z.globalRegistry.get(baseSchema)?.description;
-  }
-
-  if (description) {
-    descriptions[key] = description;
-  }
-
-  if (baseSchema instanceof z.ZodMiniArray) {
-    const baseElementSchema = getBaseType(baseSchema.def.element);
-
-    if (z.globalRegistry.get(baseElementSchema)?.description) {
-      descriptions[key + '.0'] = z.globalRegistry.get(baseElementSchema)?.description;
-    }
-  }
-
-  recursiveCollect(baseSchema, descriptions, key, collectDescriptions);
-
-  return descriptions;
-};
-
-export const collectPatterns = (
-  schema: z.ZodMiniType,
+export const collectPatterns = <T extends z.ZodMiniType>(
+  schema: T,
   field: string = '',
   parentKey: string = ''
 ) => {
@@ -333,7 +301,40 @@ export const collectPatterns = (
 
   recursiveCollect(baseSchema, patterns, key, collectPatterns);
 
-  return patterns;
+  return patterns as Record<keyof z.infer<T>, string | undefined>;
+};
+
+export const collectDescriptions = <T extends z.ZodMiniType>(
+  schema: T,
+  field: string = '',
+  parentKey: string = ''
+) => {
+  const descriptions: Record<string, string | undefined> = {};
+  const key = parentKey ? `${parentKey}.${field}` : field;
+
+  const baseSchema = getBaseType(schema);
+
+  let description = z.globalRegistry.get(schema)?.description;
+
+  if (!description && baseSchema instanceof z.ZodMiniType) {
+    description = z.globalRegistry.get(baseSchema)?.description;
+  }
+
+  if (description) {
+    descriptions[key] = description;
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray) {
+    const baseElementSchema = getBaseType(baseSchema.def.element);
+
+    if (z.globalRegistry.get(baseElementSchema)?.description) {
+      descriptions[key + '.0'] = z.globalRegistry.get(baseElementSchema)?.description;
+    }
+  }
+
+  recursiveCollect(baseSchema, descriptions, key, collectDescriptions);
+
+  return descriptions as Record<keyof z.infer<T>, string | undefined>;
 };
 
 const pathParts: string[] = [];

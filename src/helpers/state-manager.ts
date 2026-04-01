@@ -7,9 +7,12 @@ import type {
   FormMutableState,
   FormPath,
   FormPathValueOrUnknown,
-  FormStatePath,
+  Immutable,
   ImmutableArray,
   ImmutableObject,
+  RangeOf,
+  RangeResult,
+  StripEmptyLiterals,
   UnknownObject,
 } from '../types/form-types';
 
@@ -120,44 +123,6 @@ export const cleanEmpty = <T>(
   return innerObj as DeepPartial<T>;
 };
 
-export const getFieldError = <T extends z.ZodMiniObject>(
-  errors: Record<keyof z.infer<T>, string | undefined>,
-  path: FormStatePath<z.infer<T>>
-) => errors[path.join('.')];
-
-export const getFieldErrors = <T extends z.ZodMiniObject>(
-  errors: Record<keyof z.infer<T>, string | undefined>,
-  errorMessageSeparator: string
-) =>
-  Object.values(errors)
-    .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
-    .flatMap((error) => error.split(errorMessageSeparator));
-
-export const wasFieldTouched = <T extends z.ZodMiniObject>(
-  touched: Record<keyof z.infer<T>, boolean>,
-  path: FormStatePath<z.infer<T>>
-) => Boolean(touched[path.join('.')]);
-
-export const getFieldMaxLength = <T extends z.ZodMiniObject>(
-  maxLengths: Record<keyof z.infer<T>, number | undefined>,
-  path: FormStatePath<z.infer<T>>
-) => maxLengths[getPathNotation(path)];
-
-export const getFieldRange = <T extends z.ZodMiniObject>(
-  ranges: Record<keyof z.infer<T>, { min: FieldRange; max: FieldRange; format: string }>,
-  path: FormStatePath<z.infer<T>>
-) => ranges[getPathNotation(path)];
-
-export const getFieldPattern = <T extends z.ZodMiniObject>(
-  patterns: Record<keyof z.infer<T>, string | undefined>,
-  path: FormStatePath<z.infer<T>>
-) => patterns[getPathNotation(path)] ?? '';
-
-export const getFieldDescription = <T extends z.ZodMiniObject>(
-  descriptions: Record<keyof z.infer<T>, string | undefined>,
-  path: FormStatePath<z.infer<T>>
-) => descriptions[getPathNotation(path)] ?? '';
-
 export const diffedState = <T extends z.ZodMiniObject>(
   state: FormMutableState<z.infer<T>>,
   prevState: FormMutableState<z.infer<T>>
@@ -169,9 +134,95 @@ export const diffedState = <T extends z.ZodMiniObject>(
   return state;
 };
 
-export const freezeObject = (obj: object) => {
-  return IS_DEVELOPMENT ? Object.freeze(obj) : obj;
+export const freezeObject = <T extends object>(obj: T) => {
+  return IS_DEVELOPMENT ? (Object.freeze(obj) as Immutable<T>) : (obj as Immutable<T>);
 };
+
+export const createImmutableData = <T extends z.ZodMiniObject>(schema: T, data: z.infer<T>) =>
+  freezeObject({
+    ...data,
+    toObject: () => cleanEmpty(schema, data) as StripEmptyLiterals<z.infer<T>>,
+  });
+
+export const createImmutableErrors = <T extends z.ZodMiniObject>(
+  errors: Record<keyof z.infer<T> | '', string | undefined>,
+  data: z.infer<T>,
+  errorMessageSeparator: string
+) =>
+  freezeObject({
+    ...errors,
+    get: (expression: (data: z.infer<T>) => unknown) => errors[getPath(data, expression).join('.')],
+    getManual: (key: string) => errors[key],
+    getAll: () =>
+      Object.values(errors)
+        .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
+        .flatMap((error) => error.split(errorMessageSeparator)),
+  });
+
+export const createImmutableDirty = <T extends z.ZodMiniObject>(
+  dirty: Record<keyof z.infer<T>, boolean>
+) =>
+  freezeObject({
+    ...dirty,
+    get: (key: `#${string}`) => Boolean(dirty[key]),
+  });
+
+export const createImmutableTouched = <T extends z.ZodMiniObject>(
+  touched: Record<keyof z.infer<T>, boolean>,
+  data: z.infer<T>
+) =>
+  freezeObject({
+    ...touched,
+    get: (expression: (data: z.infer<T>) => unknown) =>
+      Boolean(touched[getPath(data, expression).join('.')]),
+  });
+
+export const createImmutableMaxLengths = <T extends z.ZodMiniObject>(
+  maxLengths: Record<keyof z.infer<T>, number>,
+  data: z.infer<T>
+) =>
+  freezeObject({
+    ...maxLengths,
+    get: (expression: (data: z.infer<T>) => unknown) =>
+      maxLengths[getPathNotation(getPath(data, expression))],
+  });
+
+export const createImmutableRanges = <T extends z.ZodMiniObject>(
+  ranges: Record<
+    keyof z.infer<T>,
+    {
+      min: FieldRange;
+      max: FieldRange;
+      format: string;
+    }
+  >,
+  data: z.infer<T>
+) =>
+  freezeObject({
+    ...ranges,
+    get: <R extends RangeOf<R>>(expression: (data: z.infer<T>) => R) =>
+      ranges[getPathNotation(getPath(data, expression))] as RangeResult<R>,
+  });
+
+export const createImmutablePatterns = <T extends z.ZodMiniObject>(
+  patterns: Record<keyof z.infer<T>, string | undefined>,
+  data: z.infer<T>
+) =>
+  freezeObject({
+    ...patterns,
+    get: (expression: (data: z.infer<T>) => unknown) =>
+      patterns[getPathNotation(getPath(data, expression))] ?? '',
+  });
+
+export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
+  descriptions: Record<keyof z.infer<T>, string | undefined>,
+  data: z.infer<T>
+) =>
+  freezeObject({
+    ...descriptions,
+    get: (expression: (data: z.infer<T>) => unknown) =>
+      descriptions[getPathNotation(getPath(data, expression))] ?? '',
+  });
 
 export const difference = <T extends object>(obj1: T, obj2: Record<string, unknown>) => {
   const result: Partial<T> = {};

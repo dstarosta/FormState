@@ -18,7 +18,9 @@ export type {
   FormTouchOptions,
   StateChangeEvent,
   StateChangeListener,
+  StripEmptyLiterals,
   SubmitState,
+  SubmitSuccessState,
 } from './types/form-types';
 export { FormStateError } from './helpers/form-state-error';
 export { useFormState } from './use-form-state';

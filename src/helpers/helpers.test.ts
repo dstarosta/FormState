@@ -60,8 +60,8 @@ describe('helpers', () => {
         v: '',
         z: { id: '' },
       });
-      expect(cleanEmpty(formSchema, state)).toEqual({ a: [], b2: false, s: '', v: '' });
 
+      expect(cleanEmpty(formSchema, state)).toEqual({ a: [], b2: false, s: '' });
       expect(cleanEmpty(formSchema, null)).toBeNull();
     });
 
