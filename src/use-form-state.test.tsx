@@ -50,7 +50,9 @@ describe('useFormState', () => {
             z.gte(1, 'Age must be > 0')
           )
           .with(z.describe('Age')),
-        email: z.formString({ error: 'Invalid email' }).with(z.describe('Email')),
+        email: z
+          .formString({ error: 'Invalid email', allowEmpty: false })
+          .with(z.describe('Email')),
         birthDate: z
           .formDate(
             { required: false, dateFormat: 'MM/dd/yyyy' },
@@ -698,7 +700,7 @@ describe('useFormState', () => {
       expect(apiData.name).toBe('John');
       expect(apiData.info.age).toBe(30);
       expect(apiData.info.birthDate).toBeInstanceOf(Date);
-      expect(apiData.info.email).toBe('');
+      expect(apiData.info.email).toBeUndefined();
       expect(apiData.tags).toHaveLength(2);
       expect(apiData.tags[0]).toBe('a');
       expect(apiData.tags[1]).toBe('b');
