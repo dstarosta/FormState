@@ -27,9 +27,14 @@ declare module 'zod/mini' {
     /**
      * Converts an inferred schema instance into an object without empty literal unions.
      *
+     * @example
+     * const { formState } = useFormState(schema);
+     * const apiData = schema.toObject(formState.data);
+     *
      * @param data - Inferred schema object.
+     * @returns The data object without empty literal unions.
      */
-    toObject<T extends this>(data: z.infer<T> | DeepPartial<z.infer<T>> | FormState<z.infer<T>>['data']): SchemaDataObject<z.infer<T>>;
+    toObject<T extends this, U extends z.infer<T>>(data: U | DeepPartial<U> | FormState<U>['data']): SchemaDataObject<z.infer<T>>;
   }
 }
 type PathValue<T, P extends string> = P extends keyof T ? T[P] : P extends `${infer K}.${infer R}` ? K extends keyof T ? PathValue<T[K], R> : never : never;
@@ -1669,7 +1674,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
