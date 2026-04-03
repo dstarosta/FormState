@@ -32,7 +32,6 @@ import type {
   StateCallback,
   SubmitState,
   SubmittedData,
-  StripEmptyLiterals,
 } from './types/form-types';
 
 import {
@@ -287,10 +286,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   ]);
 
   // The memoized form state data.
-  const formData = useMemo(
-    () => createImmutableData(schema, formState.data),
-    [schema, formState.data]
-  );
+  const formData = useMemo(() => createImmutableData(formState.data), [formState.data]);
 
   // The memoized "errors" object of the form state.
   const formErrors = useMemo(
@@ -346,7 +342,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   const generateListenerState = useCallback(() => {
-    const data = createImmutableData(schema, formStateRef.current.data);
+    const data = createImmutableData(formStateRef.current.data);
 
     const safeData = schema.safeParse(formStateRef.current.data);
 
@@ -952,7 +948,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           dispatch({
             type: 'submit',
             submittedData: {
-              data: createImmutableData(schema, formStateRef.current.data),
+              data: createImmutableData(formStateRef.current.data),
               formData: null,
             },
             options: {
@@ -1022,7 +1018,6 @@ export function useFormState<T extends z.ZodMiniObject>(
           : {
               valid: true,
               data: cleanEmpty(schema, currentState.data) as State,
-              dataAsObject: cleanEmpty(schema, currentState.data) as StripEmptyLiterals<State>,
             };
 
         setIsSubmitting(true);
@@ -1059,7 +1054,6 @@ export function useFormState<T extends z.ZodMiniObject>(
           changeCallbackRefs.current.push((submittedState) => {
             options.onSuccess?.({
               data: cleanEmpty(schema, submittedState.data) as State,
-              dataAsObject: cleanEmpty(schema, submittedState.data) as StripEmptyLiterals<State>,
               formData: submittedFormData,
             });
           });
@@ -1070,7 +1064,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         dispatch({
           type: 'submit',
           submittedData: {
-            data: createImmutableData(schema, currentState.data),
+            data: createImmutableData(currentState.data),
             formData: submittedFormData,
           },
           options: {

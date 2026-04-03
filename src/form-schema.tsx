@@ -6,15 +6,26 @@ import type {
   FormDateOptions,
   FormStringOptions,
   FormTypeOptions,
+  SchemaDataObject,
   ZodValidationError,
 } from './types/form-types';
 
 import { isValidDate, parseDate } from './helpers/date-formatter';
+import { cleanEmpty } from './helpers/state-manager';
 
 const EMPTY_STRING = '' as const;
 const Z_EMPTY_STRING = z.literal(EMPTY_STRING);
 
 const ALWAYS_VALIDATE = () => true;
+
+/**
+ * Converts an inferred schema instance into an object without empty literal unions.
+ */
+(z.ZodMiniObject.prototype as Record<string, unknown>)['toObject'] = function <
+  T extends z.ZodMiniObject,
+>(this: T, data: z.infer<T>) {
+  return cleanEmpty(this, data) as SchemaDataObject<z.infer<T>>;
+};
 
 /**
  * Infers form state type from the schema.

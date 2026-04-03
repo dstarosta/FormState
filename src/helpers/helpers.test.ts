@@ -61,7 +61,18 @@ describe('helpers', () => {
         z: { id: '' },
       });
 
-      expect(cleanEmpty(formSchema, state)).toEqual({ a: [], b2: false, s: '' });
+      const extendedState = {
+        ...state,
+        someFunc: () => {},
+        prom: Promise.resolve(),
+        abc: undefined,
+      };
+
+      expect(cleanEmpty(formSchema, extendedState)).toEqual({
+        a: [],
+        b2: false,
+        s: '',
+      });
       expect(cleanEmpty(formSchema, null)).toBeNull();
     });
 

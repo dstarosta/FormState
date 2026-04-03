@@ -16,9 +16,10 @@ export type {
   FormStatus,
   FormSubmitOptions,
   FormTouchOptions,
+  Immutable,
+  SchemaDataObject,
   StateChangeEvent,
   StateChangeListener,
-  StripEmptyLiterals,
   SubmitState,
   SubmitSuccessState,
 } from './types/form-types';

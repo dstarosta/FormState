@@ -12,7 +12,6 @@ import type {
   ImmutableObject,
   RangeOf,
   RangeResult,
-  StripEmptyLiterals,
   UnknownObject,
 } from '../types/form-types';
 
@@ -65,7 +64,7 @@ const isRecordObject = (value: unknown): value is Record<string, unknown> =>
 
 export const cleanEmpty = <T>(
   schema: z.ZodMiniType,
-  obj?: T | T[] | null,
+  obj: T | T[] | null,
   field: string = '',
   parentKey: string = ''
 ): DeepPartial<T> | DeepPartial<T>[] => {
@@ -85,7 +84,7 @@ export const cleanEmpty = <T>(
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = (obj as UnknownObject)[key];
 
-      if (typeof value === 'function') {
+      if (typeof value === 'function' || value instanceof Promise) {
         continue;
       }
 
@@ -138,10 +137,9 @@ export const freezeObject = <T extends object>(obj: T) => {
   return IS_DEVELOPMENT ? (Object.freeze(obj) as Immutable<T>) : (obj as Immutable<T>);
 };
 
-export const createImmutableData = <T extends z.ZodMiniObject>(schema: T, data: z.infer<T>) =>
+export const createImmutableData = <T extends z.ZodMiniObject>(data: z.infer<T>) =>
   freezeObject({
     ...data,
-    toObject: () => cleanEmpty(schema, data) as StripEmptyLiterals<z.infer<T>>,
   });
 
 export const createImmutableErrors = <T extends z.ZodMiniObject>(

@@ -5,6 +5,21 @@ import type * as z from 'zod/mini';
 
 import { FormStateError } from '../helpers/form-state-error';
 
+// Extending ZodMiniObject type
+
+declare module 'zod/mini' {
+  interface ZodMiniObject {
+    /**
+     * Converts an inferred schema instance into an object without empty literal unions.
+     *
+     * @param data - Inferred schema object.
+     */
+    toObject<T extends this>(
+      data: z.infer<T> | DeepPartial<z.infer<T>> | FormState<z.infer<T>>['data']
+    ): SchemaDataObject<z.infer<T>>;
+  }
+}
+
 // Private types
 
 type TypeIteration = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...0[]];
@@ -49,20 +64,6 @@ export type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
 export type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
 export type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
 export type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
-
-export type Immutable<T> = T extends ImmutablePrimitive
-  ? T
-  : T extends Array<infer U>
-    ? ImmutableArray<U>
-    : T extends Map<infer K, infer V>
-      ? ImmutableMap<K, V>
-      : T extends Set<infer M>
-        ? ImmutableSet<M>
-        : T extends object
-          ? ImmutableObject<T>
-          : T;
-
-export type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 
 export type ArrayElement<A> = A extends readonly (infer U)[] ? U : never;
 
@@ -183,6 +184,26 @@ export type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> =
   P extends FormPath<T> ? FormPathValue<T, P> : unknown;
 
 // Public types
+
+/**
+ * Immutable type.
+ */
+export type Immutable<T> = T extends ImmutablePrimitive
+  ? T
+  : T extends Array<infer U>
+    ? ImmutableArray<U>
+    : T extends Map<infer K, infer V>
+      ? ImmutableMap<K, V>
+      : T extends Set<infer M>
+        ? ImmutableSet<M>
+        : T extends object
+          ? ImmutableObject<T>
+          : T;
+
+/**
+ * Recursive `Partial<T>` like type.
+ */
+export type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 
 /**
  * Zod validation error.
@@ -341,13 +362,13 @@ export type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions
 };
 
 /**
- * Type of schema with stripped empty literals from form types.
+ * Type of schema data with stripped empty literals from union types.
  */
-export type StripEmptyLiterals<T> = T extends ImmutablePrimitive
+export type SchemaDataObject<T> = T extends ImmutablePrimitive
   ? ReplaceEmptyWithUndefined<T>
   : T extends unknown[]
     ? T extends (infer Item)[]
-      ? StripEmptyLiterals<ReplaceEmptyWithUndefined<Item>>[]
+      ? SchemaDataObject<ReplaceEmptyWithUndefined<Item>>[]
       : T
     : Flatten<
         {
@@ -358,7 +379,7 @@ export type StripEmptyLiterals<T> = T extends ImmutablePrimitive
               : undefined extends ReplaceEmptyWithUndefined<T[K]>
                 ? never
                 : K]: T[K] extends object
-            ? StripEmptyLiterals<T[K]>
+            ? SchemaDataObject<T[K]>
             : ReplaceEmptyWithUndefined<T[K]>;
         } & {
           [K in keyof T as T[K] extends object
@@ -386,12 +407,6 @@ export type SubmitState<T extends object> =
        * Form state data that includes form union types.
        */
       data: T;
-      /**
-       * Transformed form state data into an object without empty strings for API processing
-       * (see: `formState.data.toObject()`). This value is `undefined` when the form state has
-       * errors.
-       */
-      dataAsObject: StripEmptyLiterals<T>;
     }
   | {
       /**
@@ -414,17 +429,7 @@ export type FormState<T extends object> = {
   /**
    * Form state data.
    */
-  data: Immutable<
-    FormMutableState<T>['data'] & {
-      /**
-       * Transforms the form state data into an object without empty strings.
-       *
-       * This is useful for sending the data to JSON APIs.
-       * @returns The transformed form data.
-       */
-      toObject: () => StripEmptyLiterals<T>;
-    }
-  >;
+  data: Immutable<FormMutableState<T>['data']>;
   /**
    * Errors for each field in the form.
    */
@@ -791,12 +796,6 @@ export type SubmitSuccessState<T extends object> = {
    */
   data: T;
   /**
-   * Transformed form state data into an object without empty strings for API processing
-   * (see: `formState.data.toObject()`). This value is `undefined` when the form state has
-   * errors.
-   */
-  dataAsObject: StripEmptyLiterals<T>;
-  /**
    * Submitted form data as a `FormData` instance.
    */
   formData: FormData;
@@ -821,9 +820,6 @@ export type FormSubmitOptions<T extends z.ZodMiniObject> = {
    *
    * @param state - Submitted form state.
    * @param state.data - Form state data that includes form union types.
-   * @param state.dataAsObject - Transformed form state data into an object without empty strings for API processing
-   *                             (see: `formState.data.toObject()`). This value is `undefined` when the form state has
-   *                             errors.
    * @param state.formData - Submitted form data as a `FormData` instance.
    */
   onSuccess?: ((state: SubmitSuccessState<z.infer<T>>) => void) | undefined;

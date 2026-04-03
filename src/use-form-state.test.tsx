@@ -138,7 +138,6 @@ describe('useFormState', () => {
         previousVersions: [],
         updateDates: [],
         specialNumber: Math.PI,
-        toObject: formState.data.toObject,
       };
 
       expect(formState.data).toStrictEqual(expectedData);
@@ -696,7 +695,7 @@ describe('useFormState', () => {
       expect(data.previousVersions).toStrictEqual([]);
       expect(data.specialNumber).toBe(Math.PI);
 
-      const apiData = data.toObject();
+      const apiData = schema.toObject(data);
 
       expect(apiData.name).toBe('John');
       expect(apiData.info.age).toBe(30);
@@ -858,7 +857,6 @@ describe('useFormState', () => {
       const { formState } = result.current;
 
       expect(formState.data.name).toBe('Alice');
-      expect(formState.data.toObject().name).toBe('Alice');
       expect(formState.data.version).toBe(1);
       expect(formState.errors.name).toBeUndefined();
       expect(formState.errors.get((path) => path.name)).toBeUndefined();
@@ -912,7 +910,6 @@ describe('useFormState', () => {
         ++updateCounter;
 
         expect(state.data.name).toBe('Alice');
-        expect(state.data.toObject().name).toBe('Alice');
         expect(state.data.version).toBe(1);
         expect(state.data.info.age).toBe(51);
         expect(state.errors.name).toBeUndefined();
@@ -1072,7 +1069,6 @@ describe('useFormState', () => {
         ++updateCounter;
 
         expect(state.data.name).toBe('Alice');
-        expect(state.data.toObject().name).toBe('Alice');
         expect(state.data.version).toBe(1);
         expect(state.data.info.age).toBe(51);
       };
@@ -1617,7 +1613,7 @@ describe('useFormState', () => {
       const emptySchema = z.object({});
       const { result } = renderHook(() => useFormState(emptySchema));
       const {
-        formState,
+        formState: { data },
         formStatus,
         formActions: { touch },
       } = result.current;
@@ -1626,8 +1622,8 @@ describe('useFormState', () => {
         touch();
       });
 
-      expect(formState.data.toObject()).toStrictEqual({});
       expect(formStatus.touched).toBe(false);
+      expect(schema.toObject(data)).toStrictEqual({});
     });
 
     it('should validate field when touched and validate option is "always"', () => {
@@ -2725,7 +2721,6 @@ describe('useFormState', () => {
       expect(submitFn).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ name: 'John' }) as object,
-          dataAsObject: expect.objectContaining({ name: 'John' }) as object,
           formData: expect.any(FormData) as FormData,
         })
       );
@@ -2759,7 +2754,6 @@ describe('useFormState', () => {
       expect(submitFn).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ name: 'John' }) as object,
-          dataAsObject: expect.objectContaining({ name: 'John' }) as object,
           formData: expect.any(FormData) as FormData,
         })
       );
@@ -3011,7 +3005,6 @@ describe('useFormState', () => {
       const actionMock = vi.fn<StateChangeListener<Schema>>(
         ({ type, data, formData, errors, submitCount }) => {
           expect(type).toBeOneOf(['change', 'submit']);
-          expect(data.toObject().name).toBeOneOf(['John', '']);
           expect(submitCount).toBeOneOf([0, 1]);
 
           if (data.name === '') {
