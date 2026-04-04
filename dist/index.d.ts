@@ -740,16 +740,6 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
    */
   formStatus: FormStatus;
   /**
-   * Returns the form CSS classes for the control with the provided path.
-   *
-   * @typeParam T - form state type.
-   * @param nameOrPath - Root level field name or a state path expression.
-   * @param additionalClasses - Optional string containing additional CSS classes for the control.
-   * @param options - Options for form CSS classes.
-   * @returns A `string` containing the form and the additional CSS class names.
-   */
-  formClasses: (nameOrPath: FormPath<T>, additionalClasses?: string | null, options?: FormClassOptions) => string;
-  /**
    * Form actions.
    */
   formActions: {
@@ -996,7 +986,7 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * const onSubmitted = (state: SubmitSuccessState<FormSchema>) => { ... };
      * const onSubmitError = (state: FormState<FormSchema>, status: FormStatus) => { ... };
      *
-     * <Form action={handleSubmit(onSubmit, { onSuccess: onSubmitted, onError: onSubmitError })}>...</Form>
+     * <Form action={formHandlers.handleSubmit(onSubmit, { onSuccess: onSubmitted, onError: onSubmitError })}>...</Form>
      *
      * @param onSubmit - A callback function to execute before submitting the form.
      *
@@ -1020,6 +1010,48 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
     handleReset: (event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => void;
   };
   /**
+   * Form hooks.
+   */
+  formHooks: {
+    /**
+     * A hook that listens to "change" and "submit" form events.
+     *
+     * @param listener - A listener function.
+     */
+    useListener: (listener?: StateChangeListener<z.infer<T>>) => void;
+    /**
+     * A hook that watches a field based on the element's `name` HTML attribute.
+     *
+     * Note: The `Form` component from this library must be used to track changes.
+     *
+     * The following HTML form elements are supported.
+     *  - input
+     *  - textarea
+     *
+     * @example
+     * const nameValue = useWatch('name');
+     * const ageValue = useWatch(
+     *     inferName((path) => path.info.age),
+     *     (value) => (parseInt(value, 10) <= 0 ? '' : value)
+     * );
+     *
+     * @param name - A `name` HTML attribute value of the element to watch.
+     * @param compute - An optional compute function to transform the value.
+     * @returns The value of the element.
+     */
+    useWatch: (name: string, compute?: (value: string) => string) => string;
+  };
+  /**
+   * Returns the form CSS classes for the control with the provided path.
+   *
+   * @typeParam T - form state type.
+   * @param nameOrPath - Root level field name or a state path expression.
+   * @param additionalClasses - Optional string containing additional CSS classes for the control.
+   * @param options - Options for form CSS classes.
+   * @returns A `string` containing the form and the additional CSS class names.
+   */
+  formClasses: (nameOrPath: FormPath<T>, additionalClasses?: string | null, options?: FormClassOptions) => string;
+  /**
    * The Form component with pre-wired reset logic.
    *
    * Native form validation has been disabled and Enter handling modified
@@ -1029,33 +1061,6 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
    * @returns `Form` React element.
    */
   Form: (props: FormProps) => React.JSX.Element;
-  /**
-   * A hook that listens to "change" and "submit" form events.
-   *
-   * @param listener - A listener function.
-   */
-  useListener: (listener?: StateChangeListener<z.infer<T>>) => void;
-  /**
-   * A hook that watches a field based on the element's `name` HTML attribute.
-   *
-   * Note: The `Form` component from this library must be used to track changes.
-   *
-   * The following HTML form elements are supported.
-   *  - input
-   *  - textarea
-   *
-   * @example
-   * const nameValue = useWatch('name');
-   * const ageValue = useWatch(
-   *     inferName((path) => path.info.age),
-   *     (value) => (parseInt(value, 10) <= 0 ? '' : value)
-   * );
-   *
-   * @param name - A `name` HTML attribute value of the element to watch.
-   * @param compute - An optional compute function to transform the value.
-   * @returns The value of the element.
-   */
-  useWatch: (name: string, compute?: (value: string) => string) => string;
 };
 /**
  * The date notation format in a string.

@@ -2417,10 +2417,9 @@ describe('useFormState', () => {
         formStatus,
         formActions: { change, inferName, touch, setError, getSubmittedData },
         formHandlers: { handleSubmit },
+        formHooks: { useListener, useWatch },
         formClasses,
         Form,
-        useListener,
-        useWatch,
       } = useFormState(schema, {
         initialState: {
           name: initialValue ?? '',

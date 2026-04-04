@@ -1221,7 +1221,6 @@ export function useFormState<T extends z.ZodMiniObject>(
         descriptions,
       },
       formStatus,
-      formClasses,
       formActions: {
         change,
         replace,
@@ -1248,9 +1247,12 @@ export function useFormState<T extends z.ZodMiniObject>(
         handleSubmit,
         handleReset,
       },
+      formHooks: {
+        useListener: listenerHookRef.current,
+        useWatch: watchHookRef.current,
+      },
+      formClasses,
       Form: createComponent,
-      useListener: listenerHookRef.current,
-      useWatch: watchHookRef.current,
     }),
     [
       initialFormState,
