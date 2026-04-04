@@ -1912,6 +1912,54 @@ describe('useFormState', () => {
       expect(validatedState.errors.name).toBe('Name is required');
     });
 
+    it('should validate form with additional logic', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialState: { name: 'John' } }));
+      const {
+        formState,
+        formActions: { validate },
+      } = result.current;
+
+      act(() => {
+        validate(() => {
+          if (formState.data.name !== 'John') {
+            return {
+              name: 'The name is must be John',
+            };
+          }
+
+          return true;
+        });
+      });
+
+      const { formState: validatedState } = result.current;
+
+      expect(validatedState.data.name).toBe('John');
+    });
+
+    it('should not validate form with failed additional logic', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialState: {} }));
+      const {
+        formState,
+        formActions: { validate },
+      } = result.current;
+
+      act(() => {
+        validate(() => {
+          if (formState.data.name !== 'John') {
+            return {
+              name: 'The name is must be John',
+            };
+          }
+
+          return true;
+        });
+      });
+
+      const { formState: validatedState } = result.current;
+
+      expect(validatedState.errors.name).toBe('The name is must be John');
+    });
+
     it('should submit form', () => {
       const initialState: InitialSchema = {
         name: 'John',

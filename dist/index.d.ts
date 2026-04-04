@@ -787,15 +787,40 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * @param options - Options for the touch event.
      */
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
-    /**
-     * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
-     *
-     * @example
-     * formActions.validate({ submit: true }) // submit the form, if there are no errors.
-     *
-     * @param options - Options for form validation.
-     */
-    validate: (options?: FormValidateOptions<T>) => void;
+    validate: {
+      /**
+       * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
+       *
+       * @example
+       * formActions.validate({ submit: true }) // submit the form, if there are no errors.
+       *
+       * const onValidate = () => {
+       *    const { isAddressValid, country } = customValidate(formState.data);
+       *    if (!isAddressValid) {
+       *       return { address: 'Invalid address' }; // custom errors as `Record<string, string>`
+       *    }
+       *    if (country !== 'US') {
+       *       return { country: 'International shipping is not available' };
+       *    }
+       *    return true; // valid state (no errors)
+       * };
+       *
+       * formActions.validate(onValidate)
+       *
+       * @param onValidate - A callback function to execute before submitting the form.
+       * @param options - Options for form validation.
+       */
+      (onValidate?: () => Record<string, string> | true, options?: FormValidateOptions<T>): void;
+      /**
+       * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
+       *
+       * @example
+       * formActions.validate({ submit: true }) // submit the form, if there are no errors.
+       *
+       * @param options - Options for form validation.
+       */
+      (options?: FormValidateOptions<T>): void;
+    };
     /**
      * Marks the form as dirty with an arbitrary string key.
      *

@@ -938,12 +938,41 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The memoized "validate" function.
   const validate = useCallback(
-    (options?: FormValidateOptions<T>) => {
-      if (typeof options?.callback === 'function') {
-        changeCallbackRefs.current.push(options.callback);
+    (
+      onValidate?: FormValidateOptions<T> | (() => Record<string, string> | true),
+      options?: FormValidateOptions<T>
+    ) => {
+      if (typeof onValidate !== 'object') {
+        const validationErrors = typeof onValidate === 'function' ? onValidate() : true;
+
+        if (validationErrors !== true && Object.keys(validationErrors).length > 0) {
+          for (const errorName in validationErrors) {
+            if (Object.hasOwn(validationErrors, errorName)) {
+              const error = validationErrors[errorName];
+
+              if (error) {
+                dispatch({
+                  type: 'setManualError',
+                  name: errorName,
+                  options: { validate: true },
+                  error,
+                });
+              }
+            }
+          }
+
+          dispatch({ type: 'validate' });
+          return;
+        }
       }
 
-      if (options?.submit) {
+      const validationOptions = typeof onValidate === 'object' ? onValidate : options;
+
+      if (typeof validationOptions?.callback === 'function') {
+        changeCallbackRefs.current.push(validationOptions.callback);
+      }
+
+      if (validationOptions?.submit) {
         const safeData = schema.safeParse(formStateRef.current.data);
         const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
         const submittedErrors = { ...errors, ...manualErrorsState.get() };
@@ -961,8 +990,8 @@ export function useFormState<T extends z.ZodMiniObject>(
               formData: null,
             },
             options: {
-              resetDirty: options.resetDirty !== false,
-              resetTouched: options.resetTouched !== false,
+              resetDirty: validationOptions.resetDirty !== false,
+              resetTouched: validationOptions.resetTouched !== false,
             },
           });
         }
