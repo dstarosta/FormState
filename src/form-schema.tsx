@@ -899,6 +899,9 @@ export function everyItem<T>(
  *                       equality (default: `false`).
  * @param params.mapFn - An optional mapping function to compare properties of items `(item: T, index: number) => unknown`.
  * @param params.error - An optional custom error message.
+ * @param params.elementPath - An optional array element path.
+ *                             * Default error path: `"people[1]"`
+ *                             * Element path `['email', 'value']`: `"people[1].email.value"`
  * @param params.ignoreValues - An optional array of values to ignore, typically empty string or `null` values.
  *
  *                              This only applies to array items, not their property values; use the `mapFn` parameter to compare
@@ -910,35 +913,36 @@ export function uniqueItems<T>(
   params?: {
     mapFn?: (item: T, index: number) => unknown;
     error?: string;
+    elementPath?: PropertyKey[];
     ignoreValues?: unknown[];
   }
 ) {
-  return z.refine<T[]>(
-    (arr) => {
-      const seen: unknown[] = [];
-      const ignoredValues = new Set(params?.ignoreValues);
+  return z.superRefine<T[]>((arr, ctx) => {
+    const seen: unknown[] = [];
+    const ignoredValues = new Set(params?.ignoreValues);
 
-      for (const [index, item] of arr.entries()) {
-        const value = typeof params?.mapFn === 'function' ? params.mapFn(item, index) : item;
+    for (const [index, item] of arr.entries()) {
+      const value = typeof params?.mapFn === 'function' ? params.mapFn(item, index) : item;
 
-        if (
-          !ignoredValues.has(value) &&
-          seen.some((existing) => (deepEquality ? deepEqual(existing, value) : existing === value))
-        ) {
-          return false;
-        }
-
-        seen.push(value);
+      if (
+        !ignoredValues.has(value) &&
+        seen.some((existing) => (deepEquality ? deepEqual(existing, value) : existing === value))
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message: params?.error,
+          path: params?.elementPath ? [index, ...params.elementPath] : [index],
+          params: {
+            index,
+            value,
+          },
+        });
+        return;
       }
 
-      return true;
-    },
-    {
-      when: ALWAYS_VALIDATE,
-      params: params?.error ? { message: params.error } : undefined,
-      error: params?.error,
+      seen.push(value);
     }
-  );
+  });
 }
 
 /**

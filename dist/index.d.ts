@@ -1547,6 +1547,9 @@ declare function everyItem<T>(predicate: (item: NoInfer<T>, index: number, items
  *                       equality (default: `false`).
  * @param params.mapFn - An optional mapping function to compare properties of items `(item: T, index: number) => unknown`.
  * @param params.error - An optional custom error message.
+ * @param params.elementPath - An optional array element path.
+ *                             * Default error path: `"people[1]"`
+ *                             * Element path `['email', 'value']`: `"people[1].email.value"`
  * @param params.ignoreValues - An optional array of values to ignore, typically empty string or `null` values.
  *
  *                              This only applies to array items, not their property values; use the `mapFn` parameter to compare
@@ -1556,6 +1559,7 @@ declare function everyItem<T>(predicate: (item: NoInfer<T>, index: number, items
 declare function uniqueItems<T>(deepEquality?: boolean, params?: {
   mapFn?: (item: T, index: number) => unknown;
   error?: string;
+  elementPath?: PropertyKey[];
   ignoreValues?: unknown[];
 }): z.core.$ZodCheck<T[]>;
 /**

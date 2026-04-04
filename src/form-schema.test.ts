@@ -772,7 +772,7 @@ describe('form schema', () => {
             name: z.formString({ required: false }),
           })
         )
-        .check(z.uniqueItems(false, { mapFn: (item) => item.name })),
+        .check(z.uniqueItems(false, { mapFn: (item) => item.name, elementPath: ['name'] })),
     });
 
     const initialState: z.infer<typeof testSchema> = {
@@ -784,7 +784,9 @@ describe('form schema', () => {
     );
 
     expect(result.current.formStatus.valid).toBe(false);
-    expect(result.current.formState.errors.users).toBe('Invalid input');
+    expect(result.current.formState.errors.get((path) => path.users[2]?.name)).toBe(
+      'Invalid input'
+    );
   });
 
   it('should validate unique items using a mapping function in a ZodArray ignoring empty strings', () => {
@@ -831,7 +833,7 @@ describe('form schema', () => {
     );
 
     expect(result.current.formStatus.valid).toBe(false);
-    expect(result.current.formState.errors.users).toBe(error);
+    expect(result.current.formState.errors.get((path) => path.users[2])).toBe(error);
   });
 
   it('should sort items in a ZodArray', () => {
