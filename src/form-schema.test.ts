@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 
 import { formatErrors } from './helpers/error-formatter';
-import { updateState, useFormState, z } from '.';
+import { useFormState, z } from '.';
 
 describe('form schema', () => {
   it('formBoolean should parse values', () => {
@@ -849,23 +849,24 @@ describe('form schema', () => {
     });
 
     const initialState: z.infer<typeof testSchema> = {
-      users: [{ name: 'Mike' }],
+      users: [{ name: 'Mike' }, { name: 'Xavier' }],
     };
 
     const { result } = renderHook(() =>
       useFormState(testSchema, { initialState, validateOnMount: true })
     );
     const {
-      formState,
-      formActions: { change },
+      formActions: {
+        array: { append, insert },
+      },
     } = result.current;
 
-    const updatedUsers = updateState(formState.data.users, (draft) => {
-      draft.push({ name: 'John' }, { name: 'Mary' });
+    act(() => {
+      append('users', [{ name: 'John' }, { name: 'Bob' }]);
     });
 
     act(() => {
-      change('users', updatedUsers);
+      insert('users', 0, { name: 'Mary' });
     });
 
     const {
@@ -874,9 +875,11 @@ describe('form schema', () => {
 
     const users = data.users;
 
-    expect(users).toHaveLength(3);
-    expect(users[0]?.name).toBe('John');
-    expect(users[1]?.name).toBe('Mary');
-    expect(users[2]?.name).toBe('Mike');
+    expect(users).toHaveLength(5);
+    expect(users[0]?.name).toBe('Bob');
+    expect(users[1]?.name).toBe('John');
+    expect(users[2]?.name).toBe('Mary');
+    expect(users[3]?.name).toBe('Mike');
+    expect(users[4]?.name).toBe('Xavier');
   });
 });
