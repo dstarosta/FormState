@@ -209,15 +209,15 @@ export function useFormState<T extends z.ZodMiniObject>(
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
   // Change listeners.
-  const changeListeners = useRef<Set<StateChangeListener<State>>>(new Set());
+  const changeListeners = useRef(new Set<StateChangeListener<State>>());
 
   // Form hooks refs.
   const listenerHookRef = useRef(createUseListener(changeListeners.current));
   const watchHookRef = useRef(createUseWatch(storeRef.current));
 
   // The debounce dispatch cache.
-  const debounceCache = useRef<
-    Map<
+  const debounceCache = useRef(
+    new Map<
       string,
       ((...args: []) => void) & {
         cancel: () => void;
@@ -227,8 +227,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         validate: boolean;
         callback: StateCallback<State> | null;
       }
-    >
-  >(new Map());
+    >()
+  );
 
   // The set to dedupe "useCallback" warnings on debounce.
   const debounceCallbackWarning = useRef(new Set<string>());

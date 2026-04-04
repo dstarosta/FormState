@@ -1,6 +1,6 @@
 import * as z from "zod/mini";
 import { ComponentType, PropsWithChildren, SyntheticEvent } from "react";
-import * as react_jsx_runtime0 from "react/jsx-runtime";
+import * as _$react_jsx_runtime0 from "react/jsx-runtime";
 
 //#region \0rolldown/runtime.js
 //#endregion
@@ -1621,7 +1621,7 @@ declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?
  * @param props - Provider props.
  * @returns A form state provider.
  */
-declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): react_jsx_runtime0.JSX.Element;
+declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): _$react_jsx_runtime0.JSX.Element;
 /**
  * Hook that manages form state inside React components that are, or have a parent component,
  * wrapped with the formConnect HOC.
@@ -1681,7 +1681,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  * @returns A curried function to wrap the component.
  */
 declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
-  (innerProps: Readonly<P>): react_jsx_runtime0.JSX.Element;
+  (innerProps: Readonly<P>): _$react_jsx_runtime0.JSX.Element;
   displayName: string;
 };
 //#endregion

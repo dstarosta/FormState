@@ -5,7 +5,7 @@ import type { Immutable, ManualErrorState } from '../types/form-types';
 const EMPTY_STORE: Record<string, string> = Object.freeze({});
 
 export function useManualErrorState() {
-  const ref = useRef<Record<string, string>>(EMPTY_STORE);
+  const ref = useRef(EMPTY_STORE);
 
   const response = useMemo<ManualErrorState>(
     () => ({

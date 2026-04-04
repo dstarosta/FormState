@@ -13,7 +13,7 @@ export function createUseListener<T extends object>(listeners: Set<StateChangeLi
   function useListener(listener?: StateChangeListener<T>) {
     useDebugValue('FormStateListener');
 
-    const listenerRef = useRef<StateChangeListener<T> | undefined>(listener);
+    const listenerRef = useRef(listener);
 
     useEffect(() => {
       if (IS_DEVELOPMENT && listener && listener !== listenerRef.current) {
