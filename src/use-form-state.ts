@@ -72,9 +72,39 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
 /**
  * Hook that manages form state.
  *
+ * @example
+ * const { formState, formStatus, formActions } = useFormState(schema, {
+ *   initialState: {
+ *     name: 'John',
+ *     info: { age: 24 }
+ *   }
+ * })
+ *
  * @typeParam T - type of the form data.
  * @param schema - Zod schema to validate the form data.
  * @param formOptions - Form initialization options.
+ * @param formOptions - Form initialization options.
+ * @param formOptions.schema - Zod schema to validate the form data.
+ * @param formOptions.initialState - An optional object with schema properties to set the initial state of the form.
+ *                                   This object should be used for asynchronous form initialization, otherwise, specify
+ *                                   the initial state in the schema.
+ * @param formOptions.initialTouched - An optional array of root level field names or state path expressions that
+ *                                     will be marked as touched when the form is initialized.
+ * @param formOptions.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset
+ *                                              (default: `true`).
+ * @param formOptions.validateBeforeSubmit - Validate the schema before submission on "change", "touch", "replace" or
+ *                                           "setError"/"clearManualErrors" form actions (default: `true`);
+ * @param formOptions.validateOnMount - Validate the schema after the form mounts with the initial values (default: `false`).
+ * @param formOptions.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
+ * @param formOptions.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
+ * @param formOptions.debounceCacheCapacity - Sets the capacity of the debounce callback cache used by the "change"
+ *                                            function. (default: 50). A non-positive value means no debouncing of
+ *                                            change callbacks is allowed.
+ * @param formOptions.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
+ * @param formOptions.CSSPrefix - Form CSS class prefix (default: "form-state").
+ * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
+ * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
+ *                                            same state property (default: "|").
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
 export function useFormState<T extends z.ZodMiniObject>(

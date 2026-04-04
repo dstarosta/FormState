@@ -3,6 +3,26 @@ import type { FormStore } from '../types/form-types';
 export function createFormStore() {
   const values: Record<string, string> = {};
   const fieldListeners = new Map<string, Set<() => void>>();
+  const pendingUpdates = new Set<string>();
+
+  let isFlushing = false;
+
+  const flush = () => {
+    const fieldsToNotify = [...pendingUpdates];
+
+    pendingUpdates.clear();
+    isFlushing = false;
+
+    for (const name of fieldsToNotify) {
+      const listeners = fieldListeners.get(name);
+
+      if (listeners) {
+        for (const cb of listeners) {
+          cb();
+        }
+      }
+    }
+  };
 
   const store: FormStore = {
     getValue: (name: string) => values[name],
@@ -15,14 +35,14 @@ export function createFormStore() {
 
       values[name] = value;
 
-      const nameListeners = fieldListeners.get(name);
+      pendingUpdates.add(name);
 
-      if (nameListeners) {
-        for (const cb of nameListeners) {
-          cb();
-        }
+      if (!isFlushing) {
+        isFlushing = true;
+        queueMicrotask(flush);
       }
     },
+
     subscribeToField: (name: string, listener: () => void) => {
       if (!fieldListeners.has(name)) {
         fieldListeners.set(name, new Set());

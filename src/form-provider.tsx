@@ -44,6 +44,9 @@ export function FormStateProvider<T extends z.ZodMiniObject>(
  * Hook that manages form state inside React components that are, or have a parent component,
  * wrapped with the formConnect HOC.
  *
+ * @example
+ * const { formState, formStatus, formActions } = useFormStateContext(schema)
+ *
  * @typeParam T - type of the form data.
  * @param schema - Zod schema to validate the form data.
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
@@ -65,6 +68,24 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  * HOC that wraps a React component with the form state context provider and initializes the state
  * based on the provided schema.
  *
+ * @example
+ * function EditForm() {
+ *   const { formState, formActions, Form } = useFormStateContext(schema);
+ *
+ *   return (
+ *     <Form>
+ *       <input
+ *          type="text"
+ *          name="name"
+ *          defaultValue={formState.data.name}
+ *          onChange={(event) => formActions.change('name', event.target.value, { touch: true })} />
+ *     </Form>
+ *   );
+ * }
+ *
+ * export default formConnect({ schema: formSchema, watch: true })(EditForm);
+ *
+ * @param options - Form initialization options.
  * @param options.schema - Zod schema to validate the form data.
  * @param options.initialState - An optional object with schema properties to set the initial state of the form.
  *                               This object should be used for asynchronous form initialization, otherwise, specify
@@ -84,6 +105,8 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
  * @param options.CSSPrefix - Form CSS class prefix (default: "form-state").
  * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
+ * @param options.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
+ *                                        same state property (default: "|").
  *
  * @returns A curried function to wrap the component.
  */

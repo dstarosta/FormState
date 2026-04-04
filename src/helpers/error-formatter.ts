@@ -17,6 +17,9 @@ const isGenericMessage = (message: string) => message === 'Invalid input';
 /**
  * Validates whether the data is valid for the schema used by the form state.
  *
+ * @example
+ * const { success, data, error } = validateState(schema, { name: 'John', info: { age: 24 } });
+ *
  * @param schema - The form schema.
  * @param data - The data object instance.
  * @param populateDefaults - Indicates whether to populate defaults values for uninitialized fields

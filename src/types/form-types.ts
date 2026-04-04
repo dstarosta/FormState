@@ -443,6 +443,9 @@ export type FormState<T extends object> = {
       /**
        * Gets an error message for a nested field.
        *
+       * @example
+       * formState.errors.get((path) => path.company.name)
+       *
        * @param path - Form state path expression.
        * @returns Error message for the specified field, or `undefined` if there is no error.
        */
@@ -468,7 +471,11 @@ export type FormState<T extends object> = {
       /**
        * Gets the dirty state for an arbitrary string key.
        *
-       * @param key - A string key.
+       * @example
+       * formState.dirty.get("#myError")
+       *
+       * @param key - A string key. The key must start with the `#` character
+       *              to avoid key collisions.
        * @returns `true` if the key exists and is dirty, `false` otherwise.
        */
       get: (key: `#${string}`) => boolean;
@@ -481,6 +488,9 @@ export type FormState<T extends object> = {
     FormMutableState<T>['touched'] & {
       /**
        * Gets the touched state for a nested field.
+       *
+       * @example
+       * formState.touched.get((path) => path.info.age)
        *
        * @param path - Form state path expression.
        * @returns `true` if the field exists and has been touched, `false` otherwise.
@@ -496,6 +506,9 @@ export type FormState<T extends object> = {
       /**
        * Gets the maximum length for a nested field.
        *
+       * @example
+       * <input type="text" name="companyName" maxLength={formState.maxLengths.get((path) => path.company.name)} />
+       *
        * @param path - Form state path expression.
        * @returns `number` representing the maximum length or undefined.
        */
@@ -509,6 +522,9 @@ export type FormState<T extends object> = {
     FormMutableState<T>['ranges'] & {
       /**
        * Gets the minimum and maximum values for a nested numeric field.
+       *
+       * @example
+       * const { min, max } = formState.ranges.get((path) => path.info.birthDate) ?? {}
        *
        * @param path - Form state path expression.
        * @returns An object containing the `min` and the `max` properties that can be numeric, dates or `undefined`.
@@ -524,6 +540,9 @@ export type FormState<T extends object> = {
       /**
        * Gets the regular expression pattern for a nested field.
        *
+       * @example
+       * formState.patterns.get((path) => path.name)
+       *
        * @param path - Form state path expression.
        * @returns `string` containing the regular expression pattern or `undefined`.
        */
@@ -537,6 +556,9 @@ export type FormState<T extends object> = {
     FormMutableState<T>['descriptions'] & {
       /**
        * Gets the description for a nested field.
+       *
+       * @example
+       * formState.descriptions.get((path) => path.name)
        *
        * @param path - Form state path expression.
        * @returns `string` containing the description; no description returns an empty `string`.
@@ -908,6 +930,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     /**
      * Performs form field changes.
      *
+     * @example
+     * <input type="text" onChange={(event) => formActions.change(path => path.company.name, event.target.value)} />
+     * <input type="checkbox" onChange={(event) => formActions.change('isActive', event.target.checked, { touch: true })} />
+     *
      * @typeParam T - form state type.
      * @typeParam P - the form path type.
      * @param nameOrPath - Root level field name or a state path expression.
@@ -921,6 +947,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     ) => void;
     /**
      * Performs data replacement in the form state.
+     *
+     * @example
+     * formActions.replace({ name: John, info: { age: 24 } }, { validate: false })
      *
      * @typeParam T - form state type.
      * @param data - Replacement data.
@@ -937,6 +966,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     /**
      * Performs form field control touch state changes.
      *
+     * @example
+     * <input type="text" onBlue={(event) => formActions.touch((path) => path.notes[0].text)} />
+     *
      * @typeParam T - form state type.
      * @param nameOrPath - Root level field name or a state path expression.
      *                     The first field in the schema is touched if the path is not provided.
@@ -945,6 +977,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     touch: (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => void;
     /**
      * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
+     *
+     * @example
+     * formActions.validate({ submit: true }) // submit the form, if there are no errors.
      *
      * @param options - Options for form validation.
      */
@@ -964,6 +999,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     setMode: (mode: FormMode) => void;
     /**
      * Sets a manual error for a path that overrides any form generated errors.
+     *
+     * @example
+     * formActions.setError('id', 'Invalid ID', { validate: true })
+     * formActions.setError((path) => path.isActive, 'Non-active users cannot be edited')
      *
      * @param keyOrPath - Arbitrary string or a state path expression.
      *                    The first field in the schema is touched if the path is not provided.
@@ -997,6 +1036,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      *
      *  - "bracket" - Ex: `'schema["addresses"][1]["street"]'`
      *  - "dot" - Ex: `'schema.addresses.1.street'`
+     * @example
+     * <input type="text" name={formActions.inferName('name')} />
+     * <input type="text" name={formActions.inferName(path => path.company.name, 'dot')} />
      *
      * @returns The inferred name.
      */
@@ -1007,6 +1049,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     array: {
       /**
        * Appends an item to the end of an array data property.
+       *
+       * @example
+       * formActions.array.append('tags', ['Important', 'Do not delete'])
+       * formActions.array.append((path) => path.info.emails, 'test@internet.org')
        *
        * @typeParam T - form state type.
        * @typeParam P - the form path type.
@@ -1022,6 +1068,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
       ) => void;
       /**
        * Inserts an item at the specified index in an array data property.
+       *
+       * @example
+       * formActions.array.insert('tags', 1, ['Important', 'Do not delete'])
+       * formActions.array.insert((path) => path.info.emails, 0, 'test@internet.org')
        *
        * @typeParam T - form state type.
        * @typeParam P - the form path type.
@@ -1040,6 +1090,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
       /**
        * Updates an item at the specified index of an array data property.
        *
+       * @example
+       * formActions.array.update('tags', 1, 'Do not delete')
+       * formActions.array.update((path) => path.info.emails, 0, 'user@internet.org')
+       *
        * @typeParam T - form state type.
        * @typeParam P - the form path type.
        * @typeParam I - the array item type.
@@ -1056,6 +1110,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
       ) => void;
       /**
        * Sorts items of an array data property.
+       *
+       * @example
+       * formActions.array.sort('tags', (a, b) => b.localeCompare(a));
        *
        * @typeParam T - form state type.
        * @typeParam P - the form path type.
@@ -1074,6 +1131,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
       /**
        * Swaps 2 items with the specified indexes in an array data property.
        *
+       * @example
+       * formActions.array.swap('tags', 1, 2)
+       *
        * @typeParam T - form state type.
        * @typeParam P - the form path type.
        * @typeParam I - the array item type.
@@ -1090,6 +1150,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
       ) => void;
       /**
        * Removes items from an array data property.
+       *
+       * @example
+       * formActions.array.remove('tags', (value) => value.toUpperCase() === 'DELETE')
+       * formActions.array.remove((path) => path.tags, 2)
        *
        * @typeParam T - form state type.
        * @typeParam P - the form path type.
@@ -1109,6 +1173,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
       /**
        * Removes all items from an array data property.
        *
+       * @example
+       * formActions.array.clear('tags');
+       * formActions.array.clear((path) => path.tags);
+       *
        * @typeParam T - form state type.
        * @typeParam P - the form path type.
        * @typeParam I - the array item type.
@@ -1124,6 +1192,22 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
   formHandlers: {
     /**
      * A function to call in the `action` attribute of a `<Form />` component to submit the form.
+     *
+     * @example
+     * const onSubmit = async (state: SubmitState<FormSchema>, formData: FormData) => {
+     *    const { isAddressValid, country } = await validateApi(schema.toObject(state));
+     *    if (!isAddressValid) {
+     *       return { address: 'Invalid address' }; // custom errors as `Record<string, string>`
+     *    }
+     *    if (country !== 'US') {
+     *       return { country: 'International shipping is not available' };
+     *    }
+     *    return true; // valid state (no errors)
+     * };
+     * const onSubmitted = (state: SubmitSuccessState<FormSchema>) => { ... };
+     * const onSubmitError = (state: FormState<FormSchema>, status: FormStatus) => { ... };
+     *
+     * <Form action={handleSubmit(onSubmit, { onSuccess: onSubmitted, onError: onSubmitError })}>...</Form>
      *
      * @param onSubmit - A callback function to execute before submitting the form.
      *
@@ -1176,6 +1260,13 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
    * The following HTML form elements are supported.
    *  - input
    *  - textarea
+   *
+   * @example
+   * const nameValue = useWatch('name');
+   * const ageValue = useWatch(
+   *     inferName((path) => path.info.age),
+   *     (value) => (parseInt(value, 10) <= 0 ? '' : value)
+   * );
    *
    * @param name - A `name` HTML attribute value of the element to watch.
    * @param compute - An optional compute function to transform the value.

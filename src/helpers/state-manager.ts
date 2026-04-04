@@ -251,6 +251,10 @@ export function createSymbol() {
 /**
  * Creates strongly typed initial state for a schema.
  *
+ * @example
+ * const initialState = createState(schema)
+ * const initialState = createState(schema, { name: 'John', info: { age: 24 } })
+ *
  * @typeParam T - schema type.
  * @param schema - The form schema.
  * @param data - Optional partial data to merge into the initial state.
@@ -347,7 +351,11 @@ export function createState<T extends z.ZodMiniObject>(
 }
 
 /**
- * Gets strongly typed child data or field value based on the provided name or path.
+ * Gets strongly typed child data or field value based on the provided name or path
+ * in a disconnected form state data.
+ *
+ * @example
+ * const note1Type = getState(formSchema, data, (path) => path.notes[0].type.name)
  *
  * @typeParam T - schema type.
  * @param schema - The form schema.
@@ -369,6 +377,15 @@ export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
 /**
  * Updates an immutable array state in a nested schema.
  *
+ * @example
+ * const updatedData = updateState(data, (draft) => {
+ *     draft.name = 'Mike';
+ *     draft.info.age = 28;
+ * });
+ * const updatedTags = updateState(data.tags, (draft) => {
+ *     draft.push('Important');
+ * });
+ *
  * @typeParam T - schema type.
  * @param state - The state array property.
  * @param updater - The updater function.
@@ -380,7 +397,18 @@ export function updateState<T>(
 ): T[];
 
 /**
- * Updates an object state in a nested schema.
+ * Updates an immutable object state in a nested schema.
+ *
+ * The syntax uses Immer library conventions.
+ *
+ * @example
+ * const updatedData = updateState(data, (draft) => {
+ *     draft.name = 'Mike';
+ *     draft.info.age = 28;
+ * });
+ * const updatedTags = updateState(data.tags, (draft) => {
+ *     draft.push('Important');
+ * });
  *
  * @typeParam T - schema type.
  * @param state - The state object property.
@@ -392,14 +420,6 @@ export function updateState<T>(
   updater: (draft: T) => void
 ): T;
 
-/**
- * Updates an immutable array or object state in a nested schema.
- *
- * @typeParam T - schema type.
- * @param state - The state array or object property.
- * @param updater - The updater function.
- * @returns A new immutable array or object containing the modified state.
- */
 export function updateState<T>(
   state: ImmutableArray<T> | ImmutableObject<T> | undefined,
   updater: (draft: T[] | T) => void
