@@ -903,22 +903,6 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
        */
       update: <P extends FormPath<T>, I = FormPathValue<T, P>>(nameOrPath: P, index: number, item: ArrayElement<I>, options?: FormChangeArrayOptions<T>) => void;
       /**
-       * Sorts items of an array data property.
-       *
-       * @example
-       * formActions.array.sort('tags', (a, b) => b.localeCompare(a));
-       *
-       * @typeParam T - form state type.
-       * @typeParam P - the form path type.
-       * @typeParam I - the array item type.
-       * @param nameOrPath - Root level field name or a state path expression.
-       * @param sortFn - Function used to determine the order of the elements.
-       *                 It is expected to return a negative value if the first argument is less than
-       *                 the second argument, zero if they're equal, and a positive value otherwise.
-       * @param options - Options for the corresponding change event.
-       */
-      sort: <P extends FormPath<T>, I = FormPathValue<T, P>>(nameOrPath: P, sortFn: (item1: ArrayElement<I>, item2: ArrayElement<I>) => number, options?: FormChangeArrayOptions<T>) => void;
-      /**
        * Swaps 2 items with the specified indexes in an array data property.
        *
        * @example
@@ -1132,7 +1116,7 @@ type RangeResult<R> = R extends number | Date ? {
   format: string;
 } : undefined;
 declare namespace form_schema_d_exports {
-  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, everyItem, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, someItem, sortItems, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim, uniqueItems, validate };
+  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, everyItem, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, someItem, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim, uniqueItems, validate };
 }
 /**
  * Infers form state type from the schema.
@@ -1562,18 +1546,6 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
   elementPath?: PropertyKey[];
   ignoreValues?: unknown[];
 }): z.core.$ZodCheck<T[]>;
-/**
- * Sorts items in the array schema.
- *
- * @typeParam T - The array item Zod type.
- * @param arraySchema - The array schema.
- * @param compareFn - Function used to determine the order of the elements. It is expected to return a negative
- *                    value if the first argument is less than the second argument, zero if they're equal, and
- *                    a positive value otherwise. If omitted, the elements are sorted in ascending, UTF-16 code
- *                    unit order.
- * @returns Zod pipe instance that transforms the array schema.
- */
-declare function sortItems<T extends z.ZodMiniType>(arraySchema: z.ZodMiniArray<T>, compareFn?: (a: z.infer<T>, b: z.infer<T>) => number): z.ZodMiniPipe<z.ZodMiniArray<T>, z.ZodMiniTransform<z.core.output<T>[], z.core.output<T>[]>>;
 //#endregion
 //#region src/use-form-state.d.ts
 /**

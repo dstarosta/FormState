@@ -853,27 +853,6 @@ export function useFormState<T extends z.ZodMiniObject>(
     [schema, validateOnChange, dispatch]
   );
 
-  const sort = useCallback(
-    <P extends FormPath<T>, I = FormPathValue<T, P>>(
-      nameOrPath: P,
-      sortFn: (item1: ArrayElement<I>, item2: ArrayElement<I>) => number,
-      options?: FormChangeArrayOptions<T>
-    ) => {
-      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
-
-      if (!Array.isArray(pathState)) {
-        throw new TypeError(NON_ARRAY_PATH_ERROR);
-      }
-
-      const updatedState = updateState(pathState as ImmutableArray<ArrayElement<I>>, (draft) => {
-        draft.sort(sortFn);
-      });
-
-      change(nameOrPath, updatedState, options);
-    },
-    [schema, change]
-  );
-
   const remove = useCallback(
     <P extends FormPath<T>>(
       nameOrPath: P,
@@ -1238,7 +1217,6 @@ export function useFormState<T extends z.ZodMiniObject>(
           insert,
           update,
           swap,
-          sort,
           remove,
           clear,
         },
@@ -1281,7 +1259,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       insert,
       update,
       swap,
-      sort,
       remove,
       clear,
       handleSubmit,

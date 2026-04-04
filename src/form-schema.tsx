@@ -944,24 +944,3 @@ export function uniqueItems<T>(
     }
   });
 }
-
-/**
- * Sorts items in the array schema.
- *
- * @typeParam T - The array item Zod type.
- * @param arraySchema - The array schema.
- * @param compareFn - Function used to determine the order of the elements. It is expected to return a negative
- *                    value if the first argument is less than the second argument, zero if they're equal, and
- *                    a positive value otherwise. If omitted, the elements are sorted in ascending, UTF-16 code
- *                    unit order.
- * @returns Zod pipe instance that transforms the array schema.
- */
-export function sortItems<T extends z.ZodMiniType>(
-  arraySchema: z.ZodMiniArray<T>,
-  compareFn?: (a: z.infer<T>, b: z.infer<T>) => number
-) {
-  return z.pipe(
-    arraySchema,
-    z.transform((arr) => arr.toSorted(compareFn))
-  );
-}

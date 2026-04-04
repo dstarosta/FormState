@@ -395,7 +395,7 @@ describe('useFormState', () => {
       const {
         formActions: {
           change,
-          array: { append, clear, insert, remove, sort, swap, update },
+          array: { append, clear, insert, remove, swap, update },
         },
       } = result.current;
 
@@ -470,20 +470,6 @@ describe('useFormState', () => {
       expect(removedState.data.tags).toStrictEqual(['e', 'f', 'a', 'b', 'd', 'g']);
 
       act(() => {
-        sort('tags', (a, b) => b.localeCompare(a));
-      });
-
-      act(() => {
-        sort(
-          (path) => path.tags,
-          (a, b) => a.length - b.length
-        );
-      });
-
-      const { formState: sortedState } = result.current;
-      expect(sortedState.data.tags).toStrictEqual(['g', 'f', 'e', 'd', 'b', 'a']);
-
-      act(() => {
         clear('tags');
         clear((path) => path.tags);
       });
@@ -498,7 +484,7 @@ describe('useFormState', () => {
       );
       const {
         formActions: {
-          array: { append, clear, insert, remove, sort, swap, update },
+          array: { append, clear, insert, remove, swap, update },
         },
       } = result.current;
 
@@ -536,10 +522,6 @@ describe('useFormState', () => {
 
       expect(() => {
         remove('version', 0);
-      }).toThrow(TypeError);
-
-      expect(() => {
-        sort('category', (a, b) => (a === b ? 0 : 1));
       }).toThrow(TypeError);
 
       expect(() => {

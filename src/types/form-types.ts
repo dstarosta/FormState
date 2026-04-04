@@ -1095,26 +1095,6 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
         options?: FormChangeArrayOptions<T>
       ) => void;
       /**
-       * Sorts items of an array data property.
-       *
-       * @example
-       * formActions.array.sort('tags', (a, b) => b.localeCompare(a));
-       *
-       * @typeParam T - form state type.
-       * @typeParam P - the form path type.
-       * @typeParam I - the array item type.
-       * @param nameOrPath - Root level field name or a state path expression.
-       * @param sortFn - Function used to determine the order of the elements.
-       *                 It is expected to return a negative value if the first argument is less than
-       *                 the second argument, zero if they're equal, and a positive value otherwise.
-       * @param options - Options for the corresponding change event.
-       */
-      sort: <P extends FormPath<T>, I = FormPathValue<T, P>>(
-        nameOrPath: P,
-        sortFn: (item1: ArrayElement<I>, item2: ArrayElement<I>) => number,
-        options?: FormChangeArrayOptions<T>
-      ) => void;
-      /**
        * Swaps 2 items with the specified indexes in an array data property.
        *
        * @example

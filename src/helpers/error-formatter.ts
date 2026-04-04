@@ -81,14 +81,14 @@ export const formatErrors = <T extends object>(
     };
 
     if (issue.code === 'invalid_union' && Array.isArray(issue.errors)) {
-      const flatErrors = issue.errors.flat();
-
-      const flatIssue = flatErrors
-        .toSorted(
+      const flatErrors = issue.errors
+        .flat()
+        .sort(
           (err1, err2) =>
             Number(isGenericMessage(err1.message)) - Number(isGenericMessage(err2.message))
-        )
-        .find((err) => Boolean(err.message));
+        );
+
+      const flatIssue = flatErrors.find((err) => Boolean(err.message));
 
       if (flatIssue && flatIssue.message) {
         addError(flatIssue.message);

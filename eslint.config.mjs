@@ -25,7 +25,7 @@ export default defineConfig([
       eslintConfigPrettier,
     ],
     languageOptions: {
-      ecmaVersion: 2023,
+      ecmaVersion: 2022,
       globals: globals.browser,
       parserOptions: {
         projectService: true,
@@ -56,6 +56,7 @@ export default defineConfig([
       'sonarjs/todo-tag': 'warn', // a TODO comment should not break the build; but it's a good idea to periodically remind you about it
       // Annoying Unicorn rules
       'unicorn/no-null': 'off', // Douglas Crockford is wrong. "null" should be used as a literal when assigned manually, not "undefined".
+      'unicorn/no-array-sort': 'off', // This method is only available in ES2023.
       'unicorn/no-useless-undefined': ['error', { checkArguments: false }], // you cannot omit function arguments in strict TS (in tests)
       'unicorn/numeric-separators-style': 'off', // always forcing underscores in numeric constants makes no sense
       'unicorn/prefer-string-replace-all': 'off', // replace(/[set of numbers]/g) is way more terse for fallback GUID generation
