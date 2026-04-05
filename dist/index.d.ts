@@ -1693,19 +1693,27 @@ declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(sche
 /**
  * Parses an arbitrary object into the form state.
  *
+ * @example
+ * const { success, data, errors } = parseState(schema, obj)
+ *
  * @param schema - The form schema.
- * @param data - The data object instance.
- * @return An object containing the parsed data and a collection of Zod errors.
+ * @param obj - Data object to parse.
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
+ * @return An object containing parsed data and an optional errors instance.
  *
  *         The `success` property indicates whether any errors have been found.
  *
  *         The `data` instance may cause form errors if the operation was not
  *         successful.
  */
-declare const parseState: <T extends z.ZodMiniObject>(schema: T, data: object) => {
+declare const parseState: <T extends z.ZodMiniObject>(schema: T, obj: object, errorMessageSeparator?: string) => {
   data: z.core.output<T>;
-  issues: z.core.$ZodIssue[];
   success: boolean;
+  errors: (Record<"" | keyof z.core.output<T>, string | undefined> & {
+    get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
+    getAll: () => string[];
+  }) | undefined;
 };
 /**
  * Creates strongly typed initial state for a schema.

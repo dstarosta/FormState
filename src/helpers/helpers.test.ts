@@ -279,48 +279,69 @@ describe('helpers', () => {
       a: z.array(
         z.object({
           id: z.symbol(),
-          i: z.formNumber({ required: true }),
+          i: z.formNumber({ required: true, error: 'Invalid a[].i value' }),
         })
       ),
-      n: z.formNumber({ required: true }),
-      v: z.formValues(['a', 'b'], { required: true }),
-      y: z.formBoolean(),
+      n: z.formNumber({ required: true, error: 'Invalid n value' }),
+      v: z.formValues(['a', 'b'], { required: true, error: 'Invalid v value' }),
+      y: z.formBoolean({ error: 'Invalid y value' }),
       z: z.object({
         id: z.formNumber(),
       }),
     });
 
     it('parses state successfully with defaults', () => {
-      const result = parseState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' });
-      const idSymbol = result.data.a[0]?.id;
+      const { success, data, errors } = parseState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' });
+      const idSymbol = data.a[0]?.id;
 
-      expect(result.success).toBe(true);
+      expect(success).toBe(true);
       expect(idSymbol).toBeTypeOf('symbol');
-      expect(result.data).toStrictEqual({
+      expect(data).toStrictEqual({
         a: [{ i: 1, id: idSymbol }],
         n: 2,
         v: 'b',
         y: '',
         z: { id: '' },
       });
-      expect(result.issues).toHaveLength(0);
+      expect(errors).toBeUndefined();
     });
 
     it('parses state unsuccessfully without defaults', () => {
-      const result = parseState(formSchema, { n: '2', v: 1, y: 'false', z: { id: 1 } });
+      const { success, data, errors } = parseState(formSchema, {
+        n: '2',
+        v: 1,
+        y: 'false',
+        z: { id: 1 },
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.data).toStrictEqual({
+      expect(success).toBe(false);
+      expect(data).toStrictEqual({
         a: [],
         n: '2',
         v: 1,
         y: 'false',
         z: { id: 1 },
       });
-      expect(result.issues).toHaveLength(3);
-      expect(result.issues.find((issue) => issue.path[0] === 'n')).toBeDefined();
-      expect(result.issues.find((issue) => issue.path[0] === 'v')).toBeDefined();
-      expect(result.issues.find((issue) => issue.path[0] === 'y')).toBeDefined();
+
+      if (errors) {
+        expect(errors['n']).toEqual('Invalid n value');
+        expect(errors.get((path) => path.n)).toEqual('Invalid n value');
+        expect(errors['v']).toEqual('Invalid v value');
+        expect(errors.get((path) => path.v)).toEqual('Invalid v value');
+        expect(errors['y']).toEqual('Invalid y value');
+        expect(errors.get((path) => path.y)).toEqual('Invalid y value');
+        expect(errors.getAll()).toStrictEqual([
+          'Invalid n value',
+          'Invalid v value',
+          'Invalid y value',
+        ]);
+        expect(errors['a']).toBeUndefined();
+        expect(errors.get((path) => path.a)).toBeUndefined();
+        expect(errors['z']).toBeUndefined();
+        expect(errors.get((path) => path.z)).toBeUndefined();
+      } else {
+        expect.fail('No expected errors');
+      }
     });
 
     it('parses state unsuccessfully without data', () => {

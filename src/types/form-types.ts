@@ -1371,13 +1371,30 @@ export type RangeResult<R> = R extends number | Date
  */
 export type ParsedResult<T extends z.ZodMiniObject> = {
   /**
-   * The data object instance, if the validation was successful.
+   * Data object instance, if the validation was successful.
    */
   data: z.infer<T>;
   /**
-   * An array of zod issues.
+   * Data validation errors.
    */
-  issues: z.core.$ZodIssue[];
+  errors?:
+    | (Record<keyof z.infer<T> | '', string | undefined> & {
+        /**
+         * Gets an error message for a nested field.
+         *
+         * @example
+         * formState.errors.get((path) => path.company.name)
+         *
+         * @param path - Form state path expression.
+         * @returns Error message for the specified field, or `undefined` if there is no error.
+         */
+        get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
+        /**
+         * Gets an array of all error messages.
+         */
+        getAll: () => string[];
+      })
+    | undefined;
   /**
    * Indicates whether the validation was successful.
    */

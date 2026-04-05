@@ -26,6 +26,7 @@ import {
   getSchemaType,
 } from './schema-visitor';
 import { IS_DEVELOPMENT } from './development-helper';
+import { formatErrors } from './error-formatter';
 
 // Private functions
 
@@ -276,27 +277,54 @@ export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
 /**
  * Parses an arbitrary object into the form state.
  *
+ * @example
+ * const { success, data, errors } = parseState(schema, obj)
+ *
  * @param schema - The form schema.
- * @param data - The data object instance.
- * @return An object containing the parsed data and a collection of Zod errors.
+ * @param obj - Data object to parse.
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
+ * @return An object containing parsed data and an optional errors instance.
  *
  *         The `success` property indicates whether any errors have been found.
  *
  *         The `data` instance may cause form errors if the operation was not
  *         successful.
  */
-export const parseState = <T extends z.ZodMiniObject>(schema: T, data: object) => {
-  if (isNullish(data)) {
-    throw new TypeError('The "data" argument cannot be `null` or `undefined`');
+export const parseState = <T extends z.ZodMiniObject>(
+  schema: T,
+  obj: object,
+  errorMessageSeparator: string = '|'
+) => {
+  if (isNullish(obj)) {
+    throw new TypeError('The "data" argument cannot be null or undefined');
   }
 
-  const parsedData = createState(schema, data as DeepPartial<z.infer<T>>);
+  const parsedData = createState(schema, obj as DeepPartial<z.infer<T>>);
   const result = schema.safeParse(parsedData);
+
+  const zodErrors = result.error
+    ? formatErrors<z.infer<T>>(result.error, errorMessageSeparator)
+    : undefined;
+
+  const errors = zodErrors
+    ? {
+        ...zodErrors,
+        get: (expression: (data: z.infer<T>) => unknown) =>
+          zodErrors[getPath(parsedData, expression).join('.')],
+        getAll: () =>
+          Object.values(zodErrors)
+            .filter(
+              (error): error is string => typeof error === 'string' && error.trim().length > 0
+            )
+            .flatMap((error) => error.split(errorMessageSeparator)),
+      }
+    : undefined;
 
   return {
     data: parsedData,
-    issues: result.error?.issues ?? [],
     success: result.success,
+    errors,
   } satisfies ParsedResult<T>;
 };
 
