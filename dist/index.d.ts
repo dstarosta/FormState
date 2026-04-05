@@ -319,6 +319,12 @@ type FormState<T extends object> = {
      * Gets an array of all error messages.
      */
     getAll: () => string[];
+    /**
+     * Gets an array of all error keys.
+     *
+     * @return An array of all error keys.
+     */
+    getKeys: () => string[];
   }>;
   /**
    * Dirty status for each field in the form.
@@ -1717,6 +1723,7 @@ declare const parseState: <T extends z.ZodMiniObject>(schema: T, obj: object, er
   errors: Record<"" | keyof z.core.output<T>, string | undefined> & {
     get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
     getAll: () => string[];
+    getKeys: () => string[];
   };
 };
 /**

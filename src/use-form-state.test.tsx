@@ -255,6 +255,7 @@ describe('useFormState', () => {
         'Name is too long',
         'Age must be > 0',
       ]);
+      expect(formState.errors.getKeys()).toStrictEqual(['name', 'info.age']);
     });
 
     it('should change initial state after submit', () => {

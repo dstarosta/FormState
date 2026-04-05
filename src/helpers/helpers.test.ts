@@ -323,15 +323,16 @@ describe('helpers', () => {
         expect(errors.get((path) => path.v)).toEqual('Invalid v value');
         expect(errors['y']).toEqual('Invalid y value');
         expect(errors.get((path) => path.y)).toEqual('Invalid y value');
+        expect(errors['a']).toBeUndefined();
+        expect(errors.get((path) => path.a)).toBeUndefined();
+        expect(errors['z']).toBeUndefined();
+        expect(errors.get((path) => path.z)).toBeUndefined();
         expect(errors.getAll()).toStrictEqual([
           'Invalid n value',
           'Invalid v value',
           'Invalid y value',
         ]);
-        expect(errors['a']).toBeUndefined();
-        expect(errors.get((path) => path.a)).toBeUndefined();
-        expect(errors['z']).toBeUndefined();
-        expect(errors.get((path) => path.z)).toBeUndefined();
+        expect(errors.getKeys()).toStrictEqual(['n', 'v', 'y']);
       }
 
       expect(data).toStrictEqual({

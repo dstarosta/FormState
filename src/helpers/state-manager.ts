@@ -158,6 +158,7 @@ export const createImmutableErrors = <T extends z.ZodMiniObject>(
       Object.values(errors)
         .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
         .flatMap((error) => error.split(errorMessageSeparator)),
+    getKeys: () => Object.keys(errors),
   });
 
 export const createImmutableDirty = <T extends z.ZodMiniObject>(
@@ -323,6 +324,7 @@ export const parseState = <T extends z.ZodMiniObject>(
       Object.values(zodErrors)
         .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
         .flatMap((error) => error.split(errorMessageSeparator)),
+    getKeys: () => Object.keys(zodErrors),
   };
 
   return {

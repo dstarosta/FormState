@@ -461,6 +461,12 @@ export type FormState<T extends object> = {
        * Gets an array of all error messages.
        */
       getAll: () => string[];
+      /**
+       * Gets an array of all error keys.
+       *
+       * @return An array of all error keys.
+       */
+      getKeys: () => string[];
     }
   >;
   /**
@@ -1404,8 +1410,16 @@ export type ParseFailure<T extends z.ZodMiniObject> = {
     get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
     /**
      * Gets an array of all error messages.
+     *
+     * @return An array of all error messages.
      */
     getAll: () => string[];
+    /**
+     * Gets an array of all error keys.
+     *
+     * @return An array of all error keys.
+     */
+    getKeys: () => string[];
   };
   /**
    * Indicates an unsuccessful validation.
