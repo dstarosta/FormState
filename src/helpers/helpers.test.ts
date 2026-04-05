@@ -314,16 +314,9 @@ describe('helpers', () => {
         z: { id: 1 },
       });
 
-      expect(success).toBe(false);
-      expect(data).toStrictEqual({
-        a: [],
-        n: '2',
-        v: 1,
-        y: 'false',
-        z: { id: 1 },
-      });
-
-      if (errors) {
+      if (success) {
+        expect(success).toBe(false); // should never happen
+      } else {
         expect(errors['n']).toEqual('Invalid n value');
         expect(errors.get((path) => path.n)).toEqual('Invalid n value');
         expect(errors['v']).toEqual('Invalid v value');
@@ -339,9 +332,15 @@ describe('helpers', () => {
         expect(errors.get((path) => path.a)).toBeUndefined();
         expect(errors['z']).toBeUndefined();
         expect(errors.get((path) => path.z)).toBeUndefined();
-      } else {
-        expect.fail('No expected errors');
       }
+
+      expect(data).toStrictEqual({
+        a: [],
+        n: '2',
+        v: 1,
+        y: 'false',
+        z: { id: 1 },
+      });
     });
 
     it('parses state unsuccessfully without data', () => {

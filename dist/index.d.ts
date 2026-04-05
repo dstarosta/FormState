@@ -1709,11 +1709,15 @@ declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(sche
  */
 declare const parseState: <T extends z.ZodMiniObject>(schema: T, obj: object, errorMessageSeparator?: string) => {
   data: z.core.output<T>;
-  success: boolean;
-  errors: (Record<"" | keyof z.core.output<T>, string | undefined> & {
+  success: true;
+  errors?: never;
+} | {
+  data: z.core.output<T>;
+  success: false;
+  errors: Record<"" | keyof z.core.output<T>, string | undefined> & {
     get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
     getAll: () => string[];
-  }) | undefined;
+  };
 };
 /**
  * Creates strongly typed initial state for a schema.

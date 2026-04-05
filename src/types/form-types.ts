@@ -1367,9 +1367,23 @@ export type RangeResult<R> = R extends number | Date
   : undefined;
 
 /**
- * Parsed state result type.
+ * Successful parsed result type.
  */
-export type ParsedResult<T extends z.ZodMiniObject> = {
+export type ParseSuccess<T extends z.ZodMiniObject> = {
+  /**
+   * Data object instance, if the validation was successful.
+   */
+  data: z.infer<T>;
+  /**
+   * Indicates a successful validation.
+   */
+  success: true;
+};
+
+/**
+ * Unsuccessful parsed result type.
+ */
+export type ParseFailure<T extends z.ZodMiniObject> = {
   /**
    * Data object instance, if the validation was successful.
    */
@@ -1377,26 +1391,24 @@ export type ParsedResult<T extends z.ZodMiniObject> = {
   /**
    * Data validation errors.
    */
-  errors?:
-    | (Record<keyof z.infer<T> | '', string | undefined> & {
-        /**
-         * Gets an error message for a nested field.
-         *
-         * @example
-         * formState.errors.get((path) => path.company.name)
-         *
-         * @param path - Form state path expression.
-         * @returns Error message for the specified field, or `undefined` if there is no error.
-         */
-        get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
-        /**
-         * Gets an array of all error messages.
-         */
-        getAll: () => string[];
-      })
-    | undefined;
+  errors: Record<keyof z.infer<T> | '', string | undefined> & {
+    /**
+     * Gets an error message for a nested field.
+     *
+     * @example
+     * formState.errors.get((path) => path.company.name)
+     *
+     * @param path - Form state path expression.
+     * @returns Error message for the specified field, or `undefined` if there is no error.
+     */
+    get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
+    /**
+     * Gets an array of all error messages.
+     */
+    getAll: () => string[];
+  };
   /**
-   * Indicates whether the validation was successful.
+   * Indicates an unsuccessful validation.
    */
-  success: boolean;
+  success: false;
 };

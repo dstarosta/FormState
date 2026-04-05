@@ -10,7 +10,8 @@ import type {
   Immutable,
   ImmutableArray,
   ImmutableObject,
-  ParsedResult,
+  ParseFailure,
+  ParseSuccess,
   RangeOf,
   RangeResult,
   UnknownObject,
@@ -307,25 +308,28 @@ export const parseState = <T extends z.ZodMiniObject>(
     ? formatErrors<z.infer<T>>(result.error, errorMessageSeparator)
     : undefined;
 
-  const errors = zodErrors
-    ? {
-        ...zodErrors,
-        get: (expression: (data: z.infer<T>) => unknown) =>
-          zodErrors[getPath(parsedData, expression).join('.')],
-        getAll: () =>
-          Object.values(zodErrors)
-            .filter(
-              (error): error is string => typeof error === 'string' && error.trim().length > 0
-            )
-            .flatMap((error) => error.split(errorMessageSeparator)),
-      }
-    : undefined;
+  if (!zodErrors) {
+    return {
+      data: parsedData,
+      success: true,
+    } satisfies ParseSuccess<T>;
+  }
+
+  const errors = {
+    ...zodErrors,
+    get: (expression: (data: z.infer<T>) => unknown) =>
+      zodErrors[getPath(parsedData, expression).join('.')],
+    getAll: () =>
+      Object.values(zodErrors)
+        .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
+        .flatMap((error) => error.split(errorMessageSeparator)),
+  };
 
   return {
     data: parsedData,
-    success: result.success,
+    success: false,
     errors,
-  } satisfies ParsedResult<T>;
+  } satisfies ParseFailure<T>;
 };
 
 /**
