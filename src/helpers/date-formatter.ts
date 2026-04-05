@@ -162,11 +162,11 @@ export function safeParseDate(input: string | undefined, format: FormDateFormat 
     return {
       success: false,
       date: null,
-    } as DateParseResult;
+    } satisfies DateParseResult;
   }
 
   return {
     success: true,
     date,
-  } as DateParseResult;
+  } satisfies DateParseResult;
 }

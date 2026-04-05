@@ -14,12 +14,6 @@ describe('form schema', () => {
     expect(fieldSchema.safeParse(true).data).toBe(true);
     expect(fieldSchema.safeParse('').success).toBe(true);
     expect(fieldSchema.safeParse('').data).toBe('');
-    expect(fieldSchema.safeParse('false').success).toBe(true);
-    expect(fieldSchema.safeParse('false').data).toBe(false);
-    expect(fieldSchema.safeParse('true').success).toBe(true);
-    expect(fieldSchema.safeParse('true').data).toBe(true);
-    expect(fieldSchema.safeParse('abcdefg').success).toBe(true);
-    expect(fieldSchema.safeParse('abcdefg').data).toBe(true);
 
     const requiredFieldSchema = z.formBoolean({
       required: true,
@@ -43,8 +37,6 @@ describe('form schema', () => {
     expect(fieldSchema.safeParse(1).data).toBe(1);
     expect(fieldSchema.safeParse(10.2).success).toBe(true);
     expect(fieldSchema.safeParse(10.2).data).toBe(10.2);
-    expect(fieldSchema.safeParse('10.2').success).toBe(true);
-    expect(fieldSchema.safeParse('10.2').data).toBe(10.2);
     expect(fieldSchema.safeParse('abcd').success).toBe(false);
     expect(fieldSchema.safeParse('abcd').error).toBeDefined();
     expect(fieldSchema.safeParse('').success).toBe(true);
@@ -59,8 +51,6 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse(1).data).toBe(1);
     expect(requiredFieldSchema.safeParse(10.2).success).toBe(true);
     expect(requiredFieldSchema.safeParse(10.2).data).toBe(10.2);
-    expect(requiredFieldSchema.safeParse('10.2').success).toBe(true);
-    expect(requiredFieldSchema.safeParse('10.2').data).toBe(10.2);
     expect(requiredFieldSchema.safeParse('abcd').success).toBe(false);
     expect(requiredFieldSchema.safeParse('abcd').error).toBeDefined();
     expect(requiredFieldSchema.safeParse('').success).toBe(false);

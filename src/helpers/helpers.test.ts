@@ -2,8 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import type { FormMutableState, Immutable } from '../types/form-types';
 
-import { formatDate, formDataEncode, safeParseDate, validateState, z } from '..';
-import { cleanEmpty, createState, diffedState, getState, updateState } from './state-manager';
+import { formatDate, formDataEncode, safeParseDate, z } from '..';
+import {
+  cleanEmpty,
+  createState,
+  diffedState,
+  getState,
+  parseState,
+  updateState,
+} from './state-manager';
 import { getSchemaType } from './schema-visitor';
 import { isValidDate } from './date-formatter';
 import { toInt, toFloat, toDate, toBoolean, toLiteral, toString } from './value-converter';
@@ -277,36 +284,49 @@ describe('helpers', () => {
       ),
       n: z.formNumber({ required: true }),
       v: z.formValues(['a', 'b'], { required: true }),
+      y: z.formBoolean(),
       z: z.object({
         id: z.formNumber(),
       }),
     });
 
-    it('validates state successfully with defaults', () => {
-      const result = validateState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' });
+    it('parses state successfully with defaults', () => {
+      const result = parseState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' });
+      const idSymbol = result.data.a[0]?.id;
 
       expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      expect(result.error).toBeUndefined();
-      expect(result.data?.n).toBe(2);
-      expect(result.data?.v).toBe('b');
-      expect(result.data?.a.length).toBe(1);
-      expect(result.data?.a[0]?.id).toBeTypeOf('symbol');
-      expect(result.data?.a[0]?.i).toBe(1);
-      expect(result.data?.z.id).toBe('');
+      expect(idSymbol).toBeTypeOf('symbol');
+      expect(result.data).toStrictEqual({
+        a: [{ i: 1, id: idSymbol }],
+        n: 2,
+        v: 'b',
+        y: '',
+        z: { id: '' },
+      });
+      expect(result.issues).toHaveLength(0);
     });
 
-    it('validates state unsuccessfully without defaults', () => {
-      const result = validateState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' }, false, ';');
+    it('parses state unsuccessfully without defaults', () => {
+      const result = parseState(formSchema, { n: '2', v: 1, y: 'false', z: { id: 1 } });
 
       expect(result.success).toBe(false);
-      expect(result.data).toBeUndefined();
-      expect(result.error).toBeDefined();
+      expect(result.data).toStrictEqual({
+        a: [],
+        n: '2',
+        v: 1,
+        y: 'false',
+        z: { id: 1 },
+      });
+      expect(result.issues).toHaveLength(3);
+      expect(result.issues.find((issue) => issue.path[0] === 'n')).toBeDefined();
+      expect(result.issues.find((issue) => issue.path[0] === 'v')).toBeDefined();
+      expect(result.issues.find((issue) => issue.path[0] === 'y')).toBeDefined();
+    });
 
-      const errorKeys = Object.keys(result.error?.errors ?? {});
-
-      expect(errorKeys).toContain('a.0.id');
-      expect(errorKeys).toContain('z');
+    it('parses state unsuccessfully without data', () => {
+      expect(() => {
+        parseState(formSchema, null as unknown as object);
+      }).toThrow(TypeError);
     });
   });
 

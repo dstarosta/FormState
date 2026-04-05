@@ -4,23 +4,6 @@ import * as _$react_jsx_runtime0 from "react/jsx-runtime";
 
 //#region \0rolldown/runtime.js
 //#endregion
-//#region src/helpers/form-state-error.d.ts
-/**
- * Form state error containing Zod errors.
- *
- * @typeParam T - The form schema type.
- */
-declare class FormStateError<T extends object> extends Error {
-  readonly errors: Record<keyof T | '', string | undefined>;
-  /**
-   * Initializes a new instance of the `FormStateError` class.
-   *
-   * @param message - The Zod error message in a pretty format.
-   * @param errors - The object containing form error messages.
-   */
-  constructor(message: string, errors?: Record<keyof T | "", string | undefined>);
-}
-//#endregion
 //#region src/types/form-types.d.ts
 declare module 'zod/mini' {
   interface ZodMiniObject {
@@ -1695,19 +1678,6 @@ declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderIni
  */
 declare function createSymbol(): symbol;
 /**
- * Creates strongly typed initial state for a schema.
- *
- * @example
- * const data = createState(schema)
- * const data = createState(schema, { name: 'John', info: { age: 24 } })
- *
- * @typeParam T - schema type.
- * @param schema - The form schema.
- * @param data - Optional partial data to merge into the initial state.
- * @returns A new instance of the initial state.
- */
-declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPartial<z.infer<T>> | null): z.infer<T>;
-/**
  * Gets strongly typed child data or field value based on the provided name or path
  * in a disconnected form state data.
  *
@@ -1720,6 +1690,36 @@ declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPa
  * @returns The child data or the field value that is assigned to the provided name or path.
  */
 declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValueOrUnknown<T, P>;
+/**
+ * Parses an arbitrary object into the form state.
+ *
+ * @param schema - The form schema.
+ * @param data - The data object instance.
+ * @return An object containing the parsed data and a collection of Zod errors.
+ *
+ *         The `success` property indicates whether any errors have been found.
+ *
+ *         The `data` instance may cause form errors if the operation was not
+ *         successful.
+ */
+declare const parseState: <T extends z.ZodMiniObject>(schema: T, data: object) => {
+  data: z.core.output<T>;
+  issues: z.core.$ZodIssue[];
+  success: boolean;
+};
+/**
+ * Creates strongly typed initial state for a schema.
+ *
+ * @example
+ * const data = createState(schema)
+ * const data = createState(schema, { name: 'John', info: { age: 24 } })
+ *
+ * @typeParam T - schema type.
+ * @param schema - The form schema.
+ * @param data - Optional partial data to merge into the initial state.
+ * @returns A new instance of the initial state.
+ */
+declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPartial<z.infer<T>> | null): z.infer<T>;
 /**
  * Updates an immutable array state in a nested schema.
  *
@@ -1777,34 +1777,12 @@ declare function formatDate(date: Date, format?: FormDateFormat): string;
  * @returns An object containing the success flag and the date object, if the
  * operation was successful.
  */
-declare function safeParseDate(input: string | undefined, format?: FormDateFormat): DateParseResult;
-//#endregion
-//#region src/helpers/error-formatter.d.ts
-/**
- * Validates whether the data is valid for the schema used by the form state.
- *
- * @example
- * const { success, data, error } = validateState(schema, { name: 'John', info: { age: 24 } });
- *
- * @param schema - The form schema.
- * @param data - The data object instance.
- * @param populateDefaults - Indicates whether to populate defaults values for uninitialized fields
- *                           such as empty strings for optional fields and symbols for strong IDs.
- *                           Those values would have been populated by the form state initializer
- *                           automatically and do not result in errors.
- * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
- *                                for the same state property (default: "|").
- * @returns The object containing the validation result as well as the validated data object
- *          instance or the form state error.
- */
-declare const validateState: <T extends z.ZodMiniObject>(schema: T, data: DeepPartial<z.infer<T>>, populateDefaults?: boolean, errorMessageSeparator?: string) => {
-  error: FormStateError<z.core.output<T>>;
+declare function safeParseDate(input: string | undefined, format?: FormDateFormat): {
   success: false;
-  data?: never;
+  date: null;
 } | {
-  data: z.core.output<T>;
   success: true;
-  error?: never;
+  date: Date;
 };
 //#endregion
 //#region src/helpers/form-builder.d.ts
@@ -1898,5 +1876,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, FormStateError, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type SchemaDataObject, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, validateState, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type SchemaDataObject, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

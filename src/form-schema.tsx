@@ -299,7 +299,14 @@ export function formBoolean(options?: FormTypeOptions) {
       if (!value) {
         return EMPTY_STRING;
       }
-      return String(value as unknown).toLowerCase() !== 'false' && Boolean(value);
+      ctx.issues.push({
+        code: 'invalid_type',
+        expected: 'boolean',
+        received: 'string',
+        message: options?.error,
+        input: value,
+      } as z.core.$ZodRawIssue);
+      return Boolean(value);
     }),
     options?.required ? zodBoolean : z.union([zodBoolean, Z_EMPTY_STRING])
   );
@@ -507,7 +514,16 @@ export function formNumber(
       if (!value) {
         return EMPTY_STRING;
       }
-      return Number(value);
+      if (typeof value !== 'number') {
+        ctx.issues.push({
+          code: 'invalid_type',
+          expected: 'number',
+          received: 'string',
+          message: options.error,
+          input: value,
+        } as z.core.$ZodRawIssue);
+      }
+      return value as number;
     }),
     options.required ? zodNumber : z.union([zodNumber, Z_EMPTY_STRING])
   );
@@ -594,6 +610,14 @@ export function formString(
       if (!value) {
         return EMPTY_STRING;
       }
+      if (typeof value !== 'string') {
+        ctx.issues.push({
+          code: 'invalid_type',
+          expected: 'string',
+          message: options.error,
+          input: value,
+        } as z.core.$ZodRawIssue);
+      }
       return value as string;
     }),
     options.required
@@ -678,7 +702,15 @@ export function formValues(
       if (!value) {
         return EMPTY_STRING;
       }
-      return value;
+      if (typeof value !== 'string') {
+        ctx.issues.push({
+          code: 'invalid_type',
+          expected: 'string',
+          message: options?.error,
+          input: value,
+        } as z.core.$ZodRawIssue);
+      }
+      return value as string;
     }),
     options?.required
       ? z.enum(values, options.error).with(z.meta({ allowEmpty: false }))

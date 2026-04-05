@@ -10,6 +10,7 @@ import type {
   Immutable,
   ImmutableArray,
   ImmutableObject,
+  ParsedResult,
   RangeOf,
   RangeResult,
   UnknownObject,
@@ -249,6 +250,57 @@ export function createSymbol() {
 }
 
 /**
+ * Gets strongly typed child data or field value based on the provided name or path
+ * in a disconnected form state data.
+ *
+ * @example
+ * const note1Type = getState(formSchema, data, (path) => path.notes[0].type.name)
+ *
+ * @typeParam T - schema type.
+ * @param schema - The form schema.
+ * @param data - The strongly typed state data.
+ * @returns The child data or the field value that is assigned to the provided name or path.
+ */
+export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
+  // @ts-expect-error: Used for type inference
+  schema: T,
+  data: z.infer<T>,
+  nameOrPath: P
+) {
+  const path = typeof nameOrPath === 'function' ? getPath(data, nameOrPath) : nameOrPath;
+  const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
+
+  return dotPathGet(data, pathNotation) as FormPathValueOrUnknown<T, P>;
+}
+
+/**
+ * Parses an arbitrary object into the form state.
+ *
+ * @param schema - The form schema.
+ * @param data - The data object instance.
+ * @return An object containing the parsed data and a collection of Zod errors.
+ *
+ *         The `success` property indicates whether any errors have been found.
+ *
+ *         The `data` instance may cause form errors if the operation was not
+ *         successful.
+ */
+export const parseState = <T extends z.ZodMiniObject>(schema: T, data: object) => {
+  if (isNullish(data)) {
+    throw new TypeError('The "data" argument cannot be `null` or `undefined`');
+  }
+
+  const parsedData = createState(schema, data as DeepPartial<z.infer<T>>);
+  const result = schema.safeParse(parsedData);
+
+  return {
+    data: parsedData,
+    issues: result.error?.issues ?? [],
+    success: result.success,
+  } satisfies ParsedResult<T>;
+};
+
+/**
  * Creates strongly typed initial state for a schema.
  *
  * @example
@@ -348,30 +400,6 @@ export function createState<T extends z.ZodMiniObject>(
   }
 
   return result;
-}
-
-/**
- * Gets strongly typed child data or field value based on the provided name or path
- * in a disconnected form state data.
- *
- * @example
- * const note1Type = getState(formSchema, data, (path) => path.notes[0].type.name)
- *
- * @typeParam T - schema type.
- * @param schema - The form schema.
- * @param data - The strongly typed state data.
- * @returns The child data or the field value that is assigned to the provided name or path.
- */
-export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
-  // @ts-expect-error: Used for type inference
-  schema: T,
-  data: z.infer<T>,
-  nameOrPath: P
-) {
-  const path = typeof nameOrPath === 'function' ? getPath(data, nameOrPath) : nameOrPath;
-  const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
-
-  return dotPathGet(data, pathNotation) as FormPathValueOrUnknown<T, P>;
 }
 
 /**

@@ -3,8 +3,6 @@
 import type { SyntheticEvent } from 'react';
 import type * as z from 'zod/mini';
 
-import { FormStateError } from '../helpers/form-state-error';
-
 // Extending ZodMiniObject type
 
 declare module 'zod/mini' {
@@ -1369,33 +1367,19 @@ export type RangeResult<R> = R extends number | Date
   : undefined;
 
 /**
- * The type for a successful state validation result.
- *
- * @typeParam T - The form schema type.
+ * Parsed state result type.
  */
-export type StateValidationSuccess<T extends z.ZodMiniObject> = {
+export type ParsedResult<T extends z.ZodMiniObject> = {
   /**
    * The data object instance, if the validation was successful.
    */
   data: z.infer<T>;
   /**
-   * Indicates whether the validation was successful.
+   * An array of zod issues.
    */
-  success: true;
-};
-
-/**
- * The type for a failed state validation result.
- *
- * @typeParam T - The form schema type.
- */
-export type StateValidationFailure<T extends z.ZodMiniObject> = {
-  /**
-   * The form state error instance, if the validation was unsuccessful.
-   */
-  error: FormStateError<z.infer<T>>;
+  issues: z.core.$ZodIssue[];
   /**
    * Indicates whether the validation was successful.
    */
-  success: false;
+  success: boolean;
 };

@@ -1,59 +1,8 @@
 import * as z from 'zod/mini';
 
-import type {
-  DeepPartial,
-  StateValidationFailure,
-  StateValidationSuccess,
-} from '../types/form-types';
-import { createState } from './state-manager';
-import { FormStateError } from './form-state-error';
-
 // Private functions
 
 const isGenericMessage = (message: string) => message === 'Invalid input';
-
-// Public functions
-
-/**
- * Validates whether the data is valid for the schema used by the form state.
- *
- * @example
- * const { success, data, error } = validateState(schema, { name: 'John', info: { age: 24 } });
- *
- * @param schema - The form schema.
- * @param data - The data object instance.
- * @param populateDefaults - Indicates whether to populate defaults values for uninitialized fields
- *                           such as empty strings for optional fields and symbols for strong IDs.
- *                           Those values would have been populated by the form state initializer
- *                           automatically and do not result in errors.
- * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
- *                                for the same state property (default: "|").
- * @returns The object containing the validation result as well as the validated data object
- *          instance or the form state error.
- */
-export const validateState = <T extends z.ZodMiniObject>(
-  schema: T,
-  data: DeepPartial<z.infer<T>>,
-  populateDefaults: boolean = true,
-  errorMessageSeparator: string = '|'
-) => {
-  const safeData = schema.safeParse(populateDefaults ? createState(schema, data) : data);
-
-  if (!safeData.success) {
-    return {
-      error: new FormStateError(
-        z.prettifyError(safeData.error),
-        formatErrors(safeData.error, errorMessageSeparator)
-      ),
-      success: false,
-    } satisfies StateValidationFailure<T>;
-  }
-
-  return {
-    data: safeData.data,
-    success: true,
-  } satisfies StateValidationSuccess<T>;
-};
 
 // Internal functions
 
