@@ -252,8 +252,8 @@ export function createSymbol() {
  * Creates strongly typed initial state for a schema.
  *
  * @example
- * const initialState = createState(schema)
- * const initialState = createState(schema, { name: 'John', info: { age: 24 } })
+ * const data = createState(schema)
+ * const data = createState(schema, { name: 'John', info: { age: 24 } })
  *
  * @typeParam T - schema type.
  * @param schema - The form schema.

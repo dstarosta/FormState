@@ -18,7 +18,7 @@ describe('form provider', () => {
 
   type Schema = z.infer<typeof schema>;
 
-  const initialState: Schema = {
+  const initialData: Schema = {
     id: 1,
     info: {
       name: 'John',
@@ -113,7 +113,7 @@ describe('form provider', () => {
     );
   };
 
-  const ConnectedForm = formConnect({ schema, initialState, validateOnMount: true })(FormComponent);
+  const ConnectedForm = formConnect({ schema, initialData, validateOnMount: true })(FormComponent);
 
   it('renders connected form', () => {
     render(<ConnectedForm />);

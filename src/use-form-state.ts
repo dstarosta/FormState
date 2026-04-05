@@ -74,7 +74,7 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
  *
  * @example
  * const { formState, formStatus, formActions } = useFormState(schema, {
- *   initialState: {
+ *   initialData: {
  *     name: 'John',
  *     info: { age: 24 }
  *   }
@@ -85,9 +85,9 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
  * @param formOptions - Form initialization options.
  * @param formOptions - Form initialization options.
  * @param formOptions.schema - Zod schema to validate the form data.
- * @param formOptions.initialState - An optional object with schema properties to set the initial state of the form.
- *                                   This object should be used for asynchronous form initialization, otherwise, specify
- *                                   the initial state in the schema.
+ * @param formOptions.initialData - An optional object with schema properties to set the initial data of the form.
+ *                                  This object can be used for asynchronous form initialization, otherwise, specify
+ *                                  the default data in the schema.
  * @param formOptions.initialTouched - An optional array of root level field names or state path expressions that
  *                                     will be marked as touched when the form is initialized.
  * @param formOptions.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset
@@ -125,7 +125,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     CSSPrefix = 'form-state',
     inferredNameFormat = 'bracket',
     errorMessageSeparator = '|',
-    initialState,
+    initialData,
     initialTouched,
     watch,
   }: FormInitOptions<T> = formOptions ?? {};
@@ -137,12 +137,15 @@ export function useFormState<T extends z.ZodMiniObject>(
   const storeRef = useRef(watch ? createFormStore() : null);
 
   const defaultData = useMemo(() => createState(schema), [schema]);
-  const initialData = useDeepMemo(() => createState(schema, initialState), [schema, initialState]);
+  const initializedData = useDeepMemo(
+    () => createState(schema, initialData),
+    [schema, initialData]
+  );
 
   // The processed initial state with default property values and optional errors during the
   // initial validation.
   const state = useMemo<FormMutableState<State>>(() => {
-    const mergedData = initialState ? initialData : defaultData;
+    const mergedData = initialData ? initializedData : defaultData;
     const safeData = schema.safeParse(mergedData);
 
     const initialErrors = formatErrors<State>(safeData.error, errorMessageSeparator);
@@ -194,8 +197,8 @@ export function useFormState<T extends z.ZodMiniObject>(
   }, [
     schema,
     defaultData,
-    initialState,
     initialData,
+    initializedData,
     initialTouched,
     initialMode,
     validateOnMount,
@@ -386,17 +389,17 @@ export function useFormState<T extends z.ZodMiniObject>(
     return { data, errors };
   }, [errorMessageSeparator, schema]);
 
-  const initialStateChanged = useMemo(
+  const initialDataChanged = useMemo(
     () => !deepEqual(formState.initialData, state.data),
     [formState.initialData, state.data]
   );
 
-  // Dispatches initial state changes.
+  // Dispatches initial data changes.
   useEffect(() => {
-    if (!formState.replaced && formState.submitCount === 0 && initialStateChanged) {
-      dispatch({ type: 'changeInitialState' });
+    if (!formState.replaced && formState.submitCount === 0 && initialDataChanged) {
+      dispatch({ type: 'changeInitialData' });
     }
-  }, [initialStateChanged, formState.replaced, formState.submitCount, dispatch]);
+  }, [initialDataChanged, formState.replaced, formState.submitCount, dispatch]);
 
   // Calls the change callbacks on the form status change.
   useEffect(() => {

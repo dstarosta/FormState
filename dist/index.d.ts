@@ -193,12 +193,14 @@ type StateChangeListener<T extends object> = (event: StateChangeEvent<T>) => voi
  */
 type FormInitOptions<T extends z.ZodMiniObject> = {
   /**
-   * An optional object with schema properties to set the initial state of the form.
-   * This object should be used for asynchronous form initialization, otherwise, specify
-   * the initial state in the schema.
-   * Non-dirty form state values will reflect reactive changes to the initial state.
+   * An optional object with schema properties to set the initial data of the form.
+   *
+   * This object can be used for asynchronous form initialization, otherwise, specify
+   * the default data in the schema.
+   *
+   * Non-dirty form state values reflect reactive changes to the initial state.
    */
-  initialState?: DeepPartial<z.infer<T>> | undefined;
+  initialData?: DeepPartial<z.infer<T>> | undefined;
   /**
    * An optional array of root level field names or state path expressions that
    * will be marked as touched when the form is initialized.
@@ -1155,7 +1157,7 @@ declare namespace form_schema_d_exports {
  *   checked: z.formBoolean(z.boolean())
  * });
  *
- * const initialState: z.infer<typeof schema> = {
+ * const initialData: z.infer<typeof schema> = {
  *     name: '',
  *     checked: true
  * };
@@ -1578,7 +1580,7 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  *
  * @example
  * const { formState, formStatus, formActions } = useFormState(schema, {
- *   initialState: {
+ *   initialData: {
  *     name: 'John',
  *     info: { age: 24 }
  *   }
@@ -1589,9 +1591,9 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  * @param formOptions - Form initialization options.
  * @param formOptions - Form initialization options.
  * @param formOptions.schema - Zod schema to validate the form data.
- * @param formOptions.initialState - An optional object with schema properties to set the initial state of the form.
- *                                   This object should be used for asynchronous form initialization, otherwise, specify
- *                                   the initial state in the schema.
+ * @param formOptions.initialData - An optional object with schema properties to set the initial data of the form.
+ *                                  This object can be used for asynchronous form initialization, otherwise, specify
+ *                                  the default data in the schema.
  * @param formOptions.initialTouched - An optional array of root level field names or state path expressions that
  *                                     will be marked as touched when the form is initialized.
  * @param formOptions.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset
@@ -1657,9 +1659,9 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  *
  * @param options - Form initialization options.
  * @param options.schema - Zod schema to validate the form data.
- * @param options.initialState - An optional object with schema properties to set the initial state of the form.
- *                               This object should be used for asynchronous form initialization, otherwise, specify
- *                               the initial state in the schema.
+ * @param options.initialData - An optional object with schema properties to set the initial data of the form.
+ *                              This object can be used for asynchronous form initialization, otherwise, specify
+ *                              the default data in the schema.
  * @param options.initialTouched - An optional array of root level field names or state path expressions that
  *                               will be marked as touched when the form is initialized.
  * @param options.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset
@@ -1696,8 +1698,8 @@ declare function createSymbol(): symbol;
  * Creates strongly typed initial state for a schema.
  *
  * @example
- * const initialState = createState(schema)
- * const initialState = createState(schema, { name: 'John', info: { age: 24 } })
+ * const data = createState(schema)
+ * const data = createState(schema, { name: 'John', info: { age: 24 } })
  *
  * @typeParam T - schema type.
  * @param schema - The form schema.

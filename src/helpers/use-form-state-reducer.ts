@@ -49,8 +49,8 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
       };
 
       switch (action.type) {
-        // initial state change event
-        case 'changeInitialState': {
+        // initial data change event
+        case 'changeInitialData': {
           // only override non-dirty current state values with new initial state values
           const mergedData: State = {
             ...prevState.data,

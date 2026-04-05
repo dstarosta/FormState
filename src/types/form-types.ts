@@ -122,7 +122,7 @@ export type FormAction<T extends object> =
       submittedData: SubmittedData<T>;
       options: { resetDirty: boolean; resetTouched: boolean };
     }
-  | { type: 'changeInitialState' }
+  | { type: 'changeInitialData' }
   | { type: 'setDirty'; name: string; dirty: boolean }
   | {
       type: 'setManualError';
@@ -287,12 +287,14 @@ export type StateChangeListener<T extends object> = (event: StateChangeEvent<T>)
  */
 export type FormInitOptions<T extends z.ZodMiniObject> = {
   /**
-   * An optional object with schema properties to set the initial state of the form.
-   * This object should be used for asynchronous form initialization, otherwise, specify
-   * the initial state in the schema.
-   * Non-dirty form state values will reflect reactive changes to the initial state.
+   * An optional object with schema properties to set the initial data of the form.
+   *
+   * This object can be used for asynchronous form initialization, otherwise, specify
+   * the default data in the schema.
+   *
+   * Non-dirty form state values reflect reactive changes to the initial state.
    */
-  initialState?: DeepPartial<z.infer<T>> | undefined;
+  initialData?: DeepPartial<z.infer<T>> | undefined;
   /**
    * An optional array of root level field names or state path expressions that
    * will be marked as touched when the form is initialized.

@@ -187,8 +187,8 @@ describe('form schema', () => {
     const testSchema = z.object({
       value: z.advanced.pipe(z.string(), z.string().check(z.minLength(3))),
     });
-    const initialState: z.infer<typeof testSchema> = { value: 'test' };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: 'test' };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const { formState } = result.current;
 
     expect(formState.data.value).toBe('test');
@@ -198,8 +198,8 @@ describe('form schema', () => {
     const testSchema = z.object({
       value: z.advanced.optional(z.number()),
     });
-    const initialState: z.infer<typeof testSchema> = { value: 0 };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: 0 };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const { formState } = result.current;
 
     expect(formState.data.value).toBe(0);
@@ -209,8 +209,8 @@ describe('form schema', () => {
     const testSchema = z.object({
       value: z.advanced.nonoptional(z.number()),
     });
-    const initialState: z.infer<typeof testSchema> = { value: 0 };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: 0 };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const { formState } = result.current;
 
     expect(formState.data.value).toBe(0);
@@ -220,8 +220,8 @@ describe('form schema', () => {
     const testSchema = z.object({
       value: z.advanced.nullable(z.number()),
     });
-    const initialState: z.infer<typeof testSchema> = { value: 0 };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: 0 };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const { formState } = result.current;
 
     expect(formState.data.value).toBe(0);
@@ -231,8 +231,8 @@ describe('form schema', () => {
     const testSchema = z.object({
       value: z.advanced.nullish(z.number()),
     });
-    const initialState: z.infer<typeof testSchema> = { value: 0 };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: 0 };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const { formState } = result.current;
 
     expect(formState.data.value).toBe(0);
@@ -243,8 +243,8 @@ describe('form schema', () => {
       value: z.advanced.enum(['a', 'b', 'c']),
       value2: z.advanced.enum(['a', 'b', 'c']),
     });
-    const initialState: z.infer<typeof testSchema> = { value: 'a', value2: 'c' };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: 'a', value2: 'c' };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const {
       formActions: { change },
     } = result.current;
@@ -267,8 +267,8 @@ describe('form schema', () => {
       value: z.advanced.union([z.advanced.literal('a'), z.advanced.literal('b')]),
       value2: z.advanced.union([z.advanced.literal('a'), z.advanced.literal('b')]),
     });
-    const initialState: z.infer<typeof testSchema> = { value: 'a', value2: 'b' };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: 'a', value2: 'b' };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const {
       formActions: { change },
     } = result.current;
@@ -297,8 +297,8 @@ describe('form schema', () => {
         z.advanced.transform((arg: number) => arg * 2)
       ),
     });
-    const initialState: z.infer<typeof testSchema> = { value: ' test ', value2: 5 };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: ' test ', value2: 5 };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const { formState } = result.current;
 
     expect(formState.data.value).toBe('test');
@@ -310,8 +310,8 @@ describe('form schema', () => {
       value: z.advanced.union([z.string(), z.number()]),
       value2: z.advanced.union([z.boolean(), z.number()]),
     });
-    const initialState: z.infer<typeof testSchema> = { value: 'test', value2: 0 };
-    const { result } = renderHook(() => useFormState(testSchema, { initialState }));
+    const initialData: z.infer<typeof testSchema> = { value: 'test', value2: 0 };
+    const { result } = renderHook(() => useFormState(testSchema, { initialData }));
     const { formState } = result.current;
 
     expect(formState.data.value).toBe('test');
@@ -342,9 +342,9 @@ describe('form schema', () => {
         })
       ),
     });
-    const initialState: z.infer<typeof testSchema> = { users: [{ name: '' }] };
+    const initialData: z.infer<typeof testSchema> = { users: [{ name: '' }] };
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
     const { formState, formStatus } = result.current;
 
@@ -500,12 +500,12 @@ describe('form schema', () => {
         })
       );
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -531,12 +531,12 @@ describe('form schema', () => {
         })
       );
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -565,12 +565,12 @@ describe('form schema', () => {
         })
       );
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -592,12 +592,12 @@ describe('form schema', () => {
       })
       .check(z.validate((obj) => obj.users.length === 2, { path: 'users', error }));
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -615,12 +615,12 @@ describe('form schema', () => {
         .check(z.someItem((arr) => arr.name === 'John')),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -639,12 +639,12 @@ describe('form schema', () => {
         .check(z.someItem((arr) => arr.name === 'Jonathan', error)),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -662,12 +662,12 @@ describe('form schema', () => {
         .check(z.everyItem((arr) => arr.name.includes('M'))),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'Mary' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -686,12 +686,12 @@ describe('form schema', () => {
         .check(z.everyItem((arr) => arr.name.includes('M'), error)),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -709,12 +709,12 @@ describe('form schema', () => {
         .check(z.uniqueItems(true)),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -731,12 +731,12 @@ describe('form schema', () => {
         .check(z.uniqueItems()),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mike' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -753,12 +753,12 @@ describe('form schema', () => {
         .check(z.uniqueItems(false, { mapFn: (item) => item.name })),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mary' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -775,12 +775,12 @@ describe('form schema', () => {
         .check(z.uniqueItems(false, { mapFn: (item) => item.name, elementPath: ['name'] })),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mike' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);
@@ -800,12 +800,12 @@ describe('form schema', () => {
         .check(z.uniqueItems(true, { mapFn: (value) => value.name, ignoreValues: [null, ''] })),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: '' }, { name: 'John' }, { name: 'Mary' }, { name: '' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(true);
@@ -824,12 +824,12 @@ describe('form schema', () => {
         .check(z.uniqueItems(true, { error })),
     });
 
-    const initialState: z.infer<typeof testSchema> = {
+    const initialData: z.infer<typeof testSchema> = {
       users: [{ name: 'Mike' }, { name: 'John' }, { name: 'Mike' }],
     };
 
     const { result } = renderHook(() =>
-      useFormState(testSchema, { initialState, validateOnMount: true })
+      useFormState(testSchema, { initialData, validateOnMount: true })
     );
 
     expect(result.current.formStatus.valid).toBe(false);

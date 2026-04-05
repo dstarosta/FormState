@@ -87,9 +87,9 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  *
  * @param options - Form initialization options.
  * @param options.schema - Zod schema to validate the form data.
- * @param options.initialState - An optional object with schema properties to set the initial state of the form.
- *                               This object should be used for asynchronous form initialization, otherwise, specify
- *                               the initial state in the schema.
+ * @param options.initialData - An optional object with schema properties to set the initial data of the form.
+ *                              This object can be used for asynchronous form initialization, otherwise, specify
+ *                              the default data in the schema.
  * @param options.initialTouched - An optional array of root level field names or state path expressions that
  *                               will be marked as touched when the form is initialized.
  * @param options.resetTouchedOnFormReset - Reset the "touch" field status after the form has been reset

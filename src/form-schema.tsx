@@ -39,7 +39,7 @@ const ALWAYS_VALIDATE = () => true;
  *   checked: z.formBoolean(z.boolean())
  * });
  *
- * const initialState: z.infer<typeof schema> = {
+ * const initialData: z.infer<typeof schema> = {
  *     name: '',
  *     checked: true
  * };

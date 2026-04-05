@@ -149,14 +149,14 @@ describe('useFormState', () => {
     });
 
     it('should accept initial state', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: {
           age: 30,
         },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const { formState } = result.current;
 
       expect(formState.data.name).toBe('John');
@@ -182,7 +182,7 @@ describe('useFormState', () => {
     });
 
     it('should accept initial state and initial touched fields', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: {
           age: 30,
@@ -190,7 +190,7 @@ describe('useFormState', () => {
         tags: ['a', 'b'],
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, initialTouched: ['name', (path) => path.info.age] })
+        useFormState(schema, { initialData, initialTouched: ['name', (path) => path.info.age] })
       );
       const { formState } = result.current;
 
@@ -221,11 +221,11 @@ describe('useFormState', () => {
     });
 
     it('should not produce errors on initial state change when validateOnMount is false', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: '',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
 
       const { formState, formStatus } = result.current;
 
@@ -235,12 +235,12 @@ describe('useFormState', () => {
     });
 
     it('should produce errors on initial state change when validateOnMount is true', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'Jonathan@somelongnamevalue...', // too long, contains invalid characters
         info: { age: 0 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnMount: true })
+        useFormState(schema, { initialData, validateOnMount: true })
       );
 
       const { formState, formStatus } = result.current;
@@ -258,12 +258,12 @@ describe('useFormState', () => {
     });
 
     it('should change initial state after submit', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, validate, reset },
       } = result.current;
@@ -301,13 +301,13 @@ describe('useFormState', () => {
     });
 
     it('should not validate before submit when validateBeforeSubmit is false', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateBeforeSubmit: false })
+        useFormState(schema, { initialData, validateBeforeSubmit: false })
       );
       const {
         formActions: { change, validate },
@@ -347,11 +347,11 @@ describe('useFormState', () => {
     });
 
     it('should handle number and date fields', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change },
       } = result.current;
@@ -370,11 +370,11 @@ describe('useFormState', () => {
     });
 
     it('should handle invalid date', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change },
       } = result.current;
@@ -480,7 +480,7 @@ describe('useFormState', () => {
 
     it('should throw on non-array fields', () => {
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState: { tags: ['a', 'b'] } })
+        useFormState(schema, { initialData: { tags: ['a', 'b'] } })
       );
       const {
         formActions: {
@@ -530,11 +530,11 @@ describe('useFormState', () => {
     });
 
     it('should update initial state reactively', () => {
-      let initialState: InitialSchema = {
+      let initialData: InitialSchema = {
         name: 'Jonathan',
         info: { age: 30 },
       };
-      const { result, rerender } = renderHook(() => useFormState(schema, { initialState }));
+      const { result, rerender } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change },
       } = result.current;
@@ -543,7 +543,7 @@ describe('useFormState', () => {
         change('name', 'Tom');
       });
 
-      initialState = { name: 'Jonathan', info: { age: 29 } };
+      initialData = { name: 'Jonathan', info: { age: 29 } };
       rerender(); // required to update the initial state of the hook
 
       const { formState } = result.current;
@@ -553,23 +553,23 @@ describe('useFormState', () => {
     });
 
     it('should not update initial state reactively after calling "replace"', () => {
-      let initialState: InitialSchema = {
+      let initialData: InitialSchema = {
         name: 'Jonathan',
         info: { age: 30 },
       };
-      const { result, rerender } = renderHook(() => useFormState(schema, { initialState }));
+      const { result, rerender } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { replace },
       } = result.current;
 
       act(() => {
         replace({
-          ...initialState,
+          ...initialData,
           name: 'Tom',
         });
       });
 
-      initialState = { name: 'Jonathan', info: { age: 29 } };
+      initialData = { name: 'Jonathan', info: { age: 29 } };
       rerender(); // required to update the initial state of the hook
 
       const { formState } = result.current;
@@ -639,7 +639,7 @@ describe('useFormState', () => {
         configurable: true,
       });
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30, birthDate: new Date(2020, 11, 31) },
         category: 'unconfirmed',
@@ -648,7 +648,7 @@ describe('useFormState', () => {
         updateDates: [new Date(2019, 11, 12), new Date(2020, 3, 15)],
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnMount: true })
+        useFormState(schema, { initialData, validateOnMount: true })
       );
       const {
         formState: { data },
@@ -802,11 +802,11 @@ describe('useFormState', () => {
 
   describe('form actions', () => {
     it('should produce errors on initial state change when validateOnMount is false but previous errors exist', () => {
-      let initialState: InitialSchema = {
+      let initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result, rerender } = renderHook(() => useFormState(schema, { initialState }));
+      const { result, rerender } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change },
       } = result.current;
@@ -815,7 +815,7 @@ describe('useFormState', () => {
         change('name', '');
       });
 
-      initialState = { name: 'John', info: { age: 30 } };
+      initialData = { name: 'John', info: { age: 30 } };
       rerender();
 
       const { formState } = result.current;
@@ -876,11 +876,11 @@ describe('useFormState', () => {
     });
 
     it('should update field, validate and change a variable in change callback', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formState: { data },
         formActions: { change },
@@ -951,11 +951,11 @@ describe('useFormState', () => {
     });
 
     it('should not change an un-updated value', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change },
       } = result.current;
@@ -974,11 +974,11 @@ describe('useFormState', () => {
     });
 
     it('should touch an un-updated value', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change },
       } = result.current;
@@ -999,11 +999,11 @@ describe('useFormState', () => {
     });
 
     it('should touch an un-updated but touched value', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
 
       const {
         formActions: { touch },
@@ -1035,11 +1035,11 @@ describe('useFormState', () => {
     it('should call a debounced change callback per field', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formState: { data },
         formActions: { change },
@@ -1089,12 +1089,12 @@ describe('useFormState', () => {
 
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, debounceCacheCapacity: 1 })
+        useFormState(schema, { initialData, debounceCacheCapacity: 1 })
       );
       const {
         formActions: { change },
@@ -1141,11 +1141,11 @@ describe('useFormState', () => {
     it('should call the debounced change callback once for rapid same-field changes', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change },
       } = result.current;
@@ -1188,11 +1188,11 @@ describe('useFormState', () => {
     it('should call the debounced change callback twice for sequential same-field changes', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change },
       } = result.current;
@@ -1235,11 +1235,11 @@ describe('useFormState', () => {
     it('should debounce dispatch without a callback', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
 
       const interval = 1000;
 
@@ -1268,11 +1268,11 @@ describe('useFormState', () => {
     it('should cancel pending debounce when value reverts to original without a callback', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
 
       const interval = 1000;
 
@@ -1301,11 +1301,11 @@ describe('useFormState', () => {
     it('should cancel only the reverted path and keep other pending changes without a callback', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
 
       const interval = 1000;
 
@@ -1334,12 +1334,12 @@ describe('useFormState', () => {
     it('should flush pending changes on cache eviction without a callback', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, debounceCacheCapacity: 1 })
+        useFormState(schema, { initialData, debounceCacheCapacity: 1 })
       );
 
       const interval = 1000;
@@ -1380,12 +1380,12 @@ describe('useFormState', () => {
     it('should flush pending changes and call callback on cache eviction', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, debounceCacheCapacity: 1 })
+        useFormState(schema, { initialData, debounceCacheCapacity: 1 })
       );
 
       const interval = 1000;
@@ -1424,11 +1424,11 @@ describe('useFormState', () => {
     it('should cancel pending debounce and call callback immediately when switching to non-debounced', () => {
       vi.useFakeTimers();
 
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 18 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
 
       let updateCounter = 0;
 
@@ -1625,12 +1625,12 @@ describe('useFormState', () => {
     });
 
     it('should reset the form', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnMount: true })
+        useFormState(schema, { initialData, validateOnMount: true })
       );
       const {
         formActions: { change, reset },
@@ -1658,11 +1658,11 @@ describe('useFormState', () => {
     });
 
     it('should reset specific fields', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, touch, reset, setError },
       } = result.current;
@@ -1708,11 +1708,11 @@ describe('useFormState', () => {
     });
 
     it('should reset specific fields while retaining the data', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, touch, reset },
       } = result.current;
@@ -1751,11 +1751,11 @@ describe('useFormState', () => {
     });
 
     it('should reset specific fields and the corresponding touched values', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, touch, reset },
       } = result.current;
@@ -1792,11 +1792,11 @@ describe('useFormState', () => {
     });
 
     it('should reset the form and keep errors empty without validation', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, reset },
       } = result.current;
@@ -1817,12 +1817,12 @@ describe('useFormState', () => {
     });
 
     it('should reset the form and keep errors empty (validate on init)', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
       const { result } = renderHook(() =>
-        useFormState(schema, { initialState, validateOnMount: true })
+        useFormState(schema, { initialData, validateOnMount: true })
       );
       const {
         formActions: { change, reset },
@@ -1840,11 +1840,11 @@ describe('useFormState', () => {
     });
 
     it('should keep the validated status after submission', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, reset, validate },
       } = result.current;
@@ -1868,11 +1868,11 @@ describe('useFormState', () => {
     });
 
     it('should reset the form and reset touched when resetTouched is true and no errors', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, reset },
       } = result.current;
@@ -1913,7 +1913,7 @@ describe('useFormState', () => {
     });
 
     it('should validate form with additional logic', () => {
-      const { result } = renderHook(() => useFormState(schema, { initialState: { name: 'John' } }));
+      const { result } = renderHook(() => useFormState(schema, { initialData: { name: 'John' } }));
       const {
         formState,
         formActions: { validate },
@@ -1937,7 +1937,7 @@ describe('useFormState', () => {
     });
 
     it('should not validate form with failed additional logic', () => {
-      const { result } = renderHook(() => useFormState(schema, { initialState: {} }));
+      const { result } = renderHook(() => useFormState(schema, { initialData: {} }));
       const {
         formState,
         formActions: { validate },
@@ -1961,12 +1961,12 @@ describe('useFormState', () => {
     });
 
     it('should submit form', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, validate },
       } = result.current;
@@ -1989,12 +1989,12 @@ describe('useFormState', () => {
     });
 
     it('should submit form without resetting touched or dirty states', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, validate },
       } = result.current;
@@ -2044,12 +2044,12 @@ describe('useFormState', () => {
     });
 
     it('should not submit form with runtime errors', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, validate },
       } = result.current;
@@ -2078,12 +2078,12 @@ describe('useFormState', () => {
     });
 
     it('should not submit form with manual errors', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { change, setError, validate },
       } = result.current;
@@ -2116,12 +2116,12 @@ describe('useFormState', () => {
     });
 
     it('should not submit form with manual errors without validation', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'Jonathan',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { setError, validate },
       } = result.current;
@@ -2149,12 +2149,12 @@ describe('useFormState', () => {
     });
 
     it('should set and clear manual errors', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { clearManualErrors, setError, validate },
       } = result.current;
@@ -2198,12 +2198,12 @@ describe('useFormState', () => {
     });
 
     it('should set and clear manual errors conditionally', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { clearManualErrors, setError },
       } = result.current;
@@ -2236,10 +2236,10 @@ describe('useFormState', () => {
     });
 
     it('should clear manual errors and validate schema', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { clearManualErrors, setError },
       } = result.current;
@@ -2258,10 +2258,10 @@ describe('useFormState', () => {
     });
 
     it('should clear manual errors and do not validate schema', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { clearManualErrors, setError },
       } = result.current;
@@ -2280,10 +2280,10 @@ describe('useFormState', () => {
     });
 
     it('should try to clear manual errors but not validate schema since there are no errors', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         info: { age: 30 },
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { clearManualErrors },
       } = result.current;
@@ -2298,12 +2298,12 @@ describe('useFormState', () => {
     });
 
     it('should mark the form dirty with a manual key', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { setDirty },
       } = result.current;
@@ -2319,12 +2319,12 @@ describe('useFormState', () => {
     });
 
     it('should throw if set dirty with a manual key does not start with #', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formActions: { setDirty },
       } = result.current;
@@ -2335,12 +2335,12 @@ describe('useFormState', () => {
     });
 
     it('should change the form mode', () => {
-      const initialState: InitialSchema = {
+      const initialData: InitialSchema = {
         name: 'John',
         info: { age: 30 },
         tags: ['a', 'b'],
       };
-      const { result } = renderHook(() => useFormState(schema, { initialState }));
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
       const {
         formStatus,
         formActions: { setMode },
@@ -2451,7 +2451,7 @@ describe('useFormState', () => {
         formClasses,
         Form,
       } = useFormState(schema, {
-        initialState: {
+        initialData: {
           name: initialValue ?? '',
           info: {
             age: 30,
@@ -2665,7 +2665,7 @@ describe('useFormState', () => {
         formActions: { change, validate },
         Form,
       } = useFormState(schema, {
-        initialState: {
+        initialData: {
           name: 'John',
           info: {
             age: 30,
