@@ -464,7 +464,7 @@ export type FormState<T extends object> = {
       /**
        * Gets an array of all error keys.
        *
-       * @return An array of all error keys.
+       * @return An array of error keys.
        */
       getKeys: () => string[];
     }
@@ -485,6 +485,12 @@ export type FormState<T extends object> = {
        * @returns `true` if the key exists and is dirty, `false` otherwise.
        */
       get: (key: `#${string}`) => boolean;
+      /**
+       * Gets an array of all dirty keys.
+       *
+       * @return An array of dirty keys.
+       */
+      getKeys: () => string[];
     }
   >;
   /**
@@ -502,6 +508,12 @@ export type FormState<T extends object> = {
        * @returns `true` if the field exists and has been touched, `false` otherwise.
        */
       get: (expression: (data: T) => unknown) => boolean;
+      /**
+       * Gets an array of all touched keys.
+       *
+       * @return An array of touched keys.
+       */
+      getKeys: () => string[];
     }
   >;
   /**
@@ -519,6 +531,12 @@ export type FormState<T extends object> = {
        * @returns `number` representing the maximum length or undefined.
        */
       get: (expression: (data: T) => unknown) => number | undefined;
+      /**
+       * Gets an array of all max length keys.
+       *
+       * @return An array of max length keys.
+       */
+      getKeys: () => string[];
     }
   >;
   /**
@@ -536,6 +554,12 @@ export type FormState<T extends object> = {
        * @returns An object containing the `min` and the `max` properties that can be numeric, dates or `undefined`.
        */
       get: <R extends RangeOf<R>>(expression: (data: T) => R) => RangeResult<R>;
+      /**
+       * Gets an array of all range keys.
+       *
+       * @return An array of range keys.
+       */
+      getKeys: () => string[];
     }
   >;
   /**
@@ -553,6 +577,12 @@ export type FormState<T extends object> = {
        * @returns `string` containing the regular expression pattern or `undefined`.
        */
       get: (expression: (data: T) => unknown) => string | undefined;
+      /**
+       * Gets an array of all pattern keys.
+       *
+       * @return An array of pattern keys.
+       */
+      getKeys: () => string[];
     }
   >;
   /**
@@ -570,6 +600,12 @@ export type FormState<T extends object> = {
        * @returns `string` containing the description; no description returns an empty `string`.
        */
       get: (expression: (data: T) => unknown) => string;
+      /**
+       * Gets an array of all description keys.
+       *
+       * @return An array of description keys.
+       */
+      getKeys: () => string[];
     }
   >;
 };
@@ -1411,7 +1447,7 @@ export type ParseFailure<T extends z.ZodMiniObject> = {
     /**
      * Gets an array of all error messages.
      *
-     * @return An array of all error messages.
+     * @return An array of error messages.
      */
     getAll: () => string[];
     /**

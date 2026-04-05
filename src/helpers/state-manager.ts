@@ -158,7 +158,10 @@ export const createImmutableErrors = <T extends z.ZodMiniObject>(
       Object.values(errors)
         .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
         .flatMap((error) => error.split(errorMessageSeparator)),
-    getKeys: () => Object.keys(errors),
+    getKeys: () =>
+      Object.entries(errors)
+        .filter((entry) => Boolean(entry[1]))
+        .map((entry) => entry[0]),
   });
 
 export const createImmutableDirty = <T extends z.ZodMiniObject>(
@@ -167,6 +170,10 @@ export const createImmutableDirty = <T extends z.ZodMiniObject>(
   freezeObject({
     ...dirty,
     get: (key: `#${string}`) => Boolean(dirty[key]),
+    getKeys: () =>
+      Object.entries(dirty)
+        .filter((entry) => entry[1])
+        .map((entry) => entry[0]),
   });
 
 export const createImmutableTouched = <T extends z.ZodMiniObject>(
@@ -177,6 +184,10 @@ export const createImmutableTouched = <T extends z.ZodMiniObject>(
     ...touched,
     get: (expression: (data: z.infer<T>) => unknown) =>
       Boolean(touched[getPath(data, expression).join('.')]),
+    getKeys: () =>
+      Object.entries(touched)
+        .filter((entry) => entry[1])
+        .map((entry) => entry[0]),
   });
 
 export const createImmutableMaxLengths = <T extends z.ZodMiniObject>(
@@ -187,6 +198,10 @@ export const createImmutableMaxLengths = <T extends z.ZodMiniObject>(
     ...maxLengths,
     get: (expression: (data: z.infer<T>) => unknown) =>
       maxLengths[getPathNotation(getPath(data, expression))],
+    getKeys: () =>
+      Object.entries(maxLengths)
+        .filter((entry) => typeof entry[1] === 'number')
+        .map((entry) => entry[0]),
   });
 
 export const createImmutableRanges = <T extends z.ZodMiniObject>(
@@ -204,6 +219,10 @@ export const createImmutableRanges = <T extends z.ZodMiniObject>(
     ...ranges,
     get: <R extends RangeOf<R>>(expression: (data: z.infer<T>) => R) =>
       ranges[getPathNotation(getPath(data, expression))] as RangeResult<R>,
+    getKeys: () =>
+      Object.entries(ranges)
+        .filter((entry) => Boolean(entry[1]))
+        .map((entry) => entry[0]),
   });
 
 export const createImmutablePatterns = <T extends z.ZodMiniObject>(
@@ -214,6 +233,10 @@ export const createImmutablePatterns = <T extends z.ZodMiniObject>(
     ...patterns,
     get: (expression: (data: z.infer<T>) => unknown) =>
       patterns[getPathNotation(getPath(data, expression))] ?? '',
+    getKeys: () =>
+      Object.entries(patterns)
+        .filter((entry) => Boolean(entry[1]))
+        .map((entry) => entry[0]),
   });
 
 export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
@@ -224,6 +247,10 @@ export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
     ...descriptions,
     get: (expression: (data: z.infer<T>) => unknown) =>
       descriptions[getPathNotation(getPath(data, expression))] ?? '',
+    getKeys: () =>
+      Object.entries(descriptions)
+        .filter((entry) => Boolean(entry[1]))
+        .map((entry) => entry[0]),
   });
 
 export const difference = <T extends object>(obj1: T, obj2: Record<string, unknown>) => {
@@ -324,7 +351,10 @@ export const parseState = <T extends z.ZodMiniObject>(
       Object.values(zodErrors)
         .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
         .flatMap((error) => error.split(errorMessageSeparator)),
-    getKeys: () => Object.keys(zodErrors),
+    getKeys: () =>
+      Object.entries(zodErrors)
+        .filter((entry) => Boolean(entry[1]))
+        .map((entry) => entry[0]),
   };
 
   return {

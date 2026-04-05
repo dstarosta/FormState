@@ -732,10 +732,11 @@ describe('useFormState', () => {
       specialNumber: 'Special number',
     };
 
-    const { get, ...actualDescriptions } = descriptions;
+    const { get, getKeys, ...actualDescriptions } = descriptions;
 
     expect(expectedDescriptions).toStrictEqual(actualDescriptions);
     expect(get).toBeTypeOf('function');
+    expect(getKeys()).toHaveLength(Object.keys(expectedDescriptions).length);
   });
 
   it('validates schema ranges', () => {
@@ -762,10 +763,11 @@ describe('useFormState', () => {
       specialNumber: { min: 3.1 + 1e-9, max: 3.15 - 1e-9, format: 'numeric' },
     };
 
-    const { get, ...actualRanges } = ranges;
+    const { get, getKeys, ...actualRanges } = ranges;
 
     expect(expectedRanges).toStrictEqual(actualRanges);
     expect(get).toBeTypeOf('function');
+    expect(getKeys()).toHaveLength(Object.keys(expectedRanges).length);
   });
 
   it('validates schema max lengths', () => {
@@ -777,10 +779,11 @@ describe('useFormState', () => {
 
     const expectedMaxLengths = { name: 25, tags: 5, 'tags.0': 255 };
 
-    const { get, ...actualMaxLengths } = maxLengths;
+    const { get, getKeys, ...actualMaxLengths } = maxLengths;
 
     expect(expectedMaxLengths).toStrictEqual(actualMaxLengths);
     expect(get).toBeTypeOf('function');
+    expect(getKeys()).toHaveLength(Object.keys(expectedMaxLengths).length);
   });
 
   it('validates schema regular expression patterns', () => {
@@ -795,10 +798,11 @@ describe('useFormState', () => {
       'tags.0': String.raw`^[\w\\-]*$`,
     };
 
-    const { get, ...actualPatterns } = patterns;
+    const { get, getKeys, ...actualPatterns } = patterns;
 
     expect(expectedPatterns).toStrictEqual(actualPatterns);
     expect(get).toBeTypeOf('function');
+    expect(getKeys()).toHaveLength(Object.keys(expectedPatterns).length);
   });
 
   describe('form actions', () => {
@@ -951,6 +955,31 @@ describe('useFormState', () => {
       expect(updateCounter).toBe(3);
     });
 
+    it('should change an updated value', () => {
+      const initialData: InitialSchema = {
+        name: 'Mike',
+        info: { age: 18 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { change },
+      } = result.current;
+
+      act(() => {
+        change('name', 'John');
+      });
+
+      const {
+        formState: { data, dirty, touched },
+      } = result.current;
+
+      expect(data.name).toBe('John');
+      expect(dirty.name).toBe(true);
+      expect(touched.name).toBe(false);
+      expect(dirty.getKeys()).toHaveLength(1);
+      expect(touched.getKeys()).toHaveLength(0);
+    });
+
     it('should not change an un-updated value', () => {
       const initialData: InitialSchema = {
         name: 'John',
@@ -972,6 +1001,8 @@ describe('useFormState', () => {
       expect(data.name).toBe('John');
       expect(dirty.name).toBe(false);
       expect(touched.name).toBe(false);
+      expect(dirty.getKeys()).toHaveLength(0);
+      expect(touched.getKeys()).toHaveLength(0);
     });
 
     it('should touch an un-updated value', () => {
@@ -997,6 +1028,8 @@ describe('useFormState', () => {
       expect(data.name).toBe('John');
       expect(dirty.name).toBe(false);
       expect(touched.name).toBe(true);
+      expect(dirty.getKeys()).toHaveLength(0);
+      expect(touched.getKeys()).toHaveLength(1);
     });
 
     it('should touch an un-updated but touched value', () => {
@@ -1031,6 +1064,8 @@ describe('useFormState', () => {
       expect(data.name).toBe('John');
       expect(dirty.name).toBe(false);
       expect(touched.name).toBe(true);
+      expect(dirty.getKeys()).toHaveLength(0);
+      expect(touched.getKeys()).toHaveLength(1);
     });
 
     it('should call a debounced change callback per field', () => {
