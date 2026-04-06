@@ -104,6 +104,8 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                            same state property (default: "|").
+ * @param formOptions.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty
+ *                                                  (default: `false`).
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
 export function useFormState<T extends z.ZodMiniObject>(
@@ -124,6 +126,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     CSSPrefix = 'form-state',
     inferredNameFormat = 'bracket',
     errorMessageSeparator = '|',
+    confirmDirtyStateNavigation = false,
     initialData,
     initialTouched,
     watch,
@@ -447,6 +450,25 @@ export function useFormState<T extends z.ZodMiniObject>(
       });
     }
   }, [schema, formState.submitCount, generateListenerState]);
+
+  // Confirm browser navigation during a dirty state.
+  useEffect(() => {
+    if (!confirmDirtyStateNavigation) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (dirty) {
+        event.preventDefault();
+      }
+    };
+
+    globalThis.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      globalThis.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [confirmDirtyStateNavigation, dirty]);
 
   // Cleanup on unmount.
   useEffect(() => {

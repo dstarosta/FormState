@@ -360,6 +360,10 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    * same state property (default: "|").
    */
   errorMessageSeparator?: string;
+  /**
+   * Confirm browser navigation when the form status is dirty (default: `false`).
+   */
+  confirmDirtyStateNavigation?: boolean;
 };
 
 export type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {

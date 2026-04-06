@@ -2494,6 +2494,7 @@ describe('useFormState', () => {
           },
         },
         initialMode,
+        confirmDirtyStateNavigation: true,
         watch: watch === true,
       });
 
@@ -3064,6 +3065,24 @@ describe('useFormState', () => {
       fireEvent.click(resetButton);
 
       expect(name).toContainHTML('');
+    });
+
+    it('should call the onbeforeunload event', () => {
+      const handleUnload = vi.fn();
+      globalThis.addEventListener('beforeunload', handleUnload);
+
+      render(<FormComponent watch={true} />);
+
+      const input = screen.getByLabelText('Name');
+
+      fireEvent.change(input, { target: { value: 'John' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      globalThis.dispatchEvent(new Event('beforeunload'));
+
+      globalThis.removeEventListener('beforeunload', handleUnload);
+
+      expect(handleUnload).toHaveBeenCalled();
     });
 
     it('should listen to form changes', async () => {

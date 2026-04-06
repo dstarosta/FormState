@@ -107,6 +107,7 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param options.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                        same state property (default: "|").
+ * @param options.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty (default: `false`).
  *
  * @returns A curried function to wrap the component.
  */

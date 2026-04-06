@@ -251,6 +251,10 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    * same state property (default: "|").
    */
   errorMessageSeparator?: string;
+  /**
+   * Confirm browser navigation when the form status is dirty (default: `false`).
+   */
+  confirmDirtyStateNavigation?: boolean;
 };
 type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
   schema: T;
@@ -1635,6 +1639,8 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                            same state property (default: "|").
+ * @param formOptions.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty
+ *                                                  (default: `false`).
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
 declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
@@ -1703,6 +1709,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param options.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                        same state property (default: "|").
+ * @param options.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty (default: `false`).
  *
  * @returns A curried function to wrap the component.
  */
