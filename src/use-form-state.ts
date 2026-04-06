@@ -83,7 +83,6 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
  * @typeParam T - type of the form data.
  * @param schema - Zod schema to validate the form data.
  * @param formOptions - Form initialization options.
- * @param formOptions - Form initialization options.
  * @param formOptions.schema - Zod schema to validate the form data.
  * @param formOptions.initialData - An optional object with schema properties to set the initial data of the form.
  *                                  This object can be used for asynchronous form initialization, otherwise, specify

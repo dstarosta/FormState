@@ -464,7 +464,7 @@ export type FormState<T extends object> = {
       /**
        * Gets an array of all error keys.
        *
-       * @return An array of error keys.
+       * @returns An array of error keys.
        */
       getKeys: () => string[];
     }
@@ -488,7 +488,7 @@ export type FormState<T extends object> = {
       /**
        * Gets an array of all dirty keys.
        *
-       * @return An array of dirty keys.
+       * @returns An array of dirty keys.
        */
       getKeys: () => string[];
     }
@@ -511,7 +511,7 @@ export type FormState<T extends object> = {
       /**
        * Gets an array of all touched keys.
        *
-       * @return An array of touched keys.
+       * @returns An array of touched keys.
        */
       getKeys: () => string[];
     }
@@ -534,7 +534,7 @@ export type FormState<T extends object> = {
       /**
        * Gets an array of all max length keys.
        *
-       * @return An array of max length keys.
+       * @returns An array of max length keys.
        */
       getKeys: () => string[];
     }
@@ -557,7 +557,7 @@ export type FormState<T extends object> = {
       /**
        * Gets an array of all range keys.
        *
-       * @return An array of range keys.
+       * @returns An array of range keys.
        */
       getKeys: () => string[];
     }
@@ -580,7 +580,7 @@ export type FormState<T extends object> = {
       /**
        * Gets an array of all pattern keys.
        *
-       * @return An array of pattern keys.
+       * @returns An array of pattern keys.
        */
       getKeys: () => string[];
     }
@@ -603,7 +603,7 @@ export type FormState<T extends object> = {
       /**
        * Gets an array of all description keys.
        *
-       * @return An array of description keys.
+       * @returns An array of description keys.
        */
       getKeys: () => string[];
     }
@@ -1447,13 +1447,13 @@ export type ParseFailure<T extends z.ZodMiniObject> = {
     /**
      * Gets an array of all error messages.
      *
-     * @return An array of error messages.
+     * @returns An array of error messages.
      */
     getAll: () => string[];
     /**
      * Gets an array of all error keys.
      *
-     * @return An array of all error keys.
+     * @returns An array of all error keys.
      */
     getKeys: () => string[];
   };

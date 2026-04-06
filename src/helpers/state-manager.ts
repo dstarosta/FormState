@@ -313,12 +313,12 @@ export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
  * @param obj - Data object to parse.
  * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
  *                                for the same state property (default: "|").
- * @return An object containing parsed data and an optional errors instance.
+ * @returns An object containing parsed data and an optional errors instance.
  *
- *         The `success` property indicates whether any errors have been found.
+ *          The `success` property indicates whether any errors have been found.
  *
- *         The `data` instance may cause form errors if the operation was not
- *         successful.
+ *          The `data` instance may cause form errors if the operation was not
+ *          successful.
  */
 export const parseState = <T extends z.ZodMiniObject>(
   schema: T,

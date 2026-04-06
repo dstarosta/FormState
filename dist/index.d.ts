@@ -322,7 +322,7 @@ type FormState<T extends object> = {
     /**
      * Gets an array of all error keys.
      *
-     * @return An array of error keys.
+     * @returns An array of error keys.
      */
     getKeys: () => string[];
   }>;
@@ -344,7 +344,7 @@ type FormState<T extends object> = {
     /**
      * Gets an array of all dirty keys.
      *
-     * @return An array of dirty keys.
+     * @returns An array of dirty keys.
      */
     getKeys: () => string[];
   }>;
@@ -365,7 +365,7 @@ type FormState<T extends object> = {
     /**
      * Gets an array of all touched keys.
      *
-     * @return An array of touched keys.
+     * @returns An array of touched keys.
      */
     getKeys: () => string[];
   }>;
@@ -386,7 +386,7 @@ type FormState<T extends object> = {
     /**
      * Gets an array of all max length keys.
      *
-     * @return An array of max length keys.
+     * @returns An array of max length keys.
      */
     getKeys: () => string[];
   }>;
@@ -407,7 +407,7 @@ type FormState<T extends object> = {
     /**
      * Gets an array of all range keys.
      *
-     * @return An array of range keys.
+     * @returns An array of range keys.
      */
     getKeys: () => string[];
   }>;
@@ -428,7 +428,7 @@ type FormState<T extends object> = {
     /**
      * Gets an array of all pattern keys.
      *
-     * @return An array of pattern keys.
+     * @returns An array of pattern keys.
      */
     getKeys: () => string[];
   }>;
@@ -449,7 +449,7 @@ type FormState<T extends object> = {
     /**
      * Gets an array of all description keys.
      *
-     * @return An array of description keys.
+     * @returns An array of description keys.
      */
     getKeys: () => string[];
   }>;
@@ -1614,7 +1614,6 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  * @typeParam T - type of the form data.
  * @param schema - Zod schema to validate the form data.
  * @param formOptions - Form initialization options.
- * @param formOptions - Form initialization options.
  * @param formOptions.schema - Zod schema to validate the form data.
  * @param formOptions.initialData - An optional object with schema properties to set the initial data of the form.
  *                                  This object can be used for asynchronous form initialization, otherwise, specify
@@ -1742,12 +1741,12 @@ declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(sche
  * @param obj - Data object to parse.
  * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
  *                                for the same state property (default: "|").
- * @return An object containing parsed data and an optional errors instance.
+ * @returns An object containing parsed data and an optional errors instance.
  *
- *         The `success` property indicates whether any errors have been found.
+ *          The `success` property indicates whether any errors have been found.
  *
- *         The `data` instance may cause form errors if the operation was not
- *         successful.
+ *          The `data` instance may cause form errors if the operation was not
+ *          successful.
  */
 declare const parseState: <T extends z.ZodMiniObject>(schema: T, obj: object, errorMessageSeparator?: string) => {
   data: z.core.output<T>;
