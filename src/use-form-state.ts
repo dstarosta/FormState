@@ -458,7 +458,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     }
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (dirty) {
+      if (formStatus.dirty) {
         event.preventDefault();
       }
     };
@@ -468,7 +468,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     return () => {
       globalThis.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [confirmDirtyStateNavigation, dirty]);
+  }, [confirmDirtyStateNavigation, formStatus.dirty]);
 
   // Cleanup on unmount.
   useEffect(() => {
