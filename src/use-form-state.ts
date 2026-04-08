@@ -39,8 +39,10 @@ import {
   collectMaxLengths,
   collectPatterns,
   collectRanges,
+  collectRequired,
   getPath,
   getPathAsString,
+  getPathNotation,
 } from './helpers/schema-visitor';
 import { useDeepMemo } from './helpers/use-deep-memo';
 import { useManualErrorState } from './helpers/use-manual-error-state';
@@ -53,6 +55,7 @@ import {
   createImmutableMaxLengths,
   createImmutablePatterns,
   createImmutableRanges,
+  createImmutableRequired,
   createImmutableTouched,
   createState,
   freezeObject,
@@ -179,6 +182,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     const data = safeData.data ?? mergedData;
 
     return {
+      required: collectRequired(schema),
       maxLengths: collectMaxLengths(schema),
       ranges: collectRanges(schema),
       patterns: collectPatterns(schema),
@@ -362,18 +366,25 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.descriptions, formState.data]
   );
 
+  // The memoized "required" object of the form state.
+  const required = useMemo(
+    () => createImmutableRequired(formState.required, formState.data),
+    [formState.required, formState.data]
+  );
+
   const generateCallbackState = useCallback(
     () => ({
       data: formData,
       errors: formErrors,
       touched,
       dirty,
+      required,
       maxLengths,
       ranges,
       patterns,
       descriptions,
     }),
-    [formData, formErrors, touched, dirty, maxLengths, ranges, patterns, descriptions]
+    [formData, formErrors, touched, dirty, required, maxLengths, ranges, patterns, descriptions]
   );
 
   const generateListenerState = useCallback(() => {
@@ -499,7 +510,17 @@ export function useFormState<T extends z.ZodMiniObject>(
           ? getPath(formState.data, nameOrPath).join('.')
           : nameOrPath;
 
+      // treats any array index as 0
+      const requiredPathNotation =
+        typeof nameOrPath === 'function'
+          ? getPathNotation(getPath(formState.data, nameOrPath))
+          : nameOrPath;
+
       const prefix = options?.prefix?.trim() || CSSPrefix;
+
+      if (formState.required[requiredPathNotation]) {
+        classes += `${prefix}__required `;
+      }
 
       if (formState.mode === 'disabled') {
         classes += `${prefix}__disabled `;
@@ -521,12 +542,13 @@ export function useFormState<T extends z.ZodMiniObject>(
       return (classes.trim() + ' ' + additionalClasses).trim();
     },
     [
-      CSSPrefix,
       formState.data,
       formState.mode,
-      formState.errors,
+      formState.required,
       formState.touched,
       formState.validated,
+      formState.errors,
+      CSSPrefix,
     ]
   );
 
@@ -1247,6 +1269,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         errors: formErrors,
         dirty,
         touched,
+        required,
         maxLengths,
         ranges,
         patterns,
@@ -1291,6 +1314,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       formErrors,
       dirty,
       touched,
+      required,
       maxLengths,
       ranges,
       patterns,

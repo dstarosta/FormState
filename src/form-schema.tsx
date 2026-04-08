@@ -308,7 +308,9 @@ export function formBoolean(options?: FormTypeOptions) {
       } as z.core.$ZodRawIssue);
       return Boolean(value);
     }),
-    options?.required ? zodBoolean : z.union([zodBoolean, Z_EMPTY_STRING])
+    options?.required
+      ? zodBoolean.with(z.meta({ required: true }))
+      : z.union([zodBoolean, Z_EMPTY_STRING])
   );
 }
 
@@ -426,7 +428,13 @@ export function formDate(
       return dateValue;
     }),
     options.required
-      ? z.union([zodDateWithMeta, z.string().check(z.minLength(1, options.error))])
+      ? z.union([
+          zodDateWithMeta.with(z.meta({ required: true })),
+          z
+            .string()
+            .with(z.meta({ required: true }))
+            .check(z.minLength(1, options.error)),
+        ])
       : z.union([zodDateWithMeta, z.string()])
   );
 }
@@ -525,7 +533,9 @@ export function formNumber(
       }
       return value as number;
     }),
-    options.required ? zodNumber : z.union([zodNumber, Z_EMPTY_STRING])
+    options.required
+      ? zodNumber.with(z.meta({ required: true }))
+      : z.union([zodNumber, Z_EMPTY_STRING])
   );
 }
 
@@ -623,7 +633,7 @@ export function formString(
     options.required
       ? zodString
           .check(z.minLength(1, options.error))
-          .with(z.meta({ allowEmpty: options.allowEmpty !== false }))
+          .with(z.meta({ required: true, allowEmpty: options.allowEmpty !== false }))
       : z.union([
           zodString.with(z.meta({ allowEmpty: options.allowEmpty !== false })),
           Z_EMPTY_STRING,
@@ -713,7 +723,7 @@ export function formValues(
       return value as string;
     }),
     options?.required
-      ? z.enum(values, options.error).with(z.meta({ allowEmpty: false }))
+      ? z.enum(values, options.error).with(z.meta({ allowEmpty: false, required: true }))
       : z
           .enum([...values, EMPTY_STRING] as const, options?.error)
           .with(z.meta({ allowEmpty: false }))

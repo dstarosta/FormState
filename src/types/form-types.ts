@@ -144,6 +144,7 @@ export type FormMutableState<T extends object> = {
   mode: FormMode;
   dirty: Record<keyof T, boolean>;
   touched: Record<keyof T, boolean>;
+  required: Record<keyof T, boolean>;
   maxLengths: Record<keyof T, number>;
   ranges: Record<keyof T, { min: FieldRange; max: FieldRange; format: string }>;
   patterns: Record<keyof T, string | undefined>;
@@ -516,6 +517,29 @@ export type FormState<T extends object> = {
        * Gets an array of all touched keys.
        *
        * @returns An array of touched keys.
+       */
+      getKeys: () => string[];
+    }
+  >;
+  /**
+   * Required status for each field in the form.
+   */
+  required: Immutable<
+    FormMutableState<T>['required'] & {
+      /**
+       * Gets the required state for a nested field.
+       *
+       * @example
+       * formState.required.get((path) => path.info.age)
+       *
+       * @param path - Form state path expression.
+       * @returns `true` if the field is required in the form, `false` otherwise.
+       */
+      get: (expression: (data: T) => unknown) => boolean;
+      /**
+       * Gets an array of all required keys.
+       *
+       * @returns An array of required keys.
        */
       getKeys: () => string[];
     }

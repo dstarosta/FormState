@@ -253,6 +253,20 @@ export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
         .map((entry) => entry[0]),
   });
 
+export const createImmutableRequired = <T extends z.ZodMiniObject>(
+  required: Record<keyof z.infer<T>, boolean>,
+  data: z.infer<T>
+) =>
+  freezeObject({
+    ...required,
+    get: (expression: (data: z.infer<T>) => unknown) =>
+      Boolean(required[getPath(data, expression).join('.')]),
+    getKeys: () =>
+      Object.entries(required)
+        .filter((entry) => entry[1])
+        .map((entry) => entry[0]),
+  });
+
 export const difference = <T extends object>(obj1: T, obj2: Record<string, unknown>) => {
   const result: Partial<T> = {};
 
@@ -408,7 +422,9 @@ export function createState<T extends z.ZodMiniObject>(
       ) {
         result[key] = '' as State[typeof key];
       } else if (baseType instanceof z.ZodMiniArray) {
-        result[key] = [] as State[typeof key];
+        if (!(value instanceof z.ZodMiniOptional) || value.def.innerType !== baseType) {
+          result[key] = [] as State[typeof key];
+        }
       } else if (baseType instanceof z.ZodMiniSymbol) {
         result[key] = createSymbol() as State[typeof key];
       } else if (

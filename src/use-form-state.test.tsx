@@ -56,7 +56,7 @@ describe('useFormState', () => {
           .with(z.describe('Email')),
         birthDate: z
           .formDate(
-            { required: false, dateFormat: 'MM/dd/yyyy' },
+            { dateFormat: 'MM/dd/yyyy' },
             z.gte(new Date(2020, 0, 1), 'Invalid date range'),
             z.lte(new Date(2039, 11, 31), 'Invalid date range')
           )
@@ -68,6 +68,7 @@ describe('useFormState', () => {
         z
           .string()
           .check(
+            z.minLength(1, 'Tag is too short'),
             z.maxLength(255, 'Tag is too long'),
             z.regex(/^[\w\\-]*$/, 'Tag contains invalid characters')
           )
@@ -86,9 +87,7 @@ describe('useFormState', () => {
     version: z
       .catch(z.formNumber(z.gte(0, 'Negative version'), z.lte(9999999, 'Version is too high')), 0)
       .with(z.describe('Record version')),
-    registeredOn: z
-      .formDate({ required: false, dateFormat: 'MM/dd/yyyy' })
-      .with(z.describe('Registered on')),
+    registeredOn: z.formDate({ dateFormat: 'MM/dd/yyyy' }).with(z.describe('Registered on')),
     updateDates: z
       .formArray(
         z
@@ -98,7 +97,9 @@ describe('useFormState', () => {
       )
       .with(z.describe('Update dates')),
     previousVersions: z
-      .formArray(z.number().check(z.lte(9999)).with(z.describe('Previous version')))
+      .formArray(z.number().check(z.lte(9999)).with(z.describe('Previous version')), {
+        required: false,
+      })
       .with(z.describe('Previous versions')),
     specialNumber: z
       .default(
@@ -135,7 +136,6 @@ describe('useFormState', () => {
         isArchived: false,
         version: 0,
         registeredOn: '',
-        previousVersions: [],
         updateDates: [],
         specialNumber: Math.PI,
       };
@@ -675,7 +675,7 @@ describe('useFormState', () => {
         data.registeredOn instanceof Date && formatDate(data.registeredOn, 'MM/dd/yyyy')
       ).toStrictEqual('06/30/2020');
       expect(data.updateDates).toStrictEqual([new Date(2019, 11, 12), new Date(2020, 3, 15)]);
-      expect(data.previousVersions).toStrictEqual([]);
+      expect(data.previousVersions).toBeUndefined();
       expect(data.specialNumber).toBe(Math.PI);
 
       const apiData = schema.toObject(data);
@@ -693,7 +693,7 @@ describe('useFormState', () => {
       expect(apiData.version).toBe(0);
       expect(apiData.registeredOn).toStrictEqual(new Date(2020, 5, 30));
       expect(apiData.updateDates).toStrictEqual([new Date(2019, 11, 12), new Date(2020, 3, 15)]);
-      expect(apiData.previousVersions).toStrictEqual([]);
+      expect(apiData.previousVersions).toBeUndefined();
       expect(apiData.specialNumber).toBe(Math.PI);
 
       // Resetting the value
@@ -735,7 +735,7 @@ describe('useFormState', () => {
     const { get, getKeys, ...actualDescriptions } = descriptions;
 
     expect(expectedDescriptions).toStrictEqual(actualDescriptions);
-    expect(get).toBeTypeOf('function');
+    expect(get((path) => path.tags[1])).toBe('Tag');
     expect(getKeys()).toHaveLength(Object.keys(expectedDescriptions).length);
   });
 
@@ -766,7 +766,7 @@ describe('useFormState', () => {
     const { get, getKeys, ...actualRanges } = ranges;
 
     expect(expectedRanges).toStrictEqual(actualRanges);
-    expect(get).toBeTypeOf('function');
+    expect(get((path) => path.info.age)).toStrictEqual(expectedRanges['info.age']);
     expect(getKeys()).toHaveLength(Object.keys(expectedRanges).length);
   });
 
@@ -786,6 +786,34 @@ describe('useFormState', () => {
     expect(getKeys()).toHaveLength(Object.keys(expectedMaxLengths).length);
   });
 
+  it('validates required fields in the schema', () => {
+    const { result } = renderHook(() => useFormState(schema));
+
+    const {
+      formState: { required },
+    } = result.current;
+
+    const expectedRequired = {
+      name: true,
+      info: true,
+      'info.uuid': true,
+      'info.age': true,
+      tags: true,
+      'tags.0': true,
+      isActive: true,
+      updateDates: true,
+      'updateDates.0': true,
+      'previousVersions.0': true,
+    };
+
+    const { get, getKeys, ...actualRequired } = required;
+
+    expect(expectedRequired).toStrictEqual(actualRequired);
+    expect(get((path) => path.info.uuid)).toBe(true);
+    expect(get((path) => path.info.email)).toBe(false);
+    expect(getKeys()).toHaveLength(Object.keys(expectedRequired).length);
+  });
+
   it('validates schema regular expression patterns', () => {
     const { result } = renderHook(() => useFormState(schema));
 
@@ -801,7 +829,7 @@ describe('useFormState', () => {
     const { get, getKeys, ...actualPatterns } = patterns;
 
     expect(expectedPatterns).toStrictEqual(actualPatterns);
-    expect(get).toBeTypeOf('function');
+    expect(get((path) => path.tags[1])).toBe(expectedPatterns['tags.0']);
     expect(getKeys()).toHaveLength(Object.keys(expectedPatterns).length);
   });
 
@@ -2750,7 +2778,7 @@ describe('useFormState', () => {
       expect(submittedInfo).not.toBeInTheDocument();
     });
 
-    it.each([true, false])('should add error and touched CSS classes', (watch) => {
+    it.each([true, false])('should add required, error and touched CSS classes', (watch) => {
       render(<FormComponent initialValue="John" watch={watch} />);
 
       const input = screen.getByLabelText('Name');
@@ -2759,8 +2787,10 @@ describe('useFormState', () => {
       fireEvent.change(input, { target: { value: '' } });
       fireEvent.blur(input);
 
+      expect(input.classList).toContain('form-state__required');
       expect(input.classList).toContain('form-state__error');
       expect(input.classList).toContain('form-state__touched');
+      expect(name.classList).toContain('form-text__required');
       expect(name.classList).toContain('form-text__error');
       expect(name.classList).toContain('form-text__touched');
     });

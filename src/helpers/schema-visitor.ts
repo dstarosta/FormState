@@ -3,6 +3,21 @@ import * as z from 'zod/mini';
 import type { FieldRange, FormStatePath } from '../types/form-types';
 import { toUTC } from './date-formatter';
 
+const requiredTypes: Readonly<Set<string>> = new Set([
+  'object',
+  'array',
+  'number',
+  'int',
+  'bigint',
+  'boolean',
+  'symbol',
+  'date',
+  'literal',
+  'template_literal',
+  'enum',
+  'string',
+]);
+
 // Private functions
 
 const getSchemaMaxLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
@@ -177,7 +192,7 @@ export const getBaseType = (value: unknown) => {
     }
   }
 
-  return innerValue as z.ZodMiniType;
+  return (innerValue ?? value) as z.ZodMiniType;
 };
 
 export function getSchemaType(schema: z.ZodMiniType, path: string) {
@@ -248,7 +263,10 @@ export const collectRanges = <T extends z.ZodMiniType>(
     if (range.min !== undefined || range.max !== undefined) {
       ranges[key] = range;
     }
-  } else if (baseSchema instanceof z.ZodMiniArray) {
+  } else if (
+    baseSchema instanceof z.ZodMiniArray &&
+    baseSchema.def.element instanceof z.ZodMiniType
+  ) {
     const baseElementSchema = getBaseType(baseSchema.def.element);
 
     if (baseElementSchema instanceof z.ZodMiniNumber) {
@@ -287,7 +305,10 @@ export const collectPatterns = <T extends z.ZodMiniType>(
     if (pattern) {
       patterns[key] = pattern;
     }
-  } else if (baseSchema instanceof z.ZodMiniArray) {
+  } else if (
+    baseSchema instanceof z.ZodMiniArray &&
+    baseSchema.def.element instanceof z.ZodMiniType
+  ) {
     const baseElementSchema = getBaseType(baseSchema.def.element);
 
     if (baseElementSchema instanceof z.ZodMiniString) {
@@ -324,7 +345,7 @@ export const collectDescriptions = <T extends z.ZodMiniType>(
     descriptions[key] = description;
   }
 
-  if (baseSchema instanceof z.ZodMiniArray) {
+  if (baseSchema instanceof z.ZodMiniArray && baseSchema.def.element instanceof z.ZodMiniType) {
     const baseElementSchema = getBaseType(baseSchema.def.element);
 
     if (z.globalRegistry.get(baseElementSchema)?.description) {
@@ -335,6 +356,43 @@ export const collectDescriptions = <T extends z.ZodMiniType>(
   recursiveCollect(baseSchema, descriptions, key, collectDescriptions);
 
   return descriptions as Record<keyof z.infer<T>, string | undefined>;
+};
+
+export const collectRequired = <T extends z.ZodMiniType>(
+  schema: T,
+  field: string = '',
+  parentKey: string = ''
+) => {
+  const required: Record<string, boolean> = {};
+  const key = parentKey ? `${parentKey}.${field}` : field;
+
+  const baseSchema = getBaseType(schema);
+
+  if (
+    field !== '' &&
+    (z.globalRegistry.get(baseSchema)?.['required'] ||
+      schema instanceof z.ZodMiniNonOptional ||
+      requiredTypes.has(schema.type))
+  ) {
+    required[key] = true;
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray && baseSchema.def.element instanceof z.ZodMiniType) {
+    const elementSchema = baseSchema.def.element;
+    const baseElementSchema = getBaseType(elementSchema);
+
+    if (
+      z.globalRegistry.get(baseElementSchema)?.['required'] ||
+      elementSchema instanceof z.ZodMiniNonOptional ||
+      requiredTypes.has(elementSchema.type)
+    ) {
+      required[key + '.0'] = true;
+    }
+  }
+
+  recursiveCollect(baseSchema, required, key, collectRequired);
+
+  return required as Record<keyof z.infer<T>, boolean>;
 };
 
 const pathParts: string[] = [];
