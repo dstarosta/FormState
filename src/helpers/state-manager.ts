@@ -12,7 +12,6 @@ import type {
   ImmutableObject,
   ParseFailure,
   ParseSuccess,
-  RangeOf,
   RangeResult,
   UnknownObject,
 } from '../types/form-types';
@@ -190,35 +189,54 @@ export const createImmutableTouched = <T extends z.ZodMiniObject>(
         .map((entry) => entry[0]),
   });
 
-export const createImmutableMaxLengths = <T extends z.ZodMiniObject>(
-  maxLengths: Record<keyof z.infer<T>, number>,
-  data: z.infer<T>
-) =>
-  freezeObject({
-    ...maxLengths,
-    get: (expression: (data: z.infer<T>) => unknown) =>
-      maxLengths[getPathNotation(getPath(data, expression))],
-    getKeys: () =>
-      Object.entries(maxLengths)
-        .filter((entry) => typeof entry[1] === 'number')
-        .map((entry) => entry[0]),
-  });
-
 export const createImmutableRanges = <T extends z.ZodMiniObject>(
   ranges: Record<
     keyof z.infer<T>,
     {
+      type: string;
+      format: string;
       min: FieldRange;
       max: FieldRange;
-      format: string;
     }
   >,
   data: z.infer<T>
 ) =>
   freezeObject({
     ...ranges,
-    get: <R extends RangeOf<R>>(expression: (data: z.infer<T>) => R) =>
-      ranges[getPathNotation(getPath(data, expression))] as RangeResult<R>,
+    get: (expression: (data: z.infer<T>) => unknown) =>
+      ranges[getPathNotation(getPath(data, expression))] as RangeResult<unknown>,
+    // "any" allows inference to flow forward.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getMin: (nameOrPath: keyof z.infer<T> | ((data: z.infer<T>) => unknown)): any => {
+      const path =
+        typeof nameOrPath === 'function'
+          ? getPathNotation(getPath(data, nameOrPath))
+          : String(nameOrPath);
+
+      const range = ranges[path];
+
+      if (range?.min === undefined) {
+        throw new TypeError(`No min range value is defined for path '${path}'.`);
+      }
+
+      return range.min;
+    },
+    // "any" allows inference to flow forward.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getMax: (nameOrPath: keyof z.infer<T> | ((data: z.infer<T>) => unknown)): any => {
+      const path =
+        typeof nameOrPath === 'function'
+          ? getPathNotation(getPath(data, nameOrPath))
+          : String(nameOrPath);
+
+      const range = ranges[path];
+
+      if (range?.max === undefined) {
+        throw new TypeError(`No max range value is defined for path '${path}'.`);
+      }
+
+      return range.max;
+    },
     getKeys: () =>
       Object.entries(ranges)
         .filter((entry) => Boolean(entry[1]))
@@ -340,7 +358,7 @@ export const parseState = <T extends z.ZodMiniObject>(
   errorMessageSeparator: string = '|'
 ) => {
   if (isNullish(obj)) {
-    throw new TypeError('The "data" argument cannot be null or undefined');
+    throw new TypeError('The "data" argument cannot be null or undefined.');
   }
 
   const parsedData = createState(schema, obj as DeepPartial<z.infer<T>>);

@@ -304,7 +304,6 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             submitCount: prevState.submitCount,
             dirty: { ...state.dirty },
             touched: resetTouched ? { ...state.touched } : { ...prevState.touched },
-            maxLengths: { ...state.maxLengths },
             required: { ...state.required },
             ranges: { ...state.ranges },
             patterns: { ...state.patterns },

@@ -692,7 +692,7 @@ export function formValues(
   options?: { required?: boolean; error?: string }
 ) {
   if (values.length === 0) {
-    throw new TypeError('At least one value is required');
+    throw new TypeError('At least one value is required.');
   }
 
   if (values.some((value) => !value)) {

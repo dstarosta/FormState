@@ -36,7 +36,7 @@ import type {
 
 import {
   collectDescriptions,
-  collectMaxLengths,
+  collectLengths,
   collectPatterns,
   collectRanges,
   collectRequired,
@@ -52,7 +52,6 @@ import {
   createImmutableDescriptions,
   createImmutableDirty,
   createImmutableErrors,
-  createImmutableMaxLengths,
   createImmutablePatterns,
   createImmutableRanges,
   createImmutableRequired,
@@ -183,8 +182,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
     return {
       required: collectRequired(schema),
-      maxLengths: collectMaxLengths(schema),
-      ranges: collectRanges(schema),
+      ranges: { ...collectRanges(schema), ...collectLengths(schema) },
       patterns: collectPatterns(schema),
       descriptions: collectDescriptions(schema),
       initialData: data,
@@ -342,12 +340,6 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.touched, formState.data]
   );
 
-  // The memoized "maxLengths" object of the form state.
-  const maxLengths = useMemo(
-    () => createImmutableMaxLengths(formState.maxLengths, formState.data),
-    [formState.maxLengths, formState.data]
-  );
-
   // The memoized "ranges" object of the form state.
   const ranges = useMemo(
     () => createImmutableRanges(formState.ranges, formState.data),
@@ -379,12 +371,11 @@ export function useFormState<T extends z.ZodMiniObject>(
       touched,
       dirty,
       required,
-      maxLengths,
       ranges,
       patterns,
       descriptions,
     }),
-    [formData, formErrors, touched, dirty, required, maxLengths, ranges, patterns, descriptions]
+    [formData, formErrors, touched, dirty, required, ranges, patterns, descriptions]
   );
 
   const generateListenerState = useCallback(() => {
@@ -1270,7 +1261,6 @@ export function useFormState<T extends z.ZodMiniObject>(
         dirty,
         touched,
         required,
-        maxLengths,
         ranges,
         patterns,
         descriptions,
@@ -1315,7 +1305,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       dirty,
       touched,
       required,
-      maxLengths,
       ranges,
       patterns,
       descriptions,

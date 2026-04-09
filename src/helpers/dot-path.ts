@@ -32,7 +32,7 @@ function getArrayIndex(head: string, obj: unknown[]) {
   }
 
   if (!/^\+?\d+$/.test(head)) {
-    throw new Error(`Array index '${head}' has to be an integer`);
+    throw new Error(`Array index '${head}' must be a non-negative integer.`);
   }
 
   return Number.parseInt(head, 10);

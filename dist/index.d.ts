@@ -42,11 +42,11 @@ type FormMutableState<T extends object> = {
   dirty: Record<keyof T, boolean>;
   touched: Record<keyof T, boolean>;
   required: Record<keyof T, boolean>;
-  maxLengths: Record<keyof T, number>;
   ranges: Record<keyof T, {
+    type: string;
+    format: string;
     min: FieldRange;
     max: FieldRange;
-    format: string;
   }>;
   patterns: Record<keyof T, string | undefined>;
   descriptions: Record<keyof T, string | undefined>;
@@ -396,40 +396,77 @@ type FormState<T extends object> = {
     getKeys: () => string[];
   }>;
   /**
-   * Optional maximum lengths for string or array fields in the form.
-   */
-  maxLengths: Immutable<FormMutableState<T>['maxLengths'] & {
-    /**
-     * Gets the maximum length for a nested field.
-     *
-     * @example
-     * <input type="text" name="companyName" maxLength={formState.maxLengths.get((path) => path.company.name)} />
-     *
-     * @param path - Form state path expression.
-     * @returns `number` representing the maximum length or undefined.
-     */
-    get: (expression: (data: T) => unknown) => number | undefined;
-    /**
-     * Gets an array of all max length keys.
-     *
-     * @returns An array of max length keys.
-     */
-    getKeys: () => string[];
-  }>;
-  /**
-   * Optional min/max ranges for numeric fields in the form.
+   * Optional min/max ranges for numeric and date fields in the form.
    */
   ranges: Immutable<FormMutableState<T>['ranges'] & {
-    /**
-     * Gets the minimum and maximum values for a nested numeric field.
-     *
-     * @example
-     * const { min, max } = formState.ranges.get((path) => path.info.birthDate) ?? {}
-     *
-     * @param path - Form state path expression.
-     * @returns An object containing the `min` and the `max` properties that can be numeric, dates or `undefined`.
-     */
-    get: <R extends RangeOf<R>>(expression: (data: T) => R) => RangeResult<R>;
+    get: {
+      /**
+       * Gets the minimum and maximum values for a nested numeric or date field.
+       *
+       * @example
+       * const { min, max } = formState.ranges.get((path) => path.info.birthDate) ?? {}
+       *
+       * @param path - Form state path expression.
+       * @returns An object containing the `min` and the `max` properties that can be `number`, `Date` or `undefined`.
+       */
+      <R extends string>(expression: (data: T) => R | undefined): RangeResult<R extends string ? number | undefined : never>;
+      /**
+       * Gets the minimum and maximum values for a nested numeric or date field.
+       *
+       * @example
+       * const { min, max } = formState.ranges.get((path) => path.info.birthDate) ?? {}
+       *
+       * @param path - Form state path expression.
+       * @returns An object containing the `min` and the `max` properties that can be `number`, `Date` or `undefined`.
+       */
+      <R extends unknown[]>(expression: (data: T) => R | undefined): RangeResult<R extends unknown[] ? number | undefined : never>;
+      /**
+       * Gets the minimum and maximum values for a nested numeric or date field.
+       *
+       * @example
+       * const { min, max } = formState.ranges.get((path) => path.info.birthDate) ?? {}
+       *
+       * @param path - Form state path expression.
+       * @returns An object containing the `min` and the `max` properties that can be `number`, `Date` or `undefined`.
+       */
+      <R extends RangeOf<R>>(expression: (data: T) => R): RangeResult<R>;
+    };
+    getMin: {
+      /**
+       * Gets the minimum range value or length from the corresponding range of a field.
+       *
+       * @param name - Field name.
+       * @returns The minimum range value.
+       * @throws `TypeError` when a range with the minimum value is not defined in the schema.
+       */
+      (name: { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never }[keyof T]): Date extends T[keyof T] ? Date : number;
+      /**
+       * Gets the minimum range value from the corresponding range of a field.
+       *
+       * @param name - Field name.
+       * @returns The minimum range value.
+       * @throws `TypeError` when a range with the minimum value is not defined in the schema.
+       */
+      <R extends string | unknown[] | number | Date | undefined>(expression: (data: T) => R): Date extends R ? Date : number;
+    };
+    getMax: {
+      /**
+       * Gets the maximum range value or length from the corresponding range of a field.
+       *
+       * @param name - Field name.
+       * @returns The maximum range value.
+       * @throws `TypeError` when a range with the maximum value is not defined in the schema.
+       */
+      (name: { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never }[keyof T]): Date extends T[keyof T] ? Date : number;
+      /**
+       * Gets the maximum range value from the corresponding range of a field.
+       *
+       * @param name - Field name.
+       * @returns The maximum range value.
+       * @throws `TypeError` when a range with the maximum value is not defined in the schema.
+       */
+      <R extends string | unknown[] | number | Date | undefined>(expression: (data: T) => R): Date extends R ? Date : number;
+    };
     /**
      * Gets an array of all range keys.
      *
@@ -1189,9 +1226,10 @@ type DateParseResult = {
  * @typeParam R - The range type.
  */
 type RangeResult<R> = R extends number | Date ? {
-  min: R | undefined | '';
-  max: R | undefined | '';
+  type: string;
   format: string;
+  min: R | undefined;
+  max: R | undefined;
 } : undefined;
 declare namespace form_schema_d_exports {
   export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, everyItem, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, someItem, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim, uniqueItems, validate };

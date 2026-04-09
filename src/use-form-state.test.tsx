@@ -68,15 +68,11 @@ describe('useFormState', () => {
         z
           .string()
           .check(
-            z.minLength(1, 'Tag is too short'),
             z.maxLength(255, 'Tag is too long'),
             z.regex(/^[\w\\-]*$/, 'Tag contains invalid characters')
           )
           .with(z.describe('Tag')),
-        {
-          minLength: 0,
-          maxLength: 5,
-        }
+        { minLength: 0, maxLength: 5 }
       )
       .with(z.describe('Tags')),
     category: z.formValues(['legacy', 'unconfirmed']).with(z.describe('Category')),
@@ -747,43 +743,61 @@ describe('useFormState', () => {
     } = result.current;
 
     const expectedRanges = {
-      'info.age': { min: 1, max: undefined, format: 'integer' },
+      'info.age': { type: 'range', format: 'integer', min: 1, max: undefined },
       'info.birthDate': {
+        type: 'range',
+        format: 'MM/dd/yyyy',
         min: new Date(Date.UTC(2020, 0, 1)),
         max: new Date(Date.UTC(2039, 11, 31)),
-        format: 'MM/dd/yyyy',
       },
-      version: { min: 0, max: 9999999, format: 'integer' },
+      version: { type: 'range', format: 'integer', min: 0, max: 9999999 },
       'updateDates.0': {
+        type: 'range',
+        format: 'yyyy-MM-dd',
         min: undefined,
         max: new Date(Date.UTC(2099, 11, 31)),
-        format: 'yyyy-MM-dd',
       },
-      'previousVersions.0': { min: undefined, max: 9999, format: 'integer' },
-      specialNumber: { min: 3.1 + 1e-9, max: 3.15 - 1e-9, format: 'numeric' },
+      'previousVersions.0': { type: 'range', format: 'integer', min: undefined, max: 9999 },
+      specialNumber: { type: 'range', format: 'numeric', min: 3.1 + 1e-9, max: 3.15 - 1e-9 },
+      name: {
+        type: 'length',
+        format: 'integer',
+        min: 1,
+        max: 25,
+      },
+      tags: {
+        type: 'length',
+        format: 'integer',
+        min: 0,
+        max: 5,
+      },
+      'tags.0': {
+        type: 'length',
+        format: 'integer',
+        min: undefined,
+        max: 255,
+      },
     };
 
-    const { get, getKeys, ...actualRanges } = ranges;
+    const { get, getMax, getMin, getKeys, ...actualRanges } = ranges;
 
     expect(expectedRanges).toStrictEqual(actualRanges);
     expect(get((path) => path.info.age)).toStrictEqual(expectedRanges['info.age']);
     expect(getKeys()).toHaveLength(Object.keys(expectedRanges).length);
-  });
-
-  it('validates schema max lengths', () => {
-    const { result } = renderHook(() => useFormState(schema));
-
-    const {
-      formState: { maxLengths },
-    } = result.current;
-
-    const expectedMaxLengths = { name: 25, tags: 5, 'tags.0': 255 };
-
-    const { get, getKeys, ...actualMaxLengths } = maxLengths;
-
-    expect(expectedMaxLengths).toStrictEqual(actualMaxLengths);
-    expect(get).toBeTypeOf('function');
-    expect(getKeys()).toHaveLength(Object.keys(expectedMaxLengths).length);
+    expect(getMax('name')).toBe(25);
+    expect(getMax((path) => path.name)).toBe(25);
+    expect(getMax('version')).toBe(9999999);
+    expect(getMax((path) => path.version)).toBe(9999999);
+    expect(getMax((path) => path.info.birthDate)).toEqual(new Date(Date.UTC(2039, 11, 31)));
+    expect(getMin('name')).toBe(1);
+    expect(getMin((path) => path.name)).toBe(1);
+    expect(getMin('version')).toBe(0);
+    expect(getMin((path) => path.version)).toBe(0);
+    expect(getMin((path) => path.info.birthDate)).toEqual(new Date(Date.UTC(2020, 0, 1)));
+    expect(() => getMin('category')).toThrow("No min range value is defined for path 'category'.");
+    expect(() => getMax((path) => path.info.email)).toThrow(
+      "No max range value is defined for path 'info.email'."
+    );
   });
 
   it('validates required fields in the schema', () => {
@@ -880,9 +894,6 @@ describe('useFormState', () => {
       expect(formState.touched.get((path) => path.name)).toBe(true);
       expect(formState.dirty.name).toBe(true);
       expect(formState.dirty.get('#name')).toBe(false);
-      expect(formState.maxLengths.name).toBe(25);
-      expect(formState.maxLengths.get((path) => path.name)).toBe(25);
-      expect(formState.maxLengths.get((path) => path.tags[0])).toBe(255);
       expect(formState.patterns.name?.length).toBeGreaterThan(0);
       expect(formState.patterns.get((path) => path.name)?.length).toBeGreaterThan(0);
       expect(formState.patterns.get((path) => path.info.uuid)).toBe('');
@@ -893,16 +904,50 @@ describe('useFormState', () => {
       expect(formState.descriptions.get((path) => path.version)).toBe('Record version');
       expect(formState.descriptions.tags).toBe('Tags');
       expect(formState.descriptions.get((path) => path.tags[0])).toBe('Tag');
-      expect(formState.ranges.version).toStrictEqual({ min: 0, max: 9999999, format: 'integer' });
-      expect(formState.ranges.get((path) => path.version)).toStrictEqual({
+      expect(formState.ranges.name).toStrictEqual({
+        type: 'length',
+        format: 'integer',
+        min: 1,
+        max: 25,
+      });
+      expect(formState.ranges.get((path) => path.name)).toStrictEqual({
+        type: 'length',
+        format: 'integer',
+        min: 1,
+        max: 25,
+      });
+      expect(formState.ranges.getMax((path) => path.name)).toBe(25);
+      expect(formState.ranges.tags).toStrictEqual({
+        type: 'length',
+        format: 'integer',
+        min: 0,
+        max: 5,
+      });
+      expect(formState.ranges.get((path) => path.tags)).toStrictEqual({
+        type: 'length',
+        format: 'integer',
+        min: 0,
+        max: 5,
+      });
+      expect(formState.ranges.getMax((path) => path.tags)).toBe(5);
+      expect(formState.ranges.getMax((path) => path.tags[0])).toBe(255);
+      expect(formState.ranges.version).toStrictEqual({
+        type: 'range',
+        format: 'integer',
         min: 0,
         max: 9999999,
+      });
+      expect(formState.ranges.get((path) => path.version)).toStrictEqual({
+        type: 'range',
         format: 'integer',
+        min: 0,
+        max: 9999999,
       });
       expect(formState.ranges.get((path) => path.info.birthDate)).toStrictEqual({
+        type: 'range',
+        format: 'MM/dd/yyyy',
         min: new Date('2020-01-01'),
         max: new Date('2039-12-31'),
-        format: 'MM/dd/yyyy',
       });
       expect(formState.ranges.isActive).toBeUndefined();
       expect(formState.ranges.get((path) => path.isActive as unknown as number)).toBeUndefined();
@@ -934,9 +979,6 @@ describe('useFormState', () => {
         expect(state.touched.get((path) => path.name)).toBe(true);
         expect(state.dirty.name).toBe(true);
         expect(state.dirty.get('#name')).toBe(false);
-        expect(state.maxLengths.name).toBe(25);
-        expect(state.maxLengths.get((path) => path.name)).toBe(25);
-        expect(state.maxLengths.get((path) => path.tags[0])).toBe(255);
         expect(state.patterns.name?.length).toBeGreaterThan(0);
         expect(state.patterns.get((path) => path.name)?.length).toBeGreaterThan(0);
         expect(state.patterns.get((path) => path.info.uuid)).toBe('');
@@ -947,16 +989,53 @@ describe('useFormState', () => {
         expect(state.descriptions.get((path) => path.version)).toBe('Record version');
         expect(state.descriptions.tags).toBe('Tags');
         expect(state.descriptions.get((path) => path.tags[0])).toBe('Tag');
-        expect(state.ranges.version).toStrictEqual({ min: 0, max: 9999999, format: 'integer' });
-        expect(state.ranges.get((path) => path.version)).toStrictEqual({
+        expect(state.ranges.name).toStrictEqual({
+          type: 'length',
+          format: 'integer',
+          min: 1,
+          max: 25,
+        });
+        expect(state.ranges.get((path) => path.name)).toStrictEqual({
+          type: 'length',
+          format: 'integer',
+          min: 1,
+          max: 25,
+        });
+        expect(state.ranges.tags).toStrictEqual({
+          type: 'length',
+          format: 'integer',
+          min: 0,
+          max: 5,
+        });
+        expect(state.ranges.get((path) => path.tags)).toStrictEqual({
+          type: 'length',
+          format: 'integer',
+          min: 0,
+          max: 5,
+        });
+        expect(state.ranges.get((path) => path.tags[0])).toStrictEqual({
+          type: 'length',
+          format: 'integer',
+          min: undefined,
+          max: 255,
+        });
+        expect(state.ranges.version).toStrictEqual({
+          type: 'range',
+          format: 'integer',
           min: 0,
           max: 9999999,
+        });
+        expect(state.ranges.get((path) => path.version)).toStrictEqual({
+          type: 'range',
           format: 'integer',
+          min: 0,
+          max: 9999999,
         });
         expect(state.ranges.get((path) => path.info.birthDate)).toStrictEqual({
+          type: 'range',
+          format: 'MM/dd/yyyy',
           min: new Date('2020-01-01'),
           max: new Date('2039-12-31'),
-          format: 'MM/dd/yyyy',
         });
         expect(state.ranges.isActive).toBeUndefined();
         expect(state.ranges.get((path) => path.isActive as unknown as number)).toBeUndefined();

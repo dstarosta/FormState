@@ -44,7 +44,7 @@ describe('form provider', () => {
     const form = useFormStateContext(schema);
 
     const {
-      formState: { data, maxLengths, descriptions, errors },
+      formState: { data, ranges, descriptions, errors },
       formActions: { touch, change },
       formClasses,
     } = form;
@@ -59,7 +59,7 @@ describe('form provider', () => {
           id="name"
           name="name"
           value={data.info.name}
-          maxLength={maxLengths.get((path) => path.info.name)}
+          maxLength={ranges.get((path) => path.info.name)?.max}
           onBlur={() => {
             touch((path) => path.info.name);
           }}

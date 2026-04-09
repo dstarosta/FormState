@@ -734,7 +734,7 @@ describe('helpers', () => {
         const obj = { a: [1, 2, 3] };
 
         expect(() => dotPathSet(obj, 'a.invalid', 5)).toThrow(
-          "Array index 'invalid' has to be an integer"
+          "Array index 'invalid' must be a non-negative integer."
         );
       });
 

@@ -20,18 +20,22 @@ const requiredTypes: Readonly<Set<string>> = new Set([
 
 // Private functions
 
-const getSchemaMaxLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
+const getSchemaLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
   const checks =
     (schema instanceof z.ZodMiniString || schema instanceof z.ZodMiniArray) &&
     Array.isArray(schema.def.checks)
       ? schema.def.checks
       : undefined;
 
-  const check = checks?.find(
+  const minCheck = checks?.find(
+    (chk): chk is z.core.$ZodCheckMinLength => chk._zod.def.check === 'min_length'
+  )?._zod.def;
+
+  const maxCheck = checks?.find(
     (chk): chk is z.core.$ZodCheckMaxLength => chk._zod.def.check === 'max_length'
   )?._zod.def;
 
-  return check?.maximum;
+  return { type: 'length', format: 'integer', min: minCheck?.minimum, max: maxCheck?.maximum };
 };
 
 const getNumericSchemaRange = (schema: z.ZodMiniNumber) => {
@@ -74,7 +78,7 @@ const getNumericSchemaRange = (schema: z.ZodMiniNumber) => {
 
   const numberFormat = hasNonInteger ? 'numeric' : 'integer';
 
-  return { min: minValue, max: maxValue, format: numberFormat };
+  return { type: 'range', format: numberFormat, min: minValue, max: maxValue };
 };
 
 const getDateSchemaRange = (schema: z.ZodMiniDate) => {
@@ -97,7 +101,7 @@ const getDateSchemaRange = (schema: z.ZodMiniDate) => {
     dateFormat = meta['format'];
   }
 
-  return { min: toUTC(minDate), max: toUTC(maxDate), format: dateFormat };
+  return { type: 'range', format: dateFormat, min: toUTC(minDate), max: toUTC(maxDate) };
 };
 
 const getSchemaPattern = (schema: z.ZodMiniString) => {
@@ -206,39 +210,82 @@ export function allowEmptyString(schema: z.ZodMiniType, path: string) {
   return meta?.['allowEmpty'] !== false;
 }
 
-export const collectMaxLengths = <T extends z.ZodMiniType>(
+export const collectRequired = <T extends z.ZodMiniType>(
   schema: T,
   field: string = '',
   parentKey: string = ''
 ) => {
-  const maxLengths: Record<string, number> = {};
+  const required: Record<string, boolean> = {};
+  const key = parentKey ? `${parentKey}.${field}` : field;
+
+  const baseSchema = getBaseType(schema);
+
+  if (
+    field !== '' &&
+    (z.globalRegistry.get(baseSchema)?.['required'] ||
+      schema instanceof z.ZodMiniNonOptional ||
+      requiredTypes.has(schema.type))
+  ) {
+    required[key] = true;
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray && baseSchema.def.element instanceof z.ZodMiniType) {
+    const elementSchema = baseSchema.def.element;
+    const baseElementSchema = getBaseType(elementSchema);
+
+    if (
+      z.globalRegistry.get(baseElementSchema)?.['required'] ||
+      elementSchema instanceof z.ZodMiniNonOptional ||
+      requiredTypes.has(elementSchema.type)
+    ) {
+      required[key + '.0'] = true;
+    }
+  }
+
+  recursiveCollect(baseSchema, required, key, collectRequired);
+
+  return required as Record<keyof z.infer<T>, boolean>;
+};
+
+export const collectLengths = <T extends z.ZodMiniType>(
+  schema: T,
+  field: string = '',
+  parentKey: string = ''
+) => {
+  const lengths: Record<
+    string,
+    { type: string; format: string; min: FieldRange; max: FieldRange }
+  > = {};
   const key = parentKey ? `${parentKey}.${field}` : field;
 
   const baseSchema = getBaseType(schema);
 
   if (baseSchema instanceof z.ZodMiniArray || baseSchema instanceof z.ZodMiniString) {
-    const maxLength = getSchemaMaxLength(baseSchema);
+    const length = getSchemaLength(baseSchema);
 
-    if (typeof maxLength === 'number') {
-      maxLengths[key] = maxLength;
+    if (length.min !== undefined || length.max !== undefined) {
+      lengths[key] = length;
     }
 
     if (baseSchema instanceof z.ZodMiniArray) {
       const baseElementSchema = getBaseType(baseSchema.def.element);
 
       if (baseElementSchema instanceof z.ZodMiniString) {
-        const elementMaxLength = getSchemaMaxLength(baseElementSchema);
+        const elementLength = getSchemaLength(baseElementSchema);
 
-        if (typeof elementMaxLength === 'number') {
-          maxLengths[key + '.0'] = elementMaxLength;
+        if (elementLength.min !== undefined || elementLength.max !== undefined) {
+          lengths[key + '.0'] = elementLength;
         }
       }
     }
   }
 
-  recursiveCollect(baseSchema, maxLengths, key, collectMaxLengths);
+  recursiveCollect(baseSchema, lengths, key, collectLengths);
 
-  return maxLengths as Record<keyof z.infer<T>, number>;
+  return lengths as Record<
+    keyof z.infer<T>,
+    { type: string; format: string; min: FieldRange; max: FieldRange }
+  >;
 };
 
 export const collectRanges = <T extends z.ZodMiniType>(
@@ -246,7 +293,8 @@ export const collectRanges = <T extends z.ZodMiniType>(
   field: string = '',
   parentKey: string = ''
 ) => {
-  const ranges: Record<string, { min: FieldRange; max: FieldRange; format: string }> = {};
+  const ranges: Record<string, { type: string; format: string; min: FieldRange; max: FieldRange }> =
+    {};
   const key = parentKey ? `${parentKey}.${field}` : field;
 
   const baseSchema = getBaseType(schema);
@@ -286,7 +334,10 @@ export const collectRanges = <T extends z.ZodMiniType>(
 
   recursiveCollect(baseSchema, ranges, key, collectRanges);
 
-  return ranges as Record<keyof z.infer<T>, { min: FieldRange; max: FieldRange; format: string }>;
+  return ranges as Record<
+    keyof z.infer<T>,
+    { type: string; format: string; min: FieldRange; max: FieldRange }
+  >;
 };
 
 export const collectPatterns = <T extends z.ZodMiniType>(
@@ -356,43 +407,6 @@ export const collectDescriptions = <T extends z.ZodMiniType>(
   recursiveCollect(baseSchema, descriptions, key, collectDescriptions);
 
   return descriptions as Record<keyof z.infer<T>, string | undefined>;
-};
-
-export const collectRequired = <T extends z.ZodMiniType>(
-  schema: T,
-  field: string = '',
-  parentKey: string = ''
-) => {
-  const required: Record<string, boolean> = {};
-  const key = parentKey ? `${parentKey}.${field}` : field;
-
-  const baseSchema = getBaseType(schema);
-
-  if (
-    field !== '' &&
-    (z.globalRegistry.get(baseSchema)?.['required'] ||
-      schema instanceof z.ZodMiniNonOptional ||
-      requiredTypes.has(schema.type))
-  ) {
-    required[key] = true;
-  }
-
-  if (baseSchema instanceof z.ZodMiniArray && baseSchema.def.element instanceof z.ZodMiniType) {
-    const elementSchema = baseSchema.def.element;
-    const baseElementSchema = getBaseType(elementSchema);
-
-    if (
-      z.globalRegistry.get(baseElementSchema)?.['required'] ||
-      elementSchema instanceof z.ZodMiniNonOptional ||
-      requiredTypes.has(elementSchema.type)
-    ) {
-      required[key + '.0'] = true;
-    }
-  }
-
-  recursiveCollect(baseSchema, required, key, collectRequired);
-
-  return required as Record<keyof z.infer<T>, boolean>;
 };
 
 const pathParts: string[] = [];
