@@ -34,4 +34,5 @@ export {
 } from './helpers/state-manager';
 export { formatDate, safeParseDate } from './helpers/date-formatter';
 export { formDataEncode, submitForm } from './helpers/form-builder';
+export { SecureInput } from './secure-input';
 export * as convert from './helpers/value-converter';

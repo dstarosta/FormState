@@ -41,6 +41,7 @@ export const createFormComponent = <T extends object>(
 
     const formRef = useRef<HTMLFormElement>(null);
     const lastSubmitter = useRef<HTMLElement>(null);
+    const passwordWarning = useRef(false);
 
     const formProps = useMemo(
       () =>
@@ -131,6 +132,17 @@ export const createFormComponent = <T extends object>(
         /* v8 ignore if -- @preserve */
         if (!node) {
           return;
+        }
+
+        if (!passwordWarning.current) {
+          for (const element of node) {
+            if (element instanceof HTMLInputElement && element.type === 'password') {
+              console.warn(
+                'An "input[type=password]" control was found in the form. Prefer the "SecureInput" control that hides data from DOM.'
+              );
+              passwordWarning.current = true;
+            }
+          }
         }
 
         if (store) {

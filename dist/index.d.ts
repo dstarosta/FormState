@@ -1926,6 +1926,44 @@ declare const formDataEncode: (formData: FormData, omitNames?: string[]) => URLS
  * @param submitter - An optional submitter HTML submit button element.
  */
 declare const submitForm: (form?: HTMLFormElement | null, submitter?: HTMLElement | null) => void;
+//#endregion
+//#region src/secure-input.d.ts
+interface SecureInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'type' | 'value' | 'defaultValue'> {
+  type?: 'text' | 'password';
+  value?: string;
+  defaultValue?: string;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSecureChange?: (value: string) => void;
+  onSecureBlur?: (value: string) => void;
+}
+/**
+ * Secure input component that simulates a password input but does not
+ * store its value inside DOM for additional security.
+ *
+ * `onSecureChange` and `onSecureBlur` props can be used to control the form
+ * state along with `value` and `defaultValue` input props.
+ *
+ * @param props - see: {@link InputHTMLAttributes}
+ *
+ * Additional props:
+ *   - `onSecureChange?: (value) => void`
+ *   - `onSecureBlur?: (value) =>  void`
+ *
+ * @returns The component instance.
+ */
+declare function SecureInput({
+  type,
+  defaultValue,
+  value,
+  onChange,
+  onSecureChange,
+  onSecureBlur,
+  onBlur,
+  name,
+  readOnly,
+  disabled,
+  ...props
+}: Readonly<SecureInputProps>): _$react_jsx_runtime0.JSX.Element;
 declare namespace value_converter_d_exports {
   export { toBoolean, toDate, toFloat, toInt, toLiteral, toString };
 }
@@ -1997,5 +2035,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type SchemaDataObject, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map
