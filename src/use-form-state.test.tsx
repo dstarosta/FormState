@@ -25,6 +25,7 @@ import {
   type StateChangeListener,
   type SubmitState,
   type SubmitSuccessState,
+  SecureInput,
 } from '.';
 
 describe('useFormState', () => {
@@ -103,6 +104,7 @@ describe('useFormState', () => {
         Math.PI
       )
       .with(z.describe('Special number')),
+    password: z.formString({ required: false }),
   });
 
   type Schema = z.infer<typeof schema>;
@@ -134,6 +136,7 @@ describe('useFormState', () => {
         registeredOn: '',
         updateDates: [],
         specialNumber: Math.PI,
+        password: '',
       };
 
       expect(formState.data).toStrictEqual(expectedData);
@@ -2599,6 +2602,7 @@ describe('useFormState', () => {
           info: {
             age: 30,
           },
+          password: 'abcd1234',
         },
         initialMode,
         confirmDirtyStateNavigation: true,
@@ -2730,6 +2734,15 @@ describe('useFormState', () => {
               checked={Boolean(data.isActive)}
               onChange={(event) => {
                 change('isActive', event.target.checked, { touch: true });
+              }}
+            />
+            <label htmlFor="secure">Secure Input</label>
+            <SecureInput
+              type="text"
+              name="secure"
+              value={data.password}
+              onSecureChange={(val) => {
+                change('password', val);
               }}
             />
             <span role="group">
@@ -3218,6 +3231,7 @@ describe('useFormState', () => {
               expect(formData.get('archivedSelector')).toBe(convert.toString(data.isArchived));
               expect(formData.get('isActive')).toBe('on');
               expect(formData.get('submitter')).toBe('submit');
+              expect(formData.get('secure')).toBe('abcd1234');
             }
           } else {
             expect(formData).toBeUndefined();

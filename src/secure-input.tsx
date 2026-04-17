@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { setFormData } from './helpers/form-builder';
+
 interface SecureInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
   'onChange' | 'type' | 'value' | 'defaultValue'
@@ -53,6 +55,12 @@ export function SecureInput({
   const isControlled = value !== undefined;
 
   const realValue = isControlled ? value : internalValue;
+
+  useEffect(() => {
+    if (inputRef.current) {
+      setFormData(inputRef.current, realValue);
+    }
+  }, [realValue]);
 
   const realValueRef = useRef(realValue);
   const callbacksRef = useRef({ onChange, onSecureChange, onSecureBlur, onBlur });

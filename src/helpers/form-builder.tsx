@@ -2,6 +2,8 @@ import { useCallback, useMemo, useRef } from 'react';
 
 import type { FormAction, FormProps, FormStore } from '../types/form-types';
 
+const elementValues = new WeakMap<HTMLInputElement, string>();
+
 // Private functions
 
 const getDefaultElementValue = (
@@ -27,6 +29,10 @@ const getElementValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLS
 };
 
 // Internal functions
+
+export function setFormData(element: HTMLInputElement, value: string) {
+  elementValues.set(element, value);
+}
 
 export const createFormComponent = <T extends object>(
   store: FormStore | null,
@@ -109,6 +115,18 @@ export const createFormComponent = <T extends object>(
       const submitterName = lastSubmitter.current?.getAttribute('name');
       const submitterValue = lastSubmitter.current?.getAttribute('value');
 
+      const elements = event.target instanceof HTMLFormElement ? [...event.target.elements] : [];
+
+      for (const element of elements.filter(
+        (el): el is HTMLInputElement =>
+          el instanceof HTMLInputElement && Boolean(el.name) && event.formData.has(el.name)
+      )) {
+        const value = elementValues.get(element);
+        if (value) {
+          event.formData.set(element.name, value);
+        }
+      }
+
       // JSDOM always puts submit buttons in async actions unlike certain browser's DOMs.
       /* v8 ignore if -- @preserve */
       if (submitterName && submitterValue && !event.formData.has(submitterName)) {
@@ -136,7 +154,11 @@ export const createFormComponent = <T extends object>(
 
         if (!passwordWarning.current) {
           for (const element of node) {
-            if (element instanceof HTMLInputElement && element.type === 'password') {
+            if (
+              element instanceof HTMLInputElement &&
+              element.dataset['secureinput'] !== 'true' &&
+              element.type === 'password'
+            ) {
               console.warn(
                 'An "input[type=password]" control was found in the form. Prefer the "SecureInput" control that hides data from DOM.'
               );
