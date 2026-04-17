@@ -26,7 +26,7 @@ const spliceValue = (value: string, start: number, end: number, insert = '') =>
  * `onSecureChange` and `onSecureBlur` props can be used to control the form
  * state along with `value` and `defaultValue` input props.
  *
- * @param props - see: {@link InputHTMLAttributes}
+ * @param props - see: {@link React.InputHTMLAttributes | InputHTMLAttributes}
  *
  * Additional props:
  *   - `onSecureChange?: (value) => void`
@@ -54,7 +54,20 @@ export function SecureInput({
 
   const isControlled = value !== undefined;
 
+  useLayoutEffect(() => {
+    if (!isControlled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInternalValue(defaultValue);
+      caretRef.current = null;
+
+      if (inputRef.current) {
+        setFormData(inputRef.current, defaultValue);
+      }
+    }
+  }, [defaultValue, isControlled]);
+
   const realValue = isControlled ? value : internalValue;
+  const maskedValue = MASK_CHAR.repeat(realValue.length);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -76,8 +89,6 @@ export function SecureInput({
       caretRef.current = null;
     }
   });
-
-  const masked = MASK_CHAR.repeat(realValue.length);
 
   const select = (): [number, number] => {
     const element = inputRef.current;
@@ -276,7 +287,7 @@ export function SecureInput({
       spellCheck={false}
       data-1p-ignore="true"
       data-lpignore="true"
-      value={masked}
+      value={maskedValue}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
       onCopy={handleCopyOrCut}

@@ -1943,7 +1943,7 @@ interface SecureInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
  * `onSecureChange` and `onSecureBlur` props can be used to control the form
  * state along with `value` and `defaultValue` input props.
  *
- * @param props - see: {@link InputHTMLAttributes}
+ * @param props - see: {@link React.InputHTMLAttributes | InputHTMLAttributes}
  *
  * Additional props:
  *   - `onSecureChange?: (value) => void`
