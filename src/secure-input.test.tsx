@@ -117,6 +117,16 @@ describe('SecureInput', () => {
       expect(getInput().value).toBe(mask(3));
     });
 
+    it('resets internal state when defaultValue prop changes', () => {
+      const { rerender } = render(<SecureInput defaultValue="abc" />);
+
+      expect(getInput().value).toBe(mask(3));
+
+      rerender(<SecureInput defaultValue="hello" />);
+
+      expect(getInput().value).toBe(mask(5));
+    });
+
     it('updates the masked display after typing', () => {
       render(<SecureInput defaultValue="abc" />);
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useOptimistic, useRef, type SyntheticEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useOptimistic, useRef, useState, type SyntheticEvent } from 'react';
 import { deepEqual } from 'fast-equals';
 import * as z from 'zod/mini';
 
@@ -137,8 +137,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The manual errors that are not a part of the schema.
   const manualErrorsState = useManualErrorState();
 
-  // Form watch store.
-  const storeRef = useRef(watch ? createFormStore() : null);
+  const [store] = useState(() => (watch ? createFormStore() : null));
 
   const defaultData = useMemo(() => createState(schema), [schema]);
   const initializedData = useDeepMemo(
@@ -215,12 +214,9 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
-  // Change listeners.
-  const changeListeners = useRef(new Set<StateChangeListener<State>>());
-
-  // Form hooks refs.
-  const listenerHookRef = useRef(createUseListener(changeListeners.current));
-  const watchHookRef = useRef(createUseWatch(storeRef.current));
+  const [changeListeners] = useState(() => new Set<StateChangeListener<State>>());
+  const [listenerHook] = useState(() => createUseListener(changeListeners));
+  const [watchHook] = useState(() => createUseWatch(store));
 
   // The debounce dispatch cache.
   const debounceCache = useRef(
@@ -252,7 +248,9 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Ref to avoid stale closures in validate/handleSubmit callbacks.
   const formStateRef = useRef(formState);
-  formStateRef.current = formState;
+  useLayoutEffect(() => {
+    formStateRef.current = formState;
+  });
 
   // Ref to store the last submittedFormData.
   const lastSubmittedFormData = useRef<FormData | undefined>(undefined);
@@ -419,16 +417,16 @@ export function useFormState<T extends z.ZodMiniObject>(
       return;
     }
 
-    if (changeListeners.current.size === 0) {
+    if (changeListeners.size === 0) {
       return;
     }
 
     const { data, errors } = generateListenerState();
 
-    for (const listener of changeListeners.current) {
+    for (const listener of changeListeners) {
       listener({ type: 'change', data, errors, submitCount: formStateRef.current.submitCount });
     }
-  }, [formState.data, formState.changed, generateListenerState]);
+  }, [formState.data, formState.changed, generateListenerState, changeListeners]);
 
   // Calls registered listeners on form submission.
   useEffect(() => {
@@ -438,7 +436,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
     const { data, errors } = generateListenerState();
 
-    for (const listener of changeListeners.current) {
+    for (const listener of changeListeners) {
       listener({
         type: 'submit',
         formData: lastSubmittedFormData.current,
@@ -447,7 +445,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         errors,
       });
     }
-  }, [formState.submitCount, generateListenerState]);
+  }, [formState.submitCount, generateListenerState, changeListeners]);
 
   // Confirm browser navigation during a dirty state.
   useEffect(() => {
@@ -1230,8 +1228,8 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The memoized Form component.
   const createComponent = useMemo(
-    () => createFormComponent<State>(storeRef.current, dispatch, resetTouchedOnFormReset),
-    [dispatch, resetTouchedOnFormReset]
+    () => createFormComponent<State>(store, dispatch, resetTouchedOnFormReset),
+    [store, dispatch, resetTouchedOnFormReset]
   );
 
   const initialFormState = useMemo(
@@ -1282,8 +1280,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         handleReset,
       },
       formHooks: {
-        useListener: listenerHookRef.current,
-        useWatch: watchHookRef.current,
+        useListener: listenerHook,
+        useWatch: watchHook,
       },
       formClasses,
       Form: createComponent,
@@ -1320,6 +1318,8 @@ export function useFormState<T extends z.ZodMiniObject>(
       handleSubmit,
       handleReset,
       createComponent,
+      listenerHook,
+      watchHook,
     ]
   );
 
