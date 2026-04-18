@@ -380,18 +380,14 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const generateListenerState = useCallback(() => {
     const data = createImmutableData(formStateRef.current.data);
-
-    const safeData = schema.safeParse(formStateRef.current.data);
-
-    const dataErrors = formatErrors<State>(safeData.error, errorMessageSeparator);
     const errors = createImmutableErrors(
-      dataErrors,
+      formStateRef.current.errors,
       formStateRef.current.data,
       errorMessageSeparator
     );
 
     return { data, errors };
-  }, [errorMessageSeparator, schema]);
+  }, [errorMessageSeparator]);
 
   const initialDataChanged = useMemo(
     () => !deepEqual(formState.initialData, state.data),
@@ -432,7 +428,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     for (const listener of changeListeners.current) {
       listener({ type: 'change', data, errors, submitCount: formStateRef.current.submitCount });
     }
-  }, [schema, formState.data, formState.changed, generateListenerState]);
+  }, [formState.data, formState.changed, generateListenerState]);
 
   // Calls registered listeners on form submission.
   useEffect(() => {
@@ -451,7 +447,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         errors,
       });
     }
-  }, [schema, formState.submitCount, generateListenerState]);
+  }, [formState.submitCount, generateListenerState]);
 
   // Confirm browser navigation during a dirty state.
   useEffect(() => {
@@ -496,16 +492,10 @@ export function useFormState<T extends z.ZodMiniObject>(
     (nameOrPath: FormPath<T>, additionalClasses?: string | null, options?: FormClassOptions) => {
       let classes = '';
 
-      const pathNotation =
-        typeof nameOrPath === 'function'
-          ? getPath(formState.data, nameOrPath).join('.')
-          : nameOrPath;
+      const path = typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : null;
+      const pathNotation = path ? path.join('.') : (nameOrPath as string);
 
-      // treats any array index as 0
-      const requiredPathNotation =
-        typeof nameOrPath === 'function'
-          ? getPathNotation(getPath(formState.data, nameOrPath))
-          : nameOrPath;
+      const requiredPathNotation = path ? getPathNotation(path) : (nameOrPath as string);
 
       const prefix = options?.prefix?.trim() || CSSPrefix;
 

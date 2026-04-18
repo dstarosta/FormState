@@ -229,7 +229,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const mergedData = { ...prevState.data };
           const dirty = { ...prevState.dirty };
-          let touched = { ...prevState.touched };
+          const touched = { ...prevState.touched };
 
           for (const name of names) {
             if (!retainData) {
@@ -239,14 +239,16 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             dirty[name] = false;
 
             if (resetTouched) {
-              touched = { ...touched, [name]: false };
+              touched[name] = false;
+            }
+          }
 
-              const prefix = `${String(name)}.`;
+          const prefixes = names.map((name) => `${String(name)}.`);
 
-              for (const key of Object.keys(touched)) {
-                if (key.startsWith(prefix)) {
-                  delete touched[key];
-                }
+          if (resetTouched) {
+            for (const key of Object.keys(touched)) {
+              if (prefixes.some((prefix) => key.startsWith(prefix))) {
+                delete touched[key];
               }
             }
           }
@@ -258,7 +260,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             for (const key in draft) {
               if (
                 Object.prototype.hasOwnProperty.call(draft, key) &&
-                (names.includes(key) || names.some((name) => key.startsWith(String(name) + '.')))
+                (names.includes(key) || prefixes.some((prefix) => key.startsWith(prefix)))
               ) {
                 delete draft[key];
               }

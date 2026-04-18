@@ -3,6 +3,10 @@ import * as z from 'zod/mini';
 import type { FieldRange, FormStatePath } from '../types/form-types';
 import { toUTC } from './date-formatter';
 
+// There are 9 distinct wrapper types unwrapped by getBaseType; 20 allows each to appear
+// twice with room to spare while preventing an infinite loop on a pathological circular schema.
+const MAX_UNWRAP_DEPTH = 20;
+
 const requiredTypes: Readonly<Set<string>> = new Set([
   'object',
   'array',
@@ -172,17 +176,19 @@ const getSchema = (schema: z.ZodMiniType, path: string, extractEnum: boolean) =>
 
 export const getBaseType = (value: unknown) => {
   let innerValue = value;
+  let depth = 0;
 
   while (
-    innerValue instanceof z.ZodMiniReadonly ||
-    innerValue instanceof z.ZodMiniOptional ||
-    innerValue instanceof z.ZodMiniNonOptional ||
-    innerValue instanceof z.ZodMiniDefault ||
-    innerValue instanceof z.ZodMiniPrefault ||
-    innerValue instanceof z.ZodMiniCatch ||
-    innerValue instanceof z.ZodMiniNullable ||
-    innerValue instanceof z.ZodMiniPipe ||
-    innerValue instanceof z.ZodMiniUnion
+    depth++ < MAX_UNWRAP_DEPTH &&
+    (innerValue instanceof z.ZodMiniReadonly ||
+      innerValue instanceof z.ZodMiniOptional ||
+      innerValue instanceof z.ZodMiniNonOptional ||
+      innerValue instanceof z.ZodMiniDefault ||
+      innerValue instanceof z.ZodMiniPrefault ||
+      innerValue instanceof z.ZodMiniCatch ||
+      innerValue instanceof z.ZodMiniNullable ||
+      innerValue instanceof z.ZodMiniPipe ||
+      innerValue instanceof z.ZodMiniUnion)
   ) {
     if (innerValue instanceof z.ZodMiniPipe) {
       innerValue =
@@ -409,31 +415,28 @@ export const collectDescriptions = <T extends z.ZodMiniType>(
   return descriptions as Record<keyof z.infer<T>, string | undefined>;
 };
 
-const pathParts: string[] = [];
-
-const pathProxy: object = new Proxy(
-  {},
-  {
-    get(_target, prop) {
-      if (typeof prop === 'string') {
-        pathParts.push(prop);
-      }
-
-      return pathProxy;
-    },
-  }
-);
-
 export const getPath = <T extends object>(_data: T, expression: (data: T) => unknown) => {
-  pathParts.length = 0;
+  const parts: string[] = [];
+  const proxy: object = new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        if (typeof prop === 'string') {
+          parts.push(prop);
+        }
+
+        return proxy;
+      },
+    }
+  );
 
   try {
-    expression(pathProxy as T);
+    expression(proxy as T);
   } catch {
     // ignore errors of side effects
   }
 
-  return [...pathParts] as FormStatePath<T>;
+  return parts as FormStatePath<T>;
 };
 
 export const getPathAsString = <T extends object>(

@@ -51,18 +51,18 @@ export function SecureInput({
   const caretRef = useRef<number | null>(null);
 
   const [internalValue, setInternalValue] = useState(defaultValue);
+  const [prevDefault, setPrevDefault] = useState(defaultValue);
 
   const isControlled = value !== undefined;
 
+  if (!isControlled && prevDefault !== defaultValue) {
+    setPrevDefault(defaultValue);
+    setInternalValue(defaultValue);
+  }
+
   useLayoutEffect(() => {
     if (!isControlled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setInternalValue(defaultValue);
       caretRef.current = null;
-
-      if (inputRef.current) {
-        setFormData(inputRef.current, defaultValue);
-      }
     }
   }, [defaultValue, isControlled]);
 
