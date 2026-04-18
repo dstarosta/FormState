@@ -476,8 +476,6 @@ export function createState<T extends z.ZodMiniObject>(
           incomingValue as DeepPartial<z.infer<typeof baseSchema>>
         ) as State[typeof key];
       } else if (baseSchema instanceof z.ZodMiniArray) {
-        // Defensive check for a null/undefined array that is unlikely to happen due to `createState(schema)`.
-        /* v8 ignore if -- @preserve */
         if (!Array.isArray(incomingValue)) {
           continue;
         }

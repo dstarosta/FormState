@@ -1175,6 +1175,16 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      */
     inferName: (nameOrPath: FormPath<T>, format?: 'bracket' | 'dot') => string;
     /**
+     * Focuses the provided HTML element.
+     *
+     * @param element - The HTML element to focus, or `null` (no-op).
+     * @param options - Focus options.
+     * @param options.selectText - Selects the text content of the focused input (default: `false`).
+     * @param options.errorKey - When provided, focuses only if there is an active error at the given
+     *                           field path or manual error key. Accepts a path expression or a string key.
+     */
+    focus: (element: HTMLElement | null, options?: { selectText?: boolean; errorKey?: FormPath<T> }) => void;
+    /**
      * Array data change operations.
      */
     array: {

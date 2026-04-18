@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FormMutableState, Immutable } from '../types/form-types';
 
@@ -15,6 +15,8 @@ import { getSchemaType } from './schema-visitor';
 import { isValidDate } from './date-formatter';
 import { toInt, toFloat, toDate, toBoolean, toLiteral, toString } from './value-converter';
 import { dotPathGet, dotPathSet } from './dot-path';
+import { debounce } from './debouncer';
+import { createFormStore } from './form-store';
 
 // Error Formatter and Schema Visitor have no public functions and are extensively tested
 // by the "useFormState" tests.
@@ -166,6 +168,12 @@ describe('helpers', () => {
     it('should update state only supports arrays and objects', () => {
       expect(() => updateState(undefined, () => {})).toThrow(TypeError);
       expect(() => updateState(null as unknown as object, () => {})).toThrow(TypeError);
+    });
+
+    it('ignores non-array incoming value for array field', () => {
+      const state = createState(formSchema, { a: 'not-an-array' as unknown as [] });
+
+      expect(state.a).toEqual([]);
     });
 
     it('should diff state correctly', () => {
@@ -744,6 +752,35 @@ describe('helpers', () => {
 
         expect(result).toEqual({ 'a.b': { c: 2 } });
       });
+    });
+  });
+
+  describe('debouncer', () => {
+    it('cancel with no pending invocation does nothing', () => {
+      const fn = vi.fn();
+      const debounced = debounce(fn, 100);
+
+      debounced.cancel();
+
+      expect(fn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('form store', () => {
+    it('setValue with unchanged value does not notify subscribers', async () => {
+      const store = createFormStore();
+      const listener = vi.fn();
+
+      store.subscribeToField('x', listener);
+      store.setValue('x', 'hello');
+      await Promise.resolve();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      store.setValue('x', 'hello');
+      await Promise.resolve();
+
+      expect(listener).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -27,6 +27,7 @@ import {
   type SubmitSuccessState,
   SecureInput,
 } from '.';
+import { toLiteral } from './helpers/value-converter';
 
 describe('useFormState', () => {
   const schema = z.strictObject({
@@ -3716,6 +3717,234 @@ describe('useFormState', () => {
       const submitButton = screen.queryByText('Submit Form');
 
       expect(submitButton).not.toBeInTheDocument();
+    });
+  });
+
+  describe('focus', () => {
+    it('focuses the given element', () => {
+      const TestForm = () => {
+        const nameRef = useRef<HTMLInputElement>(null);
+
+        const { Form, formActions } = useFormState(schema);
+
+        return (
+          <Form>
+            <input ref={nameRef} aria-label="name" defaultValue="" />
+            <button
+              type="button"
+              onClick={() => {
+                formActions.focus(nameRef.current);
+              }}
+            >
+              Focus
+            </button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+      fireEvent.click(screen.getByText('Focus'));
+
+      expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+    });
+
+    it('selects text when selectText is true', () => {
+      const TestForm = () => {
+        const nameRef = useRef<HTMLInputElement>(null);
+
+        const { Form, formActions } = useFormState(schema);
+
+        return (
+          <Form>
+            <input ref={nameRef} aria-label="name" defaultValue="John" />
+            <button
+              type="button"
+              onClick={() => {
+                formActions.focus(nameRef.current, { selectText: true });
+              }}
+            >
+              Focus
+            </button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+      fireEvent.click(screen.getByText('Focus'));
+
+      const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'name' });
+
+      expect(input).toHaveFocus();
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(input.value.length);
+    });
+
+    it('does nothing when element is null', () => {
+      const TestForm = () => {
+        const { Form, formActions } = useFormState(schema);
+
+        return (
+          <Form>
+            <input aria-label="name" defaultValue="" />
+            <button
+              type="button"
+              onClick={() => {
+                formActions.focus(null);
+              }}
+            >
+              Focus
+            </button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+      fireEvent.click(screen.getByText('Focus'));
+
+      expect(screen.getByRole('textbox', { name: 'name' })).not.toHaveFocus();
+    });
+
+    it('focuses when errorKey matches an active error', () => {
+      const TestForm = () => {
+        const nameRef = useRef<HTMLInputElement>(null);
+
+        const { Form, formActions } = useFormState(schema, {
+          validateOnMount: true,
+        });
+
+        return (
+          <Form>
+            <input ref={nameRef} aria-label="name" defaultValue="" />
+            <button
+              type="button"
+              onClick={() => {
+                formActions.focus(nameRef.current, { errorKey: 'name' });
+              }}
+            >
+              Focus
+            </button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+      fireEvent.click(screen.getByText('Focus'));
+
+      expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+    });
+
+    it('focuses when errorKey is a path expression with an active error', () => {
+      const TestForm = () => {
+        const nameRef = useRef<HTMLInputElement>(null);
+
+        const { Form, formActions } = useFormState(schema, {
+          validateOnMount: true,
+        });
+
+        return (
+          <Form>
+            <input ref={nameRef} aria-label="name" defaultValue="" />
+            <button
+              type="button"
+              onClick={() => {
+                formActions.focus(nameRef.current, { errorKey: (path) => path.name });
+              }}
+            >
+              Focus
+            </button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+      fireEvent.click(screen.getByText('Focus'));
+
+      expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+    });
+
+    it('does nothing when errorKey has no active error', () => {
+      const TestForm = () => {
+        const nameRef = useRef<HTMLInputElement>(null);
+        const { Form, formActions } = useFormState(schema, {
+          validateOnMount: true,
+        });
+        return (
+          <Form>
+            <input ref={nameRef} aria-label="name" defaultValue="" />
+            <button
+              type="button"
+              onClick={() => {
+                formActions.focus(nameRef.current, { errorKey: 'isActive' });
+              }}
+            >
+              Focus
+            </button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+      fireEvent.click(screen.getByText('Focus'));
+
+      expect(screen.getByRole('textbox', { name: 'name' })).not.toHaveFocus();
+    });
+
+    it('focuses the errored field after a failed submit', async () => {
+      const TestForm = () => {
+        const {
+          Form,
+          formState: { data },
+          formActions: { change, focus },
+          formHandlers: { handleSubmit },
+        } = useFormState(schema);
+
+        const onSubmit = (state: SubmitState<Schema>) => {
+          if (state.valid) {
+            return true;
+          }
+
+          // eslint-disable-next-line testing-library/no-node-access
+          focus(document.querySelector<HTMLElement>('[name="name"]'), { errorKey: 'name' });
+          return {};
+        };
+
+        return (
+          <Form action={handleSubmit(onSubmit)}>
+            <input
+              name="category"
+              aria-label="category"
+              value={data.category}
+              onChange={(event) => {
+                change(
+                  'category',
+                  toLiteral<typeof data.category>(event.target.value, ['', 'legacy', 'unconfirmed'])
+                );
+              }}
+            />
+            <input
+              name="name"
+              aria-label="name"
+              value={data.name}
+              onChange={(event) => {
+                change('name', event.target.value);
+              }}
+            />
+            <button type="submit">Submit</button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'name' }), {
+        target: { value: '!' },
+      });
+
+      fireEvent.click(screen.getByText('Submit'));
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+      });
     });
   });
 

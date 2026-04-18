@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useOptimistic, useRef, useState, type SyntheticEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useState,
+  type SyntheticEvent,
+} from 'react';
 import { deepEqual } from 'fast-equals';
 import * as z from 'zod/mini';
 
@@ -1226,6 +1235,24 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.data, inferredNameFormat]
   );
 
+  const focus = useCallback(
+    (element: HTMLElement | null, options?: { selectText?: boolean; errorKey?: FormPath<T> }) => {
+      if (!element) return;
+      if (options?.errorKey !== undefined) {
+        const key =
+          typeof options.errorKey === 'function'
+            ? getPath(formStateRef.current.data, options.errorKey).join('.')
+            : String(options.errorKey);
+        if (!formStateRef.current.errors[key as keyof State | '']) return;
+      }
+      element.focus();
+      if (options?.selectText && element instanceof HTMLInputElement) {
+        element.select();
+      }
+    },
+    []
+  );
+
   // The memoized Form component.
   const createComponent = useMemo(
     () => createFormComponent<State>(store, dispatch, resetTouchedOnFormReset),
@@ -1266,6 +1293,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         clearManualErrors,
         getSubmittedData,
         inferName,
+        focus,
         array: {
           append,
           insert,
@@ -1309,6 +1337,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       clearManualErrors,
       getSubmittedData,
       inferName,
+      focus,
       append,
       insert,
       update,

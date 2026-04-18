@@ -123,13 +123,7 @@ export function SecureInput({
   );
 
   useEffect(() => {
-    const element = inputRef.current;
-
-    // Defensive check for a null element.
-    /* v8 ignore if -- @preserve */
-    if (!element) {
-      return;
-    }
+    const element = inputRef.current as HTMLInputElement;
 
     const handler = (event: InputEvent) => {
       event.preventDefault();

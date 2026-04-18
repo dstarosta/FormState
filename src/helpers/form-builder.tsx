@@ -76,20 +76,16 @@ export const createFormComponent = <T extends object>(
     );
 
     const resetStore = useCallback(() => {
-      // This condition should not be happening in a callback.
-      /* v8 ignore if -- @preserve */
-      if (!store || !formRef.current) {
-        return;
-      }
+      const form = formRef.current as HTMLFormElement;
 
-      for (const element of formRef.current) {
+      for (const element of form) {
         if (
           (element instanceof HTMLInputElement ||
             element instanceof HTMLTextAreaElement ||
             element instanceof HTMLSelectElement) &&
           element.name
         ) {
-          store.setValue(element.name, getDefaultElementValue(element) || getElementValue(element));
+          store?.setValue(element.name, getDefaultElementValue(element) || getElementValue(element));
         }
       }
     }, []);
@@ -146,14 +142,10 @@ export const createFormComponent = <T extends object>(
 
         formRef.current = node;
 
-        // Defensive check for a null node.
-        /* v8 ignore if -- @preserve */
-        if (!node) {
-          return;
-        }
+        const form = node as HTMLFormElement;
 
         if (!passwordWarning.current) {
-          for (const element of node) {
+          for (const element of form) {
             if (
               element instanceof HTMLInputElement &&
               element.dataset['secureinput'] !== 'true' &&
@@ -170,26 +162,26 @@ export const createFormComponent = <T extends object>(
         if (store) {
           resetStore();
 
-          node.addEventListener('input', handleInputChange);
-          node.addEventListener('change', handleInputChange);
+          form.addEventListener('input', handleInputChange);
+          form.addEventListener('change', handleInputChange);
         }
 
-        const hasAction = node.action.includes('throw new Error');
+        const hasAction = form.action.includes('throw new Error');
 
         if (hasAction) {
-          node.addEventListener('formdata', handleFormData);
-          node.addEventListener('submit', handleSubmit, { capture: true });
+          form.addEventListener('formdata', handleFormData);
+          form.addEventListener('submit', handleSubmit, { capture: true });
         }
 
         return () => {
           if (hasAction) {
-            node.removeEventListener('submit', handleSubmit, { capture: true });
-            node.removeEventListener('formdata', handleFormData);
+            form.removeEventListener('submit', handleSubmit, { capture: true });
+            form.removeEventListener('formdata', handleFormData);
           }
 
           if (store) {
-            node.removeEventListener('change', handleInputChange);
-            node.removeEventListener('input', handleInputChange);
+            form.removeEventListener('change', handleInputChange);
+            form.removeEventListener('input', handleInputChange);
           }
         };
       },

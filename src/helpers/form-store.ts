@@ -27,8 +27,6 @@ export function createFormStore() {
   const store: FormStore = {
     getValue: (name: string) => values[name],
     setValue: (name: string, value: string) => {
-      // This condition should not happen on an input change event but we are being safe.
-      /* v8 ignore if -- @preserve */
       if (values[name] === value) {
         return;
       }
