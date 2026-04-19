@@ -3733,7 +3733,57 @@ describe('useFormState', () => {
             <button
               type="button"
               onClick={() => {
-                formActions.focus(nameRef.current);
+                formActions.focus(nameRef.current, { focusVisible: true });
+              }}
+            >
+              Focus
+            </button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+      fireEvent.click(screen.getByText('Focus'));
+
+      expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+    });
+
+    it('focuses the given element by name', () => {
+      const TestForm = () => {
+        const { Form, formActions } = useFormState(schema);
+
+        return (
+          <Form>
+            <input name="nameInput" aria-label="name" defaultValue="" />
+            <button
+              type="button"
+              onClick={() => {
+                formActions.focus('nameInput');
+              }}
+            >
+              Focus
+            </button>
+          </Form>
+        );
+      };
+
+      render(<TestForm />);
+      fireEvent.click(screen.getByText('Focus'));
+
+      expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+    });
+
+    it('focuses the given element by inferred name', () => {
+      const TestForm = () => {
+        const { Form, formActions } = useFormState(schema);
+
+        return (
+          <Form>
+            <input name={formActions.inferName('name')} aria-label="name" defaultValue="" />
+            <button
+              type="button"
+              onClick={() => {
+                formActions.focus(formActions.inferName('name'));
               }}
             >
               Focus
@@ -3760,7 +3810,11 @@ describe('useFormState', () => {
             <button
               type="button"
               onClick={() => {
-                formActions.focus(nameRef.current, { selectText: true });
+                formActions.focus(nameRef.current, {
+                  focusVisible: false,
+                  preventScroll: true,
+                  selectText: true,
+                });
               }}
             >
               Focus

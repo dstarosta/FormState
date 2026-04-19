@@ -18,6 +18,7 @@ import type {
   ArrayElement,
   StateChangeListener,
   DeepPartial,
+  ElementFocusOptions,
   FormChangeArrayOptions,
   FormChangeOptions,
   FormClassOptions,
@@ -1078,6 +1079,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         const submittedErrors = { ...errors, ...manualErrorsState.get() };
         const hasErrors = Object.keys(submittedErrors).length > 0;
 
+        formStateRef.current.errors = submittedErrors;
+
         const submitState: SubmitState<State> = hasErrors
           ? {
               valid: false,
@@ -1235,17 +1238,34 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.data, inferredNameFormat]
   );
 
+  // Sets focus on an element
   const focus = useCallback(
-    (element: HTMLElement | null, options?: { selectText?: boolean; errorKey?: FormPath<T> }) => {
-      if (!element) return;
-      if (options?.errorKey !== undefined) {
+    (elementOrName: HTMLElement | string | null, options?: ElementFocusOptions<T>) => {
+      const element =
+        typeof elementOrName === 'string'
+          ? document.querySelector<HTMLElement>(`form [name="${elementOrName.trim()}"]`)
+          : elementOrName;
+
+      if (!element) {
+        return;
+      }
+
+      if (options?.errorKey) {
         const key =
           typeof options.errorKey === 'function'
             ? getPath(formStateRef.current.data, options.errorKey).join('.')
             : String(options.errorKey);
-        if (!formStateRef.current.errors[key as keyof State | '']) return;
+
+        if (!formStateRef.current.errors[key as keyof State]) {
+          return;
+        }
       }
-      element.focus();
+
+      element.focus({
+        focusVisible: options?.focusVisible !== false,
+        preventScroll: options?.preventScroll === true,
+      });
+
       if (options?.selectText && element instanceof HTMLInputElement) {
         element.select();
       }

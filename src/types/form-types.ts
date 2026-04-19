@@ -981,6 +981,31 @@ export type FormSubmitOptions<T extends z.ZodMiniObject> = {
 };
 
 /**
+ * Form element focus options.
+ *
+ * @typeParam T - form state type.
+ */
+export type ElementFocusOptions<T extends z.ZodMiniObject> = {
+  /**
+   * Shows that the element is focused using an outline style, if defined (default: `true`).
+   */
+  focusVisible?: boolean;
+  /**
+   * Do not scroll focused element into view (default: `false`).
+   */
+  preventScroll?: boolean;
+  /**
+   * Selects the text content of the focused input (default: `false`).
+   */
+  selectText?: boolean;
+  /**
+   * When provided, focuses only if there is an active error at the given field path or manual
+   * error key. Accepts a path expression or a string key.
+   */
+  errorKey?: FormPath<T>;
+};
+
+/**
  * Form submission handler callback.
  *
  * @typeParam T - form state type.
@@ -1174,16 +1199,34 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      * @returns The inferred name.
      */
     inferName: (nameOrPath: FormPath<T>, format?: 'bracket' | 'dot') => string;
-    /**
-     * Focuses the provided HTML element.
-     *
-     * @param element - The HTML element to focus, or `null` (no-op).
-     * @param options - Focus options.
-     * @param options.selectText - Selects the text content of the focused input (default: `false`).
-     * @param options.errorKey - When provided, focuses only if there is an active error at the given
-     *                           field path or manual error key. Accepts a path expression or a string key.
-     */
-    focus: (element: HTMLElement | null, options?: { selectText?: boolean; errorKey?: FormPath<T> }) => void;
+    focus: {
+      /**
+       * Focuses the HTML element with the provided name.
+       *
+       * @param name - The name HTML attribute value.
+       * @param options - Focus options.
+       * @param options.focusVisible - Shows that the element is focused using an outline style, if defined
+       *                               (default: `true`).
+       * @param options.preventScroll - Do not scroll focused element into view (default: `false`).
+       * @param options.selectText - Selects the text content of the focused input (default: `false`).
+       * @param options.errorKey - When provided, focuses only if there is an active error at the given
+       *                           field path or manual error key. Accepts a path expression or a string key.
+       */
+      (name: string, options?: ElementFocusOptions<T>): void;
+      /**
+       * Focuses the provided HTML element.
+       *
+       * @param element - The HTML element to focus, or `null` (no-op).
+       * @param options - Focus options.
+       * @param options.focusVisible - Shows that the element is focused using an outline style, if defined
+       *                               (default: true).
+       * @param options.preventScroll - Do not scroll focused element into view (default: `false`).
+       * @param options.selectText - Selects the text content of the focused input (default: `false`).
+       * @param options.errorKey - When provided, focuses only if there is an active error at the given
+       *                           field path or manual error key. Accepts a path expression or a string key.
+       */
+      (element: HTMLElement | null, options?: ElementFocusOptions<T>): void;
+    };
     /**
      * Array data change operations.
      */
