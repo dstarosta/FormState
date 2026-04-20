@@ -1019,6 +1019,17 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
       (element: HTMLElement | null, options?: ElementFocusOptions<T>): void;
     };
     /**
+     * Focuses the first `input` or `textarea` element in the form that has the error CSS class applied
+     * via `formClasses`.
+     *
+     * @param options - Focus options.
+     * @param options.focusVisible - Shows that the element is focused using an outline style, if defined
+     *                               (default: `true`).
+     * @param options.preventScroll - Do not scroll focused element into view (default: `false`).
+     * @param options.selectText - Selects the text content of the focused input (default: `false`).
+     */
+    focusOnFirstError: (options?: Omit<ElementFocusOptions<T>, 'errorKey'>) => void;
+    /**
      * Array data change operations.
      */
     array: {
@@ -2046,7 +2057,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => "" | Date;
+}) => Date | "";
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *

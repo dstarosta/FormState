@@ -3743,6 +3743,7 @@ describe('useFormState', () => {
       };
 
       render(<TestForm />);
+
       fireEvent.click(screen.getByText('Focus'));
 
       expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
@@ -3768,6 +3769,7 @@ describe('useFormState', () => {
       };
 
       render(<TestForm />);
+
       fireEvent.click(screen.getByText('Focus'));
 
       expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
@@ -3793,6 +3795,7 @@ describe('useFormState', () => {
       };
 
       render(<TestForm />);
+
       fireEvent.click(screen.getByText('Focus'));
 
       expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
@@ -3824,6 +3827,7 @@ describe('useFormState', () => {
       };
 
       render(<TestForm />);
+
       fireEvent.click(screen.getByText('Focus'));
 
       const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'name' });
@@ -3853,6 +3857,7 @@ describe('useFormState', () => {
       };
 
       render(<TestForm />);
+
       fireEvent.click(screen.getByText('Focus'));
 
       expect(screen.getByRole('textbox', { name: 'name' })).not.toHaveFocus();
@@ -3882,6 +3887,7 @@ describe('useFormState', () => {
       };
 
       render(<TestForm />);
+
       fireEvent.click(screen.getByText('Focus'));
 
       expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
@@ -3911,6 +3917,7 @@ describe('useFormState', () => {
       };
 
       render(<TestForm />);
+
       fireEvent.click(screen.getByText('Focus'));
 
       expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
@@ -3938,6 +3945,7 @@ describe('useFormState', () => {
       };
 
       render(<TestForm />);
+
       fireEvent.click(screen.getByText('Focus'));
 
       expect(screen.getByRole('textbox', { name: 'name' })).not.toHaveFocus();
@@ -3998,6 +4006,169 @@ describe('useFormState', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+      });
+    });
+
+    describe('focusOnFirstError', () => {
+      it('focuses the first input with the error class', async () => {
+        const TestForm = () => {
+          const { Form, formActions, formClasses } = useFormState(schema, {
+            validateOnMount: true,
+          });
+
+          return (
+            <Form>
+              <input aria-label="name" className={formClasses('name')} defaultValue="" />
+              <button
+                type="button"
+                onClick={() => {
+                  formActions.focusOnFirstError();
+                }}
+              >
+                Focus First Error
+              </button>
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        fireEvent.click(screen.getByText('Focus First Error'));
+
+        await waitFor(() => {
+          expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+        });
+      });
+
+      it('focuses the first errored input when multiple exist', async () => {
+        const TestForm = () => {
+          const { Form, formActions, formClasses } = useFormState(schema, {
+            validateOnMount: true,
+          });
+
+          return (
+            <Form>
+              <input aria-label="name" className={formClasses('name')} defaultValue="" />
+              <input
+                aria-label="age"
+                className={formClasses((path) => path.info.age)}
+                defaultValue=""
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  formActions.focusOnFirstError();
+                }}
+              >
+                Focus First Error
+              </button>
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        fireEvent.click(screen.getByText('Focus First Error'));
+
+        await waitFor(() => {
+          expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+        });
+
+        expect(screen.getByRole('textbox', { name: 'age' })).not.toHaveFocus();
+      });
+
+      it('focuses a textarea with the error class', async () => {
+        const TestForm = () => {
+          const { Form, formActions, formClasses } = useFormState(schema, {
+            validateOnMount: true,
+          });
+
+          return (
+            <Form>
+              <textarea aria-label="name" className={formClasses('name')} defaultValue="" />
+              <button
+                type="button"
+                onClick={() => {
+                  formActions.focusOnFirstError();
+                }}
+              >
+                Focus First Error
+              </button>
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        fireEvent.click(screen.getByText('Focus First Error'));
+
+        await waitFor(() => {
+          expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+        });
+      });
+
+      it('does nothing when no errored inputs exist', async () => {
+        const TestForm = () => {
+          const { Form, formActions } = useFormState(schema);
+
+          return (
+            <Form>
+              <input aria-label="name" defaultValue="" />
+              <button
+                type="button"
+                onClick={() => {
+                  formActions.focusOnFirstError();
+                }}
+              >
+                Focus First Error
+              </button>
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        fireEvent.click(screen.getByText('Focus First Error'));
+
+        await waitFor(() => {
+          expect(screen.getByRole('textbox', { name: 'name' })).not.toHaveFocus();
+        });
+      });
+
+      it('uses a custom CSS prefix', async () => {
+        const TestForm = () => {
+          const { Form, formActions, formClasses } = useFormState(schema, {
+            validateOnMount: true,
+            CSSPrefix: 'my-form',
+          });
+
+          return (
+            <Form>
+              <input aria-label="name" className={formClasses('name')} defaultValue="" />
+              <button
+                type="button"
+                onClick={() => {
+                  formActions.focusOnFirstError({ selectText: true });
+                }}
+              >
+                Focus First Error
+              </button>
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        fireEvent.click(screen.getByText('Focus First Error'));
+
+        const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'name' });
+
+        await waitFor(() => {
+          expect(input).toHaveFocus();
+        });
+
+        expect(input.selectionStart).toBe(0);
+        expect(input.selectionEnd).toBe(input.value.length);
       });
     });
   });

@@ -1273,6 +1273,35 @@ export function useFormState<T extends z.ZodMiniObject>(
     []
   );
 
+  // Focuses the first input or textarea in the form with the error CSS class.
+  const focusOnFirstError = useCallback(
+    (options?: Omit<ElementFocusOptions<T>, 'errorKey'>) => {
+      const doFocus = () => {
+        const errorClass = `${CSSPrefix}__error`;
+        const element = document.querySelector<HTMLElement>(
+          `form input.${errorClass}, form textarea.${errorClass}`
+        );
+
+        if (!element) {
+          return;
+        }
+
+        element.focus({
+          focusVisible: options?.focusVisible !== false,
+          preventScroll: options?.preventScroll === true,
+        });
+
+        if (options?.selectText && element instanceof HTMLInputElement) {
+          element.select();
+        }
+      };
+
+      // Allow elements with the error classes to re-render.
+      setTimeout(doFocus, 0);
+    },
+    [CSSPrefix]
+  );
+
   // The memoized Form component.
   const createComponent = useMemo(
     () => createFormComponent<State>(store, dispatch, resetTouchedOnFormReset),
@@ -1314,6 +1343,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         getSubmittedData,
         inferName,
         focus,
+        focusOnFirstError,
         array: {
           append,
           insert,
@@ -1358,6 +1388,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       getSubmittedData,
       inferName,
       focus,
+      focusOnFirstError,
       append,
       insert,
       update,
