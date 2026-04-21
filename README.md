@@ -18,12 +18,12 @@ A type-safe, schema-driven form management library for React 19, built on [Zod](
 
 ## Requirements
 
-| Peer dependency | Version |
-|---|---|
-| `react` | >= 19.2.0 |
-| `react-dom` | >= 19.2.0 |
-| `zod` | >= 4.3.0 < 5.0.0 |
-| `fast-equals` | >= 6.0.0 |
+| Peer dependency | Version          |
+| --------------- | ---------------- |
+| `react`         | >= 19.2.0        |
+| `react-dom`     | >= 19.2.0        |
+| `zod`           | >= 4.3.0 < 5.0.0 |
+| `fast-equals`   | >= 6.0.0         |
 
 ## Installation
 
@@ -73,7 +73,7 @@ function LoginForm() {
 
 ## Documentation
 
-**[Full Developer Guide →](docs/guide.html)**
+**[Full Developer Guide →](https://dstarosta.github.io/FormState/guide.html)**
 
 The guide covers:
 
