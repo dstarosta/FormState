@@ -9,650 +9,17 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
-    />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/jsx.min.js"></script>
-    <style>
-      :root {
-        --bg: #0f0f13;
-        --bg-surface: #18181f;
-        --bg-elevated: #21212b;
-        --border: #2e2e3a;
-        --accent: #7c6af7;
-        --accent-soft: #3d3668;
-        --accent-glow: rgba(124, 106, 247, 0.12);
-        --text: #e4e4ef;
-        --text-muted: #8888a8;
-        --text-dim: #555570;
-        --tag-green: #2e4a36;
-        --tag-green-text: #6fcf8b;
-        --tag-blue: #1e3a52;
-        --tag-blue-text: #60b4e8;
-        --tag-amber: #4a3a1e;
-        --tag-amber-text: #e8b560;
-        --sidebar-width: 260px;
-        --header-height: 56px;
-      }
-
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-
-      html {
-        scroll-behavior: smooth;
-      }
-
-      body {
-        font-family: 'Inter', sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        line-height: 1.65;
-        font-size: 15px;
-      }
-
-      /* ─── Header ─────────────────────────────────────────────── */
-      header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: var(--header-height);
-        background: rgba(15, 15, 19, 0.88);
-        backdrop-filter: blur(12px);
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        padding: 0 24px;
-        z-index: 100;
-        gap: 12px;
-      }
-
-      .logo {
-        font-weight: 700;
-        font-size: 17px;
-        letter-spacing: -0.3px;
-        color: var(--text);
-      }
-
-      .logo span {
-        color: var(--accent);
-      }
-
-      .version-badge {
-        font-size: 11px;
-        font-weight: 600;
-        background: var(--accent-soft);
-        color: var(--accent);
-        border: 1px solid var(--accent);
-        border-radius: 4px;
-        padding: 1px 7px;
-        letter-spacing: 0.3px;
-      }
-
-      /* ─── Layout ─────────────────────────────────────────────── */
-      .layout {
-        display: flex;
-        margin-top: var(--header-height);
-        min-height: calc(100vh - var(--header-height));
-      }
-
-      /* ─── Sidebar ─────────────────────────────────────────────── */
-      nav {
-        width: var(--sidebar-width);
-        flex-shrink: 0;
-        position: sticky;
-        top: var(--header-height);
-        height: calc(100vh - var(--header-height));
-        overflow-y: auto;
-        border-right: 1px solid var(--border);
-        padding: 28px 0 40px;
-        scrollbar-width: thin;
-        scrollbar-color: var(--border) transparent;
-      }
-
-      nav::-webkit-scrollbar {
-        width: 4px;
-      }
-      nav::-webkit-scrollbar-thumb {
-        background: var(--border);
-        border-radius: 2px;
-      }
-
-      .nav-section {
-        padding: 0 16px;
-        margin-bottom: 6px;
-      }
-
-      .nav-section-label {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--text-dim);
-        padding: 10px 8px 6px;
-        display: block;
-      }
-
-      .nav-link {
-        display: block;
-        padding: 5px 8px;
-        border-radius: 6px;
-        color: var(--text-muted);
-        text-decoration: none;
-        font-size: 13.5px;
-        transition:
-          background 0.15s,
-          color 0.15s;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .nav-link:hover {
-        background: var(--bg-elevated);
-        color: var(--text);
-      }
-      .nav-link.active {
-        background: var(--accent-glow);
-        color: var(--accent);
-        font-weight: 500;
-      }
-
-      /* ─── Main content ────────────────────────────────────────── */
-      main {
-        flex: 1;
-        min-width: 0;
-        padding: 48px 64px 80px;
-        max-width: 900px;
-      }
-
-      /* ─── Section ─────────────────────────────────────────────── */
-      .section {
-        margin-bottom: 80px;
-        scroll-margin-top: calc(var(--header-height) + 24px);
-      }
-
-      .section-eyebrow {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        color: var(--accent);
-        margin-bottom: 10px;
-      }
-
-      h1 {
-        font-size: 32px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        color: var(--text);
-        margin-bottom: 14px;
-        line-height: 1.2;
-      }
-
-      h2 {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: -0.3px;
-        color: var(--text);
-        margin-bottom: 12px;
-        margin-top: 44px;
-        padding-top: 4px;
-      }
-
-      h2:first-child {
-        margin-top: 0;
-      }
-
-      h3 {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--text);
-        margin-bottom: 8px;
-        margin-top: 28px;
-      }
-
-      p {
-        color: var(--text-muted);
-        margin-bottom: 14px;
-      }
-
-      p strong {
-        color: var(--text);
-        font-weight: 600;
-      }
-
-      a {
-        color: var(--accent);
-        text-decoration: none;
-      }
-      a:hover {
-        text-decoration: underline;
-      }
-
-      ul,
-      ol {
-        color: var(--text-muted);
-        padding-left: 22px;
-        margin-bottom: 14px;
-      }
-
-      li {
-        margin-bottom: 4px;
-      }
-      li strong {
-        color: var(--text);
-        font-weight: 600;
-      }
-
-      /* ─── Code blocks ─────────────────────────────────────────── */
-      .code-block {
-        position: relative;
-        margin: 18px 0 24px;
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid var(--border);
-      }
-
-      .code-block-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: var(--bg-elevated);
-        padding: 8px 14px;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .code-block-lang {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        color: var(--text-dim);
-      }
-
-      .code-block-label {
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--text-muted);
-      }
-
-      .code-block pre {
-        margin: 0;
-        padding: 18px 20px;
-        background: var(--bg-surface) !important;
-        overflow-x: auto;
-        font-size: 13px;
-        line-height: 1.6;
-      }
-
-      .code-block code {
-        font-family: 'JetBrains Mono', monospace;
-      }
-
-      /* ─── Side-by-side code ───────────────────────────────────── */
-      .code-split {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin: 18px 0 24px;
-      }
-
-      .code-split .code-block {
-        margin: 0;
-      }
-
-      @media (max-width: 820px) {
-        .code-split {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      /* Inline code */
-      :not(pre) > code {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12.5px;
-        background: var(--bg-elevated);
-        border: 1px solid var(--border);
-        padding: 1px 6px;
-        border-radius: 4px;
-        color: #c9b8ff;
-      }
-
-      /* ─── Callouts ────────────────────────────────────────────── */
-      .callout {
-        border-radius: 8px;
-        padding: 14px 18px;
-        margin: 18px 0 24px;
-        border-left: 3px solid;
-        font-size: 14px;
-      }
-
-      .callout p {
-        margin: 0;
-        font-size: 14px;
-      }
-
-      .callout-info {
-        background: var(--tag-blue);
-        border-color: var(--tag-blue-text);
-      }
-
-      .callout-info p {
-        color: #b0d8f5;
-      }
-
-      .callout-tip {
-        background: var(--tag-green);
-        border-color: var(--tag-green-text);
-      }
-
-      .callout-tip p {
-        color: #a5dbb8;
-      }
-
-      .callout-warning {
-        background: var(--tag-amber);
-        border-color: var(--tag-amber-text);
-      }
-
-      .callout-warning p {
-        color: #e8cc9a;
-      }
-
-      .callout-label {
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-bottom: 5px;
-      }
-
-      .callout-info .callout-label {
-        color: var(--tag-blue-text);
-      }
-      .callout-tip .callout-label {
-        color: var(--tag-green-text);
-      }
-      .callout-warning .callout-label {
-        color: var(--tag-amber-text);
-      }
-
-      /* ─── Prop table ──────────────────────────────────────────── */
-      .prop-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 18px 0 24px;
-        font-size: 13.5px;
-      }
-
-      .prop-table th {
-        text-align: left;
-        padding: 8px 12px;
-        background: var(--bg-elevated);
-        color: var(--text-muted);
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .prop-table th:first-child {
-        border-radius: 6px 0 0 0;
-      }
-      .prop-table th:last-child {
-        border-radius: 0 6px 0 0;
-      }
-
-      .prop-table td {
-        padding: 9px 12px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: top;
-      }
-
-      .prop-table tr:last-child td {
-        border-bottom: none;
-      }
-
-      .prop-table tr:hover td {
-        background: rgba(124, 106, 247, 0.04);
-      }
-
-      .prop-table td:first-child code {
-        background: transparent;
-        border: none;
-        color: #c9b8ff;
-        font-size: 13px;
-        padding: 0;
-      }
-
-      .prop-table td:nth-child(2) code {
-        background: transparent;
-        border: none;
-        color: var(--tag-green-text);
-        font-size: 12px;
-        padding: 0;
-      }
-
-      .prop-desc {
-        color: var(--text-muted);
-        font-size: 13px;
-      }
-
-      /* ─── Type chip ───────────────────────────────────────────── */
-      .type-chip {
-        display: inline-block;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 11.5px;
-        background: #1e2a40;
-        color: var(--tag-blue-text);
-        border: 1px solid #2a4060;
-        border-radius: 4px;
-        padding: 1px 7px;
-        margin: 2px 2px 2px 0;
-        white-space: nowrap;
-      }
-
-      /* ─── Divider ─────────────────────────────────────────────── */
-      hr {
-        border: none;
-        border-top: 1px solid var(--border);
-        margin: 56px 0;
-      }
-
-      /* ─── FormDock mockup ─────────────────────────────────────── */
-      .dock-demo {
-        border: 1px solid oklch(0.704 0.04 256.788);
-        border-radius: 10px;
-        overflow: hidden;
-        margin: 18px 0 24px;
-        font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
-        font-size: 12.5px;
-        background: rgb(0, 43, 54);
-      }
-
-      .dock-header {
-        background: oklch(0.372 0.044 257.287);
-        border-top: 1px solid oklch(0.704 0.04 256.788);
-        border-bottom: 1px solid oklch(0.704 0.04 256.788);
-        padding: 0 12px;
-        height: 1.6rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: default;
-        user-select: none;
-        gap: 6px;
-      }
-
-      .dock-header-text {
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.05rem;
-        color: oklch(0.869 0.022 252.894);
-      }
-
-      .dock-header-icon {
-        display: inline-block;
-        width: 14px;
-        height: 14px;
-        flex-shrink: 0;
-      }
-
-      .dock-body {
-        padding: 6px 12px 10px;
-        line-height: 1.5;
-        background: rgb(0, 43, 54);
-        max-height: 300px;
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: oklch(0.372 0.044 257.287) transparent;
-      }
-
-      /* All property name labels default to light gray */
-      .jt-key {
-        color: oklch(0.872 0.01 258.338);
-      }
-      /* Special top-level labels */
-      .jt-key-state {
-        color: oklch(0.792 0.209 151.711);
-      }
-      .jt-key-status {
-        color: oklch(0.945 0.129 101.54);
-      }
-      /* Error keys */
-      .jt-key-err {
-        color: oklch(0.704 0.191 22.216);
-      }
-      /* All values share one color (strings, numbers, booleans) */
-      .jt-val {
-        color: oklch(0.917 0.08 205.041);
-      }
-      /* Error values */
-      .jt-val-err {
-        color: oklch(0.704 0.191 22.216);
-      }
-      /* Count badges [N keys] / [N items] */
-      .jt-count {
-        color: oklch(0.678 0 0);
-        font-size: 0.85em;
-        margin-left: 3px;
-      }
-      /* Arrow triangles inherit label color */
-      .jt-arrow {
-        font-size: 10px;
-        margin-right: 3px;
-      }
-      /* Each tree row is a block */
-      .jt-row {
-        display: block;
-      }
-      /* Indented children */
-      .jt-indent {
-        display: block;
-        padding-left: 14px;
-      }
-
-      .dock-sizes {
-        display: flex;
-        gap: 8px;
-        margin: 18px 0 24px;
-        flex-wrap: wrap;
-      }
-
-      .dock-size-demo {
-        flex: 1;
-        min-width: 220px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        overflow: hidden;
-      }
-
-      .dock-size-label {
-        background: var(--bg-elevated);
-        padding: 5px 12px;
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-muted);
-        letter-spacing: 0.4px;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .error-toast-demo {
-        background: oklch(0.577 0.245 27.325);
-        border: 1px solid oklch(0.945 0.129 101.54);
-        border-radius: 8px;
-        padding: 12px 14px;
-        margin: 18px 0 24px;
-        max-width: 420px;
-        font-family: ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
-        font-size: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-      }
-
-      .error-toast-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 8px;
-      }
-
-      .error-toast-title {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: oklch(0.945 0.129 101.54);
-      }
-
-      .error-toast-close {
-        color: white;
-        font-size: 14px;
-        cursor: default;
-        opacity: 0.7;
-      }
-
-      .error-toast-body {
-        color: rgb(255, 255, 255);
-        font-size: 12px;
-        line-height: 1.6;
-        white-space: pre-wrap;
-      }
-
-      /* ─── Responsive ──────────────────────────────────────────── */
-      @media (max-width: 900px) {
-        main {
-          padding: 32px 28px 60px;
-        }
-      }
-
-      @media (max-width: 700px) {
-        nav {
-          display: none;
-        }
-        main {
-          padding: 24px 18px 60px;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="lib/prism-tomorrow.min.css" />
+    <link rel="stylesheet" href="guide.css" />
+    <script src="lib/prism-core.min.js"></script>
+    <script src="lib/prism-autoloader.min.js"></script>
   </head>
   <body>
     <header>
       <span class="logo">Form<span>State</span></span>
       <span class="version-badge">v1</span>
     </header>
-
     <div class="layout">
-      <!-- ─── Sidebar nav ──────────────────────────────────────────── -->
       <nav id="sidebar">
         <div class="nav-section">
           <span class="nav-section-label">Getting Started</span>
@@ -692,10 +59,7 @@
           <a href="#devtools" class="nav-link">DevTools</a>
         </div>
       </nav>
-
-      <!-- ─── Main content ─────────────────────────────────────────── -->
       <main>
-        <!-- Overview -->
         <section class="section" id="overview">
           <div class="section-eyebrow">Getting Started</div>
           <h1>FormState Guide</h1>
@@ -734,25 +98,20 @@
             </li>
           </ul>
         </section>
-
-        <!-- Installation -->
         <section class="section" id="installation">
           <h2>Installation</h2>
           <p>
             Install FormState — Zod is bundled as a dependency, so you don't need to install it
             separately:
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">bash</span></div>
             <pre><code class="language-bash">npm install form-state</code></pre>
           </div>
-
           <p>Then import from the package root:</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import {
+            <pre><code class="language-tsx">import {
   useFormState,
   z,
   type FormPath,
@@ -765,8 +124,6 @@
 } from 'form-state';</code></pre>
           </div>
         </section>
-
-        <!-- No Render Props -->
         <section class="section" id="no-wrappers">
           <h2>No Render Props or Field Wrappers</h2>
           <p>
@@ -778,16 +135,14 @@
           <p>
             You can always create a layer of higher abstracted components on top of the library.
           </p>
-
           <h3>What other libraries look like</h3>
-
           <div class="code-split">
             <div class="code-block">
               <div class="code-block-header">
                 <span class="code-block-lang">tsx</span>
                 <span class="code-block-label">TanStack Form</span>
               </div>
-              <pre><code class="language-typescript">// Every field needs a render-prop wrapper
+              <pre><code class="language-tsx">// Every field needs a render-prop wrapper
 &lt;form.Field name="name"&gt;
   {(field) =&gt; (
     &lt;div&gt;
@@ -810,7 +165,7 @@
                 <span class="code-block-lang">tsx</span>
                 <span class="code-block-label">React Hook Form</span>
               </div>
-              <pre><code class="language-typescript">// Controller wrapper for controlled inputs
+              <pre><code class="language-tsx">// Controller wrapper for controlled inputs
 &lt;Controller
   name="name"
   control={control}
@@ -827,16 +182,14 @@
 /&gt;</code></pre>
             </div>
           </div>
-
           <h3>What FormState looks like</h3>
           <p>
             There is no wrapper component. You read state and call actions directly — the input is
             just an input.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// No wrapper — read state and call actions directly
+            <pre><code class="language-tsx">// No wrapper — read state and call actions directly
 &lt;div&gt;
   &lt;input
     value={formState.data.name}
@@ -848,7 +201,6 @@
   )}
 &lt;/div&gt;</code></pre>
           </div>
-
           <h3>Why this matters</h3>
           <ul>
             <li>
@@ -882,7 +234,6 @@
               re-registration.
             </li>
           </ul>
-
           <div class="callout callout-info">
             <div class="callout-label">Trade-off</div>
             <p>
@@ -894,10 +245,7 @@
             </p>
           </div>
         </section>
-
         <hr />
-
-        <!-- Schema -->
         <section class="section" id="schema">
           <div class="section-eyebrow">Core Concepts</div>
           <h2>Defining a Schema</h2>
@@ -908,10 +256,9 @@
             <em>allowed values</em>
             directly into the schema so FormState can read them automatically.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { z } from 'form-state';
+            <pre><code class="language-tsx">import { z } from 'form-state';
 
 const schema = z.strictObject({
   // Required string with custom error and extra validators
@@ -956,16 +303,14 @@ type Schema = z.infer&lt;typeof schema&gt;;
 //   tags: string[];
 // }</code></pre>
           </div>
-
           <h3>Cross-field validation</h3>
           <p>
             Add <code>.check(z.validate(...))</code> to the top-level object to express constraints
             that span multiple fields.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">const schema = z
+            <pre><code class="language-tsx">const schema = z
   .strictObject({
     priority: z.formBoolean(),
     notes: z.formArray(
@@ -979,7 +324,6 @@ type Schema = z.infer&lt;typeof schema&gt;;
     )
   );</code></pre>
           </div>
-
           <h3>Form-aware field constructors</h3>
           <table class="prop-table">
             <thead>
@@ -1035,7 +379,6 @@ type Schema = z.infer&lt;typeof schema&gt;;
               </tr>
             </tbody>
           </table>
-
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
@@ -1044,8 +387,6 @@ type Schema = z.infer&lt;typeof schema&gt;;
             </p>
           </div>
         </section>
-
-        <!-- Basic usage -->
         <section class="section" id="basic-usage">
           <h2>Basic Usage</h2>
           <p>
@@ -1054,10 +395,9 @@ type Schema = z.infer&lt;typeof schema&gt;;
             <code>&lt;form&gt;</code> element — use it in place of a plain
             <code>&lt;form&gt;</code>.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">import { useFormState, z } from 'form-state';
+            <pre><code class="language-tsx">import { useFormState, z } from 'form-state';
 
 const schema = z.strictObject({
   name: z.formString({ required: true, error: 'Name is required' }).with(z.describe('Name')),
@@ -1112,8 +452,6 @@ export function ProfileForm() {
 }</code></pre>
           </div>
         </section>
-
-        <!-- Path Expressions -->
         <section class="section" id="path-expressions">
           <h2>Path Expressions</h2>
           <p>
@@ -1123,14 +461,13 @@ export function ProfileForm() {
             for anything nested or inside an array. The arrow function form is type-checked
             end-to-end — the TypeScript compiler rejects paths that don't exist in the schema.
           </p>
-
           <div class="code-split">
             <div class="code-block">
               <div class="code-block-header">
                 <span class="code-block-lang">typescript</span>
                 <span class="code-block-label">String — top-level only</span>
               </div>
-              <pre><code class="language-typescript">// Works for flat fields
+              <pre><code class="language-tsx">// Works for flat fields
 formActions.change('name', value);
 formActions.touch('name');
 formState.errors.name;
@@ -1148,7 +485,7 @@ formActions.array.remove('tags', 0);</code></pre>
                 <span class="code-block-lang">typescript</span>
                 <span class="code-block-label">Arrow function — any depth</span>
               </div>
-              <pre><code class="language-typescript">// Nested objects
+              <pre><code class="language-tsx">// Nested objects
 formActions.change((p) =&gt; p.auto.modelId, value);
 formActions.touch((p) =&gt; p.info.address.city);
 formState.errors.get((p) =&gt; p.info.age);
@@ -1161,7 +498,6 @@ formActions.array.append((p) =&gt; p.profile.skills, ['TS']);
 formState.descriptions.get((p) =&gt; p.notes[0].typeId);</code></pre>
             </div>
           </div>
-
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
@@ -1170,17 +506,15 @@ formState.descriptions.get((p) =&gt; p.notes[0].typeId);</code></pre>
               from string concatenation.
             </p>
           </div>
-
           <h3>Why arrow functions catch errors at compile time</h3>
           <p>
             The path lambda receives a typed proxy of your schema's data shape. The TypeScript
             compiler resolves the return type of the lambda and infers the correct value type for
             <code>change</code>, the correct error shape for <code>errors.get</code>, etc.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">const schema = z.strictObject({
+            <pre><code class="language-tsx">const schema = z.strictObject({
   user: z.object({
     age: z.formNumber(),
     name: z.formString(),
@@ -1201,7 +535,6 @@ formActions.change((p) =&gt; p.user.age, 'hello');
 // ❌ Type error — 'user.typo' does not exist on the schema
 formActions.change((p) =&gt; p.user.typo, 'value');</code></pre>
           </div>
-
           <h3>Choosing between the two forms</h3>
           <table class="prop-table">
             <thead>
@@ -1234,8 +567,6 @@ formActions.change((p) =&gt; p.user.typo, 'value');</code></pre>
             </tbody>
           </table>
         </section>
-
-        <!-- Form State -->
         <section class="section" id="form-state">
           <h2>Form State</h2>
           <p>
@@ -1243,25 +574,21 @@ formActions.change((p) =&gt; p.user.typo, 'value');</code></pre>
             by field name and supports an optional <strong>path expression</strong> for nested
             access.
           </p>
-
           <h3>data</h3>
           <p>Current field values, typed from your schema.</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">formState.data.name              // string
+            <pre><code class="language-tsx">formState.data.name              // string
 formState.data.age               // number | ''
 formState.data.info.address.city // string (nested)
 formState.data.tags              // string[]
 formState.data.tags[0]           // string</code></pre>
           </div>
-
           <h3>errors</h3>
           <p>Validation error messages, one per failing field.</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Top-level field — direct property access
+            <pre><code class="language-tsx">// Top-level field — direct property access
 formState.errors.name                              // 'Name is required' | undefined
 
 // Nested field — use .get() with a path expression
@@ -1275,18 +602,15 @@ formState.errors.getManual('_serverError')
 formState.errors.getAll()    // string[]  — all messages
 formState.errors.getKeys()   // string[]  — e.g. ['name', 'info.age']</code></pre>
           </div>
-
           <p>
             When a field fails multiple checks, messages are joined with the
             <code>errorMessageSeparator</code> option (default <code>|</code>).
           </p>
-
           <h3>dirty / touched / required</h3>
           <p>Each is a boolean map with the same accessor pattern:</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Direct access for top-level fields
+            <pre><code class="language-tsx">// Direct access for top-level fields
 formState.dirty.name            // true after first change
 formState.touched.name          // true after blur / explicit touch call
 formState.required.name         // derived from schema — never changes
@@ -1300,16 +624,14 @@ formState.required.get((p) =&gt; p.info.age)
 formState.dirty.getKeys()       // ['name', 'info.age', ...]
 formState.touched.getKeys()</code></pre>
           </div>
-
           <h3>ranges</h3>
           <p>
             Min / max constraints extracted from the schema — ready to pass straight into HTML input
             attributes.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// Get the full range object
+            <pre><code class="language-tsx">// Get the full range object
 const ageRange = formState.ranges.get((p) =&gt; p.age);
 // { type: 'range', format: 'integer', min: 0, max: 150 }
 
@@ -1329,12 +651,10 @@ formState.ranges.getMax('name')             // 50  (string maxLength)
   maxLength={formState.ranges.getMax('name')}
 /&gt;</code></pre>
           </div>
-
           <h3>descriptions &amp; patterns</h3>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// z.describe() values are available at runtime
+            <pre><code class="language-tsx">// z.describe() values are available at runtime
 formState.descriptions.name                         // 'Full Name'
 formState.descriptions.get((p) =&gt; p.info.age)      // 'Age'
 formState.descriptions.get((p) =&gt; p.notes[0])      // 'Note'  (index normalised to [0])
@@ -1346,23 +666,19 @@ formState.patterns.get((p) =&gt; p.info.id)
 // Use in JSX
 &lt;label&gt;{formState.descriptions.get((p) =&gt; p.auto.modelId)}&lt;/label&gt;</code></pre>
           </div>
-
           <h3>Preparing data for an API</h3>
           <p>
             <code>schema.toObject(data)</code> strips internal-only fields (like
             <code>z.symbol()</code>) and removes optional fields whose value is an empty string,
             producing a clean object to send to your backend.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">const payload = schema.toObject(formState.data);
+            <pre><code class="language-tsx">const payload = schema.toObject(formState.data);
 // uuid symbols stripped, optional empty strings omitted
 await api.post('/users', payload);</code></pre>
           </div>
         </section>
-
-        <!-- Ranges & Descriptions -->
         <section class="section" id="ranges-descriptions">
           <h2>Schema Metadata</h2>
           <p>
@@ -1371,7 +687,6 @@ await api.post('/users', payload);</code></pre>
             <code>formState</code> and are keyed the same way as <code>data</code> and
             <code>errors</code>:
           </p>
-
           <table class="prop-table">
             <thead>
               <tr>
@@ -1421,7 +736,6 @@ await api.post('/users', payload);</code></pre>
               </tr>
             </tbody>
           </table>
-
           <h3>Descriptions as labels</h3>
           <p>
             Any field annotated with <code>.with(z.describe('...'))</code> exposes its text through
@@ -1429,10 +743,9 @@ await api.post('/users', payload);</code></pre>
             <code>&lt;label&gt;</code> to keep your display text in one place — the schema — rather
             than duplicated across components.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">const schema = z.strictObject({
+            <pre><code class="language-tsx">const schema = z.strictObject({
   name: z.formString({ required: true }).with(z.describe('Full Name')),
   age:  z.formNumber(z.gte(0), z.lte(150)).with(z.describe('Age')),
   info: z.object({
@@ -1451,14 +764,12 @@ await api.post('/users', payload);</code></pre>
 // Array item field — index is normalised to [0] in descriptions
 &lt;label&gt;{formState.descriptions.get((p) =&gt; p.notes[0].text)}&lt;/label&gt;</code></pre>
           </div>
-
           <h3>Ranges wired to input attributes</h3>
           <p>
             <code>formState.ranges</code> contains the min/max constraints your schema declares,
             already typed and ready to pass directly to HTML attributes. There are two range shapes
             depending on the field type:
           </p>
-
           <table class="prop-table">
             <thead>
               <tr>
@@ -1486,10 +797,9 @@ await api.post('/users', payload);</code></pre>
               </tr>
             </tbody>
           </table>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">const schema = z.strictObject({
+            <pre><code class="language-tsx">const schema = z.strictObject({
   username: z
     .formString(z.minLength(3, 'Too short'), z.maxLength(20, 'Too long'))
     .with(z.describe('Username')),
@@ -1538,17 +848,18 @@ await api.post('/users', payload);</code></pre>
 &lt;/div&gt;
 
 // ── Date input ─────────────────────────────────────────────────
+const rawDate = formState.data.birthDate;
+const dateValue = rawDate instanceof Date ? formatDate(rawDate, 'yyyy-MM-dd') : rawDate;
+const minDate = formState.ranges.getMin((p) =&gt; p.birthDate);
+const minAttr = minDate instanceof Date ? formatDate(minDate, 'yyyy-MM-dd') : undefined;
+
 &lt;div&gt;
   &lt;label htmlFor="birthDate"&gt;{formState.descriptions.birthDate}&lt;/label&gt;
   &lt;input
     id="birthDate"
     type="date"
-    value={formState.data.birthDate instanceof Date
-      ? formatDate(formState.data.birthDate, 'yyyy-MM-dd')
-      : formState.data.birthDate}
-    min={formState.ranges.getMin((p) =&gt; p.birthDate) instanceof Date
-      ? formatDate(formState.ranges.getMin((p) =&gt; p.birthDate) as Date, 'yyyy-MM-dd')
-      : undefined}
+    value={dateValue}
+    min={minAttr}
     onChange={(e) =&gt; formActions.change('birthDate', convert.toDate(e.target.value, { format: 'yyyy-MM-dd' }))}
     onBlur={() =&gt; formActions.touch('birthDate')}
   /&gt;
@@ -1574,7 +885,6 @@ await api.post('/users', payload);</code></pre>
   Add tag {formState.data.tags.length} / {formState.ranges.getMax('tags')}
 &lt;/button&gt;</code></pre>
           </div>
-
           <h3>required</h3>
           <p>
             Fields declared with <code>{ required: true }</code> are reflected in
@@ -1582,10 +892,9 @@ await api.post('/users', payload);</code></pre>
             it to drive the HTML <code>required</code> attribute and any visual indicator like an
             asterisk, keeping both in sync with the schema automatically.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// Top-level field
+            <pre><code class="language-tsx">// Top-level field
 formState.required.name                          // true | false
 
 // Nested field
@@ -1604,7 +913,6 @@ formState.required.get((p) =&gt; p.info.age)       // true | false
   onChange={(e) =&gt; formActions.change('name', e.target.value)}
 /&gt;</code></pre>
           </div>
-
           <h3>patterns</h3>
           <p>
             Regex validators added with <code>z.regex()</code> are exposed as raw pattern strings
@@ -1613,10 +921,9 @@ formState.required.get((p) =&gt; p.info.age)       // true | false
             constraint — even when <code>noValidate</code> suppresses the browser's own validation
             UI.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// Top-level field
+            <pre><code class="language-tsx">// Top-level field
 formState.patterns.id                            // "^\d+(-\d+)?$" | undefined
 
 // Nested field
@@ -1631,7 +938,6 @@ formState.patterns.get((p) =&gt; p.info.code)      // string | undefined
   onChange={(e) =&gt; formActions.change('id', e.target.value)}
 /&gt;</code></pre>
           </div>
-
           <div class="callout callout-info">
             <div class="callout-label">Note</div>
             <p>
@@ -1640,17 +946,15 @@ formState.patterns.get((p) =&gt; p.info.code)      // string | undefined
               the full constraint in plain language.
             </p>
           </div>
-
           <h3>touched</h3>
           <p>
             <code>formState.touched</code> tracks whether a user has interacted with a field. Its
             primary job is to gate error display — you almost always want to show an error only
             after a field has been touched, not the moment the form mounts.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// Read — top-level and nested
+            <pre><code class="language-tsx">// Read — top-level and nested
 formState.touched.name                           // boolean
 formState.touched.get((p) =&gt; p.info.age)        // boolean
 
@@ -1676,7 +980,6 @@ formActions.touch('name', { validate: true });
 formState.touched.getKeys()                      // ['name', 'info.age', ...]
 formStatus.touched                               // true if any field is touched</code></pre>
           </div>
-
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
@@ -1685,16 +988,14 @@ formStatus.touched                               // true if any field is touched
               first.
             </p>
           </div>
-
           <h3>Putting it all together — a fully wired field component</h3>
           <p>
             Combining descriptions, ranges, required, and patterns into a reusable component shows
             how much schema-driven metadata FormState gives you for free:
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">function TextField({ name }: { name: keyof FormSchema }) {
+            <pre><code class="language-tsx">function TextField({ name }: { name: keyof FormSchema }) {
   const { formState, formActions, formClasses } = useSchemaFormState();
 
   const label     = formState.descriptions[name];
@@ -1735,7 +1036,6 @@ formStatus.touched                               // true if any field is touched
   );
 }</code></pre>
           </div>
-
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
@@ -1745,12 +1045,9 @@ formStatus.touched                               // true if any field is touched
             </p>
           </div>
         </section>
-
-        <!-- Form Status -->
         <section class="section" id="form-status">
           <h2>Form Status</h2>
           <p>High-level booleans about the form as a whole.</p>
-
           <table class="prop-table">
             <thead>
               <tr>
@@ -1809,10 +1106,9 @@ formStatus.touched                               // true if any field is touched
               </tr>
             </tbody>
           </table>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">&lt;button type="submit" disabled={!formStatus.dirty || formStatus.submitting}&gt;
+            <pre><code class="language-tsx">&lt;button type="submit" disabled={!formStatus.dirty || formStatus.submitting}&gt;
   Save changes
 &lt;/button&gt;
 
@@ -1820,7 +1116,6 @@ formStatus.touched                               // true if any field is touched
   &lt;p&gt;Please fix the errors above before saving.&lt;/p&gt;
 )}</code></pre>
           </div>
-
           <div class="callout callout-info">
             <div class="callout-label">Note</div>
             <p>
@@ -1829,10 +1124,7 @@ formStatus.touched                               // true if any field is touched
             </p>
           </div>
         </section>
-
         <hr />
-
-        <!-- Validation -->
         <section class="section" id="validation">
           <div class="section-eyebrow">Features</div>
           <h2>Validation</h2>
@@ -1841,7 +1133,6 @@ formStatus.touched                               // true if any field is touched
             when errors surface to users through the <em>touched</em> pattern: only show an error
             once the field has been touched.
           </p>
-
           <h3>Validation options</h3>
           <table class="prop-table">
             <thead>
@@ -1874,11 +1165,10 @@ formStatus.touched                               // true if any field is touched
               </tr>
             </tbody>
           </table>
-
           <h3>Validating on demand</h3>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Validate the full schema
+            <pre><code class="language-tsx">// Validate the full schema
 formActions.validate();
 
 // Validate and mark as submitted on success
@@ -1893,22 +1183,19 @@ formActions.validate(
   { submit: true }
 );</code></pre>
           </div>
-
           <p>
             The custom validator receives no arguments — read <code>formState.data</code> directly.
             Return <code>true</code> for success or a <code>Record&lt;string, string&gt;</code>
             of field-key → error-message pairs to inject errors.
           </p>
-
           <h3>Touching fields to reveal errors</h3>
           <p>
             Errors are computed on every change, but you typically only show them after the user has
             interacted with a field. Call <code>touch</code> on blur:
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">&lt;input
+            <pre><code class="language-tsx">&lt;input
   value={formState.data.email}
   onChange={(e) =&gt; formActions.change('email', e.target.value)}
   onBlur={() =&gt; formActions.touch('email')}
@@ -1919,15 +1206,13 @@ formActions.validate(
   &lt;p className="error"&gt;{formState.errors.email}&lt;/p&gt;
 )}</code></pre>
           </div>
-
           <p>
             Or pass <code>{ touch: true }</code> directly to <code>change</code> when you want to
             surface errors immediately (common for selects and checkboxes):
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Select / dropdown — touch immediately on pick
+            <pre><code class="language-tsx">// Select / dropdown — touch immediately on pick
 formActions.change((p) =&gt; p.auto.modelId, selectedId, { touch: true });
 
 // Checkbox — touch and validate on click
@@ -1936,30 +1221,25 @@ formActions.change((p) =&gt; p.priority, e.target.checked, { touch: true });
 // Radio buttons — top-level string form is fine here
 formActions.change('sendEmail', 'yes', { touch: true });</code></pre>
           </div>
-
           <h3>Pre-touching fields</h3>
           <p>Mark fields as touched from the start — useful when editing existing data:</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">useFormState(schema, {
+            <pre><code class="language-tsx">useFormState(schema, {
   initialData: existingRecord,
   initialTouched: ['name', 'email', (p) =&gt; p.info.age],
 });</code></pre>
           </div>
         </section>
-
-        <!-- Array Fields -->
         <section class="section" id="arrays">
           <h2>Array Fields</h2>
           <p>
             The <code>formActions.array</code> namespace provides all the operations you need to
             manage dynamic lists without manual index juggling.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Append one or more items
+            <pre><code class="language-tsx">// Append one or more items
 formActions.array.append('tags', ['react', 'typescript']);
 formActions.array.append((p) =&gt; p.notes, [{ text: '', typeId: '' }], { validate: true });
 
@@ -1982,16 +1262,14 @@ formActions.array.remove((p) =&gt; p.notes, (note) =&gt; note.text === '');
 // Clear the array
 formActions.array.clear('tags');</code></pre>
           </div>
-
           <h3>Rendering an array field</h3>
           <p>
             Use <code>z.symbol()</code> inside array items to get a stable, unique key for each
             element without maintaining a separate ID array.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">const schema = z.strictObject({
+            <pre><code class="language-tsx">const schema = z.strictObject({
   notes: z.formArray(
     z.object({
       uniqueId: z.symbol(),      // auto UUID — use as React key
@@ -2027,7 +1305,6 @@ formActions.array.clear('tags');</code></pre>
   Add note
 &lt;/button&gt;</code></pre>
           </div>
-
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
@@ -2037,8 +1314,6 @@ formActions.array.clear('tags');</code></pre>
             </p>
           </div>
         </section>
-
-        <!-- Submission -->
         <section class="section" id="submission">
           <h2>Form Submission</h2>
           <p>
@@ -2047,10 +1322,9 @@ formActions.array.clear('tags');</code></pre>
             your handler with a typed <code>SubmitState</code>, and updates
             <code>formStatus.submitted</code> / <code>formStatus.submitting</code> automatically.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">import { type SubmitState } from 'form-state';
+            <pre><code class="language-tsx">import { type SubmitState } from 'form-state';
 
 const handleSubmit = formHandlers.handleSubmit(
   async (submitState: SubmitState&lt;typeof schema&gt;, formData: FormData) =&gt; {
@@ -2085,13 +1359,11 @@ const handleSubmit = formHandlers.handleSubmit(
 
 return &lt;Form action={handleSubmit}&gt;...&lt;/Form&gt;;</code></pre>
           </div>
-
           <h3>Focusing the first error</h3>
           <p>After a failed submission, jump the user to the first broken field:</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">formActions.focusOnFirstError({ selectText: true });
+            <pre><code class="language-tsx">formActions.focusOnFirstError({ selectText: true });
 
 // Or focus a specific element
 formActions.focus('email', { selectText: true });
@@ -2099,7 +1371,6 @@ formActions.focus('email', { selectText: true });
 // Focus only if the field has an error
 formActions.focus('email', { errorKey: 'email' });</code></pre>
           </div>
-
           <h3>Why use <code>&lt;Form&gt;</code> over a plain <code>&lt;form&gt;</code></h3>
           <p>
             The <code>Form</code> component returned by the hook is a thin wrapper around
@@ -2107,7 +1378,6 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
             drop down to a plain <code>&lt;form&gt;</code> — but you'll need to handle each of these
             yourself.
           </p>
-
           <table class="prop-table">
             <thead>
               <tr>
@@ -2180,17 +1450,15 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
               </tr>
             </tbody>
           </table>
-
           <h3>Using a plain <code>&lt;form&gt;</code> with <code>onSubmit</code></h3>
           <p>
             If you prefer the traditional <code>onSubmit</code> pattern — or if you're integrating
             into an existing form element you don't control — use <code>formActions.validate</code>
             directly and wire reset and submit manually.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">const { formState, formStatus, formActions, formHandlers } = useFormState(schema);
+            <pre><code class="language-tsx">const { formState, formStatus, formActions, formHandlers } = useFormState(schema);
 
 const handleSubmit = async (e: React.FormEvent&lt;HTMLFormElement&gt;) =&gt; {
   e.preventDefault();
@@ -2232,7 +1500,6 @@ return (
   &lt;/form&gt;
 );</code></pre>
           </div>
-
           <div class="callout callout-warning">
             <div class="callout-label">Limitations</div>
             <p>
@@ -2241,19 +1508,121 @@ return (
               need either of those, use the <code>Form</code> component.
             </p>
           </div>
-        </section>
+          <h3>Working with FormData</h3>
+          <p>
+            The second argument to your <code>handleSubmit</code> callback — and the
+            <code>formData</code> property on <code>SubmitSuccessState</code> — is the browser's
+            native <code>FormData</code> built from the form elements at submission time. It
+            contains every named field in the form, including entries that the Zod schema doesn't
+            know about (hidden inputs, extra metadata fields).
+          </p>
+          <p>
+            Keys in <code>FormData</code> match the HTML <code>name</code> attributes on your
+            inputs. For nested paths generated with <code>inferName</code> the key follows whichever
+            notation was used — bracket by default:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// name="email"
+//   formData.get('email')
+// name={inferName(p =&gt; p.info.age)}
+//   formData.get('info["age"]')
+// name={inferName(p =&gt; p.tags[0], 'dot')}
+//   formData.get('tags.0')
 
-        <!-- Manual Errors -->
+const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
+  if (!state.valid) return state.errors;
+
+  // Typed data from the schema
+  console.log(state.data.email);
+
+  // Raw string from FormData — useful for fields outside the schema
+  const redirectTo = formData.get('redirectTo') as string | null;
+  const age        = formData.get('info["age"]') as string | null;
+
+  await api.save(state.data);
+  return true;
+};</code></pre>
+          </div>
+          <h3>Submitter tracking</h3>
+          <p>
+            When a form has multiple submit buttons with different <code>name</code>/<code
+              >value</code
+            >
+            pairs, the browser is supposed to include the clicked button's value in
+            <code>FormData</code> — but behaviour varies across browsers and async action forms. The
+            <code>Form</code> component solves this by tracking <code>event.submitter</code> during
+            the capture phase and patching <code>FormData</code> if the button's entry is missing.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// Two submit buttons with the same name but different values
+&lt;Form action={handleSubmit}&gt;
+  &lt;button name="action" value="save"&gt;Save draft&lt;/button&gt;
+  &lt;button name="action" value="publish"&gt;Publish&lt;/button&gt;
+&lt;/Form&gt;
+
+// In your handler — formData always carries the clicked button's value
+const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
+  if (!state.valid) return state.errors;
+
+  const action = formData.get('action'); // 'save' | 'publish'
+
+  if (action === 'publish') {
+    await api.publish(state.data);
+  } else {
+    await api.saveDraft(state.data);
+  }
+  return true;
+};</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              Submitter tracking only works with the <code>Form</code> component. A plain
+              <code>&lt;form&gt;</code> relies on native browser behaviour, which may omit the
+              button value in async action forms.
+            </p>
+          </div>
+          <h3>Encoding FormData as a URL string</h3>
+          <p>
+            Use <code>formDataEncode</code> to convert a <code>FormData</code> instance into a
+            <code>URLSearchParams</code> object — handy for building query strings or
+            <code>application/x-www-form-urlencoded</code> request bodies. File entries are replaced
+            with the file's name.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { formDataEncode } from 'form-state';
+
+const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
+  if (!state.valid) return state.errors;
+
+  // Encode all entries as a URL-encoded string
+  const body = formDataEncode(formData).toString();
+  // "name=Alice&amp;info%5B%22age%22%5D=30"
+
+  // Omit specific fields (e.g. internal tracking values)
+  const bodyClean = formDataEncode(formData, ['_csrf', 'action']).toString();
+
+  await fetch('/api/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  return true;
+};</code></pre>
+          </div>
+        </section>
         <section class="section" id="manual-errors">
           <h2>Manual Errors</h2>
           <p>
             Set errors outside of schema validation — server errors, async uniqueness checks, or
             cross-field constraints — using <code>formActions.setError</code>.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Set by field key
+            <pre><code class="language-tsx">// Set by field key
 formActions.setError('email', 'This email address is already registered');
 
 // Set by path expression — nested field inside an array item
@@ -2274,18 +1643,15 @@ formActions.clearManualErrors({
   predicate: (key) =&gt; key.startsWith('_'),
 });</code></pre>
           </div>
-
           <p>Read manual errors with <code>errors.getManual(key)</code>:</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">{formState.errors.getManual('_serverError') &amp;&amp; (
+            <pre><code class="language-tsx">{formState.errors.getManual('_serverError') &amp;&amp; (
   &lt;div className="form-error"&gt;
     {formState.errors.getManual('_serverError')}
   &lt;/div&gt;
 )}</code></pre>
           </div>
-
           <div class="callout callout-info">
             <div class="callout-label">Note</div>
             <p>
@@ -2295,8 +1661,6 @@ formActions.clearManualErrors({
             </p>
           </div>
         </section>
-
-        <!-- Readonly & Disabled -->
         <section class="section" id="readonly-disabled">
           <h2>Readonly &amp; Disabled</h2>
           <p>
@@ -2306,10 +1670,9 @@ formActions.clearManualErrors({
             (<code>readOnly</code>, <code>disabled</code>) make it easy to drive conditional
             rendering.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Set initial mode
+            <pre><code class="language-tsx">// Set initial mode
 useFormState(schema, { initialMode: 'readOnly' });
 
 // Switch at runtime
@@ -2317,16 +1680,14 @@ formActions.setMode('editable');
 formActions.setMode('readOnly');
 formActions.setMode('disabled');</code></pre>
           </div>
-
           <h3>Rendering alternate UI in readonly mode</h3>
           <p>
             A common pattern is to render a plain text input in readonly mode and hide interactive
             controls like remove buttons or add links.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">const { formState, formStatus, formActions } = useSchemaFormState();
+            <pre><code class="language-tsx">const { formState, formStatus, formActions } = useSchemaFormState();
 const { readOnly } = formStatus;
 
 // ── Select / dropdown ──────────────────────────────────────────
@@ -2406,7 +1767,7 @@ const { readOnly } = formStatus;
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">&lt;Form
+            <pre><code class="language-tsx">&lt;Form
   action={formHandlers.handleSubmit(onSubmit)}
   data-readonly={formStatus.readOnly}  // CSS hook for styling
 &gt;
@@ -2423,7 +1784,7 @@ const { readOnly } = formStatus;
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">import { type FormMode } from 'form-state';
+            <pre><code class="language-tsx">import { type FormMode } from 'form-state';
 
 function ModeSelector({
   mode,
@@ -2455,8 +1816,6 @@ function ModeSelector({
 /&gt;</code></pre>
           </div>
         </section>
-
-        <!-- CSS Classes -->
         <section class="section" id="css-classes">
           <h2>CSS Classes</h2>
           <p>
@@ -2466,7 +1825,7 @@ function ModeSelector({
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// Generates e.g.: "form-state__error form-state__touched form-state__required"
+            <pre><code class="language-tsx">// Generates e.g.: "form-state__error form-state__touched form-state__required"
 
 &lt;div className={formClasses('name')}&gt;
   &lt;label&gt;Name&lt;/label&gt;
@@ -2481,7 +1840,7 @@ function ModeSelector({
 
 // Custom prefix per-call
 formClasses('name', undefined, { prefix: 'my-form' })
-// → "my-form__error my-form__required"</code></pre>
+// "my-form__error my-form__required"</code></pre>
           </div>
 
           <h3>CSS class names</h3>
@@ -2512,11 +1871,9 @@ formClasses('name', undefined, { prefix: 'my-form' })
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">useFormState(schema, { CSSPrefix: 'my-form' });</code></pre>
+            <pre><code class="language-tsx">useFormState(schema, { CSSPrefix: 'my-form' });</code></pre>
           </div>
         </section>
-
-        <!-- Context -->
         <section class="section" id="context">
           <h2>Context &amp; Provider</h2>
           <p>
@@ -2534,7 +1891,7 @@ formClasses('name', undefined, { prefix: 'my-form' })
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// app-schema.ts
+            <pre><code class="language-tsx">// app-schema.ts
 import { useFormStateContext, z } from 'form-state';
 
 export const formSchema = z.strictObject({ /* ... */ });
@@ -2546,7 +1903,7 @@ export const useSchemaFormState = () =&gt; useFormStateContext(formSchema);</cod
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// NameField.tsx — leaf component, no props needed
+            <pre><code class="language-tsx">// NameField.tsx — leaf component, no props needed
 import { useSchemaFormState } from './app-schema';
 
 export function NameField() {
@@ -2574,7 +1931,7 @@ export function NameField() {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// AppForm.tsx — root form component wrapped with formConnect
+            <pre><code class="language-tsx">// AppForm.tsx — root form component wrapped with formConnect
 import { formConnect } from 'form-state';
 import { formSchema } from './app-schema';
 
@@ -2607,8 +1964,6 @@ export default formConnect({
             </p>
           </div>
         </section>
-
-        <!-- SecureInput -->
         <section class="section" id="secure-input">
           <h2>SecureInput</h2>
           <p>
@@ -2620,7 +1975,7 @@ export default formConnect({
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">import { SecureInput } from 'form-state';
+            <pre><code class="language-tsx">import { SecureInput } from 'form-state';
 
 &lt;SecureInput
   type="password"
@@ -2652,8 +2007,6 @@ export default formConnect({
         </section>
 
         <hr />
-
-        <!-- TypeScript Types -->
         <section class="section" id="typescript">
           <div class="section-eyebrow">Advanced</div>
           <h2>TypeScript Types</h2>
@@ -2671,7 +2024,7 @@ export default formConnect({
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { type FormPath } from 'form-state';
+            <pre><code class="language-tsx">import { type FormPath } from 'form-state';
 
 // A component that displays an error for any field
 function FieldError&lt;T&gt;({
@@ -2697,7 +2050,7 @@ function FieldError&lt;T&gt;({
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { type FormState } from 'form-state';
+            <pre><code class="language-tsx">import { type FormState } from 'form-state';
 
 // Debounce callback — typed state snapshot
 function NoteTextInput({
@@ -2731,7 +2084,7 @@ function NoteTextInput({
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { type FormMode } from 'form-state';
+            <pre><code class="language-tsx">import { type FormMode } from 'form-state';
 
 type ModeSelectorProps = {
   mode: FormMode;
@@ -2751,7 +2104,7 @@ formActions.setMode('published');  // ❌ Type error</code></pre>
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { type SubmitState } from 'form-state';
+            <pre><code class="language-tsx">import { type SubmitState } from 'form-state';
 
 const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
   if (!state.valid) {
@@ -2775,7 +2128,7 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { type SubmitSuccessState } from 'form-state';
+            <pre><code class="language-tsx">import { type SubmitSuccessState } from 'form-state';
 
 function App() {
   const handleFormSubmit = ({ data, formData }: SubmitSuccessState&lt;FormSchema&gt;) =&gt; {
@@ -2800,7 +2153,7 @@ function App() {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { type SchemaDataObject } from 'form-state';
+            <pre><code class="language-tsx">import { type SchemaDataObject } from 'form-state';
 
 // Component that displays clean API-ready data
 function JsonData({ data }: { data: SchemaDataObject&lt;FormSchema&gt; }) {
@@ -2816,7 +2169,7 @@ function JsonData({ data }: { data: SchemaDataObject&lt;FormSchema&gt; }) {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { type StateChangeListener } from 'form-state';
+            <pre><code class="language-tsx">import { type StateChangeListener } from 'form-state';
 
 // Define once outside the component to keep the reference stable
 const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCount }) =&gt; {
@@ -2829,8 +2182,6 @@ const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCou
 formHooks.useListener(listener);</code></pre>
           </div>
         </section>
-
-        <!-- React 19 -->
         <section class="section" id="react19">
           <h2>React 19</h2>
           <p>
@@ -2849,7 +2200,7 @@ formHooks.useListener(listener);</code></pre>
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">const { Form, formHandlers, formActions } = useSchemaFormState();
+            <pre><code class="language-tsx">const { Form, formHandlers, formActions } = useSchemaFormState();
 
 const action = formHandlers.handleSubmit(
   async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
@@ -2890,7 +2241,7 @@ return (
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">import { useFormStatus } from 'react-dom';
+            <pre><code class="language-tsx">import { useFormStatus } from 'react-dom';
 
 // Must be a child of the &lt;form&gt; element — not the same component
 export function FormMask() {
@@ -2962,8 +2313,6 @@ export function FormMask() {
             </tbody>
           </table>
         </section>
-
-        <!-- Debounced Changes -->
         <section class="section" id="debounce">
           <h2>Debounced Changes</h2>
           <p>
@@ -2973,7 +2322,7 @@ export function FormMask() {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">formActions.change('search', inputValue, {
+            <pre><code class="language-tsx">formActions.change('search', inputValue, {
   debounceIntervalMs: 400,
   callback: (state, status) =&gt; {
     // Fires 400ms after the last keystroke
@@ -3001,8 +2350,6 @@ formActions.change((p) =&gt; p.notes[index].text, e.target.value, {
             when multiple rapid changes fired before the debounce elapsed.
           </p>
         </section>
-
-        <!-- Listener -->
         <section class="section" id="listener">
           <h2>State Listener</h2>
           <p>
@@ -3013,7 +2360,7 @@ formActions.change((p) =&gt; p.notes[index].text, e.target.value, {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { type StateChangeListener } from 'form-state';
+            <pre><code class="language-tsx">import { type StateChangeListener } from 'form-state';
 
 const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data }) =&gt; {
   console.info(type, data);
@@ -3063,8 +2410,6 @@ function AppForm() {
             </tbody>
           </table>
         </section>
-
-        <!-- useWatch -->
         <section class="section" id="watch">
           <h2>useWatch</h2>
           <p>
@@ -3075,7 +2420,7 @@ function AppForm() {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Enable watching at the hook / formConnect level
+            <pre><code class="language-tsx">// Enable watching at the hook / formConnect level
 useFormState(schema, { watch: true });
 // or: formConnect({ schema, watch: true })(MyForm)
 
@@ -3104,8 +2449,6 @@ const cleanId = formHooks.useWatch(
             </p>
           </div>
         </section>
-
-        <!-- inferName -->
         <section class="section" id="infer-name">
           <h2>inferName</h2>
           <p>
@@ -3115,32 +2458,82 @@ const cleanId = formHooks.useWatch(
             combining FormState with <code>useWatch</code>.
           </p>
 
+          <h3>Two name formats</h3>
+          <p>
+            Nested paths can be serialised in two formats. The format you choose determines how the
+            key appears in <code>FormData</code> when the form is submitted.
+          </p>
+
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Format</th>
+                <th>Path <code>info.age</code></th>
+                <th>Array item <code>items[0].title</code></th>
+                <th>Top-level <code>name</code></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>'bracket'</code> (default)</td>
+                <td><code>info["age"]</code></td>
+                <td><code>items[0]["title"]</code></td>
+                <td><code>name</code></td>
+              </tr>
+              <tr>
+                <td><code>'dot'</code></td>
+                <td><code>info.age</code></td>
+                <td><code>items.0.title</code></td>
+                <td><code>name</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            When you call <code>formData.get(key)</code> after submission, use the same format that
+            was used for the <code>name</code> attribute. If you mix formats across fields, read
+            each key with the matching notation.
+          </p>
+
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// Bracket format (default): schema["info"]["age"]
+            <pre><code class="language-tsx">// Bracket format (default) — infers: info["age"]
 formActions.inferName((p) =&gt; p.info.age)
 
-// Dot format: schema.info.age
+// Dot format — infers: info.age
 formActions.inferName((p) =&gt; p.info.age, 'dot')
 
-// Top-level string form also works
+// Top-level string — always just the key itself
 formActions.inferName('name')
 
-// Use in an uncontrolled input + useWatch combo
+// Uncontrolled input + useWatch combo
 &lt;input
   name={formActions.inferName((p) =&gt; p.id)}
   defaultValue={formState.data.id}
   onChange={(e) =&gt; formActions.change((p) =&gt; p.id, e.target.value)}
 /&gt;
 
-// useWatch listens to the same name attribute
-const watched = formHooks.useWatch(formActions.inferName((p) =&gt; p.id));</code></pre>
+// useWatch subscribes by the same name string
+const watched = formHooks.useWatch(formActions.inferName((p) =&gt; p.id));
+
+// Reading back from FormData on submit
+const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
+  // bracket key (default format)
+  formData.get('info["age"]');    // value of info.age
+  // dot key
+  formData.get('info.age');       // only if that field used 'dot' format
+};</code></pre>
           </div>
 
-          <p>Change the default format globally with the <code>inferredNameFormat</code> option.</p>
-        </section>
+          <p>Change the default format for all fields globally:</p>
 
-        <!-- Helpers -->
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const { Form, formActions } = useFormState(schema, {
+  inferredNameFormat: 'dot', // all inferName calls default to dot notation
+});</code></pre>
+          </div>
+        </section>
         <section class="section" id="helpers">
           <h2>Value Helpers</h2>
           <p>
@@ -3150,7 +2543,7 @@ const watched = formHooks.useWatch(formActions.inferName((p) =&gt; p.id));</code
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { convert } from 'form-state';
+            <pre><code class="language-tsx">import { convert } from 'form-state';
 
 // Safe numeric parsing — returns the number or '' if invalid
 convert.toInt('42')          // 42
@@ -3173,7 +2566,7 @@ convert.toLiteral('other',  ['active', 'inactive'])  // ''</code></pre>
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { formatDate } from 'form-state';
+            <pre><code class="language-tsx">import { formatDate } from 'form-state';
 
 const date = formState.data.birthDate; // Date | ''
 if (date instanceof Date) {
@@ -3190,7 +2583,7 @@ if (date instanceof Date) {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">// Mark a file as pending upload
+            <pre><code class="language-tsx">// Mark a file as pending upload
 formActions.setDirty('#avatar', true);
 formState.dirty.get('#avatar')   // true
 formStatus.dirty                 // true (includes #avatar)
@@ -3207,7 +2600,7 @@ formActions.setDirty('#avatar', false);</code></pre>
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-typescript">import { parseState } from 'form-state';
+            <pre><code class="language-tsx">import { parseState } from 'form-state';
 
 const result = parseState(formSchema, apiResponse);
 
@@ -3222,8 +2615,6 @@ if (result.success) {
 }</code></pre>
           </div>
         </section>
-
-        <!-- DevTools -->
         <section class="section" id="devtools">
           <h2>DevTools</h2>
           <p>
@@ -3247,7 +2638,7 @@ if (result.success) {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">import { FormDock } from 'form-state-tools';
+            <pre><code class="language-tsx">import { FormDock } from 'form-state-tools';
 
 function AppForm() {
   const form = useFormState(schema);   // or useFormStateContext(schema)
@@ -3271,8 +2662,6 @@ function AppForm() {
             validation indicator — orange when unvalidated, red when invalid, hidden when valid.
             Clicking the header toggles between three sizes.
           </p>
-
-          <!-- Minimized state -->
           <div class="dock-sizes">
             <div class="dock-size-demo">
               <div class="dock-size-label">Minimized (default) — not yet validated</div>
@@ -3317,8 +2706,6 @@ function AppForm() {
               </div>
             </div>
           </div>
-
-          <!-- Normal / expanded — valid form -->
           <p>
             Clicking the header expands the panel to ~30vh and shows a live JSON tree. This example
             shows a valid form with the full structure visible:
@@ -3504,8 +2891,6 @@ function AppForm() {
               </div>
             </div>
           </div>
-
-          <!-- Errors shown in tree -->
           <p>
             When validation errors are present, error keys are highlighted and the header icon turns
             red:
@@ -3633,14 +3018,29 @@ function AppForm() {
           </p>
 
           <div class="error-toast-demo">
-            <div class="error-toast-header">
-              <span class="error-toast-title">Most Recent Console Error</span>
-              <span class="error-toast-close">✕</span>
-            </div>
-            <div class="error-toast-body">
-              ConsoleError: Warning: Each child in a list should have a unique "key" prop. at
-              NoteInputs (AppForm.tsx:84) at fieldset at Form
-            </div>
+            <h3 class="error-toast-heading">
+              <svg
+                class="error-toast-close"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M18 6L6 18M6 6L18 18"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              MOST RECENT CONSOLE ERROR
+            </h3>
+            <pre class="error-toast-body">
+ConsoleError: Warning: Each child in a list should have a unique "key" prop.
+  at NoteInputs (AppForm.tsx:84)
+  at fieldset
+  at Form</pre
+            >
           </div>
 
           <h3>Props</h3>
@@ -3732,7 +3132,7 @@ function AppForm() {
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-typescript">// Start expanded, only capture console.error calls
+            <pre><code class="language-tsx">// Start expanded, only capture console.error calls
 &lt;FormDock form={form} collapsed={false} captureErrors="console" /&gt;
 
 // Suppress noisy third-party errors
@@ -3770,7 +3170,9 @@ function AppForm() {
 
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        hljs.highlightAll();
+        Prism.plugins.autoloader.languages_path =
+          'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
+        Prism.highlightAll();
 
         // Active nav link on scroll
         const sections = document.querySelectorAll('.section[id]');
