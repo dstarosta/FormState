@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FormState — Developer Guide</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       rel="stylesheet"
@@ -11,7 +12,7 @@
     />
     <link rel="stylesheet" href="lib/prism-tomorrow.min.css" />
     <link rel="stylesheet" href="guide.css" />
-    <script src="lib/prism-core.min.js"></script>
+    <script src="lib/prism-core.min.js" data-manual></script>
     <script src="lib/prism-autoloader.min.js"></script>
   </head>
   <body>
@@ -106,7 +107,7 @@
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">bash</span></div>
-            <pre><code class="language-bash">npm install form-state</code></pre>
+            <pre><code class="language-bash">npm install github:dstarosta/FormState#v1.0.0</code></pre>
           </div>
           <p>Then import from the package root:</p>
           <div class="code-block">
@@ -244,6 +245,25 @@
               its own re-renders.
             </p>
           </div>
+          <p>
+            For a single high-frequency field — a live-preview textarea, a search box — you can opt
+            out of controlled binding entirely. An uncontrolled input reads its value from the DOM
+            on submit and fires no state updates while the user types:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;input
+  name="bio"
+  defaultValue={formState.data.bio}
+  onBlur={(e) =&gt; formActions.change('bio', e.target.value, { touch: true })}
+/&gt;</code></pre>
+          </div>
+          <p>
+            To observe the raw typed value (e.g. for a character counter or live preview) without
+            re-rendering the form component on every keystroke, see
+            <a href="#watch"><code>useWatch</code></a
+            >.
+          </p>
         </section>
         <hr />
         <section class="section" id="schema">
@@ -1757,14 +1777,12 @@ const { readOnly } = formStatus;
   &lt;/button&gt;
 )}</code></pre>
           </div>
-
           <h3>Disabled via <code>&lt;fieldset&gt;</code></h3>
           <p>
             The native <code>disabled</code> attribute on a <code>&lt;fieldset&gt;</code>
             disables all descendant controls at the browser level. Wire it to
             <code>formStatus.disabled</code> for a single, zero-CSS approach.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">&lt;Form
@@ -1779,9 +1797,7 @@ const { readOnly } = formStatus;
   &lt;/fieldset&gt;
 &lt;/Form&gt;</code></pre>
           </div>
-
           <h3>Mode switcher example</h3>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">import { type FormMode } from 'form-state';
@@ -1822,7 +1838,6 @@ function ModeSelector({
             <code>formClasses(field)</code> returns a space-separated class string based on the
             field's current state. Wire it to any element — label, wrapper, or input.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// Generates e.g.: "form-state__error form-state__touched form-state__required"
@@ -1842,7 +1857,6 @@ function ModeSelector({
 formClasses('name', undefined, { prefix: 'my-form' })
 // "my-form__error my-form__required"</code></pre>
           </div>
-
           <h3>CSS class names</h3>
           <table class="prop-table">
             <thead>
@@ -1866,9 +1880,7 @@ formClasses('name', undefined, { prefix: 'my-form' })
               </tr>
             </tbody>
           </table>
-
           <p>Override the prefix globally:</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">useFormState(schema, { CSSPrefix: 'my-form' });</code></pre>
@@ -1881,14 +1893,12 @@ formClasses('name', undefined, { prefix: 'my-form' })
             FormState provides a <code>FormStateProvider</code>, a
             <code>useFormStateContext</code> hook, and a <code>formConnect</code> HOC.
           </p>
-
           <h3>Recommended pattern — shared accessor hook</h3>
           <p>
             Export a typed wrapper around <code>useFormStateContext</code> once and import it
             everywhere in your form tree. This avoids passing the schema reference around and
             produces more focused component imports.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// app-schema.ts
@@ -1900,7 +1910,6 @@ export type FormSchema = z.infer&lt;typeof formSchema&gt;;
 // One typed hook — used everywhere in the form tree
 export const useSchemaFormState = () =&gt; useFormStateContext(formSchema);</code></pre>
           </div>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// NameField.tsx — leaf component, no props needed
@@ -1928,7 +1937,6 @@ export function NameField() {
   );
 }</code></pre>
           </div>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// AppForm.tsx — root form component wrapped with formConnect
@@ -1955,7 +1963,6 @@ export default formConnect({
   watch: true,                         // enable useWatch
 })(AppForm);</code></pre>
           </div>
-
           <div class="callout callout-warning">
             <div class="callout-label">Warning</div>
             <p>
@@ -1972,7 +1979,6 @@ export default formConnect({
             passes the actual text only through controlled callbacks, preventing clipboard sniffing
             and browser auto-fill exfiltration.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">import { SecureInput } from 'form-state';
@@ -1988,7 +1994,6 @@ export default formConnect({
   }}
 /&gt;</code></pre>
           </div>
-
           <p>Features:</p>
           <ul>
             <li>Displays masked bullets, real value stays in memory only.</li>
@@ -1996,7 +2001,6 @@ export default formConnect({
             <li>Ctrl+Z / Ctrl+Y undo protection.</li>
             <li>Compatible with standard <code>onChange</code> for uncontrolled usage.</li>
           </ul>
-
           <div class="callout callout-warning">
             <div class="callout-label">Warning</div>
             <p>
@@ -2005,7 +2009,6 @@ export default formConnect({
             </p>
           </div>
         </section>
-
         <hr />
         <section class="section" id="typescript">
           <div class="section-eyebrow">Advanced</div>
@@ -2015,13 +2018,11 @@ export default formConnect({
             through every callback, accessor, and component prop. Understanding them unlocks the
             full type-safety story.
           </p>
-
           <h3><span class="type-chip">FormPath&lt;T&gt;</span></h3>
           <p>
             The type of a path expression — either a top-level key string or an arrow function that
             navigates the form data tree. Use it when passing a field reference as a prop.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { type FormPath } from 'form-state';
@@ -2041,13 +2042,11 @@ function FieldError&lt;T&gt;({
 // Caller — the compiler checks the path against FormSchema
 &lt;FieldError path={(p: FormSchema) =&gt; p.info.age} errors={formState.errors} /&gt;</code></pre>
           </div>
-
           <h3><span class="type-chip">FormState&lt;T&gt;</span></h3>
           <p>
             The type of <code>formState</code> itself. Use it when writing callbacks that receive
             the state snapshot — e.g. debounce callbacks or change listeners.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { type FormState } from 'form-state';
@@ -2075,13 +2074,11 @@ function NoteTextInput({
   );
 }</code></pre>
           </div>
-
           <h3><span class="type-chip">FormMode</span></h3>
           <p>
             The union <code>'editable' | 'readOnly' | 'disabled'</code>. Use it when building mode
             selector components.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { type FormMode } from 'form-state';
@@ -2095,13 +2092,11 @@ type ModeSelectorProps = {
 formActions.setMode('readOnly');   // ✅
 formActions.setMode('published');  // ❌ Type error</code></pre>
           </div>
-
           <h3><span class="type-chip">SubmitState&lt;T&gt;</span></h3>
           <p>
             The discriminated union passed to your <code>handleSubmit</code> callback. Narrow on
             <code>valid</code> to get a typed <code>data</code> object.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { type SubmitState } from 'form-state';
@@ -2119,13 +2114,11 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
   return true;
 };</code></pre>
           </div>
-
           <h3><span class="type-chip">SubmitSuccessState&lt;T&gt;</span></h3>
           <p>
             Passed to the <code>onSuccess</code> callback — guaranteed valid data plus the raw
             <code>FormData</code>.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { type SubmitSuccessState } from 'form-state';
@@ -2144,13 +2137,11 @@ function App() {
   return &lt;AppForm onSubmitted={handleFormSubmit} /&gt;;
 }</code></pre>
           </div>
-
           <h3><span class="type-chip">SchemaDataObject&lt;T&gt;</span></h3>
           <p>
             The return type of <code>schema.toObject(data)</code> — internal fields stripped,
             optional empties removed.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { type SchemaDataObject } from 'form-state';
@@ -2163,10 +2154,8 @@ function JsonData({ data }: { data: SchemaDataObject&lt;FormSchema&gt; }) {
 // Usage
 &lt;JsonData data={schema.toObject(formState.data)} /&gt;</code></pre>
           </div>
-
           <h3><span class="type-chip">StateChangeListener&lt;T&gt;</span></h3>
           <p>The type for <code>formHooks.useListener</code> callbacks.</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { type StateChangeListener } from 'form-state';
@@ -2190,14 +2179,12 @@ formHooks.useListener(listener);</code></pre>
             <code>action</code> prop directly — no <code>onSubmit</code> wiring needed. This
             integrates naturally with <code>useFormStatus</code> and server actions.
           </p>
-
           <h3>Server action pattern</h3>
           <p>
             Pass <code>formHandlers.handleSubmit(...)</code> directly to the
             <code>action</code> prop. React 19 calls it with a <code>FormData</code> argument;
             FormState intercepts this, validates, and calls your handler.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">const { Form, formHandlers, formActions } = useSchemaFormState();
@@ -2231,14 +2218,12 @@ return (
   &lt;/Form&gt;
 );</code></pre>
           </div>
-
           <h3>useFormStatus — submission spinner</h3>
           <p>
             Because FormState uses a real <code>&lt;form action&gt;</code>, React 19's
             <code>useFormStatus</code> works without any extra wiring. Create a child component that
             reads <code>pending</code> and renders a loading overlay:
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">import { useFormStatus } from 'react-dom';
@@ -2273,7 +2258,6 @@ export function FormMask() {
   {/* ... */}
 &lt;/Form&gt;</code></pre>
           </div>
-
           <div class="callout callout-info">
             <div class="callout-label">Note</div>
             <p>
@@ -2283,7 +2267,6 @@ export function FormMask() {
               when you nest your spinner inside it.
             </p>
           </div>
-
           <h3>formStatus.submitting vs useFormStatus</h3>
           <p>Both serve similar purposes but at different levels:</p>
           <table class="prop-table">
@@ -2319,7 +2302,6 @@ export function FormMask() {
             Pass <code>debounceIntervalMs</code> to <code>change</code> to delay downstream effects
             — useful for search inputs, async field validation, or expensive re-renders.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">formActions.change('search', inputValue, {
@@ -2344,7 +2326,6 @@ formActions.change((p) =&gt; p.notes[index].text, e.target.value, {
   },
 });</code></pre>
           </div>
-
           <p>
             The callback always receives the latest <code>(state, status)</code> snapshot — even
             when multiple rapid changes fired before the debounce elapsed.
@@ -2371,7 +2352,6 @@ function AppForm() {
   // ...
 }</code></pre>
           </div>
-
           <p>The <code>event</code> object:</p>
           <table class="prop-table">
             <thead>
@@ -2417,7 +2397,6 @@ function AppForm() {
             input as the user types — without needing a controlled <code>value</code> prop. Requires
             <code>watch: true</code> in the hook options.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// Enable watching at the hook / formConnect level
@@ -2457,13 +2436,11 @@ const cleanId = formHooks.useWatch(
             need the browser's native <code>FormData</code> to carry the right keys — and when
             combining FormState with <code>useWatch</code>.
           </p>
-
           <h3>Two name formats</h3>
           <p>
             Nested paths can be serialised in two formats. The format you choose determines how the
             key appears in <code>FormData</code> when the form is submitted.
           </p>
-
           <table class="prop-table">
             <thead>
               <tr>
@@ -2488,13 +2465,11 @@ const cleanId = formHooks.useWatch(
               </tr>
             </tbody>
           </table>
-
           <p>
             When you call <code>formData.get(key)</code> after submission, use the same format that
             was used for the <code>name</code> attribute. If you mix formats across fields, read
             each key with the matching notation.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// Bracket format (default) — infers: info["age"]
@@ -2524,9 +2499,7 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
   formData.get('info.age');       // only if that field used 'dot' format
 };</code></pre>
           </div>
-
           <p>Change the default format for all fields globally:</p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">const { Form, formActions } = useFormState(schema, {
@@ -2540,7 +2513,6 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
             The <code>convert</code> export provides utilities for coercing raw form strings into
             typed values when wiring native inputs that always return strings.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { convert } from 'form-state';
@@ -2574,13 +2546,11 @@ if (date instanceof Date) {
   formatDate(date, 'yyyy-MM-dd')   // '2024-12-31'
 }</code></pre>
           </div>
-
           <h3>Dirty flag for non-field state</h3>
           <p>
             Track external state (e.g. a file upload) alongside form state using
             <code>formActions.setDirty</code>. Keys must start with <code>#</code>.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// Mark a file as pending upload
@@ -2591,13 +2561,11 @@ formStatus.dirty                 // true (includes #avatar)
 // Clear after upload completes
 formActions.setDirty('#avatar', false);</code></pre>
           </div>
-
           <h3>Parsing external data</h3>
           <p>
             Use <code>parseState</code> to validate and coerce API responses before loading them
             into the form — useful when server data might be partially invalid.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { parseState } from 'form-state';
@@ -2623,19 +2591,16 @@ if (result.success) {
             state, validation status, and captured runtime errors. It renders nothing in production
             (<code>NODE_ENV=production</code>).
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">bash</span></div>
-            <pre><code class="language-bash">npm install --save-dev form-state-tools</code></pre>
+            <pre><code class="language-bash">npm install github:dstarosta/FormStateTools#v1.0.0</code></pre>
           </div>
-
           <h3>Setup</h3>
           <p>
             Pass the entire return value of <code>useFormState</code> (or
             <code>useFormStateContext</code>) to the <code>form</code> prop. Drop it anywhere in
             your component tree — it positions itself as a fixed bottom dock.
           </p>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">import { FormDock } from 'form-state-tools';
@@ -2710,7 +2675,6 @@ function AppForm() {
             Clicking the header expands the panel to ~30vh and shows a live JSON tree. This example
             shows a valid form with the full structure visible:
           </p>
-
           <div class="dock-demo">
             <div class="dock-header">
               <span class="dock-header-text">COLLAPSE FORM TOOLS</span>
@@ -2895,7 +2859,6 @@ function AppForm() {
             When validation errors are present, error keys are highlighted and the header icon turns
             red:
           </p>
-
           <div class="dock-demo">
             <div class="dock-header">
               <span class="dock-header-text">COLLAPSE FORM TOOLS</span>
@@ -3042,7 +3005,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
   at Form</pre
             >
           </div>
-
           <h3>Props</h3>
           <table class="prop-table">
             <thead>
@@ -3095,7 +3057,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
             </tbody>
           </table>
-
           <h3>Panel interactions</h3>
           <table class="prop-table">
             <thead>
@@ -3127,9 +3088,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
             </tbody>
           </table>
-
           <h3>Configuration examples</h3>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// Start expanded, only capture console.error calls
@@ -3147,7 +3106,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
 // Force-disable in dev for a specific story/test
 &lt;FormDock form={form} devMode={false} /&gt;</code></pre>
           </div>
-
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
@@ -3156,7 +3114,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               saved size.
             </p>
           </div>
-
           <div class="callout callout-info">
             <div class="callout-label">Production safety</div>
             <p>
@@ -3167,11 +3124,9 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
         </section>
       </main>
     </div>
-
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        Prism.plugins.autoloader.languages_path =
-          'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
+        Prism.plugins.autoloader.languages_path = 'lib/components/';
         Prism.highlightAll();
 
         // Active nav link on scroll
