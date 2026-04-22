@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useOptimistic,
   useRef,
@@ -13,7 +12,7 @@ import * as z from 'zod/mini';
 
 import { dotPathGet } from './helpers/dot-path';
 import { createFormComponent } from './helpers/form-builder';
-
+import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 import type {
   ArrayElement,
   StateChangeListener,
@@ -43,7 +42,6 @@ import type {
   SubmitState,
   SubmittedData,
 } from './types/form-types';
-
 import {
   collectDescriptions,
   collectLengths,
@@ -78,6 +76,7 @@ import { createFormStore } from './helpers/form-store';
 import { createUseListener } from './helpers/use-listener-builder';
 import { createUseWatch } from './helpers/use-watch-builder';
 import { IS_DEVELOPMENT } from './helpers/development-helper';
+
 
 const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an array type.';
 
@@ -258,7 +257,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Ref to avoid stale closures in validate/handleSubmit callbacks.
   const formStateRef = useRef(formState);
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     formStateRef.current = formState;
   });
 

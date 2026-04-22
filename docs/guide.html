@@ -58,6 +58,7 @@
           <a href="#infer-name" class="nav-link">inferName</a>
           <a href="#helpers" class="nav-link">Value Helpers</a>
           <a href="#devtools" class="nav-link">DevTools</a>
+          <a href="#comparison" class="nav-link">Comparison</a>
         </div>
       </nav>
       <main>
@@ -3121,6 +3122,271 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               No panel markup, no error listeners, no bundle overhead beyond the conditional check.
             </p>
           </div>
+        </section>
+        <hr />
+        <section class="section" id="comparison">
+          <div class="section-eyebrow">Reference</div>
+          <h2>Comparison</h2>
+          <p>
+            How FormState compares to other popular React form libraries across commonly evaluated
+            features. Analysis by <a href="https://claude.ai" target="_blank">Claude</a>.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>FormState</th>
+                <th>TanStack Form</th>
+                <th>React Hook Form</th>
+                <th>Formik</th>
+                <th>Final Form</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Bundle size (gzipped)</td>
+                <td>~14 KB <sup>1</sup></td>
+                <td>~13 KB</td>
+                <td>~10 KB</td>
+                <td>~15 KB</td>
+                <td>~9 KB</td>
+              </tr>
+              <tr>
+                <td>First-class TypeScript</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>❓</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>Fully inferred TypeScript</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>❓</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Typed lambda path expressions</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>No field wrappers required</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑 <sup>2</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>No render props or abstractions</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Granular field-level re-renders</td>
+                <td>❓ <sup>3</sup></td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>Change and submit event subscriptions</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>❓</td>
+                <td>🛑</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>React 19 actions / server actions</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>React 19 native form compatibility</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>FormData support</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>React Compiler support</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>❓</td>
+                <td>❓</td>
+              </tr>
+              <tr>
+                <td>SSR integrations</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Built-in async validation debounce</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Schema-based validation</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Schema-derived field constraints</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Cross-field validation</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>Array fields</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>Initial data reactivity</td>
+                <td>✅ <sup>4</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Separate form and API type representations</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Built-in readonly / disabled mode</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Password value not stored in DOM</td>
+                <td>✅ <sup>5</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Unsaved changes navigation prompt</td>
+                <td>✅ <sup>6</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>First-party DevTools</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>❓</td>
+                <td>🛑</td>
+              </tr>
+            </tbody>
+          </table>
+          <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
+            <li>
+              FormState uses <strong>Zod Mini</strong> (bundled) and requires
+              <strong>fast-equals</strong> (~2 KB gzipped). Other libraries are more flexible:
+              TanStack Form and React Hook Form support Zod, Yup, Valibot, and others via adapters;
+              Formik pairs primarily with Yup; Final Form has no built-in schema adapter.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              RHF's <code>register</code> API avoids wrappers for uncontrolled inputs, but
+              controlled inputs require <code>&lt;Controller&gt;</code>. The
+              <code>register</code> abstraction spreads hidden props onto inputs, which can be
+              unintuitive to reason about and debug.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="3" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              FormState re-renders the component that called <code>useFormState</code> on every
+              state change. <code>useWatch</code> isolates keystroke re-renders to subscribers by
+              observing the DOM element's value directly, independent of React state. For validation
+              state isolation, extract subtrees into their own components via
+              <code>formConnect</code>.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Non-dirty fields automatically reflect changes to <code>initialData</code> (e.g. when
+              server data loads asynchronously). Fields the user has already edited are never
+              overwritten. This does not affect the dirty state of any field.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Requires the <code>SecureInput</code> component instead of a plain
+              <code>&lt;input type="password"&gt;</code>. The value is kept out of the DOM and never
+              appears in <code>FormData</code> or browser autofill inspection. FormState logs a
+              console warning if a regular password input is detected inside the form.
+              <p style="margin-top: 0.5rem">
+                This feature keeps passwords safe from browser extensions that scan the DOM,
+                prevents accidental copy/cut/paste/undo/redo of sensitive data.
+              </p>
+            </li>
+          </ol>
+          <ol class="prop-desc" start="6" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Opt-in via <code>confirmDirtyStateNavigation: true</code>. Prompts the user before
+              navigating away when the form has unsaved changes.
+            </li>
+          </ol>
         </section>
       </main>
     </div>

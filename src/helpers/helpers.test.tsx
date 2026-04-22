@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { renderToString } from 'react-dom/server';
 
 import type { FormMutableState, Immutable } from '../types/form-types';
 
@@ -17,6 +18,7 @@ import { toInt, toFloat, toDate, toBoolean, toLiteral, toString } from './value-
 import { dotPathGet, dotPathSet } from './dot-path';
 import { debounce } from './debouncer';
 import { createFormStore } from './form-store';
+import { createUseWatch } from './use-watch-builder';
 
 // Error Formatter and Schema Visitor have no public functions and are extensively tested
 // by the "useFormState" tests.
@@ -781,6 +783,26 @@ describe('helpers', () => {
       await Promise.resolve();
 
       expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('createUseWatch server snapshot', () => {
+    const store = createFormStore();
+    const useWatch = createUseWatch(store);
+
+    function WatchDisplay({ compute }: Readonly<{ compute?: (value: string) => string }>) {
+      const value = useWatch('name', compute);
+      return <span>{value}</span>;
+    }
+
+    it('returns empty string when no compute is provided', () => {
+      const html = renderToString(<WatchDisplay />);
+      expect(html).toMatch(/<span[^>]*><\/span>/);
+    });
+
+    it('applies compute to empty string', () => {
+      const html = renderToString(<WatchDisplay compute={(v) => v + '!'} />);
+      expect(html).toMatch(/<span[^>]*>!<\/span>/);
     });
   });
 });

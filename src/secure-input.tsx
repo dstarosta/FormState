@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { setFormData } from './helpers/form-builder';
+import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 
 interface SecureInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -60,7 +61,7 @@ export function SecureInput({
     setInternalValue(defaultValue);
   }
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!isControlled) {
       caretRef.current = null;
     }
@@ -78,12 +79,12 @@ export function SecureInput({
   const realValueRef = useRef(realValue);
   const callbacksRef = useRef({ onChange, onSecureChange, onSecureBlur, onBlur });
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     realValueRef.current = realValue;
     callbacksRef.current = { onChange, onSecureChange, onSecureBlur, onBlur };
   });
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (caretRef.current !== null && inputRef.current) {
       inputRef.current.setSelectionRange(caretRef.current, caretRef.current);
       caretRef.current = null;

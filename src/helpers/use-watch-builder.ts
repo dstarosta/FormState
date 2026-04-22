@@ -30,7 +30,8 @@ export function createUseWatch(store: FormStore | null) {
         }
 
         return value;
-      }
+      },
+      () => (typeof compute === 'function' ? compute('') : '')
     );
   }
 
