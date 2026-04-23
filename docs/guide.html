@@ -56,6 +56,7 @@
           <a href="#watch" class="nav-link">useWatch</a>
           <a href="#infer-name" class="nav-link">inferName</a>
           <a href="#helpers" class="nav-link">Value Helpers</a>
+          <a href="#tanstack-query" class="nav-link">TanStack Query</a>
           <a href="#devtools" class="nav-link">DevTools</a>
           <a href="#comparison" class="nav-link">Comparison</a>
         </div>
@@ -175,9 +176,9 @@ npm install github:dstarosta/FormState#v1.0.0</code></pre>
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
-              Keep schemas at 10 levels of nesting or fewer. If you find yourself hitting the
-              limit, flatten repeated sub-structures into their own schemas and compose them at the
-              top level rather than nesting further.
+              Keep schemas at 10 levels of nesting or fewer. If you find yourself hitting the limit,
+              flatten repeated sub-structures into their own schemas and compose them at the top
+              level rather than nesting further.
             </p>
           </div>
           <h3><span class="type-chip">FormPath&lt;T&gt;</span></h3>
@@ -190,7 +191,7 @@ npm install github:dstarosta/FormState#v1.0.0</code></pre>
             <pre><code class="language-tsx">import { type FormPath } from 'form-state';
 
 // A component that displays an error for any field
-function FieldError&lt;T&gt;({
+function FormError&lt;T&gt;({
   path,
   errors,
 }: {
@@ -202,7 +203,7 @@ function FieldError&lt;T&gt;({
 }
 
 // Caller — the compiler checks the path against FormSchema
-&lt;FieldError path={(path: FormSchema) =&gt; path.info.age} errors={formState.errors} /&gt;</code></pre>
+&lt;FormError path={(path: FormSchema) =&gt; path.info.age} errors={formState.errors} /&gt;</code></pre>
           </div>
           <h3><span class="type-chip">FormState&lt;T&gt;</span></h3>
           <p>
@@ -425,10 +426,11 @@ formHooks.useListener(listener);</code></pre>
             generics to pass by hand — inference does the work.
           </p>
           <p>
-            Path expressions are type-checked at compile time. <code>(path) =&gt; path.info.age</code> is
-            valid or it isn't, and the error lands on your input's prop — not inside a render-prop
-            wrapper two levels up. After a successful submit, <code>state.data</code> is fully
-            narrowed: <code>string</code>, not <code>string | ''</code>.
+            Path expressions are type-checked at compile time.
+            <code>(path) =&gt; path.info.age</code> is valid or it isn't, and the error lands on
+            your input's prop — not inside a render-prop wrapper two levels up. After a successful
+            submit, <code>state.data</code> is fully narrowed: <code>string</code>, not
+            <code>string | ''</code>.
           </p>
           <p>
             See the <a href="#typescript">TypeScript section</a> for the full exported type
@@ -482,9 +484,9 @@ const action = formHandlers.handleSubmit(async (state, formData) =&gt; {
 
           <h3>Controlled is Cool</h3>
           <p>
-            Every field is controlled by default: <code>formState.data</code> is the source of
-            truth and React renders from it. This makes the form fully predictable — any state
-            transition is visible as a plain object diff, which means conditional logic, cross-field
+            Every field is controlled by default: <code>formState.data</code> is the source of truth
+            and React renders from it. This makes the form fully predictable — any state transition
+            is visible as a plain object diff, which means conditional logic, cross-field
             validation, and debugging are all just JavaScript.
           </p>
           <p>
@@ -502,7 +504,8 @@ const action = formHandlers.handleSubmit(async (state, formData) =&gt; {
           </div>
           <p>
             To observe a raw typed value — a live character counter, a search preview — without
-            triggering a full re-render, see <a href="#watch"><code>useWatch</code></a>.
+            triggering a full re-render, see <a href="#watch"><code>useWatch</code></a
+            >.
           </p>
         </section>
         <hr />
@@ -1292,7 +1295,7 @@ formState.required.get((path) =&gt; path.info.age)       // true | false
 // In JSX — drives the attribute and the visible asterisk together
 &lt;label htmlFor="name"&gt;
   {formState.descriptions.name}
-  {formState.required.name &amp;&amp; &lt;span aria-hidden="true"&gt; *&lt;/span&gt;}
+  {formState.required.name &amp;&amp; &lt;span&gt; *&lt;/span&gt;}
 &lt;/label&gt;
 &lt;input
   id="name"
@@ -2667,6 +2670,255 @@ if (result.success) {
   // Still use the coerced data if errors are non-critical
   formActions.replace(result.data);
 }</code></pre>
+          </div>
+        </section>
+        <section class="section" id="tanstack-query">
+          <div class="section-eyebrow">Advanced</div>
+          <h2>TanStack Query Integration</h2>
+          <p>
+            A common pattern is to fetch a record from the server, seed it into a form, let the user
+            make changes, and save via a mutation. TanStack Query's
+            <code>useQuery</code> and <code>useMutation</code> compose cleanly with
+            <code>useFormState</code> — query data flows into <code>initialData</code>, and
+            <code>mutateAsync</code> fits naturally inside the <code>handleSubmit</code> callback.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">bash</span></div>
+            <pre><code class="language-bash">npm install @tanstack/react-query</code></pre>
+          </div>
+          <h3>Complete example</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useFormState, z, type SubmitState } from 'form-state';
+
+const profileSchema = z.object({
+  name:  z.formString({ required: true }).with(z.describe('Name')),
+  email: z.formString({ required: true }).with(z.describe('Email')),
+  bio:   z.formString().with(z.describe('Bio')),
+});
+
+type ProfileData = z.infer&lt;typeof profileSchema&gt;;
+
+function FormError({ error }: { error?: string }) {
+  return error ? &lt;span className="field-error"&gt;{error}&lt;/span&gt; : null;
+}
+
+function ProfileForm({ userId }: { userId: string }) {
+  const queryClient = useQueryClient();
+
+  // 1. Fetch current server data
+  const { data, isPending, isError } = useQuery({
+    queryKey: ['profile', userId],
+    queryFn:  () =&gt; api.getProfile(userId),
+  });
+
+  // 2. Seed the form — confirmDirtyStateNavigation prompts before unsaved navigation
+  const { Form, formState, formStatus, formActions, formHandlers } =
+    useFormState(profileSchema, {
+      initialData: data,
+      confirmDirtyStateNavigation: true,
+    });
+
+  // 3. Mutation for saving
+  const { mutateAsync } = useMutation({
+    mutationFn: (values: ProfileData) =&gt; api.updateProfile(userId, values),
+  });
+
+  // 4. Submit handler — mutateAsync lives inside the async callback
+  const handleSubmit = formHandlers.handleSubmit(
+    async (submitState: SubmitState&lt;typeof profileSchema&gt;) =&gt; {
+      if (!submitState.valid) return submitState.errors;
+
+      try {
+        await mutateAsync(submitState.data);
+        return true;
+      } catch (err) {
+        return { _serverError: err instanceof Error ? err.message : 'Save failed.' };
+      }
+    },
+    {
+      resetDirty: true,
+      onSuccess: () =&gt; {
+        queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+      },
+    }
+  );
+
+  if (isPending) return &lt;Skeleton /&gt;;
+  if (isError) return &lt;ErrorMessage /&gt;;
+
+  return (
+    &lt;Form action={handleSubmit}&gt;
+      &lt;FormError error={formState.errors.getManual('_serverError')} /&gt;
+
+      &lt;label&gt;
+        {formState.descriptions.name}
+        {formState.required.name &amp;&amp; &lt;span&gt; *&lt;/span&gt;}
+        &lt;input
+          value={formState.data.name}
+          required={formState.required.name}
+          onChange={(e) =&gt; formActions.change('name', e.target.value)}
+          onBlur={() =&gt; formActions.touch('name')}
+        /&gt;
+        &lt;FormError error={formState.errors.name} /&gt;
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        {formState.descriptions.email}
+        {formState.required.email &amp;&amp; &lt;span&gt; *&lt;/span&gt;}
+        &lt;input
+          type="email"
+          value={formState.data.email}
+          required={formState.required.email}
+          onChange={(e) =&gt; formActions.change('email', e.target.value)}
+          onBlur={() =&gt; formActions.touch('email')}
+        /&gt;
+        &lt;FormError error={formState.errors.email} /&gt;
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        {formState.descriptions.bio}
+        &lt;textarea
+          value={formState.data.bio ?? ''}
+          onChange={(e) =&gt; formActions.change('bio', e.target.value)}
+          onBlur={() =&gt; formActions.touch('bio')}
+        /&gt;
+      &lt;/label&gt;
+
+      &lt;button type="submit" disabled={formStatus.submitting}&gt;Save Changes&lt;/button&gt;
+    &lt;/Form&gt;
+  );
+}</code></pre>
+          </div>
+          <h3>Seeding <code>initialData</code> from a query</h3>
+          <p>
+            The <code>initialData</code> option accepts
+            <code>DeepPartial&lt;z.infer&lt;T&gt;&gt;</code>, so you can pass query data directly.
+            While the query is loading, <code>data</code> is <code>undefined</code> and
+            <code>useFormState</code> falls back to schema defaults. Once the query resolves, each
+            field is populated with the server value.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const { data } = useQuery({
+  queryKey: ['profile', userId],
+  queryFn:  () =&gt; api.getProfile(userId),
+});
+
+// Pass data directly — undefined while loading, ProfileData once resolved
+useFormState(profileSchema, { initialData: data });</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Dirty-field protection</div>
+            <p>
+              <code>initialData</code> only updates <strong>non-dirty</strong> fields. Once a user
+              edits a field it is marked dirty and subsequent query revalidations will not overwrite
+              their input. Background refetches and cache invalidations are therefore safe — they
+              sync server-computed fields without clobbering in-progress edits.
+            </p>
+          </div>
+          <h3>Handling the loading state</h3>
+          <p>
+            Guard the form render behind <code>isPending</code> so users never see a blank form that
+            fills in half a second later:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const { data, isPending, isError } = useQuery({ ... });
+
+if (isPending) return &lt;Skeleton /&gt;;
+if (isError)   return &lt;ErrorMessage /&gt;;
+
+return &lt;Form action={handleSubmit}&gt;...&lt;/Form&gt;;</code></pre>
+          </div>
+          <p>
+            If you prefer to keep the form mounted during load — for example, to avoid losing scroll
+            position — disable inputs instead:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;Form action={handleSubmit}&gt;
+  &lt;fieldset disabled={isPending}&gt;
+    {/* fields render immediately with schema defaults, then fill in */}
+  &lt;/fieldset&gt;
+  &lt;button type="submit" disabled={isPending || formStatus.submitting}&gt;Save&lt;/button&gt;
+&lt;/Form&gt;</code></pre>
+          </div>
+          <h3>Calling a mutation on submit</h3>
+          <p>
+            <code>mutateAsync</code> returns a promise, so it drops straight into the async
+            <code>handleSubmit</code> callback. The <code>submitState.data</code> passed to the
+            callback is fully typed and validated — pass it directly to your mutation function.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const { mutateAsync } = useMutation({
+  mutationFn: (values: ProfileData) =&gt; api.updateProfile(userId, values),
+});
+
+const handleSubmit = formHandlers.handleSubmit(
+  async (submitState: SubmitState&lt;typeof profileSchema&gt;) =&gt; {
+    // Abort and display schema errors if client-side validation failed
+    if (!submitState.valid) return submitState.errors;
+
+    try {
+      await mutateAsync(submitState.data); // fully typed ProfileData
+      return true;                         // signals success to formStatus
+    } catch (err) {
+      // Returning an object surfaces it as a manual error in the form
+      return { _serverError: err instanceof Error ? err.message : 'Save failed.' };
+    }
+  },
+  { resetDirty: true } // clears dirty flags on success
+);</code></pre>
+          </div>
+          <h3>Invalidating the cache after a save</h3>
+          <p>
+            Use the <code>onSuccess</code> option to invalidate the query after a successful
+            submission. This triggers a background refetch so any server-computed fields — updated
+            timestamps, derived values, server-assigned IDs — flow back into the form via
+            <code>initialData</code>.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const handleSubmit = formHandlers.handleSubmit(
+  async (submitState) =&gt; { /* ... */ },
+  {
+    resetDirty: true,
+    onSuccess: () =&gt; {
+      // Refetch fires in the background; dirty-field protection means the
+      // fresh data fills only fields the user hasn't touched since the save.
+      queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+    },
+  }
+);</code></pre>
+          </div>
+          <h3>Surfacing server errors in the form</h3>
+          <p>
+            When the mutation throws, return an error object from the submit callback. Any key
+            prefixed with <code>_</code> is treated as a form-level error; other keys are matched
+            against field paths.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// Form-level error — display it near the submit button or at the top
+return { _serverError: 'The server is unavailable. Try again later.' };
+
+// Field-level error returned from the server
+return { email: 'This email is already registered.' };
+
+// Read either with getManual() — schema errors use errors.name, errors.email etc.
+&lt;FormError error={formState.errors.getManual('_serverError')} /&gt;</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              Manual errors set via a returned object are cleared automatically when the user next
+              edits the affected field. <code>formStatus.valid</code> is false while any manual
+              error is present; see the <a href="#manual-errors">Manual Errors</a> section for the
+              full API.
+            </p>
           </div>
         </section>
         <section class="section" id="devtools">
