@@ -26,7 +26,8 @@
           <span class="nav-section-label">Getting Started</span>
           <a href="#overview" class="nav-link active">Overview</a>
           <a href="#installation" class="nav-link">Installation</a>
-          <a href="#no-wrappers" class="nav-link">No Render Props</a>
+          <a href="#typescript" class="nav-link">TypeScript</a>
+          <a href="#philosophy" class="nav-link">Philosophy</a>
         </div>
         <div class="nav-section">
           <span class="nav-section-label">Core Concepts</span>
@@ -34,8 +35,8 @@
           <a href="#basic-usage" class="nav-link">Basic Usage</a>
           <a href="#path-expressions" class="nav-link">Path Expressions</a>
           <a href="#form-state" class="nav-link">Form State</a>
-          <a href="#ranges-descriptions" class="nav-link">Schema Metadata</a>
           <a href="#form-status" class="nav-link">Form Status</a>
+          <a href="#ranges-descriptions" class="nav-link">Schema Metadata</a>
         </div>
         <div class="nav-section">
           <span class="nav-section-label">Features</span>
@@ -50,8 +51,6 @@
         </div>
         <div class="nav-section">
           <span class="nav-section-label">Advanced</span>
-          <a href="#typescript" class="nav-link">TypeScript Types</a>
-          <a href="#react19" class="nav-link">React 19</a>
           <a href="#debounce" class="nav-link">Debounced Changes</a>
           <a href="#listener" class="nav-link">State Listener</a>
           <a href="#watch" class="nav-link">useWatch</a>
@@ -79,7 +78,7 @@
             </li>
             <li>
               <strong>Path expressions</strong> — address nested and array fields with typed lambda
-              paths: <code>(p) =&gt; p.info.address</code>.
+              paths: <code>(path) =&gt; path.info.address</code>.
             </li>
             <li>
               <strong>End-to-end type safety</strong> — generics flow from schema to every method
@@ -102,13 +101,18 @@
         </section>
         <section class="section" id="installation">
           <h2>Installation</h2>
+          <div class="callout callout-info">
+            <div class="callout-label">Requirement</div>
+            <p>FormState requires <strong>React 19.2 or greater</strong>.</p>
+          </div>
           <p>
             Install FormState — Zod is bundled as a dependency, so you don't need to install it
             separately:
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">bash</span></div>
-            <pre><code class="language-bash">npm install github:dstarosta/FormState#v1.0.0</code></pre>
+            <pre><code class="language-bash">npm install react@^19.2.0 react-dom@^19.2.0
+npm install github:dstarosta/FormState#v1.0.0</code></pre>
           </div>
           <p>Then import from the package root:</p>
           <div class="code-block">
@@ -126,18 +130,233 @@
 } from 'form-state';</code></pre>
           </div>
         </section>
-        <section class="section" id="no-wrappers">
-          <h2>No Render Props or Field Wrappers</h2>
+        <section class="section" id="typescript">
+          <div class="section-eyebrow">Getting Started</div>
+          <h2>TypeScript</h2>
+          <p>
+            FormState is built around a handful of exported generic types that flow from your schema
+            through every callback, accessor, and component prop. Understanding them unlocks the
+            full type-safety story.
+          </p>
+          <h3>Requirements</h3>
+          <p>
+            FormState's types rely on features and inference improvements introduced in recent
+            TypeScript releases. Two requirements apply to all projects using this library:
+          </p>
+          <div class="callout callout-info">
+            <div class="callout-label">TypeScript version</div>
+            <p>
+              Types require <strong>TypeScript 5.9 or greater</strong>. Earlier versions will
+              produce incorrect or missing type errors.
+            </p>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Strict mode</div>
+            <p>
+              Enable <code>"strict": true</code> in your <code>tsconfig.json</code>. Without it
+              several key checks — including narrowing inside <code>handleSubmit</code> and
+              discriminated-union narrowing on <code>SubmitState</code> — will not fire.
+            </p>
+            <div class="code-block">
+              <div class="code-block-header"><span class="code-block-lang">json</span></div>
+              <pre><code class="language-json">// tsconfig.json
+{
+  "compilerOptions": {
+    "strict": true
+  }
+}</code></pre>
+            </div>
+          </div>
+          <h3>Type depth limitation</h3>
+          <p>
+            Path inference supports up to <strong>10 levels of nesting</strong>. Beyond that the
+            type resolves to an empty tuple and path inference stops working.
+          </p>
+          <div class="callout callout-tip">
+            <div class="callout-label">Tip</div>
+            <p>
+              Keep schemas at 10 levels of nesting or fewer. If you find yourself hitting the
+              limit, flatten repeated sub-structures into their own schemas and compose them at the
+              top level rather than nesting further.
+            </p>
+          </div>
+          <h3><span class="type-chip">FormPath&lt;T&gt;</span></h3>
+          <p>
+            The type of a path expression — either a top-level key string or an arrow function that
+            navigates the form data tree. Use it when passing a field reference as a prop.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type FormPath } from 'form-state';
+
+// A component that displays an error for any field
+function FieldError&lt;T&gt;({
+  path,
+  errors,
+}: {
+  path: FormPath&lt;T&gt;;
+  errors: FormState&lt;T&gt;['errors'];
+}) {
+  const message = errors.get(path as (p: T) =&gt; unknown);
+  return message ? &lt;p className="error"&gt;{message}&lt;/p&gt; : null;
+}
+
+// Caller — the compiler checks the path against FormSchema
+&lt;FieldError path={(path: FormSchema) =&gt; path.info.age} errors={formState.errors} /&gt;</code></pre>
+          </div>
+          <h3><span class="type-chip">FormState&lt;T&gt;</span></h3>
+          <p>
+            The type of <code>formState</code> itself. Use it when writing callbacks that receive
+            the state snapshot — e.g. debounce callbacks or change listeners.
+          </p>
+          <div class="callout callout-warning">
+            <div class="callout-label">Warning</div>
+            <p>
+              The <code>callback</code> option requires a stable reference — define it outside the
+              component or wrap it in <code>useCallback</code>. Passing a new inline function on
+              every render will produce a console warning.
+            </p>
+          </div>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type FormState } from 'form-state';
+
+// Debounce callback — typed state snapshot
+function NoteTextInput({
+  index,
+  callback,
+}: {
+  index: number;
+  callback?: (state: FormState&lt;FormSchema&gt;) =&gt; void;
+}) {
+  const { formActions } = useSchemaFormState();
+
+  return (
+    &lt;input
+      onChange={(e) =&gt;
+        formActions.change((path) =&gt; path.notes[index].text, e.target.value, {
+          debounceIntervalMs: 500,
+          callback,           // fires after debounce with latest FormState
+          touch: true,
+        })
+      }
+    /&gt;
+  );
+}</code></pre>
+          </div>
+          <h3><span class="type-chip">FormMode</span></h3>
+          <p>
+            The union <code>'editable' | 'readOnly' | 'disabled'</code>. Use it when building mode
+            selector components.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type FormMode } from 'form-state';
+
+type ModeSelectorProps = {
+  mode: FormMode;
+  onChange: (mode: FormMode) =&gt; void;
+};
+
+// The compiler rejects anything that is not a valid mode string
+formActions.setMode('readOnly');   // ✅
+formActions.setMode('published');  // ❌ Type error</code></pre>
+          </div>
+          <h3><span class="type-chip">SubmitState&lt;T&gt;</span></h3>
+          <p>
+            The discriminated union passed to your <code>handleSubmit</code> callback. Narrow on
+            <code>valid</code> to get a typed <code>data</code> object.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type SubmitState } from 'form-state';
+
+const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
+  if (!state.valid) {
+    // state.errors is Record&lt;string, string&gt;
+    // state.data is DeepPartial&lt;FormSchema&gt; — may have empty/invalid fields
+    return state.errors;
+  }
+
+  // state.data is fully typed FormSchema here — no cast needed
+  await api.save(state.data.name);   // string, not string | ''
+  await api.save(state.data.age);    // number, not number | ''
+  return true;
+};</code></pre>
+          </div>
+          <h3><span class="type-chip">SubmitSuccessState&lt;T&gt;</span></h3>
+          <p>
+            Passed to the <code>onSuccess</code> callback — guaranteed valid data plus the raw
+            <code>FormData</code>.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type SubmitSuccessState } from 'form-state';
+
+function App() {
+  const handleFormSubmit = ({ data, formData }: SubmitSuccessState&lt;FormSchema&gt;) =&gt; {
+    // data is fully typed FormSchema
+    const output = formData.get('output');
+    if (output === 'redirect') {
+      router.push('/done');
+    } else {
+      showDialog({ dataObject: schema.toObject(data), formData });
+    }
+  };
+
+  return &lt;AppForm onSubmitted={handleFormSubmit} /&gt;;
+}</code></pre>
+          </div>
+          <h3><span class="type-chip">SchemaDataObject&lt;T&gt;</span></h3>
+          <p>
+            The return type of <code>schema.toObject(data)</code> — internal fields stripped,
+            optional empties removed.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type SchemaDataObject } from 'form-state';
+
+// Component that displays clean API-ready data
+function JsonData({ data }: { data: SchemaDataObject&lt;FormSchema&gt; }) {
+  return &lt;pre&gt;{JSON.stringify(data, null, 2)}&lt;/pre&gt;;
+}
+
+// Usage
+&lt;JsonData data={schema.toObject(formState.data)} /&gt;</code></pre>
+          </div>
+          <h3><span class="type-chip">StateChangeListener&lt;T&gt;</span></h3>
+          <p>The type for <code>formHooks.useListener</code> callbacks.</p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type StateChangeListener } from 'form-state';
+
+// Define once outside the component to keep the reference stable
+const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCount }) =&gt; {
+  if (type === 'submit') {
+    analytics.track('form_submit', { count: submitCount, name: data.name });
+  }
+};
+
+// In your component:
+formHooks.useListener(listener);</code></pre>
+          </div>
+        </section>
+        <section class="section" id="philosophy">
+          <div class="section-eyebrow">Getting Started</div>
+          <h2>Philosophy</h2>
+          <p>
+            FormState is built around a small set of ideas that inform every design decision.
+            Understanding them makes the library predictable to use and straightforward to extend.
+          </p>
+
+          <h3>No Render Props</h3>
           <p>
             Libraries like TanStack Form and React Hook Form manage per-field subscriptions by
             wrapping each input in a special component or render prop. FormState takes a different
             approach: state lives in a plain object you read directly, and you wire inputs yourself
-            with ordinary props.
+            with ordinary props. You can always build a layer of abstracted components on top — but
+            you never have to.
           </p>
-          <p>
-            You can always create a layer of higher abstracted components on top of the library.
-          </p>
-          <h3>What other libraries look like</h3>
           <div class="code-split">
             <div class="code-block">
               <div class="code-block-header">
@@ -165,33 +384,9 @@
             <div class="code-block">
               <div class="code-block-header">
                 <span class="code-block-lang">tsx</span>
-                <span class="code-block-label">React Hook Form</span>
+                <span class="code-block-label">FormState</span>
               </div>
-              <pre><code class="language-tsx">// Controller wrapper for controlled inputs
-&lt;Controller
-  name="name"
-  control={control}
-  render={({ field, fieldState }) =&gt; (
-    &lt;div&gt;
-      &lt;input
-        {...field}
-      /&gt;
-      {fieldState.error &amp;&amp; (
-        &lt;span&gt;{fieldState.error.message}&lt;/span&gt;
-      )}
-    &lt;/div&gt;
-  )}
-/&gt;</code></pre>
-            </div>
-          </div>
-          <h3>What FormState looks like</h3>
-          <p>
-            There is no wrapper component. You read state and call actions directly — the input is
-            just an input.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">// No wrapper — read state and call actions directly
+              <pre><code class="language-tsx">// No wrapper — read state and call actions directly
 &lt;div&gt;
   &lt;input
     value={formState.data.name}
@@ -202,40 +397,16 @@
     &lt;span&gt;{formState.errors.name}&lt;/span&gt;
   )}
 &lt;/div&gt;</code></pre>
+            </div>
           </div>
-          <h3>Why this matters</h3>
-          <ul>
-            <li>
-              <strong>Flat markup.</strong> Each field adds no extra nesting level. A complex form
-              stays readable as the component tree, not as a tree of wrapper components.
-            </li>
-            <li>
-              <strong>No new API to learn per field.</strong> There is no <code>field</code> object,
-              no <code>fieldState</code>, no render prop argument. You work with the same
-              <code>formState</code> and <code>formActions</code> everywhere.
-            </li>
-            <li>
-              <strong>Plain component props.</strong> Passing data to a child component is a normal
-              prop — not a render function, not a context injection, not a HOC. Any UI library or
-              design system component accepts it without an adapter.
-            </li>
-            <li>
-              <strong>TypeScript errors are direct.</strong> When a type is wrong, the error points
-              at your input's prop, not at the internals of a render-prop wrapper two levels up.
-            </li>
-            <li>
-              <strong>Conditional fields are just React.</strong> Showing or hiding a field,
-              switching between two inputs based on mode, or rendering a list of dynamic fields is
-              standard JSX — no field-level API for conditionals, no <code>shouldUnregister</code>,
-              no array field helpers with their own abstraction.
-            </li>
-            <li>
-              <strong>Extraction is trivial.</strong> Moving a field into its own component means
-              passing <code>formState</code> and <code>formActions</code> as props, or using the
-              context hook. No render prop threading, no <code>useController</code>, no
-              re-registration.
-            </li>
-          </ul>
+          <p>
+            There is no <code>field</code> object, no <code>fieldState</code>, no render prop
+            argument. You work with the same <code>formState</code> and <code>formActions</code>
+            everywhere. Passing data to a child component is a normal prop. Conditional fields are
+            plain JSX. Moving a field into its own component means passing
+            <code>formState</code> and <code>formActions</code> as props — no re-registration, no
+            <code>useController</code>.
+          </p>
           <div class="callout callout-info">
             <div class="callout-label">Trade-off</div>
             <p>
@@ -246,10 +417,80 @@
               its own re-renders.
             </p>
           </div>
+
+          <h3>TypeScript First</h3>
           <p>
-            For a single high-frequency field — a live-preview textarea, a search box — you can opt
-            out of controlled binding entirely. An uncontrolled input reads its value from the DOM
-            on submit and fires no state updates while the user types:
+            Types flow end-to-end from your schema through every method signature, callback, and
+            component prop. There are no <code>any</code> casts, no silent type widening, and no
+            generics to pass by hand — inference does the work.
+          </p>
+          <p>
+            Path expressions are type-checked at compile time. <code>(path) =&gt; path.info.age</code> is
+            valid or it isn't, and the error lands on your input's prop — not inside a render-prop
+            wrapper two levels up. After a successful submit, <code>state.data</code> is fully
+            narrowed: <code>string</code>, not <code>string | ''</code>.
+          </p>
+          <p>
+            See the <a href="#typescript">TypeScript section</a> for the full exported type
+            reference and <code>tsconfig</code> requirements.
+          </p>
+
+          <h3>React 19 Native</h3>
+          <p>
+            FormState is built around React 19's form model, not bolted on top of it. The
+            <code>Form</code> component returned by the hook accepts an async
+            <code>action</code> prop directly — no <code>onSubmit</code> wiring, no
+            <code>e.preventDefault()</code>. Because it uses a real
+            <code>&lt;form action&gt;</code>, React 19's <code>useFormStatus</code> works in any
+            child component without any extra setup, and server actions drop in without adapters.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const { Form, formHandlers } = useSchemaFormState();
+
+const action = formHandlers.handleSubmit(async (state, formData) =&gt; {
+  if (!state.valid) return state.errors;
+  await api.save(state.data);
+  return true;
+});
+
+// React 19 action prop — FormState validates, calls your handler, tracks status
+&lt;Form action={action}&gt;
+  {/* fields */}
+  &lt;button type="submit"&gt;Save&lt;/button&gt;
+&lt;/Form&gt;</code></pre>
+          </div>
+          <p>
+            See <a href="#submission">Form Submission</a> for the full API including
+            <code>useFormStatus</code> integration and server action patterns.
+          </p>
+
+          <h3>Schema-Driven, Non-Intrusive</h3>
+          <p>
+            One Zod schema is the single source of truth for field types, validation rules, error
+            messages, allowed values, ranges, and human-readable labels. It lives outside your
+            components — controls are plain HTML inputs that never import or reference the schema
+            directly.
+          </p>
+          <p>
+            This keeps component signatures simple and the schema portable. You can reuse the same
+            schema for server-side API validation, share it across multiple forms, or version it
+            independently of your UI. The schema is expressive — cross-field rules, async
+            validators, conditional requirements — but that complexity stays in one place rather
+            than being distributed across input components.
+          </p>
+
+          <h3>Controlled is Cool</h3>
+          <p>
+            Every field is controlled by default: <code>formState.data</code> is the source of
+            truth and React renders from it. This makes the form fully predictable — any state
+            transition is visible as a plain object diff, which means conditional logic, cross-field
+            validation, and debugging are all just JavaScript.
+          </p>
+          <p>
+            Uncontrolled inputs are available as an escape hatch for high-frequency fields where
+            re-rendering on every keystroke is undesirable. The value is read from the DOM at submit
+            time and fires no intermediate state updates:
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
@@ -260,10 +501,8 @@
 /&gt;</code></pre>
           </div>
           <p>
-            To observe the raw typed value (e.g. for a character counter or live preview) without
-            re-rendering the form component on every keystroke, see
-            <a href="#watch"><code>useWatch</code></a
-            >.
+            To observe a raw typed value — a live character counter, a search preview — without
+            triggering a full re-render, see <a href="#watch"><code>useWatch</code></a>.
           </p>
         </section>
         <hr />
@@ -340,7 +579,7 @@ type Schema = z.infer&lt;typeof schema&gt;;
   })
   .check(
     z.validate(
-      (data) => data.priority || data.notes.every((n) => n.typeId !== 2),
+      (data) => data.priority || data.notes.every((note) => note.typeId !== 2),
       { path: 'priority', error: 'Priority must be set to allow priority notes.' }
     )
   );</code></pre>
@@ -418,11 +657,15 @@ type Schema = z.infer&lt;typeof schema&gt;;
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">import { useFormState, z } from 'form-state';
+            <pre><code class="language-tsx">import { useFormState, z, convert } from 'form-state';
+
+const STATUS_VALUES = ['active', 'inactive', 'pending'] as const;
 
 const schema = z.strictObject({
   name: z.formString({ required: true, error: 'Name is required' }).with(z.describe('Name')),
   email: z.formString().with(z.describe('Email')),
+  status: z.formValues(STATUS_VALUES).with(z.describe('Status')),
+  isAdmin: z.default(z.formBoolean(), false).with(z.describe('Admin')),
 });
 
 export function ProfileForm() {
@@ -463,6 +706,51 @@ export function ProfileForm() {
           value={formState.data.email}
           onChange={(e) =&gt; formActions.change('email', e.target.value)}
         /&gt;
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        {formState.descriptions.status}
+        &lt;select
+          value={formState.data.status}
+          onChange={(e) =&gt;
+            formActions.change('status', convert.toLiteral(e.target.value, STATUS_VALUES))
+          }
+          onBlur={() =&gt; formActions.touch('status')}
+        &gt;
+          &lt;option value=""&gt;Select status…&lt;/option&gt;
+          &lt;option value="active"&gt;Active&lt;/option&gt;
+          &lt;option value="inactive"&gt;Inactive&lt;/option&gt;
+          &lt;option value="pending"&gt;Pending&lt;/option&gt;
+        &lt;/select&gt;
+        {formState.errors.status &amp;&amp; &lt;span&gt;{formState.errors.status}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      {/* Radio buttons — alternative rendering of the same field */}
+      &lt;fieldset onBlur={() =&gt; formActions.touch('status')}&gt;
+        &lt;legend&gt;{formState.descriptions.status}&lt;/legend&gt;
+        {STATUS_VALUES.map((status) =&gt; (
+          &lt;label key={status}&gt;
+            &lt;input
+              type="radio"
+              value={status}
+              checked={formState.data.status === status}
+              onChange={(e) =&gt;
+                formActions.change('status', convert.toLiteral(e.target.value, STATUS_VALUES))
+              }
+            /&gt;
+            {status}
+          &lt;/label&gt;
+        ))}
+        {formState.errors.status &amp;&amp; &lt;span&gt;{formState.errors.status}&lt;/span&gt;}
+      &lt;/fieldset&gt;
+
+      &lt;label&gt;
+        &lt;input
+          type="checkbox"
+          checked={formState.data.isAdmin}
+          onChange={(e) =&gt; formActions.change('isAdmin', e.target.checked)}
+        /&gt;
+        {formState.descriptions.isAdmin}
       &lt;/label&gt;
 
       &lt;button type="submit" disabled={formStatus.submitting}&gt;
@@ -507,16 +795,16 @@ formActions.array.remove('tags', 0);</code></pre>
                 <span class="code-block-label">Arrow function — any depth</span>
               </div>
               <pre><code class="language-tsx">// Nested objects
-formActions.change((p) =&gt; p.auto.modelId, value);
-formActions.touch((p) =&gt; p.info.address.city);
-formState.errors.get((p) =&gt; p.info.age);
-formState.touched.get((p) =&gt; p.info.age);
-formState.dirty.get((p) =&gt; p.info.age);
+formActions.change((path) =&gt; path.auto.modelId, value);
+formActions.touch((path) =&gt; path.info.address.city);
+formState.errors.get((path) =&gt; path.info.age);
+formState.touched.get((path) =&gt; path.info.age);
+formState.dirty.get((path) =&gt; path.info.age);
 
 // Array items and their fields
-formActions.change((p) =&gt; p.notes[index].text, value);
-formActions.array.append((p) =&gt; p.profile.skills, ['TS']);
-formState.descriptions.get((p) =&gt; p.notes[0].typeId);</code></pre>
+formActions.change((path) =&gt; path.notes[index].text, value);
+formActions.array.append((path) =&gt; path.profile.skills, ['TS']);
+formState.descriptions.get((path) =&gt; path.notes[0].typeId);</code></pre>
             </div>
           </div>
           <div class="callout callout-tip">
@@ -545,16 +833,16 @@ formState.descriptions.get((p) =&gt; p.notes[0].typeId);</code></pre>
 const { formActions, formState } = useFormState(schema);
 
 // ✅ Correct — TypeScript knows 'age' accepts number | ''
-formActions.change((p) =&gt; p.user.age, 30);
+formActions.change((path) =&gt; path.user.age, 30);
 
 // ✅ Correct — TypeScript knows 'name' accepts string
-formActions.change((p) =&gt; p.user.name, 'Alice');
+formActions.change((path) =&gt; path.user.name, 'Alice');
 
 // ❌ Type error — 'user.age' is number | '', not string
-formActions.change((p) =&gt; p.user.age, 'hello');
+formActions.change((path) =&gt; path.user.age, 'hello');
 
 // ❌ Type error — 'user.typo' does not exist on the schema
-formActions.change((p) =&gt; p.user.typo, 'value');</code></pre>
+formActions.change((path) =&gt; path.user.typo, 'value');</code></pre>
           </div>
           <h3>Choosing between the two forms</h3>
           <table class="prop-table">
@@ -570,11 +858,11 @@ formActions.change((p) =&gt; p.user.typo, 'value');</code></pre>
                 <td class="prop-desc">Either — string is slightly shorter</td>
               </tr>
               <tr>
-                <td class="prop-desc">Nested object (<code>p.info.age</code>)</td>
+                <td class="prop-desc">Nested object (<code>path.info.age</code>)</td>
                 <td class="prop-desc">Arrow function</td>
               </tr>
               <tr>
-                <td class="prop-desc">Array item field (<code>p.notes[index].text</code>)</td>
+                <td class="prop-desc">Array item field (<code>path.notes[index].text</code>)</td>
                 <td class="prop-desc">Arrow function</td>
               </tr>
               <tr>
@@ -613,8 +901,8 @@ formState.data.tags[0]           // string</code></pre>
 formState.errors.name                              // 'Name is required' | undefined
 
 // Nested field — use .get() with a path expression
-formState.errors.get((p) =&gt; p.info.age)           // string | undefined
-formState.errors.get((p) =&gt; p.notes[index].text)  // string | undefined
+formState.errors.get((path) =&gt; path.info.age)           // string | undefined
+formState.errors.get((path) =&gt; path.notes[index].text)  // string | undefined
 
 // Manual errors set via setError()
 formState.errors.getManual('_serverError')
@@ -637,9 +925,9 @@ formState.touched.name          // true after blur / explicit touch call
 formState.required.name         // derived from schema — never changes
 
 // .get() for nested fields
-formState.dirty.get((p) =&gt; p.info.address.city)
-formState.touched.get((p) =&gt; p.notes[index].text)
-formState.required.get((p) =&gt; p.info.age)
+formState.dirty.get((path) =&gt; path.info.address.city)
+formState.touched.get((path) =&gt; path.notes[index].text)
+formState.required.get((path) =&gt; path.info.age)
 
 // Enumerate all keys that are currently truthy
 formState.dirty.getKeys()       // ['name', 'info.age', ...]
@@ -653,19 +941,19 @@ formState.touched.getKeys()</code></pre>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// Get the full range object
-const ageRange = formState.ranges.get((p) =&gt; p.age);
+const ageRange = formState.ranges.get((path) =&gt; path.age);
 // { type: 'range', format: 'integer', min: 0, max: 150 }
 
 // Direct min/max helpers accept both forms
 formState.ranges.getMin('age')              // 0
-formState.ranges.getMax((p) =&gt; p.age)      // 150
+formState.ranges.getMax((path) =&gt; path.age)      // 150
 formState.ranges.getMax('name')             // 50  (string maxLength)
 
 // Wire directly to input attributes
 &lt;input
   type="number"
-  min={formState.ranges.getMin((p) =&gt; p.age)}
-  max={formState.ranges.getMax((p) =&gt; p.age)}
+  min={formState.ranges.getMin((path) =&gt; path.age)}
+  max={formState.ranges.getMax((path) =&gt; path.age)}
 /&gt;
 &lt;input
   type="text"
@@ -677,15 +965,15 @@ formState.ranges.getMax('name')             // 50  (string maxLength)
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// z.describe() values are available at runtime
 formState.descriptions.name                         // 'Full Name'
-formState.descriptions.get((p) =&gt; p.info.age)      // 'Age'
-formState.descriptions.get((p) =&gt; p.notes[0])      // 'Note'  (index normalised to [0])
+formState.descriptions.get((path) =&gt; path.info.age)      // 'Age'
+formState.descriptions.get((path) =&gt; path.notes[0])      // 'Note'  (index normalised to [0])
 
 // Patterns (from z.regex()) as raw strings for input[pattern]
 formState.patterns.name                             // '^[\\w\\s\'-]+$'
-formState.patterns.get((p) =&gt; p.info.id)
+formState.patterns.get((path) =&gt; path.info.id)
 
 // Use in JSX
-&lt;label&gt;{formState.descriptions.get((p) =&gt; p.auto.modelId)}&lt;/label&gt;</code></pre>
+&lt;label&gt;{formState.descriptions.get((path) =&gt; path.auto.modelId)}&lt;/label&gt;</code></pre>
           </div>
           <h3>Preparing data for an API</h3>
           <p>
@@ -700,10 +988,90 @@ formState.patterns.get((p) =&gt; p.info.id)
 await api.post('/users', payload);</code></pre>
           </div>
         </section>
+        <section class="section" id="form-status">
+          <h2>Form Status</h2>
+          <p>High-level booleans about the form as a whole.</p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>mode</code></td>
+                <td><code>'editable' | 'readOnly' | 'disabled'</code></td>
+                <td class="prop-desc">Current form mode.</td>
+              </tr>
+              <tr>
+                <td><code>readOnly</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">Shorthand for <code>mode === 'readOnly'</code>.</td>
+              </tr>
+              <tr>
+                <td><code>disabled</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">Shorthand for <code>mode === 'disabled'</code>.</td>
+              </tr>
+              <tr>
+                <td><code>dirty</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">True if any field value differs from its initial value.</td>
+              </tr>
+              <tr>
+                <td><code>touched</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">True if any field has been touched.</td>
+              </tr>
+              <tr>
+                <td><code>valid</code></td>
+                <td><code>boolean | null</code></td>
+                <td class="prop-desc">
+                  <code>null</code> before first validation, then true/false.
+                </td>
+              </tr>
+              <tr>
+                <td><code>validSchema</code></td>
+                <td><code>boolean | null</code></td>
+                <td class="prop-desc">Schema validity ignoring manual errors.</td>
+              </tr>
+              <tr>
+                <td><code>submitting</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">True while <code>handleSubmit</code> callback is running.</td>
+              </tr>
+              <tr>
+                <td><code>submitted</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">True after a successful submit.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;button type="submit" disabled={!formStatus.dirty || formStatus.submitting}&gt;
+  Save changes
+&lt;/button&gt;
+
+{formStatus.valid === false &amp;&amp; (
+  &lt;p&gt;Please fix the errors above before saving.&lt;/p&gt;
+)}</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              <code>formStatus.valid</code> is <code>null</code> when validation has never run. This
+              lets you distinguish "not yet validated" from "known valid" without extra state.
+            </p>
+          </div>
+        </section>
+        <hr />
         <section class="section" id="ranges-descriptions">
           <h2>Schema Metadata</h2>
           <p>
-            FormState extracts metadata from your schema at initialisation time and exposes it as
+            FormState extracts metadata from your schema at initialization time and exposes it as
             plain, typed objects — no extra wiring needed. All five live on
             <code>formState</code> and are keyed the same way as <code>data</code> and
             <code>errors</code>:
@@ -779,11 +1147,11 @@ await api.post('/users', payload);</code></pre>
 
 // Nested field — use .get() with a path expression
 &lt;label htmlFor="email"&gt;
-  {formState.descriptions.get((p) =&gt; p.info.email)}
+  {formState.descriptions.get((path) =&gt; path.info.email)}
 &lt;/label&gt;
 
 // Array item field — index is normalised to [0] in descriptions
-&lt;label&gt;{formState.descriptions.get((p) =&gt; p.notes[0].text)}&lt;/label&gt;</code></pre>
+&lt;label&gt;{formState.descriptions.get((path) =&gt; path.notes[0].text)}&lt;/label&gt;</code></pre>
           </div>
           <h3>Ranges wired to input attributes</h3>
           <p>
@@ -871,7 +1239,7 @@ await api.post('/users', payload);</code></pre>
 // ── Date input ─────────────────────────────────────────────────
 const rawDate = formState.data.birthDate;
 const dateValue = rawDate instanceof Date ? formatDate(rawDate, 'yyyy-MM-dd') : rawDate;
-const minDate = formState.ranges.getMin((p) =&gt; p.birthDate);
+const minDate = formState.ranges.getMin((path) =&gt; path.birthDate);
 const minAttr = minDate instanceof Date ? formatDate(minDate, 'yyyy-MM-dd') : undefined;
 
 &lt;div&gt;
@@ -919,7 +1287,7 @@ const minAttr = minDate instanceof Date ? formatDate(minDate, 'yyyy-MM-dd') : un
 formState.required.name                          // true | false
 
 // Nested field
-formState.required.get((p) =&gt; p.info.age)       // true | false
+formState.required.get((path) =&gt; path.info.age)       // true | false
 
 // In JSX — drives the attribute and the visible asterisk together
 &lt;label htmlFor="name"&gt;
@@ -948,7 +1316,7 @@ formState.required.get((p) =&gt; p.info.age)       // true | false
 formState.patterns.id                            // "^\d+(-\d+)?$" | undefined
 
 // Nested field
-formState.patterns.get((p) =&gt; p.info.code)      // string | undefined
+formState.patterns.get((path) =&gt; path.info.code)      // string | undefined
 
 // In JSX
 &lt;input
@@ -977,7 +1345,7 @@ formState.patterns.get((p) =&gt; p.info.code)      // string | undefined
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// Read — top-level and nested
 formState.touched.name                           // boolean
-formState.touched.get((p) =&gt; p.info.age)        // boolean
+formState.touched.get((path) =&gt; path.info.age)        // boolean
 
 // Typical pattern: show error only after interaction
 {formState.touched.name &amp;&amp; formState.errors.name &amp;&amp; (
@@ -988,11 +1356,11 @@ formState.touched.get((p) =&gt; p.info.age)        // boolean
 &lt;input onBlur={() =&gt; formActions.touch('name')} /&gt;
 
 // Set immediately on change — good for selects and checkboxes
-formActions.change((p) =&gt; p.category, value, { touch: true });
+formActions.change((path) =&gt; path.category, value, { touch: true });
 
 // Touch a field programmatically without changing its value
 formActions.touch('name');
-formActions.touch((p) =&gt; p.notes[index].text);
+formActions.touch((path) =&gt; path.notes[index].text);
 
 // Touch with optional validation
 formActions.touch('name', { validate: true });
@@ -1066,86 +1434,6 @@ formStatus.touched                               // true if any field is touched
             </p>
           </div>
         </section>
-        <section class="section" id="form-status">
-          <h2>Form Status</h2>
-          <p>High-level booleans about the form as a whole.</p>
-          <table class="prop-table">
-            <thead>
-              <tr>
-                <th>Property</th>
-                <th>Type</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>mode</code></td>
-                <td><code>'editable' | 'readOnly' | 'disabled'</code></td>
-                <td class="prop-desc">Current form mode.</td>
-              </tr>
-              <tr>
-                <td><code>readOnly</code></td>
-                <td><code>boolean</code></td>
-                <td class="prop-desc">Shorthand for <code>mode === 'readOnly'</code>.</td>
-              </tr>
-              <tr>
-                <td><code>disabled</code></td>
-                <td><code>boolean</code></td>
-                <td class="prop-desc">Shorthand for <code>mode === 'disabled'</code>.</td>
-              </tr>
-              <tr>
-                <td><code>dirty</code></td>
-                <td><code>boolean</code></td>
-                <td class="prop-desc">True if any field value differs from its initial value.</td>
-              </tr>
-              <tr>
-                <td><code>touched</code></td>
-                <td><code>boolean</code></td>
-                <td class="prop-desc">True if any field has been touched.</td>
-              </tr>
-              <tr>
-                <td><code>valid</code></td>
-                <td><code>boolean | null</code></td>
-                <td class="prop-desc">
-                  <code>null</code> before first validation, then true/false.
-                </td>
-              </tr>
-              <tr>
-                <td><code>validSchema</code></td>
-                <td><code>boolean | null</code></td>
-                <td class="prop-desc">Schema validity ignoring manual errors.</td>
-              </tr>
-              <tr>
-                <td><code>submitting</code></td>
-                <td><code>boolean</code></td>
-                <td class="prop-desc">True while <code>handleSubmit</code> callback is running.</td>
-              </tr>
-              <tr>
-                <td><code>submitted</code></td>
-                <td><code>boolean</code></td>
-                <td class="prop-desc">True after a successful submit.</td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">&lt;button type="submit" disabled={!formStatus.dirty || formStatus.submitting}&gt;
-  Save changes
-&lt;/button&gt;
-
-{formStatus.valid === false &amp;&amp; (
-  &lt;p&gt;Please fix the errors above before saving.&lt;/p&gt;
-)}</code></pre>
-          </div>
-          <div class="callout callout-info">
-            <div class="callout-label">Note</div>
-            <p>
-              <code>formStatus.valid</code> is <code>null</code> when validation has never run. This
-              lets you distinguish "not yet validated" from "known valid" without extra state.
-            </p>
-          </div>
-        </section>
-        <hr />
         <section class="section" id="validation">
           <div class="section-eyebrow">Features</div>
           <h2>Validation</h2>
@@ -1234,10 +1522,10 @@ formActions.validate(
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// Select / dropdown — touch immediately on pick
-formActions.change((p) =&gt; p.auto.modelId, selectedId, { touch: true });
+formActions.change((path) =&gt; path.auto.modelId, selectedId, { touch: true });
 
 // Checkbox — touch and validate on click
-formActions.change((p) =&gt; p.priority, e.target.checked, { touch: true });
+formActions.change((path) =&gt; path.priority, e.target.checked, { touch: true });
 
 // Radio buttons — top-level string form is fine here
 formActions.change('sendEmail', 'yes', { touch: true });</code></pre>
@@ -1248,7 +1536,7 @@ formActions.change('sendEmail', 'yes', { touch: true });</code></pre>
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">useFormState(schema, {
   initialData: existingRecord,
-  initialTouched: ['name', 'email', (p) =&gt; p.info.age],
+  initialTouched: ['name', 'email', (path) =&gt; path.info.age],
 });</code></pre>
           </div>
         </section>
@@ -1262,7 +1550,7 @@ formActions.change('sendEmail', 'yes', { touch: true });</code></pre>
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// Append one or more items
 formActions.array.append('tags', ['react', 'typescript']);
-formActions.array.append((p) =&gt; p.notes, [{ text: '', typeId: '' }], { validate: true });
+formActions.array.append((path) =&gt; path.notes, [{ text: '', typeId: '' }], { validate: true });
 
 // Insert at a specific position
 formActions.array.insert('tags', 0, 'featured');
@@ -1278,7 +1566,7 @@ formActions.array.remove('tags', 0);
 
 // Remove by predicate
 formActions.array.remove('tags', (tag) =&gt; tag === 'deprecated');
-formActions.array.remove((p) =&gt; p.notes, (note) =&gt; note.text === '');
+formActions.array.remove((path) =&gt; path.notes, (note) =&gt; note.text === '');
 
 // Clear the array
 formActions.array.clear('tags');</code></pre>
@@ -1307,11 +1595,11 @@ formActions.array.clear('tags');</code></pre>
     &lt;input
       value={note.text}
       onChange={(e) =&gt;
-        formActions.change((p) =&gt; p.notes[index].text, e.target.value, { touch: true })
+        formActions.change((path) =&gt; path.notes[index].text, e.target.value, { touch: true })
       }
     /&gt;
-    {formState.errors.get((p) =&gt; p.notes[index].text) &amp;&amp; (
-      &lt;span&gt;{formState.errors.get((p) =&gt; p.notes[index].text)}&lt;/span&gt;
+    {formState.errors.get((path) =&gt; path.notes[index].text) &amp;&amp; (
+      &lt;span&gt;{formState.errors.get((path) =&gt; path.notes[index].text)}&lt;/span&gt;
     )}
     &lt;button onClick={() =&gt; formActions.array.remove('notes', index)}&gt;
       Remove
@@ -1546,9 +1834,9 @@ return (
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// name="email"
 //   formData.get('email')
-// name={inferName(p =&gt; p.info.age)}
+// name={inferName(path =&gt; path.info.age)}
 //   formData.get('info["age"]')
-// name={inferName(p =&gt; p.tags[0], 'dot')}
+// name={inferName(path =&gt; path.tags[0], 'dot')}
 //   formData.get('tags.0')
 
 const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
@@ -1604,620 +1892,6 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
               <code>&lt;form&gt;</code> relies on native browser behaviour, which may omit the
               button value in async action forms.
             </p>
-          </div>
-          <h3>Encoding FormData as a URL string</h3>
-          <p>
-            Use <code>formDataEncode</code> to convert a <code>FormData</code> instance into a
-            <code>URLSearchParams</code> object — handy for building query strings or
-            <code>application/x-www-form-urlencoded</code> request bodies. File entries are replaced
-            with the file's name.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { formDataEncode } from 'form-state';
-
-const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
-  if (!state.valid) return state.errors;
-
-  // Encode all entries as a URL-encoded string
-  const body = formDataEncode(formData).toString();
-  // "name=Alice&amp;info%5B%22age%22%5D=30"
-
-  // Omit specific fields (e.g. internal tracking values)
-  const bodyClean = formDataEncode(formData, ['_csrf', 'action']).toString();
-
-  await fetch('/api/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-  return true;
-};</code></pre>
-          </div>
-        </section>
-        <section class="section" id="manual-errors">
-          <h2>Manual Errors</h2>
-          <p>
-            Set errors outside of schema validation — server errors, async uniqueness checks, or
-            cross-field constraints — using <code>formActions.setError</code>.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">// Set by field key
-formActions.setError('email', 'This email address is already registered');
-
-// Set by path expression — nested field inside an array item
-formActions.setError((p) =&gt; p.notes[index].text, '666 is not allowed as note text');
-
-// Set a form-level error (arbitrary string key)
-formActions.setError('_serverError', 'Something went wrong. Please try again.');
-
-// Clear a specific manual error (pass null, undefined, or call with one argument)
-formActions.setError('email', null);
-formActions.setError((p) =&gt; p.notes[index].text); // clears it
-
-// Clear all manual errors
-formActions.clearManualErrors();
-
-// Clear only errors matching a predicate
-formActions.clearManualErrors({
-  predicate: (key) =&gt; key.startsWith('_'),
-});</code></pre>
-          </div>
-          <p>Read manual errors with <code>errors.getManual(key)</code>:</p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">{formState.errors.getManual('_serverError') &amp;&amp; (
-  &lt;div className="form-error"&gt;
-    {formState.errors.getManual('_serverError')}
-  &lt;/div&gt;
-)}</code></pre>
-          </div>
-          <div class="callout callout-info">
-            <div class="callout-label">Note</div>
-            <p>
-              Manual errors live alongside schema errors. <code>formStatus.valid</code> is false
-              when either type is present; <code>formStatus.validSchema</code> reflects only the Zod
-              schema result.
-            </p>
-          </div>
-        </section>
-        <section class="section" id="readonly-disabled">
-          <h2>Readonly &amp; Disabled</h2>
-          <p>
-            FormState tracks three modes: <code>'editable'</code>, <code>'readOnly'</code>, and
-            <code>'disabled'</code>. Switch between them at any time with
-            <code>formActions.setMode()</code>. The <code>formStatus</code> flags
-            (<code>readOnly</code>, <code>disabled</code>) make it easy to drive conditional
-            rendering.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">// Set initial mode
-useFormState(schema, { initialMode: 'readOnly' });
-
-// Switch at runtime
-formActions.setMode('editable');
-formActions.setMode('readOnly');
-formActions.setMode('disabled');</code></pre>
-          </div>
-          <h3>Rendering alternate UI in readonly mode</h3>
-          <p>
-            A common pattern is to render a plain text input in readonly mode and hide interactive
-            controls like remove buttons or add links.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">const { formState, formStatus, formActions } = useSchemaFormState();
-const { readOnly } = formStatus;
-
-// ── Select / dropdown ──────────────────────────────────────────
-{readOnly ? (
-  &lt;input
-    type="text"
-    readOnly
-    tabIndex={-1}
-    value={noteTypes.find((t) =&gt; t.value === note.typeId)?.label ?? ''}
-    autoComplete="off"
-  /&gt;
-) : (
-  &lt;Select
-    options={noteTypes}
-    value={note.typeId}
-    onChange={(opt) =&gt;
-      formActions.change((p) =&gt; p.notes[index].typeId, opt?.value ?? '', { touch: true })
-    }
-  /&gt;
-)}
-
-// ── Checkbox ───────────────────────────────────────────────────
-{readOnly ? (
-  &lt;input
-    type="text"
-    readOnly
-    tabIndex={-1}
-    value={data.priority === true ? 'Yes' : data.priority === false ? 'No' : 'N/A'}
-    autoComplete="off"
-  /&gt;
-) : (
-  &lt;input
-    id="priority"
-    type="checkbox"
-    checked={Boolean(data.priority)}
-    onChange={(e) =&gt; formActions.change((p) =&gt; p.priority, e.target.checked, { touch: true })}
-  /&gt;
-)}
-
-// ── Radio buttons ──────────────────────────────────────────────
-{readOnly ? (
-  &lt;input type="text" readOnly tabIndex={-1} value={data.sendEmail === 'yes' ? 'Yes' : 'No'} /&gt;
-) : (
-  &lt;span role="group"&gt;
-    &lt;label&gt;
-      &lt;input type="radio" value="yes"
-        onChange={() =&gt; formActions.change('sendEmail', 'yes', { touch: true })} /&gt;
-      Yes
-    &lt;/label&gt;
-    &lt;label&gt;
-      &lt;input type="radio" value="no"
-        onChange={() =&gt; formActions.change('sendEmail', 'no', { touch: true })} /&gt;
-      No
-    &lt;/label&gt;
-  &lt;/span&gt;
-)}
-
-// ── Array controls ─────────────────────────────────────────────
-{!readOnly &amp;&amp; (
-  &lt;button onClick={() =&gt; formActions.array.remove((p) =&gt; p.notes, index)}&gt;
-    Remove
-  &lt;/button&gt;
-)}
-{!readOnly &amp;&amp; (
-  &lt;button onClick={() =&gt; formActions.array.append('notes', [emptyNote])}&gt;
-    Add note
-  &lt;/button&gt;
-)}</code></pre>
-          </div>
-          <h3>Disabled via <code>&lt;fieldset&gt;</code></h3>
-          <p>
-            The native <code>disabled</code> attribute on a <code>&lt;fieldset&gt;</code>
-            disables all descendant controls at the browser level. Wire it to
-            <code>formStatus.disabled</code> for a single, zero-CSS approach.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">&lt;Form
-  action={formHandlers.handleSubmit(onSubmit)}
-  data-readonly={formStatus.readOnly}  // CSS hook for styling
-&gt;
-  &lt;fieldset disabled={formStatus.disabled}&gt;
-    &lt;IdInput /&gt;
-    &lt;NoteInputs /&gt;
-    &lt;AutoSelects /&gt;
-    {!formStatus.readOnly &amp;&amp; &lt;Footer /&gt;}
-  &lt;/fieldset&gt;
-&lt;/Form&gt;</code></pre>
-          </div>
-          <h3>Mode switcher example</h3>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">import { type FormMode } from 'form-state';
-
-function ModeSelector({
-  mode,
-  onChange,
-}: {
-  mode: FormMode;
-  onChange: (mode: FormMode) =&gt; void;
-}) {
-  return (
-    &lt;div&gt;
-      {(['editable', 'readOnly', 'disabled'] as FormMode[]).map((m) =&gt; (
-        &lt;label key={m}&gt;
-          &lt;input
-            type="radio"
-            checked={mode === m}
-            onChange={() =&gt; onChange(m)}
-          /&gt;
-          {m}
-        &lt;/label&gt;
-      ))}
-    &lt;/div&gt;
-  );
-}
-
-// In parent:
-&lt;ModeSelector
-  mode={formStatus.mode}
-  onChange={(m) =&gt; formActions.setMode(m)}
-/&gt;</code></pre>
-          </div>
-        </section>
-        <section class="section" id="css-classes">
-          <h2>CSS Classes</h2>
-          <p>
-            <code>formClasses(field)</code> returns a space-separated class string based on the
-            field's current state. Wire it to any element — label, wrapper, or input.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">// Generates e.g.: "form-state__error form-state__touched form-state__required"
-
-&lt;div className={formClasses('name')}&gt;
-  &lt;label&gt;Name&lt;/label&gt;
-  &lt;input ... /&gt;
-  &lt;span&gt;{formState.errors.name}&lt;/span&gt;
-&lt;/div&gt;
-
-// Arrow function path expression — works for nested fields too
-&lt;label className={formClasses((p) =&gt; p.info.name)}&gt;
-  {formState.descriptions.get((p) =&gt; p.info.name)}
-&lt;/label&gt;
-
-// Custom prefix per-call
-formClasses('name', undefined, { prefix: 'my-form' })
-// "my-form__error my-form__required"</code></pre>
-          </div>
-          <h3>CSS class names</h3>
-          <table class="prop-table">
-            <thead>
-              <tr>
-                <th>Class</th>
-                <th>Applied when</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>[prefix]__error</code></td>
-                <td class="prop-desc">Field has a validation error.</td>
-              </tr>
-              <tr>
-                <td><code>[prefix]__touched</code></td>
-                <td class="prop-desc">Field has been touched.</td>
-              </tr>
-              <tr>
-                <td><code>[prefix]__required</code></td>
-                <td class="prop-desc">Field is required per schema.</td>
-              </tr>
-            </tbody>
-          </table>
-          <p>Override the prefix globally:</p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">useFormState(schema, { CSSPrefix: 'my-form' });</code></pre>
-          </div>
-        </section>
-        <section class="section" id="context">
-          <h2>Context &amp; Provider</h2>
-          <p>
-            When a form spans multiple components, use the Context API instead of prop-drilling.
-            FormState provides a <code>FormStateProvider</code>, a
-            <code>useFormStateContext</code> hook, and a <code>formConnect</code> HOC.
-          </p>
-          <h3>Recommended pattern — shared accessor hook</h3>
-          <p>
-            Export a typed wrapper around <code>useFormStateContext</code> once and import it
-            everywhere in your form tree. This avoids passing the schema reference around and
-            produces more focused component imports.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">// app-schema.ts
-import { useFormStateContext, z } from 'form-state';
-
-export const formSchema = z.strictObject({ /* ... */ });
-export type FormSchema = z.infer&lt;typeof formSchema&gt;;
-
-// One typed hook — used everywhere in the form tree
-export const useSchemaFormState = () =&gt; useFormStateContext(formSchema);</code></pre>
-          </div>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">// NameField.tsx — leaf component, no props needed
-import { useSchemaFormState } from './app-schema';
-
-export function NameField() {
-  const { formState, formActions, formClasses } = useSchemaFormState();
-
-  return (
-    &lt;div&gt;
-      &lt;label className={formClasses((p) =&gt; p.info.name)}&gt;
-        {formState.descriptions.get((p) =&gt; p.info.name)}
-      &lt;/label&gt;
-      &lt;input
-        type="text"
-        value={formState.data.info.name}
-        maxLength={formState.ranges.getMax((p) =&gt; p.info.name)}
-        onChange={(e) =&gt; formActions.change((p) =&gt; p.info.name, e.target.value)}
-        onBlur={() =&gt; formActions.touch((p) =&gt; p.info.name)}
-      /&gt;
-      {formState.errors.get((p) =&gt; p.info.name) &amp;&amp; (
-        &lt;p&gt;{formState.errors.get((p) =&gt; p.info.name)}&lt;/p&gt;
-      )}
-    &lt;/div&gt;
-  );
-}</code></pre>
-          </div>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">// AppForm.tsx — root form component wrapped with formConnect
-import { formConnect } from 'form-state';
-import { formSchema } from './app-schema';
-
-function AppForm({ onSubmitted }: { onSubmitted: () =&gt; void }) {
-  const { Form, formHandlers } = useSchemaFormState();
-
-  return (
-    &lt;Form action={formHandlers.handleSubmit(onSubmit, { onSuccess: onSubmitted })}&gt;
-      &lt;fieldset&gt;
-        &lt;NameField /&gt;
-        &lt;AgeField /&gt;
-      &lt;/fieldset&gt;
-      &lt;button type="submit"&gt;Save&lt;/button&gt;
-    &lt;/Form&gt;
-  );
-}
-
-export default formConnect({
-  schema: formSchema,
-  confirmDirtyStateNavigation: true,  // warn on unsaved navigation
-  watch: true,                         // enable useWatch
-})(AppForm);</code></pre>
-          </div>
-          <div class="callout callout-warning">
-            <div class="callout-label">Warning</div>
-            <p>
-              <code>useFormStateContext</code> must receive the same schema reference that was
-              passed to the provider. A mismatched schema throws at runtime in development.
-            </p>
-          </div>
-        </section>
-        <section class="section" id="secure-input">
-          <h2>SecureInput</h2>
-          <p>
-            <code>SecureInput</code> is a drop-in password component that
-            <strong>never stores the real value in the DOM</strong>. It shows bullets visually but
-            passes the actual text only through controlled callbacks, preventing clipboard sniffing
-            and browser auto-fill exfiltration.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">import { SecureInput } from 'form-state';
-
-&lt;SecureInput
-  type="password"
-  onSecureChange={(value) =&gt; {
-    // 'value' is the real plaintext — never touches the DOM
-    formActions.change('password', value);
-  }}
-  onSecureBlur={(value) =&gt; {
-    formActions.change('password', value, { touch: true });
-  }}
-/&gt;</code></pre>
-          </div>
-          <p>Features:</p>
-          <ul>
-            <li>Displays masked bullets, real value stays in memory only.</li>
-            <li>Blocks copy, cut, paste, and drag to prevent leakage.</li>
-            <li>Ctrl+Z / Ctrl+Y undo protection.</li>
-            <li>Compatible with standard <code>onChange</code> for uncontrolled usage.</li>
-          </ul>
-          <div class="callout callout-warning">
-            <div class="callout-label">Warning</div>
-            <p>
-              The <code>Form</code> component logs a development warning if it detects a native
-              <code>&lt;input type="password"&gt;</code> — use <code>SecureInput</code> instead.
-            </p>
-          </div>
-        </section>
-        <hr />
-        <section class="section" id="typescript">
-          <div class="section-eyebrow">Advanced</div>
-          <h2>TypeScript Types</h2>
-          <p>
-            FormState is built around a handful of exported generic types that flow from your schema
-            through every callback, accessor, and component prop. Understanding them unlocks the
-            full type-safety story.
-          </p>
-          <h3><span class="type-chip">FormPath&lt;T&gt;</span></h3>
-          <p>
-            The type of a path expression — either a top-level key string or an arrow function that
-            navigates the form data tree. Use it when passing a field reference as a prop.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { type FormPath } from 'form-state';
-
-// A component that displays an error for any field
-function FieldError&lt;T&gt;({
-  path,
-  errors,
-}: {
-  path: FormPath&lt;T&gt;;
-  errors: FormState&lt;T&gt;['errors'];
-}) {
-  const message = errors.get(path as (p: T) =&gt; unknown);
-  return message ? &lt;p className="error"&gt;{message}&lt;/p&gt; : null;
-}
-
-// Caller — the compiler checks the path against FormSchema
-&lt;FieldError path={(p: FormSchema) =&gt; p.info.age} errors={formState.errors} /&gt;</code></pre>
-          </div>
-          <h3><span class="type-chip">FormState&lt;T&gt;</span></h3>
-          <p>
-            The type of <code>formState</code> itself. Use it when writing callbacks that receive
-            the state snapshot — e.g. debounce callbacks or change listeners.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { type FormState } from 'form-state';
-
-// Debounce callback — typed state snapshot
-function NoteTextInput({
-  index,
-  callback,
-}: {
-  index: number;
-  callback?: (state: FormState&lt;FormSchema&gt;) =&gt; void;
-}) {
-  const { formActions } = useSchemaFormState();
-
-  return (
-    &lt;input
-      onChange={(e) =&gt;
-        formActions.change((p) =&gt; p.notes[index].text, e.target.value, {
-          debounceIntervalMs: 500,
-          callback,           // fires after debounce with latest FormState
-          touch: true,
-        })
-      }
-    /&gt;
-  );
-}</code></pre>
-          </div>
-          <h3><span class="type-chip">FormMode</span></h3>
-          <p>
-            The union <code>'editable' | 'readOnly' | 'disabled'</code>. Use it when building mode
-            selector components.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { type FormMode } from 'form-state';
-
-type ModeSelectorProps = {
-  mode: FormMode;
-  onChange: (mode: FormMode) =&gt; void;
-};
-
-// The compiler rejects anything that is not a valid mode string
-formActions.setMode('readOnly');   // ✅
-formActions.setMode('published');  // ❌ Type error</code></pre>
-          </div>
-          <h3><span class="type-chip">SubmitState&lt;T&gt;</span></h3>
-          <p>
-            The discriminated union passed to your <code>handleSubmit</code> callback. Narrow on
-            <code>valid</code> to get a typed <code>data</code> object.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { type SubmitState } from 'form-state';
-
-const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
-  if (!state.valid) {
-    // state.errors is Record&lt;string, string&gt;
-    // state.data is DeepPartial&lt;FormSchema&gt; — may have empty/invalid fields
-    return state.errors;
-  }
-
-  // state.data is fully typed FormSchema here — no cast needed
-  await api.save(state.data.name);   // string, not string | ''
-  await api.save(state.data.age);    // number, not number | ''
-  return true;
-};</code></pre>
-          </div>
-          <h3><span class="type-chip">SubmitSuccessState&lt;T&gt;</span></h3>
-          <p>
-            Passed to the <code>onSuccess</code> callback — guaranteed valid data plus the raw
-            <code>FormData</code>.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { type SubmitSuccessState } from 'form-state';
-
-function App() {
-  const handleFormSubmit = ({ data, formData }: SubmitSuccessState&lt;FormSchema&gt;) =&gt; {
-    // data is fully typed FormSchema
-    const output = formData.get('output');
-    if (output === 'redirect') {
-      router.push('/done');
-    } else {
-      showDialog({ dataObject: schema.toObject(data), formData });
-    }
-  };
-
-  return &lt;AppForm onSubmitted={handleFormSubmit} /&gt;;
-}</code></pre>
-          </div>
-          <h3><span class="type-chip">SchemaDataObject&lt;T&gt;</span></h3>
-          <p>
-            The return type of <code>schema.toObject(data)</code> — internal fields stripped,
-            optional empties removed.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { type SchemaDataObject } from 'form-state';
-
-// Component that displays clean API-ready data
-function JsonData({ data }: { data: SchemaDataObject&lt;FormSchema&gt; }) {
-  return &lt;pre&gt;{JSON.stringify(data, null, 2)}&lt;/pre&gt;;
-}
-
-// Usage
-&lt;JsonData data={schema.toObject(formState.data)} /&gt;</code></pre>
-          </div>
-          <h3><span class="type-chip">StateChangeListener&lt;T&gt;</span></h3>
-          <p>The type for <code>formHooks.useListener</code> callbacks.</p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { type StateChangeListener } from 'form-state';
-
-// Define once outside the component to keep the reference stable
-const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCount }) =&gt; {
-  if (type === 'submit') {
-    analytics.track('form_submit', { count: submitCount, name: data.name });
-  }
-};
-
-// In your component:
-formHooks.useListener(listener);</code></pre>
-          </div>
-        </section>
-        <section class="section" id="react19">
-          <h2>React 19</h2>
-          <p>
-            FormState is designed to work with React 19's new form primitives. The
-            <code>Form</code> component returned by the hook accepts an async
-            <code>action</code> prop directly — no <code>onSubmit</code> wiring needed. This
-            integrates naturally with <code>useFormStatus</code> and server actions.
-          </p>
-          <h3>Server action pattern</h3>
-          <p>
-            Pass <code>formHandlers.handleSubmit(...)</code> directly to the
-            <code>action</code> prop. React 19 calls it with a <code>FormData</code> argument;
-            FormState intercepts this, validates, and calls your handler.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">const { Form, formHandlers, formActions } = useSchemaFormState();
-
-const action = formHandlers.handleSubmit(
-  async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
-    if (!state.valid) {
-      formActions.focusOnFirstError({ selectText: true });
-      return state.errors;
-    }
-
-    try {
-      // Simulate async server work
-      await new Promise((r) =&gt; setTimeout(r, 1000));
-      return true;
-    } catch (err) {
-      return { _serverError: err instanceof Error ? err.message : 'Unknown error' };
-    }
-  },
-  { onSuccess: onSubmitted }
-);
-
-return (
-  // React 19: action prop triggers on submit, FormMask uses useFormStatus internally
-  &lt;Form action={action} data-readonly={formStatus.readOnly}&gt;
-    &lt;fieldset disabled={formStatus.disabled}&gt;
-      {/* fields */}
-    &lt;/fieldset&gt;
-    &lt;FormMask /&gt;        {/* spinner during submission */}
-    &lt;button type="submit"&gt;Save&lt;/button&gt;
-  &lt;/Form&gt;
-);</code></pre>
           </div>
           <h3>useFormStatus — submission spinner</h3>
           <p>
@@ -2296,6 +1970,410 @@ export function FormMask() {
               </tr>
             </tbody>
           </table>
+          <h3>Encoding FormData as a URL string</h3>
+          <p>
+            Use <code>formDataEncode</code> to convert a <code>FormData</code> instance into a
+            <code>URLSearchParams</code> object — handy for building query strings or
+            <code>application/x-www-form-urlencoded</code> request bodies. File entries are replaced
+            with the file's name.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { formDataEncode } from 'form-state';
+
+const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
+  if (!state.valid) return state.errors;
+
+  // Encode all entries as a URL-encoded string
+  const body = formDataEncode(formData).toString();
+  // "name=Alice&amp;info%5B%22age%22%5D=30"
+
+  // Omit specific fields (e.g. internal tracking values)
+  const bodyClean = formDataEncode(formData, ['_csrf', 'action']).toString();
+
+  await fetch('/api/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  return true;
+};</code></pre>
+          </div>
+        </section>
+        <section class="section" id="manual-errors">
+          <h2>Manual Errors</h2>
+          <p>
+            Set errors outside of schema validation — server errors, async uniqueness checks, or
+            cross-field constraints — using <code>formActions.setError</code>.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Set by field key
+formActions.setError('email', 'This email address is already registered');
+
+// Set by path expression — nested field inside an array item
+formActions.setError((path) =&gt; path.notes[index].text, '666 is not allowed as note text');
+
+// Set a form-level error (arbitrary string key)
+formActions.setError('_serverError', 'Something went wrong. Please try again.');
+
+// Clear a specific manual error (pass null, undefined, or call with one argument)
+formActions.setError('email', null);
+formActions.setError((path) =&gt; path.notes[index].text); // clears it
+
+// Clear all manual errors
+formActions.clearManualErrors();
+
+// Clear only errors matching a predicate
+formActions.clearManualErrors({
+  predicate: (key) =&gt; key.startsWith('_'),
+});</code></pre>
+          </div>
+          <p>Read manual errors with <code>errors.getManual(key)</code>:</p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">{formState.errors.getManual('_serverError') &amp;&amp; (
+  &lt;div className="form-error"&gt;
+    {formState.errors.getManual('_serverError')}
+  &lt;/div&gt;
+)}</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              Manual errors live alongside schema errors. <code>formStatus.valid</code> is false
+              when either type is present; <code>formStatus.validSchema</code> reflects only the Zod
+              schema result.
+            </p>
+          </div>
+        </section>
+        <section class="section" id="readonly-disabled">
+          <h2>Readonly &amp; Disabled</h2>
+          <p>
+            FormState tracks three modes: <code>'editable'</code>, <code>'readOnly'</code>, and
+            <code>'disabled'</code>. Switch between them at any time with
+            <code>formActions.setMode()</code>. The <code>formStatus</code> flags
+            (<code>readOnly</code>, <code>disabled</code>) make it easy to drive conditional
+            rendering.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Set initial mode
+useFormState(schema, { initialMode: 'readOnly' });
+
+// Switch at runtime
+formActions.setMode('editable');
+formActions.setMode('readOnly');
+formActions.setMode('disabled');</code></pre>
+          </div>
+          <h3>Rendering alternate UI in readonly mode</h3>
+          <p>
+            A common pattern is to render a plain text input in readonly mode and hide interactive
+            controls like remove buttons or add links.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const { formState, formStatus, formActions } = useSchemaFormState();
+const { readOnly } = formStatus;
+
+// ── Select / dropdown ──────────────────────────────────────────
+{readOnly ? (
+  &lt;input
+    type="text"
+    readOnly
+    tabIndex={-1}
+    value={noteTypes.find((noteType) =&gt; noteType.value === note.typeId)?.label ?? ''}
+    autoComplete="off"
+  /&gt;
+) : (
+  &lt;Select
+    options={noteTypes}
+    value={note.typeId}
+    onChange={(opt) =&gt;
+      formActions.change((path) =&gt; path.notes[index].typeId, opt?.value ?? '', { touch: true })
+    }
+  /&gt;
+)}
+
+// ── Checkbox ───────────────────────────────────────────────────
+{readOnly ? (
+  &lt;input
+    type="text"
+    readOnly
+    tabIndex={-1}
+    value={data.priority === true ? 'Yes' : data.priority === false ? 'No' : 'N/A'}
+    autoComplete="off"
+  /&gt;
+) : (
+  &lt;input
+    id="priority"
+    type="checkbox"
+    checked={Boolean(data.priority)}
+    onChange={(e) =&gt; formActions.change((path) =&gt; path.priority, e.target.checked, { touch: true })}
+  /&gt;
+)}
+
+// ── Radio buttons ──────────────────────────────────────────────
+{readOnly ? (
+  &lt;input type="text" readOnly tabIndex={-1} value={data.sendEmail === 'yes' ? 'Yes' : 'No'} /&gt;
+) : (
+  &lt;span role="group"&gt;
+    &lt;label&gt;
+      &lt;input type="radio" value="yes"
+        onChange={() =&gt; formActions.change('sendEmail', 'yes', { touch: true })} /&gt;
+      Yes
+    &lt;/label&gt;
+    &lt;label&gt;
+      &lt;input type="radio" value="no"
+        onChange={() =&gt; formActions.change('sendEmail', 'no', { touch: true })} /&gt;
+      No
+    &lt;/label&gt;
+  &lt;/span&gt;
+)}
+
+// ── Array controls ─────────────────────────────────────────────
+{!readOnly &amp;&amp; (
+  &lt;button onClick={() =&gt; formActions.array.remove((path) =&gt; path.notes, index)}&gt;
+    Remove
+  &lt;/button&gt;
+)}
+{!readOnly &amp;&amp; (
+  &lt;button onClick={() =&gt; formActions.array.append('notes', [emptyNote])}&gt;
+    Add note
+  &lt;/button&gt;
+)}</code></pre>
+          </div>
+          <h3>Disabled via <code>&lt;fieldset&gt;</code></h3>
+          <p>
+            The native <code>disabled</code> attribute on a <code>&lt;fieldset&gt;</code>
+            disables all descendant controls at the browser level. Wire it to
+            <code>formStatus.disabled</code> for a single, zero-CSS approach.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;Form
+  action={formHandlers.handleSubmit(onSubmit)}
+  data-readonly={formStatus.readOnly}  // CSS hook for styling
+&gt;
+  &lt;fieldset disabled={formStatus.disabled}&gt;
+    &lt;IdInput /&gt;
+    &lt;NoteInputs /&gt;
+    &lt;AutoSelects /&gt;
+    {!formStatus.readOnly &amp;&amp; &lt;Footer /&gt;}
+  &lt;/fieldset&gt;
+&lt;/Form&gt;</code></pre>
+          </div>
+          <h3>Mode switcher example</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { type FormMode } from 'form-state';
+
+function ModeSelector({
+  mode,
+  onChange,
+}: {
+  mode: FormMode;
+  onChange: (mode: FormMode) =&gt; void;
+}) {
+  return (
+    &lt;div&gt;
+      {(['editable', 'readOnly', 'disabled'] as FormMode[]).map((option) =&gt; (
+        &lt;label key={option}&gt;
+          &lt;input
+            type="radio"
+            checked={mode === option}
+            onChange={() =&gt; onChange(option)}
+          /&gt;
+          {option}
+        &lt;/label&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+
+// In parent:
+&lt;ModeSelector
+  mode={formStatus.mode}
+  onChange={(m) =&gt; formActions.setMode(m)}
+/&gt;</code></pre>
+          </div>
+        </section>
+        <section class="section" id="css-classes">
+          <h2>CSS Classes</h2>
+          <p>
+            <code>formClasses(field)</code> returns a space-separated class string based on the
+            field's current state. Wire it to any element — label, wrapper, or input.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// Generates e.g.: "form-state__error form-state__touched form-state__required"
+
+&lt;div className={formClasses('name')}&gt;
+  &lt;label&gt;Name&lt;/label&gt;
+  &lt;input ... /&gt;
+  &lt;span&gt;{formState.errors.name}&lt;/span&gt;
+&lt;/div&gt;
+
+// Arrow function path expression — works for nested fields too
+&lt;label className={formClasses((path) =&gt; path.info.name)}&gt;
+  {formState.descriptions.get((path) =&gt; path.info.name)}
+&lt;/label&gt;
+
+// Custom prefix per-call
+formClasses('name', undefined, { prefix: 'my-form' })
+// "my-form__error my-form__required"</code></pre>
+          </div>
+          <h3>CSS class names</h3>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Class</th>
+                <th>Applied when</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>[prefix]__error</code></td>
+                <td class="prop-desc">Field has a validation error.</td>
+              </tr>
+              <tr>
+                <td><code>[prefix]__touched</code></td>
+                <td class="prop-desc">Field has been touched.</td>
+              </tr>
+              <tr>
+                <td><code>[prefix]__required</code></td>
+                <td class="prop-desc">Field is required per schema.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Override the prefix globally:</p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">useFormState(schema, { CSSPrefix: 'my-form' });</code></pre>
+          </div>
+        </section>
+        <section class="section" id="context">
+          <h2>Context &amp; Provider</h2>
+          <p>
+            When a form spans multiple components, use the Context API instead of prop-drilling.
+            FormState provides a <code>FormStateProvider</code>, a
+            <code>useFormStateContext</code> hook, and a <code>formConnect</code> HOC.
+          </p>
+          <h3>Recommended pattern — shared accessor hook</h3>
+          <p>
+            Export a typed wrapper around <code>useFormStateContext</code> once and import it
+            everywhere in your form tree. This avoids passing the schema reference around and
+            produces more focused component imports.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// app-schema.ts
+import { useFormStateContext, z } from 'form-state';
+
+export const formSchema = z.strictObject({ /* ... */ });
+export type FormSchema = z.infer&lt;typeof formSchema&gt;;
+
+// One typed hook — used everywhere in the form tree
+export const useSchemaFormState = () =&gt; useFormStateContext(formSchema);</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// NameField.tsx — leaf component, no props needed
+import { useSchemaFormState } from './app-schema';
+
+export function NameField() {
+  const { formState, formActions, formClasses } = useSchemaFormState();
+
+  return (
+    &lt;div&gt;
+      &lt;label className={formClasses((path) =&gt; path.info.name)}&gt;
+        {formState.descriptions.get((path) =&gt; path.info.name)}
+      &lt;/label&gt;
+      &lt;input
+        type="text"
+        value={formState.data.info.name}
+        maxLength={formState.ranges.getMax((path) =&gt; path.info.name)}
+        onChange={(e) =&gt; formActions.change((path) =&gt; path.info.name, e.target.value)}
+        onBlur={() =&gt; formActions.touch((path) =&gt; path.info.name)}
+      /&gt;
+      {formState.errors.get((path) =&gt; path.info.name) &amp;&amp; (
+        &lt;p&gt;{formState.errors.get((path) =&gt; path.info.name)}&lt;/p&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// AppForm.tsx — root form component wrapped with formConnect
+import { formConnect } from 'form-state';
+import { formSchema } from './app-schema';
+
+function AppForm({ onSubmitted }: { onSubmitted: () =&gt; void }) {
+  const { Form, formHandlers } = useSchemaFormState();
+
+  return (
+    &lt;Form action={formHandlers.handleSubmit(onSubmit, { onSuccess: onSubmitted })}&gt;
+      &lt;fieldset&gt;
+        &lt;NameField /&gt;
+        &lt;AgeField /&gt;
+      &lt;/fieldset&gt;
+      &lt;button type="submit"&gt;Save&lt;/button&gt;
+    &lt;/Form&gt;
+  );
+}
+
+export default formConnect({
+  schema: formSchema,
+  confirmDirtyStateNavigation: true,  // warn on unsaved navigation
+  watch: true,                         // enable useWatch
+})(AppForm);</code></pre>
+          </div>
+          <div class="callout callout-warning">
+            <div class="callout-label">Warning</div>
+            <p>
+              <code>useFormStateContext</code> must receive the same schema reference that was
+              passed to the provider. A mismatched schema throws at runtime in development.
+            </p>
+          </div>
+        </section>
+        <section class="section" id="secure-input">
+          <h2>SecureInput</h2>
+          <p>
+            <code>SecureInput</code> is a drop-in password component that
+            <strong>never stores the real value in the DOM</strong>. It shows bullets visually but
+            passes the actual text only through controlled callbacks, preventing clipboard sniffing
+            and browser auto-fill exfiltration.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { SecureInput } from 'form-state';
+
+&lt;SecureInput
+  type="password"
+  onSecureChange={(value) =&gt; {
+    // 'value' is the real plaintext — never touches the DOM
+    formActions.change('password', value);
+  }}
+  onSecureBlur={(value) =&gt; {
+    formActions.change('password', value, { touch: true });
+  }}
+/&gt;</code></pre>
+          </div>
+          <p>Features:</p>
+          <ul>
+            <li>Displays masked bullets, real value stays in memory only.</li>
+            <li>Blocks copy, cut, paste, and drag to prevent leakage.</li>
+            <li>Ctrl+Z / Ctrl+Y undo protection.</li>
+            <li>Compatible with standard <code>onChange</code> for uncontrolled usage.</li>
+          </ul>
+          <div class="callout callout-warning">
+            <div class="callout-label">Warning</div>
+            <p>
+              The <code>Form</code> component logs a development warning if it detects a native
+              <code>&lt;input type="password"&gt;</code> — use <code>SecureInput</code> instead.
+            </p>
+          </div>
         </section>
         <section class="section" id="debounce">
           <h2>Debounced Changes</h2>
@@ -2314,15 +2392,15 @@ export function FormMask() {
 });
 
 // Arrow function path — nested field
-formActions.change((p) =&gt; p.notes[index].text, e.target.value, {
+formActions.change((path) =&gt; path.notes[index].text, e.target.value, {
   debounceIntervalMs: 500,
   touch: true,
   callback: (state: FormState&lt;FormSchema&gt;) =&gt; {
     // Custom async check after user stops typing
     if (state.data.notes[index].text === '666') {
-      formActions.setError((p) =&gt; p.notes[index].text, 'Not allowed');
+      formActions.setError((path) =&gt; path.notes[index].text, 'Not allowed');
     } else {
-      formActions.setError((p) =&gt; p.notes[index].text);
+      formActions.setError((path) =&gt; path.notes[index].text);
     }
   },
 });</code></pre>
@@ -2335,10 +2413,17 @@ formActions.change((p) =&gt; p.notes[index].text, e.target.value, {
         <section class="section" id="listener">
           <h2>State Listener</h2>
           <p>
-            Subscribe to form changes from inside a component without causing extra re-renders in
-            the subscribing component. Define the listener outside the component to keep its
-            reference stable.
+            Subscribe to form state changes from inside a component without triggering extra
+            re-renders.
           </p>
+          <div class="callout callout-warning">
+            <div class="callout-label">Warning</div>
+            <p>
+              The listener must be a stable reference — define it outside the component or wrap it
+              in <code>useCallback</code>. Passing a new inline function on every render will
+              produce a console warning.
+            </p>
+          </div>
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -2406,7 +2491,7 @@ useFormState(schema, { watch: true });
 
 // Watch a field by its inferName value, with an optional transform
 const idValue = formHooks.useWatch(
-  formActions.inferName((p) =&gt; p.id),
+  formActions.inferName((path) =&gt; path.id),
   (value) =&gt; value.trim()
 );
 
@@ -2415,7 +2500,7 @@ const idValue = formHooks.useWatch(
 
 // Watch with a more complex transform — only keep valid values
 const cleanId = formHooks.useWatch(
-  formActions.inferName((p) =&gt; p.id),
+  formActions.inferName((path) =&gt; path.id),
   (val) =&gt; (/^\d+$|^(\d+-\d+)$/.test(val) ? val : '')
 );</code></pre>
           </div>
@@ -2474,23 +2559,23 @@ const cleanId = formHooks.useWatch(
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// Bracket format (default) — infers: info["age"]
-formActions.inferName((p) =&gt; p.info.age)
+formActions.inferName((path) =&gt; path.info.age)
 
 // Dot format — infers: info.age
-formActions.inferName((p) =&gt; p.info.age, 'dot')
+formActions.inferName((path) =&gt; path.info.age, 'dot')
 
 // Top-level string — always just the key itself
 formActions.inferName('name')
 
 // Uncontrolled input + useWatch combo
 &lt;input
-  name={formActions.inferName((p) =&gt; p.id)}
+  name={formActions.inferName((path) =&gt; path.id)}
   defaultValue={formState.data.id}
-  onChange={(e) =&gt; formActions.change((p) =&gt; p.id, e.target.value)}
+  onChange={(e) =&gt; formActions.change((path) =&gt; path.id, e.target.value)}
 /&gt;
 
 // useWatch subscribes by the same name string
-const watched = formHooks.useWatch(formActions.inferName((p) =&gt; p.id));
+const watched = formHooks.useWatch(formActions.inferName((path) =&gt; path.id));
 
 // Reading back from FormData on submit
 const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
@@ -2673,8 +2758,8 @@ function AppForm() {
             </div>
           </div>
           <p>
-            Clicking the header expands the panel to ~30vh and shows a live JSON tree. This example
-            shows a valid form with the full structure visible:
+            Clicking the header expands the panel to about 30% of the screen height and shows a live
+            JSON tree. This example shows a valid form with the full structure visible:
           </p>
           <div class="dock-demo">
             <div class="dock-header">
@@ -3069,11 +3154,13 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <tbody>
               <tr>
                 <td class="prop-desc">Click header</td>
-                <td class="prop-desc">Toggle between minimized and normal (30vh)</td>
+                <td class="prop-desc">
+                  Toggle between minimized and normal (30% of screen height)
+                </td>
               </tr>
               <tr>
                 <td class="prop-desc">Right-click header</td>
-                <td class="prop-desc">Toggle between normal and maximized (100vh)</td>
+                <td class="prop-desc">Toggle between normal and maximized (full screen height)</td>
               </tr>
               <tr>
                 <td class="prop-desc">Space</td>
