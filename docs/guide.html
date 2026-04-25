@@ -1659,7 +1659,6 @@ const handleSubmit = formHandlers.handleSubmit(
     }
   },
   {
-    resetDirty: true,
     onSuccess: ({ data, formData }: SubmitSuccessState&lt;typeof schema&gt;) =&gt; {
       router.push('/dashboard');
     },
@@ -2762,7 +2761,6 @@ function ProfileForm({ userId }: { userId: string }) {
       }
     },
     {
-      resetDirty: true,
       onSuccess: () =&gt; {
         queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       },
@@ -2937,8 +2935,7 @@ const handleSubmit = formHandlers.handleSubmit(
       // Returning an object surfaces it as a manual error in the form
       return { _serverError: err instanceof Error ? err.message : 'Save failed.' };
     }
-  },
-  { resetDirty: true } // clears dirty flags on success
+  }
 );</code></pre>
           </div>
           <h3>Invalidating the cache after a save</h3>
