@@ -350,15 +350,9 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             manualErrorsState.set(draft);
           });
 
-          const currentErrors = { ...errors, ...manualErrors };
-
-          if (deepEqual(prevState.errors, currentErrors)) {
-            return prevState;
-          }
-
           return {
             ...prevState,
-            errors: currentErrors,
+            errors: { ...errors, ...manualErrors },
             validated: prevState.validated || shouldValidate,
           } satisfies FormMutableState<State>;
         }

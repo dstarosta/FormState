@@ -77,7 +77,6 @@ import { createUseListener } from './helpers/use-listener-builder';
 import { createUseWatch } from './helpers/use-watch-builder';
 import { IS_DEVELOPMENT } from './helpers/development-helper';
 
-
 const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an array type.';
 
 /**
@@ -284,19 +283,19 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Determines whether the schema is valid (manual errors ignored).
   const isSchemaValid = useCallback(() => {
-    if (!formState.validated) {
+    if (!formStateRef.current.validated) {
       return null;
     }
 
     const manualErrors = Object.entries(manualErrorsState.get());
-    const allErrors = Object.entries(formState.errors);
+    const allErrors = Object.entries(formStateRef.current.errors);
 
     const allErrorsAreManual = allErrors.every((error) =>
       manualErrors.some((manual) => deepEqual(manual, error))
     );
 
     return allErrorsAreManual;
-  }, [formState.errors, formState.validated, manualErrorsState]);
+  }, [manualErrorsState]);
 
   // The memoized "formStatus" object.
   const formStatus = useMemo<FormStatus>(() => {
@@ -320,11 +319,11 @@ export function useFormState<T extends z.ZodMiniObject>(
       },
     } as const;
   }, [
+    formState.mode,
+    formState.submitCount,
     formDirty,
     formTouched,
     isSubmitting,
-    formState.submitCount,
-    formState.mode,
     formValid,
     isSchemaValid,
   ]);
@@ -544,7 +543,9 @@ export function useFormState<T extends z.ZodMiniObject>(
   const change = useCallback(
     (nameOrPath: FormPath<T>, value: unknown, options?: FormChangeOptions<T>) => {
       const path =
-        typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : nameOrPath;
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : nameOrPath;
       const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
 
       const unchanged = dotPathGet(formStateRef.current.data, pathNotation) === value;
@@ -564,7 +565,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         }
 
         if (options?.touch) {
-          const isTouched = formState.touched[pathNotation];
+          const isTouched = formStateRef.current.touched[pathNotation];
 
           if (!isTouched) {
             dispatch({
@@ -695,7 +696,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         });
       }
     },
-    [formState.data, formState.touched, debounceCacheCapacity, validateOnChange, dispatch]
+    [debounceCacheCapacity, validateOnChange, dispatch]
   );
 
   // The memoized "replace" function.
@@ -716,10 +717,12 @@ export function useFormState<T extends z.ZodMiniObject>(
   const touch = useCallback(
     (nameOrPath?: FormPath<T>, options?: FormTouchOptions) => {
       let path =
-        typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : nameOrPath;
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : nameOrPath;
 
       if (!path) {
-        const names = Object.keys(formState.data) as (keyof State)[];
+        const names = Object.keys(formStateRef.current.data) as (keyof State)[];
 
         if (names[0] === undefined) {
           return;
@@ -736,7 +739,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         },
       });
     },
-    [validateOnTouch, formState.data, dispatch]
+    [validateOnTouch, dispatch]
   );
 
   const append = useCallback(
@@ -1191,14 +1194,17 @@ export function useFormState<T extends z.ZodMiniObject>(
     ) => {
       dispatch({
         type: 'setManualError',
-        name: typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : nameOrPath,
+        name:
+          typeof nameOrPath === 'function'
+            ? getPath(formStateRef.current.data, nameOrPath)
+            : nameOrPath,
         error: error ?? null,
         options: {
           validate: options?.validate ?? validateOnChange,
         },
       });
     },
-    [validateOnChange, formState.data, dispatch]
+    [validateOnChange, dispatch]
   );
 
   // The memoized "clearManualErrors" function.
@@ -1215,13 +1221,13 @@ export function useFormState<T extends z.ZodMiniObject>(
   // Returns the last submitted form data.
   const getSubmittedData = useCallback(
     () =>
-      formState.submittedData
+      formStateRef.current.submittedData
         ? ({
-            data: formState.submittedData.data,
-            formData: formState.submittedData.formData,
+            data: formStateRef.current.submittedData.data,
+            formData: formStateRef.current.submittedData.formData,
           } satisfies SubmittedData<State>)
         : null,
-    [formState.submittedData]
+    []
   );
 
   // Infers the name of the form field.
@@ -1229,12 +1235,12 @@ export function useFormState<T extends z.ZodMiniObject>(
     (nameOrPath: FormPath<T>, format?: 'bracket' | 'dot') => {
       const pathNotation =
         typeof nameOrPath === 'function'
-          ? getPathAsString(formState.data, nameOrPath, format ?? inferredNameFormat)
+          ? getPathAsString(formStateRef.current.data, nameOrPath, format ?? inferredNameFormat)
           : nameOrPath;
 
       return String(pathNotation);
     },
-    [formState.data, inferredNameFormat]
+    [inferredNameFormat]
   );
 
   // Sets focus on an element
