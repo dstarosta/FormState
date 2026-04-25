@@ -1497,8 +1497,8 @@ formActions.validate(
           </div>
           <p>
             The custom validator receives no arguments — read <code>formState.data</code> directly.
-            Return <code>true</code> for success or a <code>Record&lt;string, string&gt;</code>
-            of field-key → error-message pairs to inject errors.
+            Return <code>true</code> for success or a <code>Record&lt;string, string&gt;</code> of
+            <code>field-key: error</code> pairs to inject errors.
           </p>
           <h3>Touching fields to reveal errors</h3>
           <p>
@@ -2678,7 +2678,7 @@ if (result.success) {
           <p>
             A common pattern is to fetch a record from the server, seed it into a form, let the user
             make changes, and save via a mutation. TanStack Query's
-            <code>useQuery</code> and <code>useMutation</code> compose cleanly with
+            <code>useSuspenseQuery</code> and <code>useMutation</code> compose cleanly with
             <code>useFormState</code> — query data flows into <code>initialData</code>, and
             <code>mutateAsync</code> fits naturally inside the <code>handleSubmit</code> callback.
           </p>
@@ -2689,16 +2689,29 @@ if (result.success) {
           <h3>Complete example</h3>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useFormState, z, type SubmitState } from 'form-state';
+            <pre><code class="language-tsx">import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useFormState, parseState, z, type SchemaDataObject, type SubmitState } from 'form-state';
+
+const DATE_FORMAT = 'MM/dd/yyyy';
 
 const profileSchema = z.object({
-  name:  z.formString({ required: true }).with(z.describe('Name')),
-  email: z.formString({ required: true }).with(z.describe('Email')),
-  bio:   z.formString().with(z.describe('Bio')),
+  name:        z.formString({ required: true }).with(z.describe('Name')),
+  email:       z.formString({ required: true }).with(z.describe('Email')),
+  dateOfBirth: z.formDate({ dateFormat: DATE_FORMAT }).with(z.describe('Date of Birth')),
+  bio:         z.formString().with(z.describe('Bio')),
 });
 
+// Inferred form state shape TypeScript type
 type ProfileData = z.infer&lt;typeof profileSchema&gt;;
+
+// Derived API type — empty literals replaced with `undefined`, optional fields use `?`
+type ProfileApiData = SchemaDataObject&lt;ProfileData&gt;;
+
+// Your fetch layer — swap for any HTTP client
+declare const api: {
+  getProfile(userId: string): Promise&lt;ProfileApiData&gt;;
+  updateProfile(userId: string, values: ProfileApiData): Promise&lt;void&gt;;
+};
 
 function FormError({ error }: { error?: string }) {
   return error ? &lt;span className="field-error"&gt;{error}&lt;/span&gt; : null;
@@ -2707,10 +2720,21 @@ function FormError({ error }: { error?: string }) {
 function ProfileForm({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
 
-  // 1. Fetch current server data
-  const { data, isPending, isError } = useQuery({
+  // 1. Fetch and validate current server data
+  const { data } = useSuspenseQuery({
     queryKey: ['profile', userId],
-    queryFn:  () =&gt; api.getProfile(userId),
+    queryFn: async () =&gt; {
+      const apiData = await api.getProfile(userId);
+
+      // Validate the API response against the schema.
+      const result = parseState(profileSchema, apiData);
+
+      if (result.success) {
+        return result.data;
+      } else {
+        throw new Error(result.errors.getAll().join(' | '));
+      }
+    },
   });
 
   // 2. Seed the form — confirmDirtyStateNavigation prompts before unsaved navigation
@@ -2745,9 +2769,6 @@ function ProfileForm({ userId }: { userId: string }) {
     }
   );
 
-  if (isPending) return &lt;Skeleton /&gt;;
-  if (isError) return &lt;ErrorMessage /&gt;;
-
   return (
     &lt;Form action={handleSubmit}&gt;
       &lt;FormError error={formState.errors.getManual('_serverError')} /&gt;
@@ -2778,6 +2799,18 @@ function ProfileForm({ userId }: { userId: string }) {
       &lt;/label&gt;
 
       &lt;label&gt;
+        {formState.descriptions.dateOfBirth}
+        &lt;input
+          type="text"
+          placeholder={DATE_FORMAT}
+          value={formState.data.dateOfBirth}
+          onChange={(e) =&gt; formActions.change('dateOfBirth', e.target.value)}
+          onBlur={() =&gt; formActions.touch('dateOfBirth')}
+        /&gt;
+        &lt;FormError error={formState.errors.dateOfBirth} /&gt;
+      &lt;/label&gt;
+
+      &lt;label&gt;
         {formState.descriptions.bio}
         &lt;textarea
           value={formState.data.bio ?? ''}
@@ -2789,24 +2822,35 @@ function ProfileForm({ userId }: { userId: string }) {
       &lt;button type="submit" disabled={formStatus.submitting}&gt;Save Changes&lt;/button&gt;
     &lt;/Form&gt;
   );
+}
+
+// Wrap at the call site — Suspense handles loading, ErrorBoundary handles fetch errors
+function ProfilePage({ userId }: { userId: string }) {
+  return (
+    &lt;ErrorBoundary fallback={&lt;ErrorMessage /&gt;}&gt;
+      &lt;Suspense fallback={&lt;Skeleton /&gt;}&gt;
+        &lt;ProfileForm userId={userId} /&gt;
+      &lt;/Suspense&gt;
+    &lt;/ErrorBoundary&gt;
+  );
 }</code></pre>
           </div>
           <h3>Seeding <code>initialData</code> from a query</h3>
           <p>
             The <code>initialData</code> option accepts
             <code>DeepPartial&lt;z.infer&lt;T&gt;&gt;</code>, so you can pass query data directly.
-            While the query is loading, <code>data</code> is <code>undefined</code> and
-            <code>useFormState</code> falls back to schema defaults. Once the query resolves, each
-            field is populated with the server value.
+            With <code>useSuspenseQuery</code>, <code>data</code> is always defined — the component
+            suspends until the query resolves, so <code>useFormState</code> always receives the full
+            server value on first render.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">const { data } = useQuery({
+            <pre><code class="language-tsx">const { data } = useSuspenseQuery({
   queryKey: ['profile', userId],
   queryFn:  () =&gt; api.getProfile(userId),
 });
 
-// Pass data directly — undefined while loading, ProfileData once resolved
+// data is always ProfileData here — the component suspends until resolved
 useFormState(profileSchema, { initialData: data });</code></pre>
           </div>
           <div class="callout callout-info">
@@ -2818,32 +2862,56 @@ useFormState(profileSchema, { initialData: data });</code></pre>
               sync server-computed fields without clobbering in-progress edits.
             </p>
           </div>
-          <h3>Handling the loading state</h3>
+          <h3>Validating fetched data against the schema</h3>
           <p>
-            Guard the form render behind <code>isPending</code> so users never see a blank form that
-            fills in half a second later:
+            Use <code>parseState</code> inside <code>queryFn</code> to validate the API response
+            before it reaches the form. If validation fails, the thrown error bubbles to the nearest
+            <code>&lt;ErrorBoundary&gt;</code> — no form state is ever touched.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">const { data, isPending, isError } = useQuery({ ... });
+            <pre><code class="language-tsx">import { parseState } from 'form-state';
 
-if (isPending) return &lt;Skeleton /&gt;;
-if (isError)   return &lt;ErrorMessage /&gt;;
+const { data } = useSuspenseQuery({
+  queryKey: ['profile', userId],
+  queryFn: async () =&gt; {
+    const apiData = await api.getProfile(userId);
+    const result = parseState(profileSchema, apiData);
 
-return &lt;Form action={handleSubmit}&gt;...&lt;/Form&gt;;</code></pre>
+    if (result.success) {
+      return result.data;
+    } else {
+      throw new Error(result.errors.getAll().join(' | '));
+    }
+  },
+});</code></pre>
+          </div>
+          <h3>Handling loading and errors</h3>
+          <p>
+            Because <code>useSuspenseQuery</code> suspends while loading and throws on error, both
+            states are handled outside the component by wrapping it with
+            <code>&lt;Suspense&gt;</code> and an <code>&lt;ErrorBoundary&gt;</code>:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;ErrorBoundary fallback={&lt;ErrorMessage /&gt;}&gt;
+  &lt;Suspense fallback={&lt;Skeleton /&gt;}&gt;
+    &lt;ProfileForm userId={userId} /&gt;
+  &lt;/Suspense&gt;
+&lt;/ErrorBoundary&gt;</code></pre>
           </div>
           <p>
-            If you prefer to keep the form mounted during load — for example, to avoid losing scroll
-            position — disable inputs instead:
+            Inside <code>ProfileForm</code>, <code>data</code> is always defined — no
+            <code>isPending</code> or <code>isError</code> guards needed.
           </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">&lt;Form action={handleSubmit}&gt;
-  &lt;fieldset disabled={isPending}&gt;
-    {/* fields render immediately with schema defaults, then fill in */}
-  &lt;/fieldset&gt;
-  &lt;button type="submit" disabled={isPending || formStatus.submitting}&gt;Save&lt;/button&gt;
-&lt;/Form&gt;</code></pre>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              If you prefer conditional rendering over <code>Suspense</code> and
+              <code>ErrorBoundary</code>, swap <code>useSuspenseQuery</code> for
+              <code>useQuery</code> and handle <code>isPending</code> and
+              <code>isError</code> directly inside the component.
+            </p>
           </div>
           <h3>Calling a mutation on submit</h3>
           <p>
@@ -3732,6 +3800,18 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         Prism.plugins.autoloader.languages_path = 'lib/components/';
+        Prism.hooks.add('after-highlight', function (env) {
+          if (
+            !env.element.textContent.includes('ProfileData') ||
+            !env.element.innerHTML.includes('<span')
+          ) {
+            return;
+          }
+          env.element.innerHTML = env.element.innerHTML.replace(
+            /(keyword">type<\/span><\/span>\s+)(ProfileData)(\s)/,
+            '$1<span class="token class-name">$2</span>$3'
+          );
+        });
         Prism.highlightAll();
 
         // Active nav link on scroll
