@@ -32,6 +32,7 @@
         <div class="nav-section">
           <span class="nav-section-label">Core Concepts</span>
           <a href="#schema" class="nav-link">Defining a Schema</a>
+          <a href="#schema-methods" class="nav-link">Schema Methods</a>
           <a href="#basic-usage" class="nav-link">Basic Usage</a>
           <a href="#path-expressions" class="nav-link">Path Expressions</a>
           <a href="#form-state" class="nav-link">Form State</a>
@@ -688,6 +689,514 @@ type Schema = z.infer&lt;typeof schema&gt;;
               Chain <code>.with(z.describe('Label'))</code> on any field to attach a human-readable
               description that you can read back via <code>formState.descriptions</code>.
             </p>
+          </div>
+        </section>
+        <section class="section" id="schema-methods">
+          <div class="section-eyebrow">Core Concepts</div>
+          <h2>Schema Methods</h2>
+          <p>
+            These are the methods <code>z</code> exports from <code>form-state</code> that have no
+            direct Zod equivalent. Each one wraps a standard Zod schema with form-specific
+            preprocessing, metadata, or validation behaviour. Call them at schema-definition time,
+            not inside components.
+          </p>
+
+          <h3><span class="type-chip">z.formString(opts?, ...checks)</span></h3>
+          <p>
+            Returns a schema that accepts <code>string | ''</code>. An empty string represents a
+            blank field. When <code>required</code> is <code>true</code>, an empty string is
+            treated as invalid.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>required</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Makes an empty string invalid.</td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">Custom error message for required and type validation.</td>
+              </tr>
+              <tr>
+                <td><code>allowEmpty</code></td>
+                <td><code>boolean</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Whether <code>toObject()</code> retains an empty string in the output. Set to
+                  <code>false</code> to strip blank fields from submitted data.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            Zod string checks — <code>z.minLength</code>, <code>z.maxLength</code>,
+            <code>z.regex</code>, etc. — are passed as additional arguments after the options
+            object.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Optional string
+z.formString()
+
+// Required with custom error
+z.formString({ required: true, error: 'Name is required' })
+
+// Checks only — no options object needed
+z.formString(z.maxLength(100, 'Too long'), z.regex(/^\w+$/, 'Letters only'))
+
+// Required with options and checks
+z.formString({ required: true, error: 'Required' }, z.maxLength(50))
+
+// Strip empty strings from toObject() output
+z.formString({ allowEmpty: false })</code></pre>
+          </div>
+
+          <h3><span class="type-chip">z.formNumber(opts?, ...checks)</span></h3>
+          <p>
+            Returns a schema that accepts <code>number | ''</code>. An empty string represents a
+            blank numeric input. Non-numeric values produce a validation error.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>required</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Makes an empty string invalid.</td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">Custom error message for required and type validation.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Optional number
+z.formNumber()
+
+// Required with custom error
+z.formNumber({ required: true, error: 'Age is required' })
+
+// Checks only — no options object needed
+z.formNumber(z.gte(0, 'Must be positive'), z.lte(150))
+
+// Required with options and checks
+z.formNumber({ required: true, error: 'Required' }, z.gte(18, 'Must be 18 or older'))</code></pre>
+          </div>
+
+          <h3><span class="type-chip">z.formBoolean(opts?)</span></h3>
+          <p>
+            Returns a schema that accepts <code>boolean | ''</code>. An empty string represents an
+            unchecked state. Truthy/falsy strings from raw form data are coerced to
+            <code>boolean</code>.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>required</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Makes a missing or empty value invalid.</td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">Custom error message for required validation.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Optional — value is boolean or ''
+z.formBoolean()
+
+// Required — must be a boolean
+z.formBoolean({ required: true, error: 'Please accept the terms' })
+
+// Pair with z.default to ensure a boolean at all times
+z.default(z.formBoolean(), false)</code></pre>
+          </div>
+
+          <h3><span class="type-chip">z.formDate(opts?, ...checks)</span></h3>
+          <p>
+            Returns a schema that accepts <code>Date | ''</code>. String input is parsed according
+            to <code>dateFormat</code>; invalid strings produce a validation error rather than
+            crashing. An empty string represents a blank date input.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>required</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Makes an empty string invalid.</td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">Custom error message for required validation.</td>
+              </tr>
+              <tr>
+                <td><code>dateFormat</code></td>
+                <td><code>string</code></td>
+                <td><code>'yyyy-MM-dd'</code></td>
+                <td class="prop-desc">
+                  Format string used to parse string inputs into <code>Date</code> objects. Also
+                  stored in schema metadata and readable via <code>formState</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>dateFormatError</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Error message shown when a string cannot be parsed as a valid date.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Optional date — defaults to 'yyyy-MM-dd' parsing
+z.formDate()
+
+// Custom display format
+z.formDate({ dateFormat: 'MM/dd/yyyy' })
+
+// Required with custom format and range check
+z.formDate(
+  { required: true, dateFormat: 'MM/dd/yyyy', error: 'Date is required' },
+  z.gte(new Date(1900, 0, 1), 'Date too far in the past')
+)
+
+// Checks only — no options object needed
+z.formDate(z.gte(new Date(2000, 0, 1), 'Must be after year 2000'))</code></pre>
+          </div>
+
+          <h3><span class="type-chip">z.formValues(values, opts?)</span></h3>
+          <p>
+            Returns an enum-like schema that accepts one of the provided string literals or an
+            empty string (representing "not selected"). When <code>required</code> is
+            <code>true</code>, only the listed values are accepted and the inferred type narrows
+            accordingly.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>required</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">
+                  Makes an empty selection invalid. Narrows the output type to the listed values
+                  only.
+                </td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Error message shown when the value is not one of the allowed values.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Optional — 'active' | 'inactive' | 'pending' | ''
+z.formValues(['active', 'inactive', 'pending'])
+
+// Required — '' is invalid; type is 'active' | 'inactive' | 'pending'
+z.formValues(['active', 'inactive', 'pending'], { required: true, error: 'Select a status' })</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              Values must be non-empty strings. Passing an empty array or including an empty string
+              in <code>values</code> throws a <code>TypeError</code> at schema-construction time.
+            </p>
+          </div>
+
+          <h3><span class="type-chip">z.formArray(elementSchema, opts?)</span></h3>
+          <p>
+            Returns a Zod array schema wrapping <code>elementSchema</code>. The element schema must
+            not itself be an array or object — use <code>z.array()</code> or
+            <code>z.object()</code> directly for those shapes. By default the array is required;
+            pass <code>{ required: false }</code> to make it optional (<code>undefined</code>).
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>required</code></td>
+                <td><code>boolean</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  When <code>false</code>, wraps the array in <code>z.optional()</code> so the
+                  field may be absent.
+                </td>
+              </tr>
+              <tr>
+                <td><code>minLength</code></td>
+                <td><code>number</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Minimum number of items. Exposed via <code>formState.ranges</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>maxLength</code></td>
+                <td><code>number</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Maximum number of items. Exposed via <code>formState.ranges</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">Error message for array type validation.</td>
+              </tr>
+              <tr>
+                <td><code>lengthError</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Error message for <code>minLength</code> / <code>maxLength</code> violations.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Required array of strings
+z.formArray(z.string())
+
+// With length constraints
+z.formArray(z.formString(), { minLength: 1, maxLength: 10, lengthError: 'Must have 1–10 tags' })
+
+// Optional — may be undefined
+z.formArray(z.formNumber(), { required: false })</code></pre>
+          </div>
+
+          <h3><span class="type-chip">z.validate(predicate, params?)</span></h3>
+          <p>
+            Creates a Zod check for whole-object (cross-field) or single-field validation. Unlike
+            <code>z.refine</code>, it runs on every validation pass by default — the optional
+            <code>condition</code> parameter lets you gate it on the current set of prior errors.
+            Pass the returned check to <code>.check()</code> on a <code>z.object()</code> or
+            <code>z.strictObject()</code>.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>predicate</code></td>
+                <td><code>(item: T) =&gt; boolean</code></td>
+                <td>—</td>
+                <td class="prop-desc">Returns <code>true</code> when the value is valid.</td>
+              </tr>
+              <tr>
+                <td><code>condition</code></td>
+                <td><code>(errors: ZodValidationError[]) =&gt; boolean</code></td>
+                <td>always runs</td>
+                <td class="prop-desc">
+                  Called with the current validation errors before running the predicate. Return
+                  <code>false</code> to skip this check entirely.
+                </td>
+              </tr>
+              <tr>
+                <td><code>path</code></td>
+                <td><code>PropertyKey | PropertyKey[]</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Key in <code>formState.errors</code> where the error is stored. Defaults to the
+                  root (no path).
+                </td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">Custom error message.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Shorthand — second argument is the error string
+z.validate(
+  (data) =&gt; data.endDate &gt; data.startDate,
+  'End date must be after start date'
+)
+
+// With path — error is stored under 'endDate'
+z.validate(
+  (data) =&gt; !data.endDate || data.endDate &gt; data.startDate,
+  { path: 'endDate', error: 'End date must be after start date' }
+)
+
+// With condition — skips this check when 'startDate' already has an error
+z.validate(
+  (data) =&gt; data.endDate &gt; data.startDate,
+  {
+    condition: (errors) =&gt; !errors.some((e) =&gt; e.pathNotation === 'startDate'),
+    path: 'endDate',
+    error: 'End date must be after start date',
+  }
+)
+
+// Attach to an object schema
+const schema = z
+  .strictObject({ startDate: z.formDate(), endDate: z.formDate() })
+  .check(
+    z.validate(
+      (data) =&gt; !data.endDate || !data.startDate || data.endDate &gt; data.startDate,
+      { path: 'endDate', error: 'End date must be after start date' }
+    )
+  );</code></pre>
+          </div>
+
+          <h3><span class="type-chip">z.someItem(predicate, error?)</span></h3>
+          <p>
+            Creates a Zod check that passes when <em>at least one</em> array element satisfies the
+            predicate — equivalent to <code>Array.prototype.some</code>. Use with
+            <code>.check()</code> on an array schema.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">const schema = z.strictObject({
+  participants: z.formArray(
+    z.object({ role: z.formValues(['owner', 'member']), name: z.formString() })
+  ).check(
+    z.someItem(
+      (item) =&gt; item.role === 'owner',
+      'At least one participant must be an owner'
+    )
+  ),
+});</code></pre>
+          </div>
+
+          <h3><span class="type-chip">z.everyItem(predicate, error?)</span></h3>
+          <p>
+            Creates a Zod check that passes when <em>all</em> array elements satisfy the predicate
+            — equivalent to <code>Array.prototype.every</code>. Use with <code>.check()</code> on
+            an array schema.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">const schema = z.strictObject({
+  prices: z.formArray(z.formNumber()).check(
+    z.everyItem((price) =&gt; price === '' || price &gt; 0, 'All prices must be positive')
+  ),
+});</code></pre>
+          </div>
+
+          <h3><span class="type-chip">z.uniqueItems(deepEquality?, params?)</span></h3>
+          <p>
+            Creates a Zod check that ensures all array items are unique. The error is placed at
+            the path of the first duplicate element, making it easy to highlight the offending
+            item in the UI. Use with <code>.check()</code> on an array schema.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>deepEquality</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">
+                  Use deep equality instead of reference equality (<code>===</code>).
+                </td>
+              </tr>
+              <tr>
+                <td><code>mapFn</code></td>
+                <td><code>(item: T, index: number) =&gt; unknown</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Map each item to a comparison value before checking uniqueness. Use to compare a
+                  specific property rather than the whole object.
+                </td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">Custom error message placed on the duplicate element.</td>
+              </tr>
+              <tr>
+                <td><code>elementPath</code></td>
+                <td><code>PropertyKey[]</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Path within each array element where the error is attached. E.g.
+                  <code>['email']</code> makes the error appear under
+                  <code>items[1].email</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>ignoreValues</code></td>
+                <td><code>unknown[]</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Values skipped when checking for duplicates — typically
+                  <code>['']</code> to ignore blank entries.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Unique primitive strings — ignore blanks
+z.formArray(z.formString()).check(
+  z.uniqueItems(false, { error: 'Duplicate tag', ignoreValues: [''] })
+)
+
+// Unique by a property — error appears at the duplicate item's 'email' field
+z.formArray(z.object({ email: z.formString(), name: z.formString() })).check(
+  z.uniqueItems(false, {
+    mapFn: (item) =&gt; item.email,
+    elementPath: ['email'],
+    error: 'Email must be unique',
+    ignoreValues: [''],
+  })
+)
+
+// Deep equality for object items
+z.formArray(z.object({ x: z.formNumber(), y: z.formNumber() })).check(
+  z.uniqueItems(true, { error: 'Duplicate coordinate' })
+)</code></pre>
           </div>
         </section>
         <section class="section" id="basic-usage">
