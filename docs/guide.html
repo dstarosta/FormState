@@ -4310,9 +4310,8 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <li>
               FormState re-renders the component that called <code>useFormState</code> on every
               state change. <code>useWatch</code> isolates keystroke re-renders to subscribers by
-              observing the DOM element's value directly, independent of React state. For validation
-              state isolation, extract subtrees into their own components via
-              <code>formConnect</code>.
+              observing the DOM element's value directly, independent of React state. For
+              high-frequency inputs where even that is undesirable, use uncontrolled inputs instead.
             </li>
           </ol>
           <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
@@ -4340,6 +4339,78 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               navigating away when the form has unsaved changes.
             </li>
           </ol>
+
+          <h3>Reading the table — a React 19 and TypeScript perspective</h3>
+          <p>
+            If you are building with React 19 and TypeScript, two of these five libraries are easy
+            to rule out immediately. <strong>Final Form</strong> has no meaningful TypeScript
+            support and no schema integration — it predates both concerns and has not kept up.
+            <strong>Formik</strong> is in maintenance mode, has no React 19 support planned, and
+            its TypeScript story has always been string-keyed and largely cosmetic. Neither is a
+            reasonable starting point for a new project. The real comparison is between TanStack
+            Form, React Hook Form, and FormState.
+          </p>
+          <p>
+            <strong>TypeScript depth differs more than it looks.</strong> React Hook Form and
+            TanStack Form both verify field paths at compile time — RHF via a <code>Path&lt;T&gt;</code>
+            recursive type that enumerates every valid dot-notation string, TanStack Form via
+            <code>DeepKeys&lt;TData&gt;</code>. A typo will be caught. The difference is in the
+            approach and what it costs. Generating a union of every possible path string is
+            expensive work for the TypeScript compiler on schemas with deep nesting or large arrays
+            — you can hit slowdowns or cryptic errors where the type machinery gives up. More
+            practically, array item paths like <code>"notes.0.text"</code> are valid strings but
+            carry no index safety, and the error messages when something goes wrong land inside
+            complex generic machinery rather than on the property you mistyped. FormState uses a
+            typed proxy instead: <code>(path) =&gt; path.notes[index].text</code> navigates the
+            actual object shape, the value type of every field is inferred at the call site, and
+            errors point directly at the offending property. No string union, no recursive type
+            expansion, no generics to pass by hand.
+          </p>
+          <p>
+            <strong>Component coupling is where the design philosophies most visibly diverge.</strong>
+            TanStack Form requires every field to be wrapped in <code>form.Field</code> or use
+            <code>form.useField()</code>, permanently tying the component to the library. React Hook
+            Form's <code>register()</code> avoids this for simple uncontrolled inputs, but the
+            moment you use a controlled component — a date picker, a component library widget, any
+            custom input — you reach for <code>&lt;Controller&gt;</code> and the coupling is back.
+            FormState field components are just components that accept typed props: no library
+            import, no hook, no context dependency. You can test them with a plain object, drop them
+            into a Storybook story, or reuse them in a different form without changing a single
+            import. That is not a marginal difference — it means the form library stays out of your
+            component tree entirely.
+          </p>
+          <p>
+            <strong>Re-renders are often cited as a weakness, but the comparison is incomplete.</strong>
+            TanStack Form and React Hook Form limit re-renders to the field level — and that
+            isolation is inseparable from the component coupling that comes with it. FormState
+            re-renders the whole component by default, but it ships with targeted tools for the
+            cases where that matters: uncontrolled inputs bypass React state entirely for
+            high-frequency fields like large text areas, and <code>useWatch</code> observes a DOM
+            element's live value without triggering any re-render at all. The difference is that in
+            TanStack Form and React Hook Form re-render isolation is forced on every component
+            whether you need it or not, at the cost of coupling. In FormState you opt in where it
+            actually matters, and your components stay clean everywhere else.
+          </p>
+          <p>
+            <strong>React 19 integration is a first-class concern, not a retrofit.</strong> TanStack
+            Form supports React 19 actions. React Hook Form still uses <code>onSubmit</code> and
+            <code>e.preventDefault()</code> — it works alongside React 19 but does not integrate
+            with it. FormState is built around <code>&lt;form action&gt;</code> natively:
+            <code>useFormStatus</code> works in any child component without extra setup, server
+            actions drop in without adapters, and the browser's native submit behaviour is
+            preserved. If React 19 is your target, that integration is architectural — the other
+            libraries are bolted on after the fact.
+          </p>
+          <p>
+            <strong>The bottom line:</strong> on a React 19, TypeScript-first project, FormState is
+            the strongest fit — end-to-end type inference, zero component coupling, native React 19
+            integration, and a schema that is genuinely the single source of truth rather than just
+            a validation adapter. The one real caveat is that v1.0.0 means you are adopting early.
+            If you need the full ecosystem and long track record of a mature library, React Hook
+            Form for simpler forms or TanStack Form for complex ones are the next-best options —
+            with the understanding that your field components will carry a library import for as
+            long as the form exists.
+          </p>
         </section>
       </main>
     </div>
