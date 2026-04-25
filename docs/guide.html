@@ -352,13 +352,13 @@ formHooks.useListener(listener);</code></pre>
 
           <h3>No Render Props</h3>
           <p>
-            Libraries like TanStack Form and React Hook Form manage per-field subscriptions by
+            TanStack Form, React Hook Form, and Formik all manage per-field subscriptions by
             wrapping each input in a special component or render prop. FormState takes a different
             approach: state lives in a plain object you read directly, and you wire inputs yourself
             with ordinary props. You can always build a layer of abstracted components on top — but
             you never have to.
           </p>
-          <div class="code-split">
+          <div class="code-split-3">
             <div class="code-block">
               <div class="code-block-header">
                 <span class="code-block-lang">tsx</span>
@@ -382,6 +382,46 @@ formHooks.useListener(listener);</code></pre>
   )}
 &lt;/form.Field&gt;</code></pre>
             </div>
+            <div class="code-block">
+              <div class="code-block-header">
+                <span class="code-block-lang">tsx</span>
+                <span class="code-block-label">React Hook Form</span>
+              </div>
+              <pre><code class="language-tsx">// Controlled inputs need a render-prop wrapper
+&lt;Controller
+  name="name"
+  control={control}
+  render={({ field, fieldState }) =&gt; (
+    &lt;div&gt;
+      &lt;input {...field} /&gt;
+      {fieldState.error &amp;&amp; (
+        &lt;span&gt;
+          {fieldState.error.message}
+        &lt;/span&gt;
+      )}
+    &lt;/div&gt;
+  )}
+/&gt;</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-block-header">
+                <span class="code-block-lang">tsx</span>
+                <span class="code-block-label">Formik</span>
+              </div>
+              <pre><code class="language-tsx">// Field render prop to access per-field state
+&lt;Field name="name"&gt;
+  {({ field, meta }) =&gt; (
+    &lt;div&gt;
+      &lt;input {...field} /&gt;
+      {meta.touched &amp;&amp; meta.error &amp;&amp; (
+        &lt;span&gt;{meta.error}&lt;/span&gt;
+      )}
+    &lt;/div&gt;
+  )}
+&lt;/Field&gt;</code></pre>
+            </div>
+          </div>
+          <div class="code-split-answer">
             <div class="code-block">
               <div class="code-block-header">
                 <span class="code-block-lang">tsx</span>

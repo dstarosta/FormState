@@ -339,6 +339,29 @@ li strong {
   }
 }
 
+.code-split-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin: 18px 0 0;
+}
+
+.code-split-3 .code-block {
+  margin: 0;
+}
+
+.code-split-answer {
+  margin: 12px 0 24px;
+  padding-top: 4px;
+  border-top: 2px solid var(--border);
+}
+
+@media (max-width: 820px) {
+  .code-split-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Inline code */
 :not(pre) > code {
   font-family: 'JetBrains Mono', monospace;
