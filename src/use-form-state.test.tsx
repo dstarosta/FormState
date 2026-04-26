@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, type Ref } from 'react';
+import React, { useEffect, useMemo, useRef, type Ref } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import {
   act,
@@ -2344,6 +2344,49 @@ describe('useFormState', () => {
       expect(cleanFormState.errors.getManual('id')).toBeUndefined();
     });
 
+    it('validSchema should become true after fixing a schema validation error', async () => {
+      let validSchemaCapture: boolean | null = null;
+
+      function TestForm() {
+        const { formStatus, formActions } = useFormState(schema, {
+          initialData: { info: { age: 30 }, tags: [] } satisfies InitialSchema,
+        });
+
+        validSchemaCapture = formStatus.validSchema; // accessed during render
+
+        return (
+          <>
+            <button
+              type="button"
+              data-testid="validate"
+              onClick={() => {
+                formActions.validate();
+              }}
+            >
+              Validate
+            </button>
+            <button
+              type="button"
+              data-testid="fix"
+              onClick={() => {
+                formActions.change('name', 'John');
+              }}
+            >
+              Fix
+            </button>
+          </>
+        );
+      }
+
+      render(<TestForm />);
+
+      await userEvent.click(screen.getByTestId('validate'));
+      expect(validSchemaCapture).toBe(false);
+
+      await userEvent.click(screen.getByTestId('fix'));
+      expect(validSchemaCapture).toBe(true);
+    });
+
     it('should set and clear manual errors conditionally', () => {
       const initialData: InitialSchema = {
         name: 'John',
@@ -2958,6 +3001,39 @@ describe('useFormState', () => {
       expect(submittedState).toBeDefined();
       expect(submittedState.formData.has('id')).toBe(true);
       expect(submittedState.formData.get('submitter')).toBe('submit');
+    });
+
+    it('getSubmittedData should reflect the submitted state when used as a useMemo dependency', async () => {
+      function SubmitTestForm() {
+        const {
+          formActions: { getSubmittedData },
+          formHandlers: { handleSubmit },
+          Form,
+        } = useFormState(schema, {
+          initialData: { name: 'John', info: { age: 30 } } satisfies InitialSchema,
+        });
+
+        const submittedName = useMemo(
+          () => getSubmittedData()?.data.name ?? null,
+          [getSubmittedData]
+        );
+
+        return (
+          <Form action={handleSubmit((state) => Promise.resolve(state.valid ? true : {}))}>
+            <p data-testid="submitted-name">{submittedName ?? 'not submitted'}</p>
+            <button>Submit</button>
+          </Form>
+        );
+      }
+
+      render(<SubmitTestForm />);
+      expect(screen.getByTestId('submitted-name')).toHaveTextContent('not submitted');
+
+      fireEvent.click(screen.getByText('Submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('submitted-name')).toHaveTextContent('John');
+      });
     });
 
     it.each([true, false])('should fail to submit form using "submit"', async (watch) => {

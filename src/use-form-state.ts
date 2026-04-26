@@ -283,19 +283,19 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Determines whether the schema is valid (manual errors ignored).
   const isSchemaValid = useCallback(() => {
-    if (!formStateRef.current.validated) {
+    if (!formState.validated) {
       return null;
     }
 
     const manualErrors = Object.entries(manualErrorsState.get());
-    const allErrors = Object.entries(formStateRef.current.errors);
+    const allErrors = Object.entries(formState.errors);
 
     const allErrorsAreManual = allErrors.every((error) =>
       manualErrors.some((manual) => deepEqual(manual, error))
     );
 
     return allErrorsAreManual;
-  }, [manualErrorsState]);
+  }, [formState.errors, formState.validated, manualErrorsState]);
 
   // The memoized "formStatus" object.
   const formStatus = useMemo<FormStatus>(() => {
@@ -1221,13 +1221,13 @@ export function useFormState<T extends z.ZodMiniObject>(
   // Returns the last submitted form data.
   const getSubmittedData = useCallback(
     () =>
-      formStateRef.current.submittedData
+      formState.submittedData
         ? ({
-            data: formStateRef.current.submittedData.data,
-            formData: formStateRef.current.submittedData.formData,
+            data: formState.submittedData.data,
+            formData: formState.submittedData.formData,
           } satisfies SubmittedData<State>)
         : null,
-    []
+    [formState.submittedData]
   );
 
   // Infers the name of the form field.
