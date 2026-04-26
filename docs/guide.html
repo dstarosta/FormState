@@ -478,7 +478,7 @@ formHooks.useListener(listener);</code></pre>
             reference and <code>tsconfig</code> requirements.
           </p>
 
-          <h3>React 19 Native</h3>
+          <h3>Built for React 19</h3>
           <p>
             FormState is built around React 19's form model, not bolted on top of it. The
             <code>Form</code> component returned by the hook accepts an async
@@ -506,6 +506,31 @@ const action = formHandlers.handleSubmit(async (state, formData) =&gt; {
           <p>
             See <a href="#submission">Form Submission</a> for the full API including
             <code>useFormStatus</code> integration and server action patterns.
+          </p>
+          <p>
+            <strong>Immutable state.</strong> Every <code>formState</code> update produces a new
+            object reference — no in-place mutation, no shared mutable containers. This is what
+            makes FormState safe for the full range of React patterns: <code>useMemo</code>,
+            <code>useEffect</code> dependency arrays, <code>React.memo</code>, and the React
+            Compiler all rely on reference equality to detect changes. Libraries that store form
+            state in a mutable ref or an external store — including React Hook Form and TanStack
+            Form — bypass React's change-detection entirely, which means those optimisations
+            silently stop working for form-derived values.
+          </p>
+          <p>
+            <strong
+              ><code>&lt;Suspense&gt;</code> and
+              <code>&lt;ErrorBoundary&gt;</code> compatibility</strong
+            >
+            follows directly from immutability. Because the state object is never mutated, React can
+            safely discard and replay renders during a suspension or an error recovery without the
+            form ending up in a torn or partially-updated state. A mutable store can be written to
+            mid-render and never rolled back when React throws that render away — the form state
+            then diverges from what the UI shows. The
+            <a href="#tanstack-query">TanStack Query example</a> demonstrates this in practice:
+            <code>useSuspenseQuery</code> suspends the form component while data loads, the boundary
+            shows a fallback, and when the query resolves the form initializes from the fetched data
+            in a single consistent render with no extra coordination.
           </p>
 
           <h3>Schema-Driven, Non-Intrusive</h3>
@@ -678,11 +703,50 @@ type Schema = z.infer&lt;typeof schema&gt;;
                 <td><code>z.symbol()</code></td>
                 <td><code>symbol</code></td>
                 <td class="prop-desc">
-                  Auto-generates a UUID symbol — useful for React list keys.
+                  Auto-generates a UUID symbol — useful for array field <code>map</code> keys that
+                  are not a part of the API schema. It allows React to track components that have
+                  been created on the client and do not have a real ID yet.
+                </td>
+              </tr>
+              <tr>
+                <td><code>z.object(shape)</code></td>
+                <td><code>{ ... }</code></td>
+                <td class="prop-desc">
+                  Nested object shape — strips unknown keys silently. Use for any sub-object within
+                  the schema: direct nested fields or per-element shapes inside
+                  <code>z.formArray()</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>z.strictObject(shape)</code></td>
+                <td><code>{ ... }</code></td>
+                <td class="prop-desc">
+                  Root schema container — rejects validation if any key is not declared in the
+                  schema. Prefer this at the top level so unexpected fields are a hard error rather
+                  than silent data loss.
                 </td>
               </tr>
             </tbody>
           </table>
+          <div class="callout callout-tip">
+            <div class="callout-label">Tip</div>
+            <p>
+              Use <code>z.strictObject</code> for the root schema and <code>z.object</code> for any
+              nested shape — whether it's a direct sub-object field or a per-element shape inside
+              <code>z.formArray()</code>. The root benefits from strict validation so that unknown
+              keys are a hard error rather than silent data loss. Nested shapes are more permissive
+              because they often receive data from an API response that may carry extra properties.
+            </p>
+          </div>
+          <div class="callout callout-warning">
+            <div class="callout-label">Warning</div>
+            <p>
+              Using <code>z.strictObject</code> at the root means that if the API starts returning a
+              new field that is not yet declared in the schema, validation will fail. Keep the
+              schema in sync with the API, or switch to <code>z.object</code> if your integration
+              cannot tolerate strict key checking.
+            </p>
+          </div>
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
@@ -704,12 +768,17 @@ type Schema = z.infer&lt;typeof schema&gt;;
           <h3><span class="type-chip">z.formString(opts?, ...checks)</span></h3>
           <p>
             Returns a schema that accepts <code>string | ''</code>. An empty string represents a
-            blank field. When <code>required</code> is <code>true</code>, an empty string is
-            treated as invalid.
+            blank field. When <code>required</code> is <code>true</code>, an empty string is treated
+            as invalid.
           </p>
           <table class="prop-table">
             <thead>
-              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -755,7 +824,11 @@ z.formString(z.maxLength(100, 'Too long'), z.regex(/^\w+$/, 'Letters only'))
 z.formString({ required: true, error: 'Required' }, z.maxLength(50))
 
 // Strip empty strings from toObject() output
-z.formString({ allowEmpty: false })</code></pre>
+z.formString({ allowEmpty: false })
+
+// Use built-in regex patterns from z.regexes instead of writing your own
+z.formString({ required: true, error: 'Email is required' }, z.regex(z.regexes.email, 'Invalid email address'))
+z.formString(z.regex(z.regexes.e164, 'Must be in international format, e.g. +12125551234'))</code></pre>
           </div>
 
           <h3><span class="type-chip">z.formNumber(opts?, ...checks)</span></h3>
@@ -765,7 +838,12 @@ z.formString({ allowEmpty: false })</code></pre>
           </p>
           <table class="prop-table">
             <thead>
-              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -805,7 +883,12 @@ z.formNumber({ required: true, error: 'Required' }, z.gte(18, 'Must be 18 or old
           </p>
           <table class="prop-table">
             <thead>
-              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -842,7 +925,12 @@ z.default(z.formBoolean(), false)</code></pre>
           </p>
           <table class="prop-table">
             <thead>
-              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -896,14 +984,18 @@ z.formDate(z.gte(new Date(2000, 0, 1), 'Must be after year 2000'))</code></pre>
 
           <h3><span class="type-chip">z.formValues(values, opts?)</span></h3>
           <p>
-            Returns an enum-like schema that accepts one of the provided string literals or an
-            empty string (representing "not selected"). When <code>required</code> is
-            <code>true</code>, only the listed values are accepted and the inferred type narrows
-            accordingly.
+            Returns an enum-like schema that accepts one of the provided string literals or an empty
+            string (representing "not selected"). When <code>required</code> is <code>true</code>,
+            only the listed values are accepted and the inferred type narrows accordingly.
           </p>
           <table class="prop-table">
             <thead>
-              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -950,7 +1042,12 @@ z.formValues(['active', 'inactive', 'pending'], { required: true, error: 'Select
           </p>
           <table class="prop-table">
             <thead>
-              <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -958,8 +1055,8 @@ z.formValues(['active', 'inactive', 'pending'], { required: true, error: 'Select
                 <td><code>boolean</code></td>
                 <td><code>true</code></td>
                 <td class="prop-desc">
-                  When <code>false</code>, wraps the array in <code>z.optional()</code> so the
-                  field may be absent.
+                  When <code>false</code>, wraps the array in <code>z.optional()</code> so the field
+                  may be absent.
                 </td>
               </tr>
               <tr>
@@ -1016,7 +1113,12 @@ z.formArray(z.formNumber(), { required: false })</code></pre>
           </p>
           <table class="prop-table">
             <thead>
-              <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -1108,9 +1210,9 @@ const schema = z
 
           <h3><span class="type-chip">z.everyItem(predicate, error?)</span></h3>
           <p>
-            Creates a Zod check that passes when <em>all</em> array elements satisfy the predicate
-            — equivalent to <code>Array.prototype.every</code>. Use with <code>.check()</code> on
-            an array schema.
+            Creates a Zod check that passes when <em>all</em> array elements satisfy the predicate —
+            equivalent to <code>Array.prototype.every</code>. Use with <code>.check()</code> on an
+            array schema.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -1123,13 +1225,18 @@ const schema = z
 
           <h3><span class="type-chip">z.uniqueItems(deepEquality?, params?)</span></h3>
           <p>
-            Creates a Zod check that ensures all array items are unique. The error is placed at
-            the path of the first duplicate element, making it easy to highlight the offending
-            item in the UI. Use with <code>.check()</code> on an array schema.
+            Creates a Zod check that ensures all array items are unique. The error is placed at the
+            path of the first duplicate element, making it easy to highlight the offending item in
+            the UI. Use with <code>.check()</code> on an array schema.
           </p>
           <table class="prop-table">
             <thead>
-              <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -1161,8 +1268,7 @@ const schema = z
                 <td>—</td>
                 <td class="prop-desc">
                   Path within each array element where the error is attached. E.g.
-                  <code>['email']</code> makes the error appear under
-                  <code>items[1].email</code>.
+                  <code>['email']</code> makes the error appear under <code>items[1].email</code>.
                 </td>
               </tr>
               <tr>
@@ -1197,6 +1303,20 @@ z.formArray(z.object({ email: z.formString(), name: z.formString() })).check(
 z.formArray(z.object({ x: z.formNumber(), y: z.formNumber() })).check(
   z.uniqueItems(true, { error: 'Duplicate coordinate' })
 )</code></pre>
+          </div>
+          <h3>Missing Zod functionality</h3>
+          <p>
+            Any Zod feature not directly re-exported by <code>form-state</code> is available under
+            <code>z.advanced</code>. This includes types such as <code>z.advanced.union</code>,
+            <code>z.advanced.nullable</code>, <code>z.advanced.transform</code>, and others.
+          </p>
+          <div class="callout callout-warning">
+            <div class="callout-label">Warning</div>
+            <p>
+              Methods under <code>z.advanced</code> are not guaranteed to be compatible with
+              FormState. They bypass the form-aware preprocessing layer, so features like required
+              validation, empty-string handling, and field metadata may not work as expected.
+            </p>
           </div>
         </section>
         <section class="section" id="basic-usage">
@@ -2493,7 +2613,7 @@ export function FormMask() {
               when you nest your spinner inside it.
             </p>
           </div>
-          <h3>formStatus.submitting vs useFormStatus</h3>
+          <h3>formStatus.submitting vs React useFormStatus</h3>
           <p>Both serve similar purposes but at different levels:</p>
           <table class="prop-table">
             <thead>
@@ -2537,10 +2657,12 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
 
   // Encode all entries as a URL-encoded string
   const body = formDataEncode(formData).toString();
-  // "name=Alice&amp;info%5B%22age%22%5D=30"
+  // "name=Alice&amp;info%5B%22age%22%5D=30"  (bracket notation — useFormState default)
+  // "name=Alice&amp;info.age=30"  (dot notation — pass 'dot' as nameFormat arg,
+  //                            or use inferName(path, 'dot'))
 
   // Omit specific fields (e.g. internal tracking values)
-  const bodyClean = formDataEncode(formData, ['_csrf', 'action']).toString();
+  const bodyClean = formDataEncode(formData, ['csrf', 'action']).toString();
 
   await fetch('/api/save', {
     method: 'POST',
@@ -2877,7 +2999,7 @@ function AppForm({ onSubmitted }: { onSubmitted: () =&gt; void }) {
 export default formConnect({
   schema: formSchema,
   confirmDirtyStateNavigation: true,  // warn on unsaved navigation
-  watch: true,                         // enable useWatch
+  watch: true,                        // enable useWatch
 })(AppForm);</code></pre>
           </div>
           <div class="callout callout-warning">
@@ -3242,7 +3364,7 @@ import { useFormState, parseState, z, type SchemaDataObject, type SubmitState } 
 
 const DATE_FORMAT = 'MM/dd/yyyy';
 
-const profileSchema = z.object({
+const profileSchema = z.strictObject({
   name:        z.formString({ required: true }).with(z.describe('Name')),
   email:       z.formString({ required: true }).with(z.describe('Email')),
   dateOfBirth: z.formDate({ dateFormat: DATE_FORMAT }).with(z.describe('Date of Birth')),
@@ -4169,7 +4291,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
                 <td>🛑</td>
               </tr>
               <tr>
-                <td>React 19 native form compatibility</td>
+                <td>React 19 built-in form compatibility</td>
                 <td>✅</td>
                 <td>🛑</td>
                 <td>🛑</td>
@@ -4345,14 +4467,15 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             If you are building with React 19 and TypeScript, two of these five libraries are easy
             to rule out immediately. <strong>Final Form</strong> has no meaningful TypeScript
             support and no schema integration — it predates both concerns and has not kept up.
-            <strong>Formik</strong> is in maintenance mode, has no React 19 support planned, and
-            its TypeScript story has always been string-keyed and largely cosmetic. Neither is a
+            <strong>Formik</strong> is in maintenance mode, has no React 19 support planned, and its
+            TypeScript story has always been string-keyed and largely cosmetic. Neither is a
             reasonable starting point for a new project. The real comparison is between TanStack
             Form, React Hook Form, and FormState.
           </p>
           <p>
             <strong>TypeScript depth differs more than it looks.</strong> React Hook Form and
-            TanStack Form both verify field paths at compile time — RHF via a <code>Path&lt;T&gt;</code>
+            TanStack Form both verify field paths at compile time — RHF via a
+            <code>Path&lt;T&gt;</code>
             recursive type that enumerates every valid dot-notation string, TanStack Form via
             <code>DeepKeys&lt;TData&gt;</code>. A typo will be caught. The difference is in the
             approach and what it costs. Generating a union of every possible path string is
@@ -4367,7 +4490,9 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             expansion, no generics to pass by hand.
           </p>
           <p>
-            <strong>Component coupling is where the design philosophies most visibly diverge.</strong>
+            <strong
+              >Component coupling is where the design philosophies most visibly diverge.</strong
+            >
             TanStack Form requires every field to be wrapped in <code>form.Field</code> or use
             <code>form.useField()</code>, permanently tying the component to the library. React Hook
             Form's <code>register()</code> avoids this for simple uncontrolled inputs, but the
@@ -4380,7 +4505,9 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             component tree entirely.
           </p>
           <p>
-            <strong>Re-renders are often cited as a weakness, but the comparison is incomplete.</strong>
+            <strong
+              >Re-renders are often cited as a weakness, but the comparison is incomplete.</strong
+            >
             TanStack Form and React Hook Form limit re-renders to the field level — and that
             isolation is inseparable from the component coupling that comes with it. FormState
             re-renders the whole component by default, but it ships with targeted tools for the
@@ -4391,6 +4518,82 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             whether you need it or not, at the cost of coupling. In FormState you opt in where it
             actually matters, and your components stay clean everywhere else.
           </p>
+          <p>
+            <strong
+              >Uncontrolled-component bugs are a class of problem FormState sidesteps
+              entirely.</strong
+            >
+            React Hook Form and TanStack Form both rely on per-field registration — inputs must
+            mount and register themselves (via <code>register()</code> or <code>form.Field</code>)
+            for their values to be tracked. That model introduces a family of silent failures that
+            have nothing to do with your application logic: async default values that arrive after
+            mount are ignored unless you call <code>reset()</code> manually; a field that
+            conditionally unmounts drops its value from the submission silently; a
+            <code>key</code> prop change unregisters and re-registers the input, clearing its state;
+            a field that mounts after <code>handleSubmit</code> fires is simply absent from the
+            payload; array fields tracked by generated IDs can desync from React state if mutated
+            outside the library's own methods. FormState has no registration system. All field state
+            is derived from the schema at initialization — a field's value exists in state whether
+            or not its input is currently rendered. Conditional visibility, dynamic arrays, and
+            async initial data are all handled without lifecycle coordination.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Bug</th>
+                <th>FormState</th>
+                <th>TanStack Form</th>
+                <th>React Hook Form</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Async default values ignored after mount</td>
+                <td>✅ reactive — non-dirty fields update when <code>initialData</code> changes</td>
+                <td>
+                  🛑 <code>defaultValues</code> read once; manual <code>reset()</code> required
+                </td>
+                <td>
+                  🛑 <code>defaultValues</code> read once; manual <code>reset()</code> required
+                </td>
+              </tr>
+              <tr>
+                <td>Field value lost when component unmounts</td>
+                <td>✅ state is schema-derived, not mount-dependent</td>
+                <td>🛑 field unregisters on unmount by default</td>
+                <td>🛑 configurable, but opt-out adds complexity</td>
+              </tr>
+              <tr>
+                <td>Field missing from submit if it mounts late</td>
+                <td>✅ all fields present in state from initialization</td>
+                <td>🛑 fields self-register; a late mount misses the submission</td>
+                <td>✅ uncontrolled inputs registered eagerly via <code>register()</code></td>
+              </tr>
+              <tr>
+                <td><code>key</code> prop change breaks field state</td>
+                <td>✅ no registration to reset</td>
+                <td>🛑 remount triggers re-registration and clears state</td>
+                <td>🛑 remount drops the <code>ref</code> and unregisters the field</td>
+              </tr>
+              <tr>
+                <td>Array field identity desyncs from state</td>
+                <td>
+                  ✅ immutable operations, no generated IDs — use a <code>Symbol</code> field if
+                  item identity is needed
+                </td>
+                <td>❓ safe if using built-in methods; direct mutation desyncs</td>
+                <td>
+                  🛑 <code>useFieldArray</code> tracks by generated ID; outside mutation desyncs
+                </td>
+              </tr>
+              <tr>
+                <td><code>ref</code> conflicts on custom inputs</td>
+                <td>✅ no <code>ref</code> used for tracking</td>
+                <td>✅ <code>form.Field</code> does not rely on DOM refs</td>
+                <td>🛑 <code>register()</code> owns the ref; manual merge required</td>
+              </tr>
+            </tbody>
+          </table>
           <p>
             <strong>React 19 integration is a first-class concern, not a retrofit.</strong> TanStack
             Form supports React 19 actions. React Hook Form still uses <code>onSubmit</code> and
@@ -4405,11 +4608,13 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <strong>The bottom line:</strong> on a React 19, TypeScript-first project, FormState is
             the strongest fit — end-to-end type inference, zero component coupling, native React 19
             integration, and a schema that is genuinely the single source of truth rather than just
-            a validation adapter. The one real caveat is that v1.0.0 means you are adopting early.
-            If you need the full ecosystem and long track record of a mature library, React Hook
-            Form for simpler forms or TanStack Form for complex ones are the next-best options —
-            with the understanding that your field components will carry a library import for as
-            long as the form exists.
+            a validation adapter.
+          </p>
+          <p>
+            The one real caveat is that v1.0.0 means you are adopting early. If you need the full
+            ecosystem and long track record of a mature library, React Hook Form for simpler forms
+            or TanStack Form for complex ones are the next-best options — with the understanding
+            that your field components will carry a library import for as long as the form exists.
           </p>
         </section>
       </main>

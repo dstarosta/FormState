@@ -294,7 +294,7 @@ export function formBoolean(options?: FormTypeOptions) {
           received: 'string',
           message: options.error,
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
       }
       if (!value) {
         return EMPTY_STRING;
@@ -305,7 +305,7 @@ export function formBoolean(options?: FormTypeOptions) {
         received: 'string',
         message: options?.error,
         input: value,
-      } as z.core.$ZodRawIssue);
+      });
       return Boolean(value);
     }),
     options?.required
@@ -403,15 +403,16 @@ export function formDate(
           received: 'string',
           message: options.error,
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
       }
 
       if (!value) {
         return EMPTY_STRING;
       }
 
-      const dateValue =
-        value instanceof Date ? value : parseDate(String(value as unknown), dateFormat);
+      // This is by design - invalid dates with strings in them (see INVALID_DATE in date-formatter.ts).
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      const dateValue = value instanceof Date ? value : parseDate(String(value), dateFormat);
 
       if (!isValidDate(dateValue)) {
         ctx.issues.push({
@@ -420,7 +421,7 @@ export function formDate(
             options.dateFormatError ??
             'Invalid input: "' + (value as Date | string).toString() + '".',
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
 
         return typeof value === 'string' ? value : EMPTY_STRING;
       }
@@ -517,7 +518,7 @@ export function formNumber(
           received: 'string',
           message: options.error,
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
       }
       if (!value) {
         return EMPTY_STRING;
@@ -529,7 +530,7 @@ export function formNumber(
           received: 'string',
           message: options.error,
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
       }
       return value as number;
     }),
@@ -615,7 +616,7 @@ export function formString(
           expected: 'string',
           message: options.error,
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
       }
       if (!value) {
         return EMPTY_STRING;
@@ -626,7 +627,7 @@ export function formString(
           expected: 'string',
           message: options.error,
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
       }
       return value as string;
     }),
@@ -707,7 +708,7 @@ export function formValues(
           expected: 'string',
           message: options.error,
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
       }
       if (!value) {
         return EMPTY_STRING;
@@ -718,7 +719,7 @@ export function formValues(
           expected: 'string',
           message: options?.error,
           input: value,
-        } as z.core.$ZodRawIssue);
+        });
       }
       return value as string;
     }),

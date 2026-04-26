@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 
-import type { Immutable, ManualErrorState } from '../types/form-types';
+import type { ManualErrorState } from '../types/form-types';
 
 const EMPTY_STORE: Record<string, string> = Object.freeze({});
 
@@ -9,7 +9,7 @@ export function useManualErrorState() {
 
   const response = useMemo<ManualErrorState>(
     () => ({
-      get: () => ref.current as Immutable<Record<string, string>>,
+      get: () => ref.current,
       set: (value: Readonly<Record<string, string>> = EMPTY_STORE) => {
         ref.current = value;
       },

@@ -428,7 +428,7 @@ export function createState<T extends z.ZodMiniObject>(
           issues: [],
           error: { issues: [] },
           input: undefined,
-        } as z.core.$ZodCatchCtx) as State[typeof key];
+        }) as State[typeof key];
       } else if (value instanceof z.ZodMiniDefault) {
         result[key] = value.def.defaultValue as State[typeof key];
       } else if (value instanceof z.ZodMiniObject) {

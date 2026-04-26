@@ -28,6 +28,22 @@ const getElementValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLS
   return element.value;
 };
 
+const reformatName = (key: string, notation: 'bracket' | 'dot') => {
+  if (notation === 'dot') {
+    return key.replace(/\["([^"]+)"]/g, '.$1').replace(/\[(\d+)]/g, '.$1');
+  }
+
+  const parts = key.split('.');
+
+  if (parts.length <= 1) {
+    return key;
+  }
+
+  const [root = '', ...rest] = parts;
+
+  return root + rest.map((p) => (/^\d+$/.test(p) ? `[${p}]` : `["${p}"]`)).join('');
+};
+
 // Internal functions
 
 export function setFormData(element: HTMLInputElement, value: string) {
@@ -50,28 +66,27 @@ export const createFormComponent = <T extends object>(
     const passwordWarning = useRef(false);
 
     const formProps = useMemo(
-      () =>
-        ({
-          noValidate: !nativeValidation,
-          onKeyDown: (event: React.KeyboardEvent) => {
-            if (
-              !submitWithEnter &&
-              event.key === 'Enter' &&
-              event.target instanceof HTMLInputElement &&
-              !event.target.onkeydown
-            ) {
-              const element = event.target;
-              const isHidden =
-                !element.offsetParent ||
-                element.getAttribute('aria-hidden') === 'true' ||
-                globalThis.getComputedStyle(element).display === 'none' ||
-                globalThis.getComputedStyle(element).visibility === 'hidden';
-              if (!isHidden) {
-                event.preventDefault();
-              }
+      () => ({
+        noValidate: !nativeValidation,
+        onKeyDown: (event: React.KeyboardEvent) => {
+          if (
+            !submitWithEnter &&
+            event.key === 'Enter' &&
+            event.target instanceof HTMLInputElement &&
+            !event.target.onkeydown
+          ) {
+            const element = event.target;
+            const isHidden =
+              !element.offsetParent ||
+              element.getAttribute('aria-hidden') === 'true' ||
+              globalThis.getComputedStyle(element).display === 'none' ||
+              globalThis.getComputedStyle(element).visibility === 'hidden';
+            if (!isHidden) {
+              event.preventDefault();
             }
-          },
-        }) as FormProps,
+          }
+        },
+      }),
       [nativeValidation, submitWithEnter]
     );
 
@@ -85,7 +100,10 @@ export const createFormComponent = <T extends object>(
             element instanceof HTMLSelectElement) &&
           element.name
         ) {
-          store?.setValue(element.name, getDefaultElementValue(element) || getElementValue(element));
+          store?.setValue(
+            element.name,
+            getDefaultElementValue(element) || getElementValue(element)
+          );
         }
       }
     }, []);
@@ -166,15 +184,15 @@ export const createFormComponent = <T extends object>(
           form.addEventListener('change', handleInputChange);
         }
 
-        const hasAction = form.action.includes('throw new Error');
+        const hasJavaScriptAction = form.action.startsWith('javascript:');
 
-        if (hasAction) {
+        if (hasJavaScriptAction) {
           form.addEventListener('formdata', handleFormData);
           form.addEventListener('submit', handleSubmit, { capture: true });
         }
 
         return () => {
-          if (hasAction) {
+          if (hasJavaScriptAction) {
             form.removeEventListener('submit', handleSubmit, { capture: true });
             form.removeEventListener('formdata', handleFormData);
           }
@@ -217,17 +235,22 @@ export const createFormComponent = <T extends object>(
  *
  * @param formData - The form data.
  * @param omitNames - An array of names that represent form data entries that should not be serialized.
+ * @param nameFormat - Optionally renames field keys to the specified name format. Otherwise, the
+ *                     `inferredNameFormat` initialization value is used (default: "bracket").
  * @returns The `URLSearchParams` instance with the form data name/value pairs.
  */
-export const formDataEncode = (formData: FormData, omitNames?: string[]) =>
+export const formDataEncode = (
+  formData: FormData,
+  omitNames?: string[],
+  nameFormat?: 'bracket' | 'dot'
+) =>
   new URLSearchParams(
     [...formData.entries()]
-      .filter((entry) => {
-        return !omitNames?.length || !omitNames.includes(entry[0]);
-      })
-      .map((entry) => {
-        return typeof entry[1] === 'string' ? [entry[0], entry[1]] : [entry[0], entry[1].name];
-      })
+      .filter((entry) => !omitNames?.length || !omitNames.includes(entry[0]))
+      .map((entry) => [
+        nameFormat ? reformatName(entry[0], nameFormat) : entry[0],
+        typeof entry[1] === 'string' ? entry[1] : entry[1].name,
+      ])
   );
 
 /**

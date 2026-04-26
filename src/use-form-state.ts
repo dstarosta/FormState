@@ -15,7 +15,6 @@ import { createFormComponent } from './helpers/form-builder';
 import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 import type {
   ArrayElement,
-  StateChangeListener,
   DeepPartial,
   ElementFocusOptions,
   FormChangeArrayOptions,
@@ -39,6 +38,7 @@ import type {
   FormValidateOptions,
   ImmutableArray,
   StateCallback,
+  StateChangeListener,
   SubmitState,
   SubmittedData,
 } from './types/form-types';
@@ -856,7 +856,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       const path =
         typeof nameOrPath === 'function'
           ? getPath(formStateRef.current.data, nameOrPath)
-          : (nameOrPath as keyof State);
+          : nameOrPath;
       const pathState = getState(schema, formStateRef.current.data, nameOrPath);
 
       if (!Array.isArray(pathState)) {
@@ -949,7 +949,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       const path =
         typeof nameOrPath === 'function'
           ? getPath(formStateRef.current.data, nameOrPath)
-          : (nameOrPath as keyof State);
+          : nameOrPath;
       const pathState = getState(schema, formStateRef.current.data, nameOrPath);
 
       if (!Array.isArray(pathState)) {

@@ -1977,9 +1977,11 @@ declare function safeParseDate(input: string | undefined, format?: FormDateForma
  *
  * @param formData - The form data.
  * @param omitNames - An array of names that represent form data entries that should not be serialized.
+ * @param nameFormat - Optionally renames field keys to the specified name format. Otherwise, the
+ *                     `inferredNameFormat` initialization value is used (default: "bracket").
  * @returns The `URLSearchParams` instance with the form data name/value pairs.
  */
-declare const formDataEncode: (formData: FormData, omitNames?: string[]) => URLSearchParams;
+declare const formDataEncode: (formData: FormData, omitNames?: string[], nameFormat?: "bracket" | "dot") => URLSearchParams;
 /**
  * Submits a form element.
  *
