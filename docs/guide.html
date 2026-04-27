@@ -109,12 +109,12 @@
             <p>FormState requires <strong>React 19.2 or greater</strong>.</p>
           </div>
           <p>
-            Install FormState — Zod is bundled as a dependency, so you don't need to install it
-            separately:
+            Install FormState — Zod is bundled as a peer dependency. NPM 7+ installs it
+            automatically, PNPM does not.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">bash</span></div>
-            <pre><code class="language-bash">npm install react@^19.2.0 react-dom@^19.2.0
+            <pre><code class="language-bash">npm install react react-dom zod
 npm install github:dstarosta/FormState#v1.0.0</code></pre>
           </div>
           <p>Then import from the package root:</p>
@@ -4566,10 +4566,11 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
           </table>
           <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
             <li>
-              FormState uses <strong>Zod Mini</strong> (bundled) and requires
-              <strong>fast-equals</strong> (~2 KB gzipped). Other libraries are more flexible:
-              TanStack Form and React Hook Form support Zod, Yup, Valibot, and others via adapters;
-              Formik pairs primarily with Yup; Final Form has no built-in schema adapter.
+              FormState requires <strong>Zod Mini</strong> (~8-14 KB gzipped) and
+              <strong>fast-equals</strong> (~2 KB gzipped). Other libraries are often coupled with
+              schema libraries: TanStack Form and React Hook Form support Zod, Yup, Valibot, and
+              others via adapters; Formik pairs primarily with Yup; Final Form has no built-in
+              schema adapter but is more limited in validation capabilities.
             </li>
           </ol>
           <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
