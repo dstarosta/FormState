@@ -2399,6 +2399,14 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
                 </td>
               </tr>
               <tr>
+                <td class="prop-desc">Form data cache supression **</td>
+                <td class="prop-desc">Sets <code>autoComplete="off"</code> by default</td>
+                <td class="prop-desc">
+                  Must add <code>autoComplete="off"</code> manually or browser can cache form data
+                  that is inconsistent with the form state data.
+                </td>
+              </tr>
+              <tr>
                 <td class="prop-desc">Enter-key submit prevention</td>
                 <td class="prop-desc">
                   Blocks accidental submit-on-Enter from single-line inputs (opt in with
@@ -2448,6 +2456,10 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
             never desirable — the fields would momentarily revert to their HTML defaults before
             FormState can restore them. <code>&lt;FormResetBlocker&gt;</code> intercepts and cancels
             that reset at the DOM level.
+          </p>
+          <p class="prop-note">
+            ** The <code>autoComplete</code> attribute/prop can still be set on individual input
+            elements/components.
           </p>
           <h3>Using a plain <code>&lt;form&gt;</code> with <code>onSubmit</code></h3>
           <p>
