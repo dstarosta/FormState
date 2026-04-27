@@ -57,6 +57,7 @@
           <a href="#watch" class="nav-link">useWatch</a>
           <a href="#infer-name" class="nav-link">inferName</a>
           <a href="#helpers" class="nav-link">Value Helpers</a>
+          <a href="#nextjs" class="nav-link">Next.js</a>
           <a href="#tanstack-query" class="nav-link">TanStack Query</a>
           <a href="#devtools" class="nav-link">DevTools</a>
           <a href="#comparison" class="nav-link">Comparison</a>
@@ -2378,6 +2379,17 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
                 </td>
               </tr>
               <tr>
+                <td class="prop-desc">React 19 post-submit reset prevention *</td>
+                <td class="prop-desc">
+                  Includes <code>&lt;FormResetBlocker&gt;</code> automatically — form fields are not
+                  cleared after a form action specified in the <code>action</code> prop completes
+                </td>
+                <td class="prop-desc">
+                  Must place <code>&lt;FormResetBlocker&gt;</code> inside the
+                  <code>&lt;form&gt;</code> manually to support form actions
+                </td>
+              </tr>
+              <tr>
                 <td class="prop-desc">Native validation suppression</td>
                 <td class="prop-desc">
                   Sets <code>noValidate</code> by default — browser popups never appear
@@ -2430,6 +2442,13 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
               </tr>
             </tbody>
           </table>
+          <p class="prop-note">
+            * Certain versions of React and Next.js reset uncontrolled form controls after a server
+            action completes. Because FormState manages all field values internally, this reset is
+            never desirable — the fields would momentarily revert to their HTML defaults before
+            FormState can restore them. <code>&lt;FormResetBlocker&gt;</code> intercepts and cancels
+            that reset at the DOM level.
+          </p>
           <h3>Using a plain <code>&lt;form&gt;</code> with <code>onSubmit</code></h3>
           <p>
             If you prefer the traditional <code>onSubmit</code> pattern — or if you're integrating
@@ -2512,9 +2531,6 @@ return (
 
 const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
   if (!state.valid) return state.errors;
-
-  // Typed data from the schema
-  console.log(state.data.email);
 
   // Raw string from FormData — useful for fields outside the schema
   const redirectTo = formData.get('redirectTo') as string | null;
@@ -3340,6 +3356,142 @@ if (result.success) {
   // Still use the coerced data if errors are non-critical
   formActions.replace(result.data);
 }</code></pre>
+          </div>
+        </section>
+        <section class="section" id="nextjs">
+          <div class="section-eyebrow">Advanced</div>
+          <h2>Next.js</h2>
+          <p>
+            FormState works naturally with the Next.js App Router. Mark the form component
+            <code>"use client"</code> and call a Server Action from inside
+            <code>handleSubmit</code> — validation runs on the client, the action receives clean,
+            typed data.
+          </p>
+          <h3>Server action</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">ts</span></div>
+            <pre><code class="language-ts">"use server";
+
+export async function submitContact(data: {
+  name: string;
+  email: string;
+  message: string;
+  agreeToTerms?: boolean;
+}): Promise&lt;void&gt; {
+  await db.contacts.create({ data });
+}</code></pre>
+          </div>
+          <h3>Form component</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">"use client";
+
+import { useFormState, z } from "form-state";
+import { submitContact } from "./actions";
+
+const schema = z.object({
+  name: z.formString({ required: true, error: "Name is required" }),
+  email: z.formString(
+    { required: true, error: "Email is required" },
+    z.regex(z.regexes.email, "Enter a valid email"),
+  ),
+  message: z.formString(
+    { required: true, error: "Message is required" },
+    z.minLength(10, "Must be at least 10 characters"),
+  ),
+  agreeToTerms: z.formBoolean({ required: true, error: "Agreement is required" })
+    .check(z.validate((v) =&gt; v === true, "You must agree to continue")),
+});
+
+export default function ContactForm() {
+  const {
+    formState: { data, errors },
+    formStatus: { dirty, submitting },
+    formActions,
+    formHandlers,
+    Form,
+  } = useFormState(schema);
+
+  const handleSubmit = formHandlers.handleSubmit(async (state) =&gt; {
+    if (!state.valid) {
+      formActions.focusOnFirstError({ selectText: true });
+      return {};
+    }
+
+    try {
+      await submitContact(schema.toObject(state.data));
+      return true;
+    } catch {
+      return { _serverError: "Something went wrong. Please try again." };
+    }
+  });
+
+  return (
+    &lt;Form action={handleSubmit}&gt;
+      {errors.getManual("_serverError") &amp;&amp; (
+        &lt;p className="error"&gt;{errors.getManual("_serverError")}&lt;/p&gt;
+      )}
+
+      &lt;label&gt;
+        Name
+        &lt;input
+          type="text"
+          name={formActions.inferName("name")}
+          defaultValue={data.name}
+          onBlur={(e) =&gt; formActions.change("name", e.target.value, { touch: true })}
+        /&gt;
+        {errors.name &amp;&amp; &lt;span&gt;{errors.name}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        Email
+        &lt;input
+          type="email"
+          name={formActions.inferName("email")}
+          defaultValue={data.email}
+          onBlur={(e) =&gt; formActions.change("email", e.target.value, { touch: true })}
+        /&gt;
+        {errors.email &amp;&amp; &lt;span&gt;{errors.email}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        Message
+        &lt;textarea
+          name={formActions.inferName("message")}
+          defaultValue={data.message}
+          onBlur={(e) =&gt; formActions.change("message", e.target.value, { touch: true })}
+        /&gt;
+        {errors.message &amp;&amp; &lt;span&gt;{errors.message}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        &lt;input
+          type="checkbox"
+          name={formActions.inferName("agreeToTerms")}
+          defaultChecked={data.agreeToTerms === true}
+          onChange={(e) =&gt; formActions.change("agreeToTerms", e.target.checked, { touch: true })}
+        /&gt;
+        I agree to the terms
+        {errors.agreeToTerms &amp;&amp; &lt;span&gt;{errors.agreeToTerms}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;button type="submit" disabled={submitting}&gt;
+        {submitting ? "Sending…" : "Send"}
+      &lt;/button&gt;
+
+      &lt;button type="reset" disabled={!dirty}&gt;
+        Reset
+      &lt;/button&gt;
+    &lt;/Form&gt;
+  );
+}</code></pre>
+          </div>
+          <div class="callout callout-tip">
+            <div class="callout-label">Tip</div>
+            <p>
+              <code>schema.toObject(state.data)</code> strips FormState metadata before the data
+              reaches the server action, giving you a plain typed object.
+            </p>
           </div>
         </section>
         <section class="section" id="tanstack-query">

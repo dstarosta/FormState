@@ -118,7 +118,7 @@ export type FormAction<T extends object> =
   | {
       type: 'submit';
       submittedData: SubmittedData<T>;
-      options: { resetDirty: boolean; resetTouched: boolean };
+      options: { resetDirty: boolean; resetTouched: boolean; updateInitialData: boolean };
     }
   | { type: 'changeInitialData' }
   | { type: 'setDirty'; name: string; dirty: boolean }
@@ -902,6 +902,12 @@ export type FormResetOptions<T extends z.ZodMiniObject> = {
 };
 
 /**
+ * The result returned by a manual validation function. `true` indicates no errors; the record
+ * maps field names to error messages (`undefined` allows returning objects with different field names).
+ */
+export type ValidationResult = Record<string, string | undefined> | true;
+
+/**
  * Form validation options.
  *
  * @typeParam T - form state type.
@@ -919,6 +925,11 @@ export type FormValidateOptions<T extends z.ZodMiniObject> = {
    * validations do not affect `touched` flags.
    */
   resetTouched?: boolean;
+  /**
+   * Indicates whether to update the initial form data with the submitted data.
+   * Resetting the form would default it to the submitted data (default: `true`).
+   */
+  updateInitialData?: boolean;
   /**
    * Indicates whether to mark the form submitted if its state is valid (default: `false`).
    */
@@ -962,6 +973,11 @@ export type FormSubmitOptions<T extends z.ZodMiniObject> = {
    * Indicates whether to reset the touched state of the fields (default: `true`).
    */
   resetTouched?: boolean;
+  /**
+   * Indicates whether to update the initial form data with the submitted data.
+   * Resetting the form would default it to the submitted data (default: `true`).
+   */
+  updateInitialData?: boolean;
   /**
    * An optional callback to run after the form state has been submitted.
    *
@@ -1020,7 +1036,7 @@ export type FormSubmitHandler<T extends z.ZodMiniObject> = (
    * Form data in the `FormData` format.
    */
   formData: FormData
-) => Promise<Record<string, string> | true> | Record<string, string> | true;
+) => Promise<ValidationResult> | ValidationResult;
 
 /**
  * The form mode type.
@@ -1088,7 +1104,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      */
     replace: (data: DeepPartial<z.infer<T>>, options?: FormReplaceOptions) => void;
     /**
-     * Resets the form to its initial state.
+     * Resets the form data to its initial state.
+     *
+     * Note: this method does not reset the HTML form element.
      *
      * @typeParam T - form state type.
      * @param options - Options for reset event.
@@ -1129,7 +1147,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
        * @param onValidate - A callback function to execute before submitting the form.
        * @param options - Options for form validation.
        */
-      (onValidate?: () => Record<string, string> | true, options?: FormValidateOptions<T>): void;
+      (onValidate?: () => ValidationResult, options?: FormValidateOptions<T>): void;
       /**
        * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
        *

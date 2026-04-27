@@ -22,6 +22,7 @@ export type {
   StateChangeListener,
   SubmitState,
   SubmitSuccessState,
+  ValidationResult,
 } from './types/form-types';
 export { useFormState } from './use-form-state';
 export { FormStateProvider, formConnect, useFormStateContext } from './form-provider';
@@ -34,5 +35,6 @@ export {
 } from './helpers/state-manager';
 export { formatDate, safeParseDate } from './helpers/date-formatter';
 export { formDataEncode, submitForm } from './helpers/form-builder';
+export { FormResetBlocker } from './helpers/form-reset-blocker';
 export { SecureInput } from './secure-input';
 export * as convert from './helpers/value-converter';

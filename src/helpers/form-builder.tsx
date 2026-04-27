@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react';
 
 import type { FormAction, FormProps, FormStore } from '../types/form-types';
+import { FormResetBlocker } from './form-reset-blocker';
 
 const elementValues = new WeakMap<HTMLInputElement, string>();
 
@@ -59,7 +60,7 @@ export const createFormComponent = <T extends object>(
    * The Form component with pre-wired reset logic.
    */
   function Form(props: FormProps) {
-    const { ref: forwardedRef, nativeValidation, submitWithEnter, ...restProps } = props;
+    const { ref: forwardedRef, nativeValidation, submitWithEnter, children, ...restProps } = props;
 
     const formRef = useRef<HTMLFormElement>(null);
     const lastSubmitter = useRef<HTMLElement>(null);
@@ -220,7 +221,12 @@ export const createFormComponent = <T extends object>(
       }, 0);
     }, [resetStore]);
 
-    return <form ref={formRefCallback} onReset={handleReset} {...formProps} {...restProps} />;
+    return (
+      <form ref={formRefCallback} onReset={handleReset} {...formProps} {...restProps}>
+        {children}
+        <FormResetBlocker formRef={formRef} />
+      </form>
+    );
   }
 
   return Form;

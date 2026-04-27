@@ -207,12 +207,12 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         case 'submit': {
           const {
             submittedData,
-            options: { resetDirty, resetTouched },
+            options: { resetDirty, resetTouched, updateInitialData },
           } = action;
 
           return {
             ...prevState,
-            initialData: resetDirty ? prevState.data : prevState.initialData,
+            initialData: updateInitialData ? prevState.data : prevState.initialData,
             dirty: resetDirty ? { ...state.dirty } : { ...prevState.dirty },
             touched: resetTouched ? { ...state.touched } : { ...prevState.touched },
             validated: true,

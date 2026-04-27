@@ -706,6 +706,11 @@ type FormResetOptions<T extends z.ZodMiniObject> = {
   callback?: ((state: FormState<z.infer<T>>, status: FormStatus) => void) | undefined;
 };
 /**
+ * The result returned by a manual validation function. `true` indicates no errors; the record
+ * maps field names to error messages (`undefined` allows returning objects with different field names).
+ */
+type ValidationResult = Record<string, string | undefined> | true;
+/**
  * Form validation options.
  *
  * @typeParam T - form state type.
@@ -723,6 +728,11 @@ type FormValidateOptions<T extends z.ZodMiniObject> = {
    * validations do not affect `touched` flags.
    */
   resetTouched?: boolean;
+  /**
+   * Indicates whether to update the initial form data with the submitted data.
+   * Resetting the form would default it to the submitted data (default: `true`).
+   */
+  updateInitialData?: boolean;
   /**
    * Indicates whether to mark the form submitted if its state is valid (default: `false`).
    */
@@ -764,6 +774,11 @@ type FormSubmitOptions<T extends z.ZodMiniObject> = {
    * Indicates whether to reset the touched state of the fields (default: `true`).
    */
   resetTouched?: boolean;
+  /**
+   * Indicates whether to update the initial form data with the submitted data.
+   * Resetting the form would default it to the submitted data (default: `true`).
+   */
+  updateInitialData?: boolean;
   /**
    * An optional callback to run after the form state has been submitted.
    *
@@ -821,7 +836,7 @@ state: SubmitState<z.infer<T>>,
  * Form data in the `FormData` format.
  */
 
-formData: FormData) => Promise<Record<string, string> | true> | Record<string, string> | true;
+formData: FormData) => Promise<ValidationResult> | ValidationResult;
 /**
  * The form mode type.
  */
@@ -883,7 +898,9 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      */
     replace: (data: DeepPartial<z.infer<T>>, options?: FormReplaceOptions) => void;
     /**
-     * Resets the form to its initial state.
+     * Resets the form data to its initial state.
+     *
+     * Note: this method does not reset the HTML form element.
      *
      * @typeParam T - form state type.
      * @param options - Options for reset event.
@@ -924,7 +941,7 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
        * @param onValidate - A callback function to execute before submitting the form.
        * @param options - Options for form validation.
        */
-      (onValidate?: () => Record<string, string> | true, options?: FormValidateOptions<T>): void;
+      (onValidate?: () => ValidationResult, options?: FormValidateOptions<T>): void;
       /**
        * Validates the form and, optionally, sets its status as submitted when there are no form state errors.
        *
@@ -1992,6 +2009,24 @@ declare const formDataEncode: (formData: FormData, omitNames?: string[], nameFor
  */
 declare const submitForm: (form?: HTMLFormElement | null, submitter?: HTMLElement | null) => void;
 //#endregion
+//#region src/helpers/form-reset-blocker.d.ts
+/**
+ * Component props.
+ */
+type FormResetBlockerProps = Readonly<{
+  /**
+   * An optional form reference to avoid a hidden inner dev element.
+   */
+  formRef?: React.RefObject<HTMLFormElement | null>;
+}>;
+/**
+ * A component to put inside a form element that has a function called from the `action` attribute
+ * to avoid versions React 19.3+ from resetting the form after submitting the data.
+ */
+declare function FormResetBlocker({
+  formRef
+}: FormResetBlockerProps): _$react_jsx_runtime0.JSX.Element | null;
+//#endregion
 //#region src/secure-input.d.ts
 interface SecureInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'type' | 'value' | 'defaultValue'> {
   type?: 'text' | 'password';
@@ -2100,5 +2135,5 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   emptyStringAsFalse?: boolean;
 }) => string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

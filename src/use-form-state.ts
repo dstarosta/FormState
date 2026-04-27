@@ -41,6 +41,7 @@ import type {
   StateChangeListener,
   SubmitState,
   SubmittedData,
+  ValidationResult,
 } from './types/form-types';
 import {
   collectDescriptions,
@@ -976,7 +977,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The memoized "validate" function.
   const validate = useCallback(
     (
-      onValidate?: FormValidateOptions<T> | (() => Record<string, string> | true),
+      onValidate?: FormValidateOptions<T> | (() => ValidationResult),
       options?: FormValidateOptions<T>
     ) => {
       if (typeof onValidate !== 'object') {
@@ -1029,6 +1030,7 @@ export function useFormState<T extends z.ZodMiniObject>(
             options: {
               resetDirty: validationOptions.resetDirty !== false,
               resetTouched: validationOptions.resetTouched !== false,
+              updateInitialData: validationOptions.updateInitialData !== false,
             },
           });
         }
@@ -1147,6 +1149,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           options: {
             resetDirty: options?.resetDirty !== false,
             resetTouched: options?.resetTouched !== false,
+            updateInitialData: options?.updateInitialData !== false,
           },
         });
       };

@@ -301,6 +301,50 @@ describe('useFormState', () => {
       expect(formState.data.info.age).toBe(29);
     });
 
+    it('should not change initial state after submit when updateInitialData=false', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: ['a', 'b'],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { change, validate, reset },
+      } = result.current;
+
+      act(() => {
+        change('name', 'Jonathan', { touch: true });
+        change((path) => path.info.age, 29, { touch: true });
+      });
+
+      act(() => {
+        validate({
+          submit: true,
+          updateInitialData: false,
+          callback: (state, status) => {
+            expect(state.data.name).toBe('Jonathan');
+            expect(state.data.info.age).toBe(29);
+            expect(status.valid).toBe(true);
+            expect(status.submitted).toBe(true);
+          },
+        });
+      });
+
+      act(() => {
+        reset({
+          callback: (state) => {
+            expect(state.data.name).toBe('John');
+            expect(state.data.info.age).toBe(30);
+          },
+        });
+      });
+
+      const { formState } = result.current;
+
+      expect(formState.data.name).toBe('John');
+      expect(formState.data.info.age).toBe(30);
+    });
+
     it('should not validate before submit when validateBeforeSubmit is false', () => {
       const initialData: InitialSchema = {
         name: 'John',
