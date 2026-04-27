@@ -323,7 +323,7 @@ describe('helpers', () => {
         y: '',
         z: { id: '' },
       });
-      expect(errors).toBeUndefined();
+      expect(errors.getAll()).toHaveLength(0);
     });
 
     it('parses state unsuccessfully without defaults', () => {
@@ -334,26 +334,23 @@ describe('helpers', () => {
         z: { id: 1 },
       });
 
-      if (success) {
-        expect(success).toBe(false); // should never happen
-      } else {
-        expect(errors['n']).toEqual('Invalid n value');
-        expect(errors.get((path) => path.n)).toEqual('Invalid n value');
-        expect(errors['v']).toEqual('Invalid v value');
-        expect(errors.get((path) => path.v)).toEqual('Invalid v value');
-        expect(errors['y']).toEqual('Invalid y value');
-        expect(errors.get((path) => path.y)).toEqual('Invalid y value');
-        expect(errors['a']).toBeUndefined();
-        expect(errors.get((path) => path.a)).toBeUndefined();
-        expect(errors['z']).toBeUndefined();
-        expect(errors.get((path) => path.z)).toBeUndefined();
-        expect(errors.getAll()).toStrictEqual([
-          'Invalid n value',
-          'Invalid v value',
-          'Invalid y value',
-        ]);
-        expect(errors.getKeys()).toStrictEqual(['n', 'v', 'y']);
-      }
+      expect(success).toBe(false);
+      expect(errors['n']).toEqual('Invalid n value');
+      expect(errors.get((path) => path.n)).toEqual('Invalid n value');
+      expect(errors['v']).toEqual('Invalid v value');
+      expect(errors.get((path) => path.v)).toEqual('Invalid v value');
+      expect(errors['y']).toEqual('Invalid y value');
+      expect(errors.get((path) => path.y)).toEqual('Invalid y value');
+      expect(errors['a']).toBeUndefined();
+      expect(errors.get((path) => path.a)).toBeUndefined();
+      expect(errors['z']).toBeUndefined();
+      expect(errors.get((path) => path.z)).toBeUndefined();
+      expect(errors.getAll()).toStrictEqual([
+        'Invalid n value',
+        'Invalid v value',
+        'Invalid y value',
+      ]);
+      expect(errors.getKeys()).toStrictEqual(['n', 'v', 'y']);
 
       expect(data).toStrictEqual({
         a: [],
@@ -368,6 +365,30 @@ describe('helpers', () => {
       expect(() => {
         parseState(formSchema, null as unknown as object);
       }).toThrow(TypeError);
+    });
+
+    it('parses state successfully with asSchemaData = true, stripping empty form values', () => {
+      const { success, data } = parseState(formSchema, { a: [{ i: 1 }], n: 2, v: 'b' }, true);
+
+      expect(success).toBe(true);
+      // Symbols, empty formBoolean (y), and nested formNumber (z.id) are stripped by toObject()
+      expect(data).toStrictEqual({
+        a: [{ i: 1 }],
+        n: 2,
+        v: 'b',
+      });
+    });
+
+    it('asSchemaData = true strips data on a failed parse', () => {
+      const { success, data } = parseState(formSchema, { n: '2', v: 1 }, true);
+
+      expect(success).toBe(false);
+      // Empty formBoolean (y) and nested formNumber (z.id) are stripped even on failure
+      expect(data).toStrictEqual({
+        a: [],
+        n: '2',
+        v: 1,
+      });
     });
   });
 

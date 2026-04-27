@@ -1311,6 +1311,71 @@ type RangeResult<R> = R extends number | Date ? {
   min: R | undefined;
   max: R | undefined;
 } : undefined;
+/**
+ * Parsed result type.
+ *
+ * @typeParam T - form state type.
+ */
+type ParseResult<T extends z.ZodMiniObject> = {
+  /**
+   * Data object instance, if the validation was successful.
+   */
+  data: z.infer<T>;
+  /**
+   * Data validation errors.
+   */
+  errors: Record<keyof z.infer<T> | '', string | undefined> & {
+    /**
+     * Gets an error message for a nested field.
+     *
+     * @example
+     * formState.errors.get((path) => path.company.name)
+     *
+     * @param path - Form state path expression.
+     * @returns Error message for the specified field, or `undefined` if there is no error.
+     */
+    get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
+    /**
+     * Gets an array of all error messages.
+     *
+     * @returns An array of error messages.
+     */
+    getAll: () => string[];
+    /**
+     * Gets an array of all error keys.
+     *
+     * @returns An array of all error keys.
+     */
+    getKeys: () => string[];
+  };
+  /**
+   * Indicates whether the operation was successfull.
+   */
+  success: boolean;
+};
+/**
+ * Parsed result type as a schema object.
+ *
+ * @typeParam T - form state type.
+ */
+type ParseAsObjectResult<T extends z.ZodMiniObject> = {
+  /**
+   * Schema object instance stripped of internal-only fields and empty form values.
+   */
+  data: SchemaDataObject<z.infer<T>>;
+  /**
+   * Data validation errors.
+   */
+  errors: Record<keyof z.infer<T> | '', string | undefined> & {
+    get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
+    getAll: () => string[];
+    getKeys: () => string[];
+  };
+  /**
+   * Indicates whether the operation was successfull.
+   */
+  success: boolean;
+};
 declare namespace form_schema_d_exports {
   export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, everyItem, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, someItem, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim, uniqueItems, validate };
 }
@@ -1879,6 +1944,22 @@ declare function createSymbol(): symbol;
  */
 declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValueOrUnknown<T, P>;
 /**
+ * Parses an arbitrary object into the form state, returning `data` as a `SchemaDataObject`
+ * on success — internal-only fields (like `z.symbol()`) and empty form values stripped,
+ * ready for API use.
+ *
+ * @example
+ * const { success, data } = parseState(schema, obj, true)
+ *
+ * @param schema - The form schema.
+ * @param obj - Data object to parse.
+ * @param asSchemaData - Must be `true`.
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
+ * @returns `ParseAsObjectResult` with `data` as `SchemaDataObject` and `errors` on failure.
+ */
+declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData: true, errorMessageSeparator?: string): ParseAsObjectResult<T>;
+/**
  * Parses an arbitrary object into the form state.
  *
  * @example
@@ -1886,28 +1967,12 @@ declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(sche
  *
  * @param schema - The form schema.
  * @param obj - Data object to parse.
+ * @param asSchemaData - Must be `false` or omitted (default: `false`).
  * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
  *                                for the same state property (default: "|").
- * @returns An object containing parsed data and an optional errors instance.
- *
- *          The `success` property indicates whether any errors have been found.
- *
- *          The `data` instance may cause form errors if the operation was not
- *          successful.
+ * @returns `ParseResult` with form state `data` and `errors` on failure.
  */
-declare const parseState: <T extends z.ZodMiniObject>(schema: T, obj: object, errorMessageSeparator?: string) => {
-  data: z.core.output<T>;
-  success: true;
-  errors?: never;
-} | {
-  data: z.core.output<T>;
-  success: false;
-  errors: Record<"" | keyof z.core.output<T>, string | undefined> & {
-    get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
-    getAll: () => string[];
-    getKeys: () => string[];
-  };
-};
+declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData?: false, errorMessageSeparator?: string): ParseResult<T>;
 /**
  * Creates strongly typed initial state for a schema.
  *

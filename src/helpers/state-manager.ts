@@ -10,8 +10,8 @@ import type {
   Immutable,
   ImmutableArray,
   ImmutableObject,
-  ParseFailure,
-  ParseSuccess,
+  ParseAsObjectResult,
+  ParseResult,
   RangeResult,
   UnknownObject,
 } from '../types/form-types';
@@ -336,6 +336,28 @@ export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
 }
 
 /**
+ * Parses an arbitrary object into the form state, returning `data` as a `SchemaDataObject`
+ * on success — internal-only fields (like `z.symbol()`) and empty form values stripped,
+ * ready for API use.
+ *
+ * @example
+ * const { success, data } = parseState(schema, obj, true)
+ *
+ * @param schema - The form schema.
+ * @param obj - Data object to parse.
+ * @param asSchemaData - Must be `true`.
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
+ * @returns `ParseAsObjectResult` with `data` as `SchemaDataObject` and `errors` on failure.
+ */
+export function parseState<T extends z.ZodMiniObject>(
+  schema: T,
+  obj: object,
+  asSchemaData: true,
+  errorMessageSeparator?: string
+): ParseAsObjectResult<T>;
+
+/**
  * Parses an arbitrary object into the form state.
  *
  * @example
@@ -343,20 +365,24 @@ export function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(
  *
  * @param schema - The form schema.
  * @param obj - Data object to parse.
+ * @param asSchemaData - Must be `false` or omitted (default: `false`).
  * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
  *                                for the same state property (default: "|").
- * @returns An object containing parsed data and an optional errors instance.
- *
- *          The `success` property indicates whether any errors have been found.
- *
- *          The `data` instance may cause form errors if the operation was not
- *          successful.
+ * @returns `ParseResult` with form state `data` and `errors` on failure.
  */
-export const parseState = <T extends z.ZodMiniObject>(
+export function parseState<T extends z.ZodMiniObject>(
   schema: T,
   obj: object,
+  asSchemaData?: false,
+  errorMessageSeparator?: string
+): ParseResult<T>;
+
+export function parseState<T extends z.ZodMiniObject>(
+  schema: T,
+  obj: object,
+  asSchemaData: boolean = false,
   errorMessageSeparator: string = '|'
-) => {
+): ParseResult<T> | ParseAsObjectResult<T> {
   if (isNullish(obj)) {
     throw new TypeError('The "data" argument cannot be null or undefined.');
   }
@@ -364,16 +390,7 @@ export const parseState = <T extends z.ZodMiniObject>(
   const parsedData = createState(schema, obj as DeepPartial<z.infer<T>>);
   const result = schema.safeParse(parsedData);
 
-  const zodErrors = result.error
-    ? formatErrors<z.infer<T>>(result.error, errorMessageSeparator)
-    : undefined;
-
-  if (!zodErrors) {
-    return {
-      data: parsedData,
-      success: true,
-    } satisfies ParseSuccess<T>;
-  }
+  const zodErrors = formatErrors<z.infer<T>>(result.error, errorMessageSeparator);
 
   const errors = {
     ...zodErrors,
@@ -389,12 +406,22 @@ export const parseState = <T extends z.ZodMiniObject>(
         .map((entry) => entry[0]),
   };
 
+  const success = Object.keys(zodErrors).length === 0;
+
+  if (asSchemaData) {
+    return {
+      data: schema.toObject(parsedData),
+      success,
+      errors,
+    } satisfies ParseAsObjectResult<T>;
+  }
+
   return {
     data: parsedData,
-    success: false,
+    success,
     errors,
-  } satisfies ParseFailure<T>;
-};
+  } satisfies ParseResult<T>;
+}
 
 /**
  * Creates strongly typed initial state for a schema.

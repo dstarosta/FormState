@@ -58,6 +58,7 @@
           <a href="#infer-name" class="nav-link">inferName</a>
           <a href="#helpers" class="nav-link">Value Helpers</a>
           <a href="#nextjs" class="nav-link">Next.js</a>
+          <a href="#remix" class="nav-link">React Router 7</a>
           <a href="#tanstack-query" class="nav-link">TanStack Query</a>
           <a href="#devtools" class="nav-link">DevTools</a>
           <a href="#comparison" class="nav-link">Comparison</a>
@@ -303,7 +304,7 @@ function App() {
     if (output === 'redirect') {
       router.push('/done');
     } else {
-      showDialog({ dataObject: schema.toObject(data), formData });
+      showDialog({ data, formData });
     }
   };
 
@@ -312,8 +313,9 @@ function App() {
           </div>
           <h3><span class="type-chip">SchemaDataObject&lt;T&gt;</span></h3>
           <p>
-            The return type of <code>schema.toObject(data)</code> — internal fields stripped,
-            optional empties removed.
+            Produced by <code>schema.toObject(data)</code> or
+            <code>parseState(schema, obj, true).data</code>
+            — internal fields stripped, optional empties removed.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -3384,13 +3386,17 @@ if (result.success) {
             <div class="code-block-header"><span class="code-block-lang">ts</span></div>
             <pre><code class="language-ts">"use server";
 
-export async function submitContact(data: {
-  name: string;
-  email: string;
-  message: string;
-  agreeToTerms?: boolean;
-}): Promise&lt;void&gt; {
-  await db.contacts.create({ data });
+import { parseState, z } from "form-state";
+import { schema } from "./contact-form";
+
+export async function submitContact(formData: z.infer&lt;typeof schema&gt;): Promise&lt;void&gt; {
+  const result = parseState(schema, formData, true);
+
+  if (!result.success) {
+    throw new Error("Invalid data");
+  }
+
+  await db.contacts.create({ data: result.data });
 }</code></pre>
           </div>
           <h3>Form component</h3>
@@ -3431,7 +3437,7 @@ export default function ContactForm() {
     }
 
     try {
-      await submitContact(schema.toObject(state.data));
+      await submitContact(state.data);
       return true;
     } catch {
       return { _serverError: "Something went wrong. Please try again." };
@@ -3501,8 +3507,157 @@ export default function ContactForm() {
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
-              <code>schema.toObject(state.data)</code> strips FormState metadata before the data
-              reaches the server action, giving you a plain typed object.
+              Pass <code>state.data</code> directly to the server action — <code>parseState</code>
+              strips FormState metadata on the server side.
+            </p>
+          </div>
+        </section>
+        <section class="section" id="remix">
+          <div class="section-eyebrow">Advanced</div>
+          <h2>React Router 7 (Remix)</h2>
+          <p>
+            FormState works naturally with React Router 7 (Remix). The form component runs entirely
+            on the client — validation stays in the browser, and on success the form POSTs typed
+            data to a route action via <code>fetch</code>.
+          </p>
+          <h3>Route action</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">ts</span></div>
+            <pre><code class="language-ts">// app/routes/contact.ts
+import type { Route } from "./+types/contact";
+import { parseState, z } from "form-state";
+import { schema } from "../contact-form";
+
+export async function action({ request }: Route.ActionArgs) {
+  const { data: formData } = await request.json() as { data: z.infer&lt;typeof schema&gt; };
+  const result = parseState(schema, formData, true);
+
+  if (!result.success) {
+    return Response.json({ error: "Invalid data" }, { status: 400 });
+  }
+
+  await db.contacts.create({ data: result.data });
+
+  return { success: true };
+}</code></pre>
+          </div>
+          <h3>Form component</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { useFormState, z } from "form-state";
+
+const schema = z.object({
+  name: z.formString({ required: true, error: "Name is required" }),
+  email: z.formString(
+    { required: true, error: "Email is required" },
+    z.regex(z.regexes.email, "Enter a valid email"),
+  ),
+  message: z.formString(
+    { required: true, error: "Message is required" },
+    z.minLength(10, "Must be at least 10 characters"),
+  ),
+  agreeToTerms: z.formBoolean({ required: true, error: "Agreement is required" })
+    .check(z.validate((v) =&gt; v === true, "You must agree to continue")),
+});
+
+export default function ContactForm() {
+  const {
+    formState: { data, errors },
+    formStatus: { dirty, submitting },
+    formActions,
+    formHandlers,
+    Form,
+  } = useFormState(schema);
+
+  const handleSubmit = formHandlers.handleSubmit(async (state) =&gt; {
+    if (!state.valid) {
+      formActions.focusOnFirstError({ selectText: true });
+      return {};
+    }
+
+    try {
+      const res = await fetch("/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: state.data }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Server error");
+      }
+
+      return true;
+    } catch {
+      return { _serverError: "Something went wrong. Please try again." };
+    }
+  });
+
+  return (
+    &lt;Form action={handleSubmit}&gt;
+      {errors.getManual("_serverError") &amp;&amp; (
+        &lt;p className="error"&gt;{errors.getManual("_serverError")}&lt;/p&gt;
+      )}
+
+      &lt;label&gt;
+        Name
+        &lt;input
+          type="text"
+          name={formActions.inferName("name")}
+          defaultValue={data.name}
+          onBlur={(e) =&gt; formActions.change("name", e.target.value, { touch: true })}
+        /&gt;
+        {errors.name &amp;&amp; &lt;span&gt;{errors.name}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        Email
+        &lt;input
+          type="email"
+          name={formActions.inferName("email")}
+          defaultValue={data.email}
+          onBlur={(e) =&gt; formActions.change("email", e.target.value, { touch: true })}
+        /&gt;
+        {errors.email &amp;&amp; &lt;span&gt;{errors.email}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        Message
+        &lt;textarea
+          name={formActions.inferName("message")}
+          defaultValue={data.message}
+          onBlur={(e) =&gt; formActions.change("message", e.target.value, { touch: true })}
+        /&gt;
+        {errors.message &amp;&amp; &lt;span&gt;{errors.message}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        &lt;input
+          type="checkbox"
+          name={formActions.inferName("agreeToTerms")}
+          defaultChecked={data.agreeToTerms === true}
+          onChange={(e) =&gt; formActions.change("agreeToTerms", e.target.checked, { touch: true })}
+        /&gt;
+        I agree to the terms
+        {errors.agreeToTerms &amp;&amp; &lt;span&gt;{errors.agreeToTerms}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;button type="submit" disabled={submitting}&gt;
+        {submitting ? "Sending…" : "Send"}
+      &lt;/button&gt;
+
+      &lt;button type="reset" disabled={!dirty}&gt;
+        Reset
+      &lt;/button&gt;
+    &lt;/Form&gt;
+  );
+}</code></pre>
+          </div>
+          <div class="callout callout-tip">
+            <div class="callout-label">Tip</div>
+            <p>
+              Unlike Next.js Server Actions, Remix route actions receive a standard
+              <code>Request</code>. Posting JSON keeps the handler simple and the response shape
+              entirely in your control.
             </p>
           </div>
         </section>
@@ -3580,16 +3735,18 @@ function ProfileForm({ userId }: { userId: string }) {
 
   // 3. Mutation for saving
   const { mutateAsync } = useMutation({
-    mutationFn: (values: ProfileData) =&gt; api.updateProfile(userId, values),
+    mutationFn: (values: ProfileApiData) =&gt; api.updateProfile(userId, values),
   });
 
   // 4. Submit handler — mutateAsync lives inside the async callback
   const handleSubmit = formHandlers.handleSubmit(
     async (submitState: SubmitState&lt;typeof profileSchema&gt;) =&gt; {
-      if (!submitState.valid) return submitState.errors;
+      if (!submitState.valid) {
+        return submitState.errors;
+      }
 
       try {
-        await mutateAsync(submitState.data);
+        await mutateAsync(profileSchema.toObject(submitState.data));
         return true;
       } catch (err) {
         return { _serverError: err instanceof Error ? err.message : 'Save failed.' };

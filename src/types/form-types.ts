@@ -1569,23 +1569,11 @@ export type RangeResult<R> = R extends number | Date
   : undefined;
 
 /**
- * Successful parsed result type.
+ * Parsed result type.
+ *
+ * @typeParam T - form state type.
  */
-export type ParseSuccess<T extends z.ZodMiniObject> = {
-  /**
-   * Data object instance, if the validation was successful.
-   */
-  data: z.infer<T>;
-  /**
-   * Indicates a successful validation.
-   */
-  success: true;
-};
-
-/**
- * Unsuccessful parsed result type.
- */
-export type ParseFailure<T extends z.ZodMiniObject> = {
+export type ParseResult<T extends z.ZodMiniObject> = {
   /**
    * Data object instance, if the validation was successful.
    */
@@ -1618,7 +1606,31 @@ export type ParseFailure<T extends z.ZodMiniObject> = {
     getKeys: () => string[];
   };
   /**
-   * Indicates an unsuccessful validation.
+   * Indicates whether the operation was successfull.
    */
-  success: false;
+  success: boolean;
+};
+
+/**
+ * Parsed result type as a schema object.
+ *
+ * @typeParam T - form state type.
+ */
+export type ParseAsObjectResult<T extends z.ZodMiniObject> = {
+  /**
+   * Schema object instance stripped of internal-only fields and empty form values.
+   */
+  data: SchemaDataObject<z.infer<T>>;
+  /**
+   * Data validation errors.
+   */
+  errors: Record<keyof z.infer<T> | '', string | undefined> & {
+    get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
+    getAll: () => string[];
+    getKeys: () => string[];
+  };
+  /**
+   * Indicates whether the operation was successfull.
+   */
+  success: boolean;
 };
