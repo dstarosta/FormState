@@ -30,83 +30,85 @@ import {
 import { toLiteral } from './helpers/value-converter';
 
 describe('useFormState', () => {
-  const schema = z.strictObject({
-    name: z
-      .formString(
-        {
-          required: true,
-          error: 'Name is required',
-        },
-        z.regex(/^[\d'A-Za-z-]*$/, 'Name contains invalid characters'),
-        z.maxLength(25, 'Name is too long')
-      )
-      .with(z.describe('Name')),
-    info: z
-      .object({
-        uuid: z.symbol(),
-        age: z
-          .formNumber(
-            {
-              required: true,
-              error: 'Age is required',
-            },
-            z.gte(1, 'Age must be > 0')
-          )
-          .with(z.describe('Age')),
-        email: z
-          .formString({ error: 'Invalid email', allowEmpty: false })
-          .with(z.describe('Email')),
-        birthDate: z
-          .formDate(
-            { dateFormat: 'MM/dd/yyyy' },
-            z.gte(new Date(2020, 0, 1), 'Invalid date range'),
-            z.lte(new Date(2039, 11, 31), 'Invalid date range')
-          )
-          .with(z.describe('Birth date')),
-      })
-      .with(z.describe('Info')),
-    tags: z
-      .formArray(
-        z
-          .string()
-          .check(
-            z.maxLength(255, 'Tag is too long'),
-            z.regex(/^[\w\\-]*$/, 'Tag contains invalid characters')
-          )
-          .with(z.describe('Tag')),
-        { minLength: 0, maxLength: 5 }
-      )
-      .with(z.describe('Tags')),
-    category: z.formValues(['legacy', 'unconfirmed']).with(z.describe('Category')),
-    isActive: z
-      .default(z.formBoolean({ required: true, error: 'Is active is required' }), true)
-      .with(z.describe('Is record active?')),
-    isArchived: z.default(z.formBoolean(), false).with(z.describe('Is record archived?')),
-    version: z
-      .catch(z.formNumber(z.gte(0, 'Negative version'), z.lte(9999999, 'Version is too high')), 0)
-      .with(z.describe('Record version')),
-    registeredOn: z.formDate({ dateFormat: 'MM/dd/yyyy' }).with(z.describe('Registered on')),
-    updateDates: z
-      .formArray(
-        z
-          .date()
-          .check(z.lte(new Date(2099, 11, 31), 'Date is too early'))
-          .with(z.describe('Update date'))
-      )
-      .with(z.describe('Update dates')),
-    previousVersions: z
-      .formArray(z.number().check(z.lte(9999)).with(z.describe('Previous version')), {
-        required: false,
-      })
-      .with(z.describe('Previous versions')),
-    specialNumber: z
-      .default(
-        z.formNumber(z.gt(3.1, 'Number is too short'), z.lt(3.15, 'Number is too long')),
-        Math.PI
-      )
-      .with(z.describe('Special number')),
-    password: z.formString({ required: false }),
-  });
+  const schema = z
+    .strictObject({
+      name: z
+        .formString(
+          {
+            required: true,
+            error: 'Name is required',
+          },
+          z.regex(/^[\d'A-Za-z-]*$/, 'Name contains invalid characters'),
+          z.maxLength(25, 'Name is too long')
+        )
+        .with(z.describe('Name')),
+      info: z
+        .object({
+          uuid: z.symbol(),
+          age: z
+            .formNumber(
+              {
+                required: true,
+                error: 'Age is required',
+              },
+              z.gte(1, 'Age must be > 0')
+            )
+            .with(z.describe('Age')),
+          email: z
+            .formString({ error: 'Invalid email', allowEmpty: false })
+            .with(z.describe('Email')),
+          birthDate: z
+            .formDate(
+              { dateFormat: 'MM/dd/yyyy' },
+              z.gte(new Date(2020, 0, 1), 'Invalid date range'),
+              z.lte(new Date(2039, 11, 31), 'Invalid date range')
+            )
+            .with(z.describe('Birth date')),
+        })
+        .with(z.describe('Info')),
+      tags: z
+        .formArray(
+          z
+            .string()
+            .check(
+              z.maxLength(255, 'Tag is too long'),
+              z.regex(/^[\w\\-]*$/, 'Tag contains invalid characters')
+            )
+            .with(z.describe('Tag')),
+          { minLength: 0, maxLength: 5 }
+        )
+        .with(z.describe('Tags')),
+      category: z.formValues(['legacy', 'unconfirmed']).with(z.describe('Category')),
+      isActive: z
+        .default(z.formBoolean({ required: true, error: 'Is active is required' }), true)
+        .with(z.describe('Is record active?')),
+      isArchived: z.default(z.formBoolean(), false).with(z.describe('Is record archived?')),
+      version: z
+        .catch(z.formNumber(z.gte(0, 'Negative version'), z.lte(9999999, 'Version is too high')), 0)
+        .with(z.describe('Record version')),
+      registeredOn: z.formDate({ dateFormat: 'MM/dd/yyyy' }).with(z.describe('Registered on')),
+      updateDates: z
+        .formArray(
+          z
+            .date()
+            .check(z.lte(new Date(2099, 11, 31), 'Date is too early'))
+            .with(z.describe('Update date'))
+        )
+        .with(z.describe('Update dates')),
+      previousVersions: z
+        .formArray(z.number().check(z.lte(9999)).with(z.describe('Previous version')), {
+          required: false,
+        })
+        .with(z.describe('Previous versions')),
+      specialNumber: z
+        .default(
+          z.formNumber(z.gt(3.1, 'Number is too short'), z.lt(3.15, 'Number is too long')),
+          Math.PI
+        )
+        .with(z.describe('Special number')),
+      password: z.formString({ required: false }),
+    })
+    .with(z.describe('Test schema'));
 
   type Schema = z.infer<typeof schema>;
   type InitialSchema = DeepPartial<Schema>;
@@ -757,6 +759,7 @@ describe('useFormState', () => {
     } = result.current;
 
     const expectedDescriptions = {
+      '': 'Test schema',
       name: 'Name',
       info: 'Info',
       'info.age': 'Age',
@@ -779,6 +782,7 @@ describe('useFormState', () => {
     const { get, getKeys, ...actualDescriptions } = descriptions;
 
     expect(expectedDescriptions).toStrictEqual(actualDescriptions);
+    expect(descriptions['']).toBe('Test schema');
     expect(get((path) => path.tags[1])).toBe('Tag');
     expect(getKeys()).toHaveLength(Object.keys(expectedDescriptions).length);
   });

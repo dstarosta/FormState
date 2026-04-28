@@ -49,7 +49,7 @@ type FormMutableState<T extends object> = {
     max: FieldRange;
   }>;
   patterns: Record<keyof T, string | undefined>;
-  descriptions: Record<keyof T, string | undefined>;
+  descriptions: Record<keyof T | '', string | undefined>;
   submitCount: number;
   changed: boolean;
   replaced: boolean;

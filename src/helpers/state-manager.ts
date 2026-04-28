@@ -258,7 +258,7 @@ export const createImmutablePatterns = <T extends z.ZodMiniObject>(
   });
 
 export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
-  descriptions: Record<keyof z.infer<T>, string | undefined>,
+  descriptions: Record<keyof z.infer<T> | '', string | undefined>,
   data: z.infer<T>
 ) =>
   freezeObject({

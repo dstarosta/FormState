@@ -412,7 +412,7 @@ export const collectDescriptions = <T extends z.ZodMiniType>(
 
   recursiveCollect(baseSchema, descriptions, key, collectDescriptions);
 
-  return descriptions as Record<keyof z.infer<T>, string | undefined>;
+  return descriptions as Record<keyof z.infer<T> | '', string | undefined>;
 };
 
 export const getPath = <T extends object>(_data: T, expression: (data: T) => unknown) => {
