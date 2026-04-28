@@ -61,6 +61,9 @@
           <a href="#remix" class="nav-link">React Router 7</a>
           <a href="#tanstack-query" class="nav-link">TanStack Query</a>
           <a href="#devtools" class="nav-link">DevTools</a>
+        </div>
+        <div class="nav-section">
+          <span class="nav-section-label">Reference</span>
           <a href="#comparison" class="nav-link">Comparison</a>
         </div>
       </nav>
@@ -104,6 +107,7 @@
           </ul>
         </section>
         <section class="section" id="installation">
+          <div class="section-eyebrow">Getting Started</div>
           <h2>Installation</h2>
           <div class="callout callout-info">
             <div class="callout-label">Requirement</div>
@@ -1324,6 +1328,7 @@ z.formArray(z.object({ x: z.formNumber(), y: z.formNumber() })).check(
           </div>
         </section>
         <section class="section" id="basic-usage">
+          <div class="section-eyebrow">Core Concepts</div>
           <h2>Basic Usage</h2>
           <p>
             Call <code>useFormState(schema, options)</code> in your component and destructure what
@@ -1440,6 +1445,7 @@ export function ProfileForm() {
           </div>
         </section>
         <section class="section" id="path-expressions">
+          <div class="section-eyebrow">Core Concepts</div>
           <h2>Path Expressions</h2>
           <p>
             Every method that accepts a field reference supports two equivalent syntaxes: a
@@ -1555,6 +1561,7 @@ formActions.change((path) =&gt; path.user.typo, 'value');</code></pre>
           </table>
         </section>
         <section class="section" id="form-state">
+          <div class="section-eyebrow">Core Concepts</div>
           <h2>Form State</h2>
           <p>
             <code>formState</code> is the read-only snapshot of your form. Every property is keyed
@@ -1667,6 +1674,7 @@ await api.post('/users', payload);</code></pre>
           </div>
         </section>
         <section class="section" id="form-status">
+          <div class="section-eyebrow">Core Concepts</div>
           <h2>Form Status</h2>
           <p>High-level booleans about the form as a whole.</p>
           <table class="prop-table">
@@ -1747,6 +1755,7 @@ await api.post('/users', payload);</code></pre>
         </section>
         <hr />
         <section class="section" id="ranges-descriptions">
+          <div class="section-eyebrow">Core Concepts</div>
           <h2>Schema Metadata</h2>
           <p>
             FormState extracts metadata from your schema at initialization time and exposes it as
@@ -2219,6 +2228,7 @@ formActions.change('sendEmail', 'yes', { touch: true });</code></pre>
           </div>
         </section>
         <section class="section" id="arrays">
+          <div class="section-eyebrow">Features</div>
           <h2>Array Fields</h2>
           <p>
             The <code>formActions.array</code> namespace provides all the operations you need to
@@ -2302,6 +2312,7 @@ formActions.array.clear('tags');</code></pre>
           </div>
         </section>
         <section class="section" id="submission">
+          <div class="section-eyebrow">Features</div>
           <h2>Form Submission</h2>
           <p>
             <code>formHandlers.handleSubmit(onSubmit, options?)</code> returns an async action you
@@ -2707,6 +2718,7 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
           </div>
         </section>
         <section class="section" id="manual-errors">
+          <div class="section-eyebrow">Features</div>
           <h2>Manual Errors</h2>
           <p>
             Set errors outside of schema validation — server errors, async uniqueness checks, or
@@ -2754,6 +2766,7 @@ formActions.clearManualErrors({
           </div>
         </section>
         <section class="section" id="readonly-disabled">
+          <div class="section-eyebrow">Features</div>
           <h2>Readonly &amp; Disabled</h2>
           <p>
             FormState tracks three modes: <code>'editable'</code>, <code>'readOnly'</code>, and
@@ -2905,6 +2918,7 @@ function ModeSelector({
           </div>
         </section>
         <section class="section" id="css-classes">
+          <div class="section-eyebrow">Features</div>
           <h2>CSS Classes</h2>
           <p>
             <code>formClasses(field)</code> returns a space-separated class string based on the
@@ -2959,6 +2973,7 @@ formClasses('name', undefined, { prefix: 'my-form' })
           </div>
         </section>
         <section class="section" id="context">
+          <div class="section-eyebrow">Features</div>
           <h2>Context &amp; Provider</h2>
           <p>
             When a form spans multiple components, use the Context API instead of prop-drilling.
@@ -3044,6 +3059,7 @@ export default formConnect({
           </div>
         </section>
         <section class="section" id="secure-input">
+          <div class="section-eyebrow">Features</div>
           <h2>SecureInput</h2>
           <p>
             <code>SecureInput</code> is a drop-in password component that
@@ -3082,6 +3098,7 @@ export default formConnect({
           </div>
         </section>
         <section class="section" id="debounce">
+          <div class="section-eyebrow">Advanced</div>
           <h2>Debounced Changes</h2>
           <p>
             Pass <code>debounceIntervalMs</code> to <code>change</code> to delay downstream effects
@@ -3117,6 +3134,7 @@ formActions.change((path) =&gt; path.notes[index].text, e.target.value, {
           </p>
         </section>
         <section class="section" id="listener">
+          <div class="section-eyebrow">Advanced</div>
           <h2>State Listener</h2>
           <p>
             Subscribe to form state changes from inside a component without triggering extra
@@ -3183,6 +3201,7 @@ function AppForm() {
           </table>
         </section>
         <section class="section" id="watch">
+          <div class="section-eyebrow">Advanced</div>
           <h2>useWatch</h2>
           <p>
             <code>formHooks.useWatch(name, compute?)</code> observes the raw DOM value of a named
@@ -3221,6 +3240,7 @@ const cleanId = formHooks.useWatch(
           </div>
         </section>
         <section class="section" id="infer-name">
+          <div class="section-eyebrow">Advanced</div>
           <h2>inferName</h2>
           <p>
             <code>formActions.inferName</code> generates the correct HTML
@@ -3300,6 +3320,7 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
           </div>
         </section>
         <section class="section" id="helpers">
+          <div class="section-eyebrow">Advanced</div>
           <h2>Value Helpers</h2>
           <p>
             The <code>convert</code> export provides utilities for coercing raw form strings into
@@ -3979,6 +4000,7 @@ return { email: 'This email is already registered.' };
           </div>
         </section>
         <section class="section" id="devtools">
+          <div class="section-eyebrow">Advanced</div>
           <h2>DevTools</h2>
           <p>
             The <code>form-state-tools</code> package provides <strong>FormDock</strong> — a
