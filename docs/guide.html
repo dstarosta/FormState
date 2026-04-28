@@ -3586,7 +3586,7 @@ export default function ContactForm() {
 
     if (!res.ok) {
       const error = await res.json() as Error;
-      return { _serverError: error.message ?? "Server error" };
+      return { _serverError: error?.message ?? "Server error" };
     }
 
     return true;
