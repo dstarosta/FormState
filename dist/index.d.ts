@@ -97,6 +97,8 @@ type FormStringOptions = {
   error: string;
 };
 type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> = P extends FormPath<T> ? FormPathValue<T, P> : unknown;
+type Selector<S, R> = (state: S) => R;
+type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = { [K in keyof Selectors]: Selectors[K] extends Selector<S, infer R> ? R : never };
 /**
  * Immutable type.
  */
@@ -842,6 +844,19 @@ formData: FormData) => Promise<ValidationResult> | ValidationResult;
  */
 type FormMode = 'editable' | 'readOnly' | 'disabled';
 /**
+ * Form data selector creator function type.
+ *
+ * @param inputSelectors - One or more selectors that extract values from the source state `S`.
+ * @param resultFn - The result function that computes the final value from the extracted inputs.
+ *
+ * @typeParam S - Source state type.
+ * @typeParam I - Tuple of input selector types.
+ * @typeParam R - Return type of the result function.
+ *
+ * @returns Memoized selector function.
+ */
+type FormDataSelector<S> = <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: NoInfer<SelectorResults<S, I>>) => R) => Selector<S, R>;
+/**
  * The form state response type.
  *
  * @typeParam T - form state type.
@@ -1219,6 +1234,22 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * @returns The value of the element.
      */
     useWatch: (name: string, compute?: (value: string) => string) => string;
+    /**
+     * A hook that creates a memoized selector over the form state data or derived data.
+     * It is similar to the `createSelector` method in the "Reselect" library.
+     *
+     * @example
+     * const selectActiveUsers = createSelector(
+     *   [state => state.users],
+     *   users => users.filter(u => u.active)
+     * );
+     * const activeUsers = selectActiveUsers(formState.data);
+     *
+     * @param inputSelectors - One or more selectors that extract values from the source state.
+     * @param resultFn - The result function that computes the final value from the extracted inputs.
+     * @returns Memoized selector function.
+     */
+    useSelector: FormDataSelector<Immutable<z.infer<T>>>;
   };
   /**
    * Returns the form CSS classes for the control with the provided path.

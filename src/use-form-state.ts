@@ -43,6 +43,7 @@ import type {
   SubmittedData,
   ValidationResult,
 } from './types/form-types';
+import { useSelector } from './helpers/form-selector';
 import {
   collectDescriptions,
   collectLengths,
@@ -1368,6 +1369,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       formHooks: {
         useListener: listenerHook,
         useWatch: watchHook,
+        useSelector,
       },
       formClasses,
       Form: createComponent,
