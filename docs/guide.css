@@ -500,6 +500,10 @@ li strong {
   letter-spacing: 0.6px;
   border-bottom: 1px solid var(--border);
 }
+.prop-table th code {
+  text-transform: none;
+  letter-spacing: 0;
+}
 
 .prop-table th:first-child {
   border-radius: 6px 0 0 0;
