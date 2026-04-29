@@ -1,4 +1,5 @@
 name: Deploy Guide to GitHub Pages
+run-name: Deploy Guide to GitHub Pages
 
 on:
   push:
