@@ -855,7 +855,7 @@ type FormMode = 'editable' | 'readOnly' | 'disabled';
  *
  * @returns Memoized selector function.
  */
-type FormDataSelector<S> = <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: NoInfer<SelectorResults<S, I>>) => R) => Selector<S, R>;
+type FormDataSelector<S> = <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: { [K in keyof SelectorResults<S, I>]: SelectorResults<S, I>[K] }) => R) => Selector<S, R>;
 /**
  * The form state response type.
  *

@@ -11,7 +11,7 @@ import type { Selector, SelectorResults } from '../types/form-types';
  */
 export function useSelector<S, I extends Selector<S, unknown>[], R>(
   inputSelectors: [...I],
-  resultFn: (...inputs: NoInfer<SelectorResults<S, I>>) => R
+  resultFn: (...inputs: { [K in keyof SelectorResults<S, I>]: SelectorResults<S, I>[K] }) => R
 ): Selector<S, R> {
   const cache = useRef<{
     lastInputs: unknown[];
