@@ -19,6 +19,25 @@
   --header-height: 56px;
 }
 
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #959595;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b5b5b5;
+  border: 0;
+  background-clip: padding-box;
+}
+
 *,
 *::before,
 *::after {
@@ -110,16 +129,12 @@ nav {
   overflow-y: auto;
   border-right: 1px solid var(--border);
   padding: 28px 0 40px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
-
 nav::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
-nav::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
+nav::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .nav-section {
@@ -292,6 +307,13 @@ li strong {
   font-size: 13px;
   line-height: 1.6;
 }
+.code-block pre::-webkit-scrollbar {
+  height: 6px;
+}
+.code-block pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 
 .code-block code,
 .code-block code[class*='language-'] {
@@ -621,9 +643,14 @@ hr {
   background: rgb(0, 43, 54);
   max-height: 300px;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: oklch(0.372 0.044 257.287) transparent;
 }
+.dock-body::-webkit-scrollbar {
+  width: 6px;
+}
+.dock-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 
 /* All property name labels default to light gray */
 .jt-key {
