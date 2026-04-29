@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -35,21 +34,25 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Generate Coverage Badge
+      - name: Extract Coverage
         if: github.ref == 'refs/heads/master'
+        id: coverage
         run: |
           PCT=$(node -e "const s=require('./coverage/coverage-summary.json');console.log(Math.round(s.total.lines.pct))")
           COLOR=$( [ "$PCT" -ge 85 ] && echo "brightgreen" || echo "red" )
-          mkdir -p docs/badges
-          curl -so docs/badges/coverage.svg "https://img.shields.io/badge/coverage-${PCT}%25-${COLOR}"
+          echo "pct=$PCT" >> $GITHUB_OUTPUT
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
 
-      - name: Commit Coverage Badge
+      - name: Update Coverage Badge
         if: github.ref == 'refs/heads/master'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/badges/coverage.svg
-          git diff --staged --quiet || git commit -m "chore: update coverage badge [skip ci]" && git push
+        uses: schneegans/dynamic-badges-action@v1.8.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ secrets.COVERAGE_GIST_ID }}
+          filename: coverage.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.pct }}%
+          color: ${{ steps.coverage.outputs.color }}
 
       - name: Code Coverage Summary
         uses: irongut/CodeCoverageSummary@v1.3.0

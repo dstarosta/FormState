@@ -1,4 +1,4 @@
-# FormState [![CI](https://github.com/dstarosta/FormState/actions/workflows/ci.yml/badge.svg)](https://github.com/dstarosta/FormState/actions/workflows/ci.yml) [![Coverage](https://dstarosta.github.io/FormState/badges/coverage.svg)](https://github.com/dstarosta/FormState/actions/workflows/ci.yml)
+# FormState [![CI](https://github.com/dstarosta/FormState/actions/workflows/ci.yml/badge.svg)](https://github.com/dstarosta/FormState/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dstarosta/abc123def456/raw/coverage.json)]
 
 A type-safe, schema-driven form management library for React 19, built on [Zod](https://zod.dev).
 
