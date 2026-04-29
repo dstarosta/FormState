@@ -73,7 +73,7 @@ function LoginForm() {
 
 ## Documentation
 
-**[Full Developer Guide →](https://dstarosta.github.io/FormState/guide.html)**
+**[Full Developer Guide →](https://dstarosta.github.io/FormState/)**
 
 The guide covers:
 
