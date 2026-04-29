@@ -388,6 +388,22 @@ li strong {
   color: #c9b8ff;
 }
 
+/* ─── Footnote ───────────────────────────────────────────── */
+.footnote {
+  margin: 12px 0 0;
+  line-height: 1.5;
+}
+
+.footnote a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footnote a:hover {
+  color: var(--text);
+}
+
 /* ─── Callouts ────────────────────────────────────────────── */
 .callout {
   border-radius: 8px;
@@ -522,14 +538,14 @@ li strong {
   padding: 0;
 }
 
-.prop-desc {
-  color: var(--text-muted);
+.prop-desc,
+.prop-note,
+.footnote {
   font-size: 13px;
+  color: var(--text-muted);
 }
 
 .prop-note {
-  color: var(--text-muted);
-  font-size: 13px;
   margin-top: -16px;
   margin-bottom: 24px;
   opacity: 0.8;
