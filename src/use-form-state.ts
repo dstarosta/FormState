@@ -43,7 +43,7 @@ import type {
   SubmittedData,
   ValidationResult,
 } from './types/form-types';
-import { useSelector } from './helpers/form-selector';
+import { useSelector } from './helpers/use-form-selector';
 import {
   collectDescriptions,
   collectLengths,

@@ -1,4 +1,6 @@
 import { useMemo, useRef } from 'react';
+import { deepEqual } from 'fast-equals';
+
 import type { Selector, SelectorResults } from '../types/form-types';
 
 /**
@@ -29,7 +31,7 @@ export function useSelector<S, I extends Selector<S, unknown>[], R>(
 
       const shouldRecalculate =
         !cache.current.initialized ||
-        inputs.some((input, i) => input !== cache.current.lastInputs[i]);
+        inputs.some((input, i) => !deepEqual(input, cache.current.lastInputs[i]));
 
       if (shouldRecalculate) {
         const currentResult = resultFn(...(inputs as unknown as SelectorResults<S, I>));
