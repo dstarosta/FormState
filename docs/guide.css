@@ -57,10 +57,29 @@ header {
   font-size: 17px;
   letter-spacing: -0.3px;
   color: var(--text);
+  text-decoration: none;
+}
+
+.logo:hover {
+  color: var(--text);
+  text-decoration: none;
 }
 
 .logo span {
   color: var(--accent);
+}
+
+.github-link {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: color 0.15s;
+  margin-left: 5px;
+}
+
+.github-link:hover {
+  color: var(--text);
 }
 
 .version-badge {
