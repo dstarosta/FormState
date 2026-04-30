@@ -724,8 +724,8 @@ const schema = z.strictObject({
   // Enum — only these string literals are valid
   status: z.formValues(['active', 'inactive', 'pending']).with(z.describe('Status')),
 
-  // Boolean with a default
-  isAdmin: z.default(z.formBoolean(), false).with(z.describe('Admin')),
+  // Boolean without an empty string value
+  isAdmin: z.formBoolean({ required: true }).with(z.describe('Admin')),
 
   // Array of strings with length limits
   tags: z.formArray(z.string(), { minLength: 0, maxLength: 10 }).with(z.describe('Tags')),
@@ -837,30 +837,21 @@ type Schema = z.infer&lt;typeof schema&gt;;
               </tr>
             </tbody>
           </table>
-          <div class="callout callout-tip">
-            <div class="callout-label">Tip</div>
-            <p>
-              Use <code>z.strictObject</code> for the root schema and <code>z.object</code> for any
-              nested shape — whether it's a direct sub-object field or a per-element shape inside
-              <code>z.formArray()</code>. The root benefits from strict validation so that unknown
-              keys are a hard error rather than silent data loss. Nested shapes are more permissive
-              because they often receive data from an API response that may carry extra properties.
-            </p>
-          </div>
           <div class="callout callout-warning">
             <div class="callout-label">Warning</div>
             <p>
-              Using <code>z.strictObject</code> at the root means that if the API starts returning a
-              new field that is not yet declared in the schema, validation will fail. Keep the
-              schema in sync with the API, or switch to <code>z.object</code> if your integration
-              cannot tolerate strict key checking.
+              Using <code>z.strictObject</code> means that if the API starts returning a new field
+              that is not yet declared in the schema, validation will fail. Keep the schema in sync
+              with the API, or switch to <code>z.object</code> if your integration cannot tolerate
+              strict key checking.
             </p>
           </div>
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
-              Chain <code>.with(z.describe('Label'))</code> on any field to attach a human-readable
-              description that you can read back via <code>formState.descriptions</code>.
+              Chain <code>.with(z.describe('Label'))</code> on any field, object or array to attach
+              a human-readable description that you can read back via
+              <code>formState.descriptions</code>. This is useful for control labels.
             </p>
           </div>
         </section>
@@ -1020,10 +1011,7 @@ z.formNumber({ required: true, error: 'Required' }, z.gte(18, 'Must be 18 or old
 z.formBoolean()
 
 // Required — must be a boolean
-z.formBoolean({ required: true, error: 'Please accept the terms' })
-
-// Pair with z.default to ensure a boolean at all times
-z.default(z.formBoolean(), false)</code></pre>
+z.formBoolean({ required: true })</code></pre>
           </div>
 
           <h3><span class="type-chip">z.formDate(opts?, ...checks)</span></h3>
@@ -1219,6 +1207,10 @@ z.formArray(z.formNumber(), { required: false })</code></pre>
             <code>condition</code> parameter lets you gate it on the current set of prior errors.
             Pass the returned check to <code>.check()</code> on a <code>z.object()</code> or
             <code>z.strictObject()</code>.
+          </p>
+          <p>
+            It can also be used for arrays or fields to perform custom validation that cannot be
+            performed with the standard Zod-based method.
           </p>
           <table class="prop-table">
             <thead>
@@ -1447,7 +1439,7 @@ const schema = z.strictObject({
   name: z.formString({ required: true, error: 'Name is required' }).with(z.describe('Name')),
   email: z.formString().with(z.describe('Email')),
   status: z.formValues(STATUS_VALUES).with(z.describe('Status')),
-  isAdmin: z.default(z.formBoolean(), false).with(z.describe('Admin')),
+  isAdmin: z.formBoolean({ required: true }).with(z.describe('Admin')),
 }).with(z.describe('Profile'));
 
 export function ProfileForm() {
@@ -1591,14 +1583,6 @@ formActions.change((path) =&gt; path.notes[index].text, value);
 formActions.array.append((path) =&gt; path.profile.skills, ['TS']);
 formState.descriptions.get((path) =&gt; path.notes[0].typeId);</code></pre>
             </div>
-          </div>
-          <div class="callout callout-tip">
-            <div class="callout-label">Tip</div>
-            <p>
-              Prefer the arrow function form whenever you're inside a component that receives
-              <code>index</code> as a prop — it keeps the path live and prevents key-collision bugs
-              from string concatenation.
-            </p>
           </div>
           <h3>Why arrow functions catch errors at compile time</h3>
           <p>
@@ -3273,10 +3257,10 @@ selectActiveNames(formState.data)  // string[]</code></pre>
             <pre><code class="language-tsx">const schema = z.strictObject({
   orders: z.array(
     z.object({
-      product: z.string(),
-      quantity: z.number(),
-      unitPrice: z.number(),
-      shipped: z.boolean(),
+      product: z.formString(),
+      quantity: z.formNumber(),
+      unitPrice: z.formNumber(),
+      shipped: z.formBoolean(),
     })
   ),
   discountPct: z.formNumber(),
@@ -3613,7 +3597,7 @@ if (result.success) {
 } else {
   // result.errors.getAll() — array of validation messages
   // result.errors.getKeys() — failed field paths
-  console.warn('API data has validation issues:', result.errors.getAll());
+  console.warn('API data has validation issues:', result.errors.getAll().join(' | '));
   // Still use the coerced data if errors are non-critical
   formActions.replace(result.data);
 }</code></pre>

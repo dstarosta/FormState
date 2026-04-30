@@ -473,8 +473,8 @@ export function createState<T extends z.ZodMiniObject>(
       } else if (baseType instanceof z.ZodMiniSymbol) {
         result[key] = createSymbol() as State[typeof key];
       } else if (
-        value instanceof z.ZodMiniBoolean ||
-        (value instanceof z.ZodMiniNonOptional && baseType instanceof z.ZodMiniBoolean)
+        (baseType instanceof z.ZodMiniBoolean && z.globalRegistry.get(baseType)?.['required']) ||
+        value instanceof z.ZodMiniBoolean
       ) {
         result[key] = false as State[typeof key];
       } else {

@@ -1247,6 +1247,13 @@ export function useFormState<T extends z.ZodMiniObject>(
     [inferredNameFormat]
   );
 
+  // Blurs the actively focused element.
+  const blur = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, []);
+
   // Sets focus on an element
   const focus = useCallback(
     (elementOrName: HTMLElement | string | null, options?: ElementFocusOptions<T>) => {
@@ -1351,6 +1358,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         clearManualErrors,
         getSubmittedData,
         inferName,
+        blur,
         focus,
         focusOnFirstError,
         array: {
@@ -1397,6 +1405,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       clearManualErrors,
       getSubmittedData,
       inferName,
+      blur,
       focus,
       focusOnFirstError,
       append,

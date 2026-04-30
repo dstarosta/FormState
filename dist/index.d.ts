@@ -1037,6 +1037,10 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * @returns The inferred name.
      */
     inferName: (nameOrPath: FormPath<T>, format?: 'bracket' | 'dot') => string;
+    /**
+     * Blurs the actively focused HTML element.
+     */
+    blur: () => void;
     focus: {
       /**
        * Focuses the HTML element with the provided name.

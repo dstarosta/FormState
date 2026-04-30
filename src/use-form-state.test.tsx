@@ -82,7 +82,7 @@ describe('useFormState', () => {
       isActive: z
         .default(z.formBoolean({ required: true, error: 'Is active is required' }), true)
         .with(z.describe('Is record active?')),
-      isArchived: z.default(z.formBoolean(), false).with(z.describe('Is record archived?')),
+      isArchived: z.formBoolean({ required: true }).with(z.describe('Is record archived?')),
       version: z
         .catch(z.formNumber(z.gte(0, 'Negative version'), z.lte(9999999, 'Version is too high')), 0)
         .with(z.describe('Record version')),
@@ -867,6 +867,7 @@ describe('useFormState', () => {
       tags: true,
       'tags.0': true,
       isActive: true,
+      isArchived: true,
       updateDates: true,
       'updateDates.0': true,
       'previousVersions.0': true,
@@ -3862,6 +3863,14 @@ describe('useFormState', () => {
             >
               Focus
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                formActions.blur();
+              }}
+            >
+              Blur
+            </button>
           </Form>
         );
       };
@@ -3871,6 +3880,10 @@ describe('useFormState', () => {
       fireEvent.click(screen.getByText('Focus'));
 
       expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+
+      fireEvent.click(screen.getByText('Blur'));
+
+      expect(screen.getByRole('textbox', { name: 'name' })).not.toHaveFocus();
     });
 
     it('focuses the given element by name', () => {
