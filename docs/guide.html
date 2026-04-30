@@ -3210,8 +3210,8 @@ export default formConnect({
 
           <h3>Simple selectors</h3>
           <p>
-            A selector with a single input extracts or transforms one slice of state. The state
-            type is inferred automatically from the schema — no manual annotation needed.
+            A selector with a single input extracts or transforms one slice of state. The state type
+            is inferred automatically from the schema — no manual annotation needed.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
@@ -3219,13 +3219,13 @@ export default formConnect({
 
 // Extract a field as-is
 const selectName = formHooks.useSelector(
-  [state =&gt; state.name],
+  state =&gt; state.name,
   name =&gt; name
 );
 
 // Derive a boolean from a field
 const selectIsAdult = formHooks.useSelector(
-  [state =&gt; state.age],
+  state =&gt; state.age,
   age =&gt; typeof age === 'number' &amp;&amp; age &gt;= 18
 );
 
@@ -3243,19 +3243,19 @@ selectIsAdult(formState.data)  // boolean</code></pre>
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// Filters the items array — reruns only when items changes
 const selectActiveItems = formHooks.useSelector(
-  [state =&gt; state.items],
+  state =&gt; state.items,
   items =&gt; items.filter(item =&gt; item.active)
 );
 
 // Counts the filtered list — reruns only when selectActiveItems output changes
 const selectActiveCount = formHooks.useSelector(
-  [selectActiveItems],
+  selectActiveItems,
   items =&gt; items.length
 );
 
 // Maps names — also reads from the already-filtered list
 const selectActiveNames = formHooks.useSelector(
-  [selectActiveItems],
+  selectActiveItems,
   items =&gt; items.map(item =&gt; item.name)
 );
 
@@ -3286,13 +3286,13 @@ const { formState, formHooks } = useFormState(schema);
 
 // Select unshipped orders
 const selectPendingOrders = formHooks.useSelector(
-  [state =&gt; state.orders],
-  orders =&gt; orders.filter(o =&gt; !o.shipped)
+  state =&gt; state.orders,
+  orders =&gt; orders.filter(order =&gt; !order.shipped)
 );
 
 // Combine the filtered list with the discount to compute an order summary
 const selectOrderSummary = formHooks.useSelector(
-  [selectPendingOrders, state =&gt; state.discountPct],
+  [selectPendingOrders, state =&gt; state.discountPct], // array of selectors
   (pending, discountPct) =&gt; {
     const subtotal = pending.reduce((sum, o) =&gt; sum + o.quantity * o.unitPrice, 0);
     const discount = typeof discountPct === 'number' ? discountPct / 100 : 0;
@@ -3309,12 +3309,14 @@ const summary = selectOrderSummary(formState.data);
           </div>
           <p>
             <code>selectOrderSummary</code> only recomputes when either <code>pending</code> (the
-            output of <code>selectPendingOrders</code>) or <code>discountPct</code> changes —
-            not on every render.
+            output of <code>selectPendingOrders</code>) or <code>discountPct</code> changes — not on
+            every render.
           </p>
           <p class="footnote">
             The <code>useSelector</code> API is intentionally compatible with
-            <a href="https://reselect.js.org/" target="_blank" rel="noopener noreferrer">reselect</a>
+            <a href="https://reselect.js.org/" target="_blank" rel="noopener noreferrer"
+              >reselect</a
+            >
             — selectors written here can be swapped for reselect selectors and vice versa.
           </p>
         </section>

@@ -4322,7 +4322,12 @@ describe('useFormState', () => {
         formHooks: { useSelector },
       } = result.current;
 
-      const selectorHook = renderHook(() => useSelector([(state) => state.name], (name) => name));
+      const selectorHook = renderHook(() =>
+        useSelector(
+          (state) => state.name,
+          (name) => name
+        )
+      );
       const selectName = selectorHook.result.current;
 
       expect(selectName(formState.data)).toBe(formState.data.name);
@@ -4336,11 +4341,16 @@ describe('useFormState', () => {
       } = result.current;
 
       const selectorHook = renderHook(() =>
-        useSelector([(state) => state.isActive], (isActive) => (isActive ? 'yes' : 'no'))
+        useSelector(
+          (state) => state.isActive,
+          (isActive) => (isActive ? 'yes' : 'no')
+        )
       );
-      const selectActive = selectorHook.result.current;
 
-      expect(selectActive(formState.data)).toBe('yes');
+      const selectActive = selectorHook.result.current;
+      const value = selectActive(formState.data);
+
+      expect(value).toBe('yes');
     });
 
     it('combines multiple fields', () => {
@@ -4356,9 +4366,11 @@ describe('useFormState', () => {
           (name, version) => `${name || 'unnamed'} v${String(version)}`
         )
       );
-      const selectSummary = selectorHook.result.current;
 
-      expect(selectSummary(formState.data)).toBe('unnamed v0');
+      const selectSummary = selectorHook.result.current;
+      const value = selectSummary(formState.data);
+
+      expect(value).toBe('unnamed v0');
     });
 
     it('filters an array field', () => {
@@ -4376,11 +4388,16 @@ describe('useFormState', () => {
       } = result.current;
 
       const selectorHook = renderHook(() =>
-        useSelector([(state) => state.tags], (tags) => tags.filter((t) => t.length > 4))
+        useSelector(
+          (state) => state.tags,
+          (tags) => tags.filter((t) => t.length > 4)
+        )
       );
-      const selectLongTags = selectorHook.result.current;
 
-      expect(selectLongTags(formState.data)).toEqual(['alpha', 'gamma']);
+      const selectLongTags = selectorHook.result.current;
+      const value = selectLongTags(formState.data);
+
+      expect(value).toEqual(['alpha', 'gamma']);
     });
 
     it('composes selectors', () => {
@@ -4398,17 +4415,22 @@ describe('useFormState', () => {
       } = result.current;
 
       const tagSelectorHook = renderHook(() =>
-        useSelector([(state) => state.tags], (tags) => tags)
+        useSelector(
+          (state) => state.tags,
+          (tags) => tags
+        )
       );
       const longTagSelectorHook = renderHook(() =>
-        useSelector([tagSelectorHook.result.current], (tags) => tags.filter((t) => t.length >= 3))
+        useSelector(tagSelectorHook.result.current, (tags) => tags.filter((t) => t.length >= 3))
       );
       const selectLongTagSelectorHook = renderHook(() =>
-        useSelector([longTagSelectorHook.result.current], (tags) => tags.length)
+        useSelector(longTagSelectorHook.result.current, (tags) => tags.length)
       );
-      const selectLongTagCount = selectLongTagSelectorHook.result.current;
 
-      expect(selectLongTagCount(formState.data)).toBe(2);
+      const selectLongTagCount = selectLongTagSelectorHook.result.current;
+      const value = selectLongTagCount(formState.data);
+
+      expect(value).toBe(2);
     });
 
     it('fans out from one upstream selector to two independent downstream selectors', () => {
@@ -4426,20 +4448,26 @@ describe('useFormState', () => {
       } = result.current;
 
       const longTagSelectorHook = renderHook(() =>
-        useSelector([(state) => state.tags], (tags) => tags.filter((t) => t.length >= 3))
+        useSelector(
+          (state) => state.tags,
+          (tags) => tags.filter((t) => t.length >= 3)
+        )
       );
       const longTagCountHook = renderHook(() =>
-        useSelector([longTagSelectorHook.result.current], (tags) => tags.length)
+        useSelector(longTagSelectorHook.result.current, (tags) => tags.length)
       );
       const longTagCountNames = renderHook(() =>
-        useSelector([longTagSelectorHook.result.current], (tags) => tags.map((tag) => tag))
+        useSelector(longTagSelectorHook.result.current, (tags) => tags.map((tag) => tag))
       );
 
       const selectLongTagCount = longTagCountHook.result.current;
       const selectLongTagNames = longTagCountNames.result.current;
 
-      expect(selectLongTagCount(formState.data)).toBe(2);
-      expect(selectLongTagNames(formState.data)).toEqual(['ccc', 'dddd']);
+      const countValue = selectLongTagCount(formState.data);
+      const nameValue = selectLongTagNames(formState.data);
+
+      expect(countValue).toBe(2);
+      expect(nameValue).toEqual(['ccc', 'dddd']);
     });
 
     it('combines a composed selector with a raw field as inputs', () => {
@@ -4470,7 +4498,10 @@ describe('useFormState', () => {
       } = result.current;
 
       const selectPendingOrdersHook = renderHook(() =>
-        useSelector([(state) => state.orders], (orders) => orders.filter((order) => !order.shipped))
+        useSelector(
+          (state) => state.orders,
+          (orders) => orders.filter((order) => !order.shipped)
+        )
       );
 
       const selectOrderSummaryHook = renderHook(() =>
@@ -4482,6 +4513,7 @@ describe('useFormState', () => {
               0
             );
             const discount = typeof discountPct === 'number' ? discountPct / 100 : 0;
+
             return { count: pending.length, subtotal, total: subtotal * (1 - discount) };
           }
         )
@@ -4507,7 +4539,10 @@ describe('useFormState', () => {
         const resultFn = vi.fn((name: string) => name.toUpperCase());
 
         const selectNameHook = renderHook(() =>
-          useSelector([(state) => state.name], (name) => resultFn(name))
+          useSelector(
+            (state) => state.name,
+            (name) => resultFn(name)
+          )
         );
         const selectName = selectNameHook.result.current;
 
@@ -4531,7 +4566,10 @@ describe('useFormState', () => {
         const resultFn = vi.fn((name: string) => name.toUpperCase());
 
         const selectNameHook = renderHook(() =>
-          useSelector([(state) => state.name], (name) => resultFn(name))
+          useSelector(
+            (state) => state.name,
+            (name) => resultFn(name)
+          )
         );
         const selectName = selectNameHook.result.current;
 
@@ -4553,7 +4591,10 @@ describe('useFormState', () => {
         const resultFn = vi.fn((name: string) => name.toUpperCase());
 
         const selectNameHook = renderHook(() =>
-          useSelector([(state) => state.name], (name) => resultFn(name))
+          useSelector(
+            (state) => state.name,
+            (name) => resultFn(name)
+          )
         );
         const selectName = selectNameHook.result.current;
 
@@ -4577,7 +4618,10 @@ describe('useFormState', () => {
 
         const resultFn = vi.fn((name: string) => name.toUpperCase());
         const selectNameHook = renderHook(() =>
-          useSelector([(state) => state.name], (name) => resultFn(name))
+          useSelector(
+            (state) => state.name,
+            (name) => resultFn(name)
+          )
         );
         const selectName = selectNameHook.result.current;
 
@@ -4598,7 +4642,10 @@ describe('useFormState', () => {
 
         const resultFn = vi.fn((name: string) => name.toUpperCase());
         const selectNameHook = renderHook(() =>
-          useSelector([(state) => state.name], (name) => resultFn(name))
+          useSelector(
+            (state) => state.name,
+            (name) => resultFn(name)
+          )
         );
         const selectName = selectNameHook.result.current;
 
@@ -4625,7 +4672,10 @@ describe('useFormState', () => {
         } = result.current;
 
         const selectTagsHooks = renderHook(() =>
-          useSelector([(state) => state.tags], (tags) => [...tags])
+          useSelector(
+            (state) => state.tags,
+            (tags) => [...tags]
+          )
         );
         const selectTags = selectTagsHooks.result.current;
 
@@ -4647,7 +4697,10 @@ describe('useFormState', () => {
         } = result.current;
 
         const selectTagsHooks = renderHook(() =>
-          useSelector([(state) => state.tags], (tags) => [...tags])
+          useSelector(
+            (state) => state.tags,
+            (tags) => [...tags]
+          )
         );
         const selectTags = selectTagsHooks.result.current;
 
@@ -4671,7 +4724,10 @@ describe('useFormState', () => {
         const resultFn = vi.fn((active: boolean | string) => (active ? 'active' : 'inactive'));
 
         const selectStatusHook = renderHook(() =>
-          useSelector([(state) => state.isActive], (active) => resultFn(active))
+          useSelector(
+            (state) => state.isActive,
+            (active) => resultFn(active)
+          )
         );
         const selectStatus = selectStatusHook.result.current;
 
@@ -4695,7 +4751,10 @@ describe('useFormState', () => {
         const resultFn = vi.fn((active: boolean | string) => (active ? 'active' : 'inactive'));
 
         const selectStatusHook = renderHook(() =>
-          useSelector([(state) => state.isActive], (active) => resultFn(active))
+          useSelector(
+            (state) => state.isActive,
+            (active) => resultFn(active)
+          )
         );
         const selectStatus = selectStatusHook.result.current;
 

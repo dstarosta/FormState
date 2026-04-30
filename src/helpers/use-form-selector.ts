@@ -1,7 +1,7 @@
-import { useMemo, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { deepEqual } from 'fast-equals';
 
-import type { Selector, SelectorResults } from '../types/form-types';
+import type { Selector } from '../types/form-types';
 
 /**
  * A hook that creates a memoized selector over the form state data or derived data.
@@ -11,9 +11,9 @@ import type { Selector, SelectorResults } from '../types/form-types';
  * @param resultFn - The result function that computes the final value from the extracted inputs.
  * @returns Memoized selector function.
  */
-export function useSelector<S, I extends Selector<S, unknown>[], R>(
-  inputSelectors: [...I],
-  resultFn: (...inputs: { [K in keyof SelectorResults<S, I>]: SelectorResults<S, I>[K] }) => R
+export function useSelector<S, R>(
+  inputSelectors: Selector<S, unknown> | Selector<S, unknown>[],
+  resultFn: (...args: unknown[]) => R
 ): Selector<S, R> {
   const cache = useRef<{
     lastInputs: unknown[];
@@ -25,16 +25,17 @@ export function useSelector<S, I extends Selector<S, unknown>[], R>(
     initialized: false,
   });
 
-  return useMemo(() => {
-    return (state: S) => {
-      const inputs: unknown[] = inputSelectors.map((sel) => sel(state));
+  return useCallback(
+    (state: S) => {
+      const selectors = Array.isArray(inputSelectors) ? inputSelectors : [inputSelectors];
+      const inputs: unknown[] = selectors.map((sel) => sel(state));
 
       const shouldRecalculate =
         !cache.current.initialized ||
         inputs.some((input, i) => !deepEqual(input, cache.current.lastInputs[i]));
 
       if (shouldRecalculate) {
-        const currentResult = resultFn(...(inputs as unknown as SelectorResults<S, I>));
+        const currentResult = resultFn(...inputs);
 
         cache.current.lastResult = currentResult;
         cache.current.lastInputs = inputs;
@@ -42,6 +43,7 @@ export function useSelector<S, I extends Selector<S, unknown>[], R>(
       }
 
       return cache.current.lastResult as R;
-    };
-  }, [inputSelectors, resultFn]);
+    },
+    [inputSelectors, resultFn]
+  );
 }

@@ -843,19 +843,34 @@ formData: FormData) => Promise<ValidationResult> | ValidationResult;
  * The form mode type.
  */
 type FormMode = 'editable' | 'readOnly' | 'disabled';
-/**
- * Form data selector creator function type.
- *
- * @param inputSelectors - One or more selectors that extract values from the source state `S`.
- * @param resultFn - The result function that computes the final value from the extracted inputs.
- *
- * @typeParam S - Source state type.
- * @typeParam I - Tuple of input selector types.
- * @typeParam R - Return type of the result function.
- *
- * @returns Memoized selector function.
- */
-type FormDataSelector<S> = <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: { [K in keyof SelectorResults<S, I>]: SelectorResults<S, I>[K] }) => R) => Selector<S, R>;
+type FormDataSelector<S> = {
+  /**
+   * Form data selector creator function type.
+   *
+   * @param inputSelector - A selector that extract values from the source state `S`.
+   * @param resultFn - The result function that computes the final value from the extracted input.
+   *
+   * @typeParam S - Source state type.
+   * @typeParam I - Tuple of input selector types.
+   * @typeParam R - Return type of the result function.
+   *
+   * @returns Memoized selector function.
+   */
+  <I extends Selector<S, unknown>, R>(inputSelector: I, resultFn: (input: ReturnType<I>) => R): Selector<S, R>;
+  /**
+   * Form data selector creator function type.
+   *
+   * @param inputSelectors - One or more selectors that extract values from the source state `S`.
+   * @param resultFn - The result function that computes the final value from the extracted inputs.
+   *
+   * @typeParam S - Source state type.
+   * @typeParam I - Tuple of input selector types.
+   * @typeParam R - Return type of the result function.
+   *
+   * @returns Memoized selector function.
+   */
+  <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: SelectorResults<S, I>) => R): Selector<S, R>;
+};
 /**
  * The form state response type.
  *

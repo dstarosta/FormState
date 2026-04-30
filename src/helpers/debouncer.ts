@@ -1,36 +1,37 @@
 // Internal functions
 
-export function debounce<T extends unknown[]>(fn: (...args: T) => unknown, wait: number) {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
+export function debounce<T extends unknown[]>(fn: (...args: T) => void, wait: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let lastArgs: T | null = null;
 
-  const invoke = () => {
-    const args = lastArgs as T;
+  const cleanup = () => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+
+    timeoutId = null;
     lastArgs = null;
-    fn(...args);
   };
 
-  const debounced = ((...args: T) => {
+  const debounced = (...args: T) => {
     lastArgs = args;
 
-    if (timeout) {
-      clearTimeout(timeout);
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
     }
 
-    timeout = setTimeout(() => {
-      timeout = null;
-      invoke();
+    timeoutId = setTimeout(() => {
+      if (lastArgs !== null) {
+        const currentArgs = lastArgs;
+
+        cleanup();
+
+        fn(...currentArgs);
+      }
     }, wait);
-  }) as ((...args: T) => void) & { cancel: () => void };
-
-  debounced.cancel = () => {
-    if (timeout) {
-      clearTimeout(timeout);
-      timeout = null;
-    }
-
-    lastArgs = null;
   };
+
+  debounced.cancel = cleanup;
 
   return debounced;
 }
