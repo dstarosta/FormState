@@ -274,6 +274,11 @@ describe('helpers', () => {
     expect(parsedDate.success).toBe(false);
     expect(parsedDate.date).toBeNull();
 
+    parsedDate = safeParseDate('abcd1234', 'MM/dd/yyyy');
+
+    expect(parsedDate.success).toBe(false);
+    expect(parsedDate.date).toBeNull();
+
     parsedDate = safeParseDate('2020-99-99', 'yyyy-MM-dd');
 
     expect(parsedDate.success).toBe(false);

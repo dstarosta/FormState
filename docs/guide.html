@@ -541,6 +541,46 @@ const action = formHandlers.handleSubmit(async (state, formData) =&gt; {
             silently stop working for form-derived values.
           </p>
           <p>
+            The <code>getState</code> method is used to read form data in components or utility
+            modules that only have access to the disconnected copy of the form data and the
+            underlying Zod schema.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { getState } from 'form-state';
+
+const address1Zip = getState(formSchema, data, (path) => path.addresses[0].zipCode);
+</code></pre>
+          </div>
+          <p>
+            The <code>createState</code> method is used to generate an object with an initial state
+            outside of the form context.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { createState } from 'form-state';
+
+const data = createState(schema);
+
+// Override some default property values with a partial initial state object.
+const data = createState(schema, { name: 'John', info: { age: 24 } });</code></pre>
+          </div>
+          <p>
+            The <code>updateState</code> method is used to update partial state graphs and
+            assigning them back using the <code>change</code> method. The syntax is very similar
+            to the <code>produce</code> method in the <code>Immer</code> library.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { updateState } from 'form-state';
+
+const updatedTags = updateState(data.tags, (draft) => {
+  draft.push('Important'); // can be a complex array/object structure
+});
+
+formActions.change('tags', updatedTags);</code></pre>
+          </div>
+          <p>
             <strong
               ><code>&lt;Suspense&gt;</code> and
               <code>&lt;ErrorBoundary&gt;</code> compatibility</strong
@@ -3553,18 +3593,32 @@ convert.toBoolean('0')       // false
 convert.toLiteral('active', ['active', 'inactive'])  // 'active'
 convert.toLiteral('other',  ['active', 'inactive'])  // ''</code></pre>
           </div>
-
           <h3>Date formatting</h3>
-
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { formatDate } from 'form-state';
 
 const date = formState.data.birthDate; // Date | ''
+
 if (date instanceof Date) {
   formatDate(date, 'MM/dd/yyyy')   // '12/31/2024'
   formatDate(date, 'yyyy-MM-dd')   // '2024-12-31'
 }</code></pre>
+          </div>
+          <h3>Date parsing</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { safeParseDate } from 'form-state';
+
+const { success: startDateSuccess, date: startDate } = safeParseDate('2020-12-01'); // yyyy-MM-dd
+// startDateSuccess: true
+// startDate: new Date(2020, 11, 1)
+
+const { date: endDate } = safeParseDate('12/31/2020', 'MM/dd/yyyy');
+
+const { success: finalDateSuccess, date: finalDate } = safeParseDate('abcd1234', 'MM/dd/yyyy');
+// finalDateSuccess: false
+// finalDate: null</code></pre>
           </div>
           <h3>Dirty flag for non-field state</h3>
           <p>
@@ -5158,14 +5212,29 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             </tbody>
           </table>
           <p>
-            <strong>React 19 integration is a first-class concern, not a retrofit.</strong> TanStack
-            Form supports React 19 actions. React Hook Form still uses <code>onSubmit</code> and
-            <code>e.preventDefault()</code> — it works alongside React 19 but does not integrate
-            with it. FormState is built around <code>&lt;form action&gt;</code> natively:
-            <code>useFormStatus</code> works in any child component without extra setup, server
-            actions drop in without adapters, and the browser's native submit behaviour is
-            preserved. If React 19 is your target, that integration is architectural — the other
-            libraries are bolted on after the fact.
+            <strong>React 19 integration is a first-class concern, not a retrofit.</strong>
+            TanStack Form supports React 19 actions natively. While React Hook Form still relies on
+            <code>onSubmit</code> and <code>e.preventDefault()</code> — working alongside React 19 but not truly integrating with it —
+            FormState is built from the ground up around the <code>&lt;form action&gt;</code> primitive.
+
+            This deep integration means:
+            <ul>
+              <li>The browser's native form submission behavior is fully preserved.</li>
+              <li><code>useFormStatus</code> works in any child component without extra setup or context providers.</li>
+              <li><code>useOptimistic</code> integrates naturally for instant UI feedback during submissions.</li>
+              <li><code>Suspense</code> support allows you to declaratively handle loading states for pending submissions.</li>
+              <li><code>ErrorBoundary</code> works out of the box to gracefully catch and display submission errors.</li>
+              <li>Server Actions drop in seamlessly with no adapters or wrappers required.</li>
+              <li><code>FormData</code> is natively supported along with <code>JSON</code> data.</li>
+              <li>
+                Predictable render cycle, even for uncontrolled components. <code>useWatch</code> hook is implemented with
+                <code>useSyncExternalStore</code>.
+              </li>
+              <li>
+                Immutable form state supports built-in memoized selectors and standard React hooks like
+                <code>useEffect/useLayoutEffect</code>, <code>useMemo</code> and <code>useCallback</code>.
+              </li>
+            </ul>
           </p>
           <p>
             <strong>The bottom line:</strong> on a React 19, TypeScript-first project, FormState is
@@ -5178,6 +5247,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             ecosystem and long track record of a mature library, React Hook Form for simpler forms
             or TanStack Form for complex ones are the next-best options — with the understanding
             that your field components will carry a library import for as long as the form exists.
+            Feedback and pull requests are welcome.
           </p>
         </section>
       </main>
