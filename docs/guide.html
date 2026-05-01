@@ -39,8 +39,8 @@
           <span class="nav-section-label">Getting Started</span>
           <a href="#overview" class="nav-link active">Overview</a>
           <a href="#installation" class="nav-link">Installation</a>
-          <a href="#typescript" class="nav-link">TypeScript</a>
           <a href="#philosophy" class="nav-link">Philosophy</a>
+          <a href="#typescript" class="nav-link">TypeScript</a>
           <a href="#license" class="nav-link">License</a>
         </div>
         <div class="nav-section">
@@ -55,8 +55,8 @@
         </div>
         <div class="nav-section">
           <span class="nav-section-label">Features</span>
-          <a href="#validation" class="nav-link">Validation</a>
           <a href="#arrays" class="nav-link">Array Fields</a>
+          <a href="#validation" class="nav-link">Validation</a>
           <a href="#submission" class="nav-link">Form Submission</a>
           <a href="#manual-errors" class="nav-link">Manual Errors</a>
           <a href="#readonly-disabled" class="nav-link">Readonly &amp; Disabled</a>
@@ -125,11 +125,22 @@
           <div class="section-eyebrow">Getting Started</div>
           <h2>Installation</h2>
           <div class="callout callout-info">
-            <div class="callout-label">Requirement</div>
-            <p>FormState requires <strong>React 19.2 or greater</strong>.</p>
+            <div class="callout-label">Requirements</div>
+            <p>
+              FormState requires <strong>React 19.2 or greater</strong>,
+              <strong>Zod 4.x</strong> and
+              <strong
+                ><a
+                  href="https://www.typescriptlang.org/download/"
+                  target="_blank"
+                  class="typescript-link"
+                  >TypeScript 5.9 or greater</a
+                >.</strong
+              >
+            </p>
           </div>
           <p>
-            Install FormState — Zod is bundled as a peer dependency. NPM 7+ installs it
+            Install FormState — Zod v4 is bundled as a peer dependency. NPM 7+ installs it
             automatically, PNPM does not.
           </p>
           <div class="code-block">
@@ -140,17 +151,317 @@ npm install github:dstarosta/FormState#v1.0.0</code></pre>
           <p>Then import from the package root:</p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import {
-  useFormState,
-  z,
-  type FormPath,
-  type FormState,
-  type FormMode,
-  type SubmitState,
-  type SubmitSuccessState,
-  type SchemaDataObject,
-  type StateChangeListener,
-} from 'form-state';</code></pre>
+            <pre><code class="language-tsx">import { useFormState, z } from 'form-state';</code></pre>
+          </div>
+          <p>
+            <code>z</code> should be imported from <strong>'form-state'</strong>, not
+            <code>'zod'</code> or <code>'zod/mini'</code>.
+          </p>
+        </section>
+        <section class="section" id="philosophy">
+          <div class="section-eyebrow">Getting Started</div>
+          <h2>Philosophy</h2>
+          <p>
+            FormState is built around a small set of ideas that inform every design decision.
+            Understanding them makes the library predictable to use and straightforward to extend.
+          </p>
+          <h3>TypeScript First</h3>
+          <p>
+            Types flow end-to-end from your schema through every method signature, callback, and
+            component prop. There are no <code>any</code> casts, no silent type widening, and no
+            generics to pass by hand — inference does the work.
+          </p>
+          <p>
+            Path expressions are type-checked at compile time.
+            <code>(path) =&gt; path.info.age</code> is valid or it isn't, and the error lands on
+            your input's prop — not inside a render-prop wrapper two levels up. After a successful
+            submit, <code>state.data</code> is fully narrowed: <code>string</code>, not
+            <code>string | ''</code>.
+          </p>
+          <p>
+            See the <a href="#typescript">TypeScript section</a> for the full exported type
+            reference and <code>tsconfig</code> requirements.
+          </p>
+
+          <h3>Built for React 19</h3>
+          <p>
+            FormState is built around React 19's form model, not bolted on top of it. The
+            <code>Form</code> component returned by the hook accepts an async
+            <code>action</code> prop directly — no <code>onSubmit</code> wiring, no
+            <code>e.preventDefault()</code>. Because it uses a real
+            <code>&lt;form action&gt;</code>, React 19's <code>useFormStatus</code> works in any
+            child component without any extra setup, and server actions drop in without adapters.
+            This deep integration means:
+          </p>
+
+          <ul>
+            <li>
+              The browser's native form submission behavior is fully preserved. See
+              <a href="#submission">Form Submission</a>, <a href="#nextjs">Next.js</a> and
+              <a href="#remix">React Router 7</a>.
+            </li>
+            <li>
+              Server Actions drop in seamlessly with no adapters or wrappers required. See
+              <a href="#nextjs">Next.js</a> and <a href="#remix">React Router 7</a>.
+            </li>
+            <li>
+              <code>FormData</code> is natively supported along with <code>JSON</code> data. See
+              <a href="#submission">Form Submission</a>.
+            </li>
+            <li>
+              <code>Suspense</code> support allows you to declaratively handle loading states for
+              pending submissions. See <a href="#tanstack-query">TanStack Query</a>.
+            </li>
+            <li>
+              <code>ErrorBoundary</code> works out of the box to gracefully catch and display
+              submission errors. See <a href="#tanstack-query">TanStack Query</a>.
+            </li>
+            <li>
+              <code>useFormStatus</code> works in any child component without extra setup or context
+              providers.
+            </li>
+            <li>
+              <code>useOptimistic</code> integrates naturally for instant UI feedback during
+              submissions.
+            </li>
+            <li>
+              <code>startTransition</code> is fully supported. It allows to render form components
+              in the background.<sup>1</sup>
+            </li>
+            <li>
+              Predictable render cycle, even for uncontrolled components. <code>useWatch</code> hook
+              is implemented with <code>useSyncExternalStore</code>.<sup>2</sup>
+            </li>
+            <li>
+              Immutable form state supports built-in memoized selectors and standard React hooks
+              like
+              <code>useEffect/useLayoutEffect</code>, <code>useMemo</code> and
+              <code>useCallback</code>.
+            </li>
+          </ul>
+          <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
+            <li>
+              <p>
+                Libraries that are using <code>useSyncExternalStore</code> for form state management
+                have problems with React concurrent rendering, specifically background transitions.
+              </p>
+              <p>
+                <a href="https://github.com/orgs/react-hook-form/discussions/11832" target="_blank"
+                  >React Form Hook: React v19 Discussion #11832</a
+                >
+                <br />
+                <a href="https://github.com/TanStack/store/discussions/262" target="_blank"
+                  >Tanstack Store (powers Tanstack Form): useSyncExternalStore and React concurrent
+                  mode #262
+                </a>
+              </p>
+            </li>
+          </ol>
+          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Variables returned from the <code>useWatch</code> hook should only be used in the
+              render function, not as other hook dependencies.
+            </li>
+          </ol>
+          <h3>Schema-Driven, Non-Intrusive</h3>
+          <p>
+            One Zod schema is the single source of truth for field types, validation rules, error
+            messages, allowed values, ranges, and human-readable labels. It lives outside your
+            components — controls are plain HTML inputs that never import or reference the schema
+            directly.
+          </p>
+          <p>
+            This keeps component signatures simple and the schema portable. You can reuse the same
+            schema for server-side API validation, share it across multiple forms, or version it
+            independently of your UI. The schema is expressive — cross-field rules, async
+            validators, conditional requirements — but that complexity stays in one place rather
+            than being distributed across input components.
+          </p>
+
+          <h3>Controlled is Cool</h3>
+          <p>
+            Every field is controlled by default: <code>formState.data</code> is the source of truth
+            and React renders from it. This makes the form fully predictable — any state transition
+            is visible as a plain object diff, which means conditional logic, cross-field
+            validation, and debugging are all just JavaScript.
+          </p>
+          <p>
+            Uncontrolled inputs are available as an escape hatch for high-frequency fields where
+            re-rendering on every keystroke is undesirable. The value is read from the DOM at submit
+            time and fires no intermediate state updates:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;input
+  name="bio"
+  defaultValue={formState.data.bio}
+  onBlur={(e) =&gt; formActions.change('bio', e.target.value, { touch: true })}
+/&gt;</code></pre>
+          </div>
+          <p>
+            To observe a raw typed value — a live character counter, a search preview — without
+            triggering a full re-render, see <a href="#watch"><code>useWatch</code></a
+            >.
+          </p>
+          <h3>Immutable form state</h3>
+          <p>
+            Every <code>formState</code> update produces a new object reference — no in-place
+            mutation, no shared mutable containers. This is what makes FormState safe for the full
+            range of React patterns: <code>useMemo</code>, <code>useEffect</code> dependency arrays,
+            <code>React.memo</code>, and the React Compiler all rely on reference equality to detect
+            changes. Libraries that store form state in a mutable ref or an external store —
+            including React Hook Form and TanStack Form — bypass React's change-detection entirely,
+            which means those optimisations silently stop working for form-derived values.
+          </p>
+          <p>
+            The <code>getState</code> method is used to read form data in components or utility
+            modules that only have access to the disconnected copy of the form data and the
+            underlying Zod schema.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { getState } from 'form-state';
+
+const address1Zip = getState(formSchema, data, (path) => path.addresses[0].zipCode);
+</code></pre>
+          </div>
+          <p>
+            The <code>createState</code> method is used to generate an object with an initial state
+            outside of the form context.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { createState } from 'form-state';
+
+const data = createState(schema);
+
+// Override some default property values with a partial initial state object.
+const data = createState(schema, { name: 'John', info: { age: 24 } });</code></pre>
+          </div>
+          <p>
+            The <code>updateState</code> method is used to update partial state graphs and assigning
+            them back using the <code>change</code> method. The syntax is very similar to the
+            <code>produce</code> method in the <code>Immer</code> library.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { updateState } from 'form-state';
+
+const updatedTags = updateState(data.tags, (draft) => {
+  draft.push('Important'); // can be a complex array/object structure
+});
+
+formActions.change('tags', updatedTags);</code></pre>
+          </div>
+          <p>Also see <a href="#arrays">Array Fields</a></p>
+          <h3>No Render Props</h3>
+          <p>
+            TanStack Form, React Hook Form, and Formik all manage per-field subscriptions by
+            wrapping each input in a special component or render prop. FormState takes a different
+            approach: state lives in a plain object you read directly, and you wire inputs yourself
+            with ordinary props. You can always build a layer of abstracted components on top — but
+            you never have to.
+          </p>
+          <div class="code-split-3">
+            <div class="code-block">
+              <div class="code-block-header">
+                <span class="code-block-lang">tsx</span>
+                <span class="code-block-label">TanStack Form</span>
+              </div>
+              <pre><code class="language-tsx">// Every field needs a render-prop wrapper
+&lt;form.Field name="name"&gt;
+  {(field) =&gt; (
+    &lt;div&gt;
+      &lt;input
+        value={field.state.value}
+        onChange={(e) =&gt;
+          field.handleChange(e.target.value)
+        }
+        onBlur={field.handleBlur}
+      /&gt;
+      {field.state.meta.errors.map((err) =&gt; (
+        &lt;span key={err}&gt;{err}&lt;/span&gt;
+      ))}
+    &lt;/div&gt;
+  )}
+&lt;/form.Field&gt;</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-block-header">
+                <span class="code-block-lang">tsx</span>
+                <span class="code-block-label">React Hook Form</span>
+              </div>
+              <pre><code class="language-tsx">// Controlled inputs need a render-prop wrapper
+&lt;Controller
+  name="name"
+  control={control}
+  render={({ field, fieldState }) =&gt; (
+    &lt;div&gt;
+      &lt;input {...field} /&gt;
+      {fieldState.error &amp;&amp; (
+        &lt;span&gt;
+          {fieldState.error.message}
+        &lt;/span&gt;
+      )}
+    &lt;/div&gt;
+  )}
+/&gt;</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-block-header">
+                <span class="code-block-lang">tsx</span>
+                <span class="code-block-label">Formik</span>
+              </div>
+              <pre><code class="language-tsx">// Field render prop to access per-field state
+&lt;Field name="name"&gt;
+  {({ field, meta }) =&gt; (
+    &lt;div&gt;
+      &lt;input {...field} /&gt;
+      {meta.touched &amp;&amp; meta.error &amp;&amp; (
+        &lt;span&gt;{meta.error}&lt;/span&gt;
+      )}
+    &lt;/div&gt;
+  )}
+&lt;/Field&gt;</code></pre>
+            </div>
+          </div>
+          <div class="code-split-answer">
+            <div class="code-block">
+              <div class="code-block-header">
+                <span class="code-block-lang">tsx</span>
+                <span class="code-block-label">FormState</span>
+              </div>
+              <pre><code class="language-tsx">// No wrapper — read state and call actions directly
+&lt;div&gt;
+  &lt;input
+    value={formState.data.name}
+    onChange={(e) =&gt; formActions.change('name', e.target.value)}
+    onBlur={() =&gt; formActions.touch('name')}
+  /&gt;
+  {formState.touched.name &amp;&amp; formState.errors.name &amp;&amp; (
+    &lt;span&gt;{formState.errors.name}&lt;/span&gt;
+  )}
+&lt;/div&gt;</code></pre>
+            </div>
+          </div>
+          <p>
+            There is no <code>field</code> object, no <code>fieldState</code>, no render prop
+            argument. You work with the same <code>formState</code> and <code>formActions</code>
+            everywhere. Passing data to a child component is a normal prop. Conditional fields are
+            plain JSX. Moving a field into its own component means passing
+            <code>formState</code> and <code>formActions</code> as props — no re-registration, no
+            <code>useController</code>.
+          </p>
+          <div class="callout callout-info">
+            <div class="callout-label">Trade-off</div>
+            <p>
+              Render-prop wrappers exist to limit re-renders to the field level. FormState
+              re-renders the component that called <code>useFormState</code> on every state change.
+              For most forms this is imperceptible, but if you have hundreds of fields you can
+              reduce churn by using uncontrolled inputs with <code>defaultValue</code>,
+              <code>useWatch</code> to subscribe to individual fields, or debouncing
+              <code>change</code> calls on high-frequency inputs.
+            </p>
           </div>
         </section>
         <section class="section" id="typescript">
@@ -364,278 +675,6 @@ const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCou
 // In your component:
 formHooks.useListener(listener);</code></pre>
           </div>
-        </section>
-        <section class="section" id="philosophy">
-          <div class="section-eyebrow">Getting Started</div>
-          <h2>Philosophy</h2>
-          <p>
-            FormState is built around a small set of ideas that inform every design decision.
-            Understanding them makes the library predictable to use and straightforward to extend.
-          </p>
-
-          <h3>No Render Props</h3>
-          <p>
-            TanStack Form, React Hook Form, and Formik all manage per-field subscriptions by
-            wrapping each input in a special component or render prop. FormState takes a different
-            approach: state lives in a plain object you read directly, and you wire inputs yourself
-            with ordinary props. You can always build a layer of abstracted components on top — but
-            you never have to.
-          </p>
-          <div class="code-split-3">
-            <div class="code-block">
-              <div class="code-block-header">
-                <span class="code-block-lang">tsx</span>
-                <span class="code-block-label">TanStack Form</span>
-              </div>
-              <pre><code class="language-tsx">// Every field needs a render-prop wrapper
-&lt;form.Field name="name"&gt;
-  {(field) =&gt; (
-    &lt;div&gt;
-      &lt;input
-        value={field.state.value}
-        onChange={(e) =&gt;
-          field.handleChange(e.target.value)
-        }
-        onBlur={field.handleBlur}
-      /&gt;
-      {field.state.meta.errors.map((err) =&gt; (
-        &lt;span key={err}&gt;{err}&lt;/span&gt;
-      ))}
-    &lt;/div&gt;
-  )}
-&lt;/form.Field&gt;</code></pre>
-            </div>
-            <div class="code-block">
-              <div class="code-block-header">
-                <span class="code-block-lang">tsx</span>
-                <span class="code-block-label">React Hook Form</span>
-              </div>
-              <pre><code class="language-tsx">// Controlled inputs need a render-prop wrapper
-&lt;Controller
-  name="name"
-  control={control}
-  render={({ field, fieldState }) =&gt; (
-    &lt;div&gt;
-      &lt;input {...field} /&gt;
-      {fieldState.error &amp;&amp; (
-        &lt;span&gt;
-          {fieldState.error.message}
-        &lt;/span&gt;
-      )}
-    &lt;/div&gt;
-  )}
-/&gt;</code></pre>
-            </div>
-            <div class="code-block">
-              <div class="code-block-header">
-                <span class="code-block-lang">tsx</span>
-                <span class="code-block-label">Formik</span>
-              </div>
-              <pre><code class="language-tsx">// Field render prop to access per-field state
-&lt;Field name="name"&gt;
-  {({ field, meta }) =&gt; (
-    &lt;div&gt;
-      &lt;input {...field} /&gt;
-      {meta.touched &amp;&amp; meta.error &amp;&amp; (
-        &lt;span&gt;{meta.error}&lt;/span&gt;
-      )}
-    &lt;/div&gt;
-  )}
-&lt;/Field&gt;</code></pre>
-            </div>
-          </div>
-          <div class="code-split-answer">
-            <div class="code-block">
-              <div class="code-block-header">
-                <span class="code-block-lang">tsx</span>
-                <span class="code-block-label">FormState</span>
-              </div>
-              <pre><code class="language-tsx">// No wrapper — read state and call actions directly
-&lt;div&gt;
-  &lt;input
-    value={formState.data.name}
-    onChange={(e) =&gt; formActions.change('name', e.target.value)}
-    onBlur={() =&gt; formActions.touch('name')}
-  /&gt;
-  {formState.touched.name &amp;&amp; formState.errors.name &amp;&amp; (
-    &lt;span&gt;{formState.errors.name}&lt;/span&gt;
-  )}
-&lt;/div&gt;</code></pre>
-            </div>
-          </div>
-          <p>
-            There is no <code>field</code> object, no <code>fieldState</code>, no render prop
-            argument. You work with the same <code>formState</code> and <code>formActions</code>
-            everywhere. Passing data to a child component is a normal prop. Conditional fields are
-            plain JSX. Moving a field into its own component means passing
-            <code>formState</code> and <code>formActions</code> as props — no re-registration, no
-            <code>useController</code>.
-          </p>
-          <div class="callout callout-info">
-            <div class="callout-label">Trade-off</div>
-            <p>
-              Render-prop wrappers exist to limit re-renders to the field level. FormState
-              re-renders the component that called <code>useFormState</code> on every state change.
-              For most forms this is imperceptible, but if you have hundreds of fields you can
-              reduce churn by using uncontrolled inputs with <code>defaultValue</code>,
-              <code>useWatch</code> to subscribe to individual fields, or debouncing
-              <code>change</code> calls on high-frequency inputs.
-            </p>
-          </div>
-
-          <h3>TypeScript First</h3>
-          <p>
-            Types flow end-to-end from your schema through every method signature, callback, and
-            component prop. There are no <code>any</code> casts, no silent type widening, and no
-            generics to pass by hand — inference does the work.
-          </p>
-          <p>
-            Path expressions are type-checked at compile time.
-            <code>(path) =&gt; path.info.age</code> is valid or it isn't, and the error lands on
-            your input's prop — not inside a render-prop wrapper two levels up. After a successful
-            submit, <code>state.data</code> is fully narrowed: <code>string</code>, not
-            <code>string | ''</code>.
-          </p>
-          <p>
-            See the <a href="#typescript">TypeScript section</a> for the full exported type
-            reference and <code>tsconfig</code> requirements.
-          </p>
-
-          <h3>Built for React 19</h3>
-          <p>
-            FormState is built around React 19's form model, not bolted on top of it. The
-            <code>Form</code> component returned by the hook accepts an async
-            <code>action</code> prop directly — no <code>onSubmit</code> wiring, no
-            <code>e.preventDefault()</code>. Because it uses a real
-            <code>&lt;form action&gt;</code>, React 19's <code>useFormStatus</code> works in any
-            child component without any extra setup, and server actions drop in without adapters.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">const { Form, formHandlers } = useSchemaFormState();
-
-const action = formHandlers.handleSubmit(async (state, formData) =&gt; {
-  if (!state.valid) return state.errors;
-  await api.save(state.data);
-  return true;
-});
-
-// React 19 action prop — FormState validates, calls your handler, tracks status
-&lt;Form action={action}&gt;
-  {/* fields */}
-  &lt;button type="submit"&gt;Save&lt;/button&gt;
-&lt;/Form&gt;</code></pre>
-          </div>
-          <p>
-            See <a href="#submission">Form Submission</a> for the full API including
-            <code>useFormStatus</code> integration and server action patterns.
-          </p>
-          <p>
-            <strong>Immutable state.</strong> Every <code>formState</code> update produces a new
-            object reference — no in-place mutation, no shared mutable containers. This is what
-            makes FormState safe for the full range of React patterns: <code>useMemo</code>,
-            <code>useEffect</code> dependency arrays, <code>React.memo</code>, and the React
-            Compiler all rely on reference equality to detect changes. Libraries that store form
-            state in a mutable ref or an external store — including React Hook Form and TanStack
-            Form — bypass React's change-detection entirely, which means those optimisations
-            silently stop working for form-derived values.
-          </p>
-          <p>
-            The <code>getState</code> method is used to read form data in components or utility
-            modules that only have access to the disconnected copy of the form data and the
-            underlying Zod schema.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">import { getState } from 'form-state';
-
-const address1Zip = getState(formSchema, data, (path) => path.addresses[0].zipCode);
-</code></pre>
-          </div>
-          <p>
-            The <code>createState</code> method is used to generate an object with an initial state
-            outside of the form context.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">import { createState } from 'form-state';
-
-const data = createState(schema);
-
-// Override some default property values with a partial initial state object.
-const data = createState(schema, { name: 'John', info: { age: 24 } });</code></pre>
-          </div>
-          <p>
-            The <code>updateState</code> method is used to update partial state graphs and
-            assigning them back using the <code>change</code> method. The syntax is very similar
-            to the <code>produce</code> method in the <code>Immer</code> library.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">import { updateState } from 'form-state';
-
-const updatedTags = updateState(data.tags, (draft) => {
-  draft.push('Important'); // can be a complex array/object structure
-});
-
-formActions.change('tags', updatedTags);</code></pre>
-          </div>
-          <p>
-            <strong
-              ><code>&lt;Suspense&gt;</code> and
-              <code>&lt;ErrorBoundary&gt;</code> compatibility</strong
-            >
-            follows directly from immutability. Because the state object is never mutated, React can
-            safely discard and replay renders during a suspension or an error recovery without the
-            form ending up in a torn or partially-updated state. A mutable store can be written to
-            mid-render and never rolled back when React throws that render away — the form state
-            then diverges from what the UI shows. The
-            <a href="#tanstack-query">TanStack Query example</a> demonstrates this in practice:
-            <code>useSuspenseQuery</code> suspends the form component while data loads, the boundary
-            shows a fallback, and when the query resolves the form initializes from the fetched data
-            in a single consistent render with no extra coordination.
-          </p>
-
-          <h3>Schema-Driven, Non-Intrusive</h3>
-          <p>
-            One Zod schema is the single source of truth for field types, validation rules, error
-            messages, allowed values, ranges, and human-readable labels. It lives outside your
-            components — controls are plain HTML inputs that never import or reference the schema
-            directly.
-          </p>
-          <p>
-            This keeps component signatures simple and the schema portable. You can reuse the same
-            schema for server-side API validation, share it across multiple forms, or version it
-            independently of your UI. The schema is expressive — cross-field rules, async
-            validators, conditional requirements — but that complexity stays in one place rather
-            than being distributed across input components.
-          </p>
-
-          <h3>Controlled is Cool</h3>
-          <p>
-            Every field is controlled by default: <code>formState.data</code> is the source of truth
-            and React renders from it. This makes the form fully predictable — any state transition
-            is visible as a plain object diff, which means conditional logic, cross-field
-            validation, and debugging are all just JavaScript.
-          </p>
-          <p>
-            Uncontrolled inputs are available as an escape hatch for high-frequency fields where
-            re-rendering on every keystroke is undesirable. The value is read from the DOM at submit
-            time and fires no intermediate state updates:
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">&lt;input
-  name="bio"
-  defaultValue={formState.data.bio}
-  onBlur={(e) =&gt; formActions.change('bio', e.target.value, { touch: true })}
-/&gt;</code></pre>
-          </div>
-          <p>
-            To observe a raw typed value — a live character counter, a search preview — without
-            triggering a full re-render, see <a href="#watch"><code>useWatch</code></a
-            >.
-          </p>
         </section>
         <section class="section" id="license">
           <div class="section-eyebrow">Getting Started</div>
@@ -2246,6 +2285,90 @@ formStatus.touched                               // true if any field is touched
             </p>
           </div>
         </section>
+        <section class="section" id="arrays">
+          <div class="section-eyebrow">Features</div>
+          <h2>Array Fields</h2>
+          <p>
+            The <code>formActions.array</code> namespace provides all the operations you need to
+            manage dynamic lists without manual index juggling.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Append one or more items
+formActions.array.append('tags', ['react', 'typescript']);
+formActions.array.append((path) =&gt; path.notes, [{ text: '', typeId: '' }], { validate: true });
+
+// Insert at a specific position
+formActions.array.insert('tags', 0, 'featured');
+
+// Update item at index
+formActions.array.update('tags', 1, 'updated-tag');
+
+// Swap two items
+formActions.array.swap('tags', 0, 2);
+
+// Remove by index
+formActions.array.remove('tags', 0);
+
+// Remove by predicate
+formActions.array.remove('tags', (tag) =&gt; tag === 'deprecated');
+formActions.array.remove((path) =&gt; path.notes, (note) =&gt; note.text === '');
+
+// Clear the array
+formActions.array.clear('tags');</code></pre>
+          </div>
+          <h3>Rendering an array field</h3>
+          <p>
+            Use <code>z.symbol()</code> inside array items to get a stable, unique key for each
+            element without maintaining a separate ID array.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const schema = z.strictObject({
+  notes: z.formArray(
+    z.object({
+      uniqueId: z.symbol(),      // auto UUID — use as React key
+      typeId: z.formNumber({ required: true, error: 'Note type is required.' }),
+      text: z.formString({ required: true }, z.maxLength(100)),
+    }),
+    { minLength: 2, maxLength: 5 }
+  ),
+});
+
+// In your component:
+{formState.data.notes.map((note, index) =&gt; (
+  &lt;div key={note.uniqueId.toString()}&gt;
+    &lt;input
+      value={note.text}
+      onChange={(e) =&gt;
+        formActions.change((path) =&gt; path.notes[index].text, e.target.value, { touch: true })
+      }
+    /&gt;
+    {formState.errors.get((path) =&gt; path.notes[index].text) &amp;&amp; (
+      &lt;span&gt;{formState.errors.get((path) =&gt; path.notes[index].text)}&lt;/span&gt;
+    )}
+    &lt;button onClick={() =&gt; formActions.array.remove('notes', index)}&gt;
+      Remove
+    &lt;/button&gt;
+  &lt;/div&gt;
+))}
+
+&lt;button
+  onClick={() =&gt; formActions.array.append('notes', [{ text: '', typeId: '' }])}
+  disabled={formState.data.notes.length &gt;= formState.ranges.getMax('notes')}
+&gt;
+  Add note
+&lt;/button&gt;</code></pre>
+          </div>
+          <div class="callout callout-tip">
+            <div class="callout-label">Tip</div>
+            <p>
+              All array methods accept an optional
+              <code>{ touch, validate, callback }</code> options object — same interface as
+              <code>formActions.change</code>.
+            </p>
+          </div>
+        </section>
         <section class="section" id="validation">
           <div class="section-eyebrow">Features</div>
           <h2>Validation</h2>
@@ -2350,90 +2473,6 @@ formActions.change('sendEmail', 'yes', { touch: true });</code></pre>
   initialData: existingRecord,
   initialTouched: ['name', 'email', (path) =&gt; path.info.age],
 });</code></pre>
-          </div>
-        </section>
-        <section class="section" id="arrays">
-          <div class="section-eyebrow">Features</div>
-          <h2>Array Fields</h2>
-          <p>
-            The <code>formActions.array</code> namespace provides all the operations you need to
-            manage dynamic lists without manual index juggling.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">// Append one or more items
-formActions.array.append('tags', ['react', 'typescript']);
-formActions.array.append((path) =&gt; path.notes, [{ text: '', typeId: '' }], { validate: true });
-
-// Insert at a specific position
-formActions.array.insert('tags', 0, 'featured');
-
-// Update item at index
-formActions.array.update('tags', 1, 'updated-tag');
-
-// Swap two items
-formActions.array.swap('tags', 0, 2);
-
-// Remove by index
-formActions.array.remove('tags', 0);
-
-// Remove by predicate
-formActions.array.remove('tags', (tag) =&gt; tag === 'deprecated');
-formActions.array.remove((path) =&gt; path.notes, (note) =&gt; note.text === '');
-
-// Clear the array
-formActions.array.clear('tags');</code></pre>
-          </div>
-          <h3>Rendering an array field</h3>
-          <p>
-            Use <code>z.symbol()</code> inside array items to get a stable, unique key for each
-            element without maintaining a separate ID array.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">const schema = z.strictObject({
-  notes: z.formArray(
-    z.object({
-      uniqueId: z.symbol(),      // auto UUID — use as React key
-      typeId: z.formNumber({ required: true, error: 'Note type is required.' }),
-      text: z.formString({ required: true }, z.maxLength(100)),
-    }),
-    { minLength: 2, maxLength: 5 }
-  ),
-});
-
-// In your component:
-{formState.data.notes.map((note, index) =&gt; (
-  &lt;div key={note.uniqueId.toString()}&gt;
-    &lt;input
-      value={note.text}
-      onChange={(e) =&gt;
-        formActions.change((path) =&gt; path.notes[index].text, e.target.value, { touch: true })
-      }
-    /&gt;
-    {formState.errors.get((path) =&gt; path.notes[index].text) &amp;&amp; (
-      &lt;span&gt;{formState.errors.get((path) =&gt; path.notes[index].text)}&lt;/span&gt;
-    )}
-    &lt;button onClick={() =&gt; formActions.array.remove('notes', index)}&gt;
-      Remove
-    &lt;/button&gt;
-  &lt;/div&gt;
-))}
-
-&lt;button
-  onClick={() =&gt; formActions.array.append('notes', [{ text: '', typeId: '' }])}
-  disabled={formState.data.notes.length &gt;= formState.ranges.getMax('notes')}
-&gt;
-  Add note
-&lt;/button&gt;</code></pre>
-          </div>
-          <div class="callout callout-tip">
-            <div class="callout-label">Tip</div>
-            <p>
-              All array methods accept an optional
-              <code>{ touch, validate, callback }</code> options object — same interface as
-              <code>formActions.change</code>.
-            </p>
           </div>
         </section>
         <section class="section" id="submission">
@@ -5028,132 +5067,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
             </tbody>
           </table>
-          <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
-            <li>
-              FormState requires <strong>Zod Mini</strong> (~8-14 KB gzipped) and
-              <strong>fast-equals</strong> (~2 KB gzipped). Other libraries are often coupled with
-              schema libraries: TanStack Form and React Hook Form support Zod, Yup, Valibot, and
-              others via adapters; Formik pairs primarily with Yup; Final Form has no built-in
-              schema adapter but is more limited in validation capabilities.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              RHF's <code>register</code> API avoids wrappers for uncontrolled inputs, but
-              controlled inputs require <code>&lt;Controller&gt;</code>. The
-              <code>register</code> abstraction spreads hidden props onto inputs, which can be
-              unintuitive to reason about and debug.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="3" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              FormState re-renders the component that called <code>useFormState</code> on every
-              state change. <code>useWatch</code> isolates keystroke re-renders to subscribers by
-              observing the DOM element's value directly, independent of React state. For
-              high-frequency inputs where even that is undesirable, use uncontrolled inputs instead.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              Non-dirty fields automatically reflect changes to <code>initialData</code> (e.g. when
-              server data loads asynchronously). Fields the user has already edited are never
-              overwritten. This does not affect the dirty state of any field.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              Requires the <code>SecureInput</code> component instead of a plain
-              <code>&lt;input type="password"&gt;</code>. The value is kept out of the DOM and never
-              appears in <code>FormData</code> or browser autofill inspection. FormState logs a
-              console warning if a regular password input is detected inside the form.
-              <p style="margin-top: 0.5rem">
-                This feature keeps passwords safe from browser extensions that scan the DOM,
-                prevents accidental copy/cut/paste/undo/redo of sensitive data.
-              </p>
-            </li>
-          </ol>
-          <ol class="prop-desc" start="6" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              Opt-in via <code>confirmDirtyStateNavigation: true</code>. Prompts the user before
-              navigating away when the form has unsaved changes.
-            </li>
-          </ol>
-
-          <h3>Reading the table — a React 19 and TypeScript perspective</h3>
-          <p>
-            If you are building with React 19 and TypeScript, two of these five libraries are easy
-            to rule out immediately. <strong>Final Form</strong> has no meaningful TypeScript
-            support and no schema integration — it predates both concerns and has not kept up.
-            <strong>Formik</strong> is in maintenance mode, has no React 19 support planned, and its
-            TypeScript story has always been string-keyed and largely cosmetic. Neither is a
-            reasonable starting point for a new project. The real comparison is between TanStack
-            Form, React Hook Form, and FormState.
-          </p>
-          <p>
-            <strong>TypeScript depth differs more than it looks.</strong> React Hook Form and
-            TanStack Form both verify field paths at compile time — RHF via a
-            <code>Path&lt;T&gt;</code>
-            recursive type that enumerates every valid dot-notation string, TanStack Form via
-            <code>DeepKeys&lt;TData&gt;</code>. A typo will be caught. The difference is in the
-            approach and what it costs. Generating a union of every possible path string is
-            expensive work for the TypeScript compiler on schemas with deep nesting or large arrays
-            — you can hit slowdowns or cryptic errors where the type machinery gives up. More
-            practically, array item paths like <code>"notes.0.text"</code> are valid strings but
-            carry no index safety, and the error messages when something goes wrong land inside
-            complex generic machinery rather than on the property you mistyped. FormState uses a
-            typed proxy instead: <code>(path) =&gt; path.notes[index].text</code> navigates the
-            actual object shape, the value type of every field is inferred at the call site, and
-            errors point directly at the offending property. No string union, no recursive type
-            expansion, no generics to pass by hand.
-          </p>
-          <p>
-            <strong
-              >Component coupling is where the design philosophies most visibly diverge.</strong
-            >
-            TanStack Form requires every field to be wrapped in <code>form.Field</code> or use
-            <code>form.useField()</code>, permanently tying the component to the library. React Hook
-            Form's <code>register()</code> avoids this for simple uncontrolled inputs, but the
-            moment you use a controlled component — a date picker, a component library widget, any
-            custom input — you reach for <code>&lt;Controller&gt;</code> and the coupling is back.
-            FormState field components are just components that accept typed props: no library
-            import, no hook, no context dependency. You can test them with a plain object, drop them
-            into a Storybook story, or reuse them in a different form without changing a single
-            import. That is not a marginal difference — it means the form library stays out of your
-            component tree entirely.
-          </p>
-          <p>
-            <strong
-              >Re-renders are often cited as a weakness, but the comparison is incomplete.</strong
-            >
-            TanStack Form and React Hook Form limit re-renders to the field level — and that
-            isolation is inseparable from the component coupling that comes with it. FormState
-            re-renders the whole component by default, but it ships with targeted tools for the
-            cases where that matters: uncontrolled inputs bypass React state entirely for
-            high-frequency fields like large text areas, and <code>useWatch</code> observes a DOM
-            element's live value without triggering any re-render at all. The difference is that in
-            TanStack Form and React Hook Form re-render isolation is forced on every component
-            whether you need it or not, at the cost of coupling. In FormState you opt in where it
-            actually matters, and your components stay clean everywhere else.
-          </p>
-          <p>
-            <strong
-              >Uncontrolled-component bugs are a class of problem FormState sidesteps
-              entirely.</strong
-            >
-            React Hook Form and TanStack Form both rely on per-field registration — inputs must
-            mount and register themselves (via <code>register()</code> or <code>form.Field</code>)
-            for their values to be tracked. That model introduces a family of silent failures that
-            have nothing to do with your application logic: async default values that arrive after
-            mount are ignored unless you call <code>reset()</code> manually; a field that
-            conditionally unmounts drops its value from the submission silently; a
-            <code>key</code> prop change unregisters and re-registers the input, clearing its state;
-            a field that mounts after <code>handleSubmit</code> fires is simply absent from the
-            payload; array fields tracked by generated IDs can desync from React state if mutated
-            outside the library's own methods. FormState has no registration system. All field state
-            is derived from the schema at initialization — a field's value exists in state whether
-            or not its input is currently rendered. Conditional visibility, dynamic arrays, and
-            async initial data are all handled without lifecycle coordination.
-          </p>
+          <h3>Ref-Based Form Library Issues</h3>
           <table class="prop-table">
             <thead>
               <tr>
@@ -5164,16 +5078,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>Async default values ignored after mount</td>
-                <td>✅ reactive — non-dirty fields update when <code>initialData</code> changes</td>
-                <td>
-                  🛑 <code>defaultValues</code> read once; manual <code>reset()</code> required
-                </td>
-                <td>
-                  🛑 <code>defaultValues</code> read once; manual <code>reset()</code> required
-                </td>
-              </tr>
               <tr>
                 <td>Field value lost when component unmounts</td>
                 <td>✅ state is schema-derived, not mount-dependent</td>
@@ -5211,44 +5115,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
             </tbody>
           </table>
-          <p>
-            <strong>React 19 integration is a first-class concern, not a retrofit.</strong>
-            TanStack Form supports React 19 actions natively. While React Hook Form still relies on
-            <code>onSubmit</code> and <code>e.preventDefault()</code> — working alongside React 19 but not truly integrating with it —
-            FormState is built from the ground up around the <code>&lt;form action&gt;</code> primitive.
-
-            This deep integration means:
-            <ul>
-              <li>The browser's native form submission behavior is fully preserved.</li>
-              <li><code>useFormStatus</code> works in any child component without extra setup or context providers.</li>
-              <li><code>useOptimistic</code> integrates naturally for instant UI feedback during submissions.</li>
-              <li><code>Suspense</code> support allows you to declaratively handle loading states for pending submissions.</li>
-              <li><code>ErrorBoundary</code> works out of the box to gracefully catch and display submission errors.</li>
-              <li>Server Actions drop in seamlessly with no adapters or wrappers required.</li>
-              <li><code>FormData</code> is natively supported along with <code>JSON</code> data.</li>
-              <li>
-                Predictable render cycle, even for uncontrolled components. <code>useWatch</code> hook is implemented with
-                <code>useSyncExternalStore</code>.
-              </li>
-              <li>
-                Immutable form state supports built-in memoized selectors and standard React hooks like
-                <code>useEffect/useLayoutEffect</code>, <code>useMemo</code> and <code>useCallback</code>.
-              </li>
-            </ul>
-          </p>
-          <p>
-            <strong>The bottom line:</strong> on a React 19, TypeScript-first project, FormState is
-            the strongest fit — end-to-end type inference, zero component coupling, native React 19
-            integration, and a schema that is genuinely the single source of truth rather than just
-            a validation adapter.
-          </p>
-          <p>
-            The one real caveat is that v1.0.0 means you are adopting early. If you need the full
-            ecosystem and long track record of a mature library, React Hook Form for simpler forms
-            or TanStack Form for complex ones are the next-best options — with the understanding
-            that your field components will carry a library import for as long as the form exists.
-            Feedback and pull requests are welcome.
-          </p>
         </section>
       </main>
     </div>

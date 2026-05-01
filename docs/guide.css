@@ -71,6 +71,11 @@ header {
   gap: 12px;
 }
 
+sup,
+.typescript-link {
+  color: #e0e0e0;
+}
+
 .logo {
   font-weight: 700;
   font-size: 17px;
@@ -313,7 +318,6 @@ li strong {
 .code-block pre::-webkit-scrollbar-track {
   background: transparent;
 }
-
 
 .code-block code,
 .code-block code[class*='language-'] {
@@ -650,7 +654,6 @@ hr {
 .dock-body::-webkit-scrollbar-track {
   background: transparent;
 }
-
 
 /* All property name labels default to light gray */
 .jt-key {
