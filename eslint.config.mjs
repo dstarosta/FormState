@@ -8,7 +8,7 @@ import tseslint from 'typescript-eslint';
 import testingLibrary from 'eslint-plugin-testing-library';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
-import formStatePlugin from './rules/recommended.js';
+import formStatePlugin from './eslint/index.js';
 
 export default defineConfig([
   globalIgnores(['coverage', 'dist', 'node_modules']),

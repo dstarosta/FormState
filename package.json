@@ -2,18 +2,26 @@
   "author": {
     "name": "Dmitry Starosta"
   },
+  "license": "MIT",
+  "name": "form-state",
+  "sideEffects": false,
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "version": "1.0.0",
   "files": [
     "src",
     "dist",
     "rules"
   ],
-  "license": "MIT",
-  "name": "form-state",
   "main": "dist/index.mjs",
-  "sideEffects": false,
-  "type": "module",
-  "types": "dist/index.d.ts",
-  "version": "1.0.0",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs"
+    },
+    "./eslint": {
+      "import": "./eslint/index.js"
+    }
+  },
   "scripts": {
     "lint": "eslint .",
     "check-ts": "node -e \"const v=require('typescript').version; if(v<'5.9.0'){console.error('❌ TS version '+v+' is too low. Need >= 5.9.0');process.exit(1)}\"",
