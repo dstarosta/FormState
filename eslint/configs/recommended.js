@@ -1,11 +1,17 @@
-import base from '../base.js';
-
-export default {
-  plugins: { 'form-state': base },
-  rules: {
-    'form-state/use-form-schema': 'warn',
-    'form-state/stable-listener': 'error',
-    'form-state/stable-debounced-listener': 'error',
-    'form-state/avoid-input-password': 'warn',
-  },
+export default (plugin) => {
+  const name = plugin.meta.name;
+  return [
+    {
+      name: `${name}/recommended`,
+      plugins: {
+        [name]: plugin,
+      },
+      rules: {
+        [`${name}/avoid-input-password`]: 'warn',
+        [`${name}/stable-debounced-callback`]: 'error',
+        [`${name}/stable-listener`]: 'error',
+        [`${name}/use-form-schema`]: 'warn',
+      },
+    },
+  ];
 };

@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
-import { stableDebouncedListener } from './stable-debounced-listener.js';
+import { stableDebouncedCallback } from './stable-debounced-callback.js';
 
 RuleTester.describe = describe;
 RuleTester.it = it;
@@ -12,7 +12,7 @@ const ruleTester = new RuleTester({
   },
 });
 
-ruleTester.run('stable-debounced-listener', stableDebouncedListener, {
+ruleTester.run('stable-debounced-callback', stableDebouncedCallback, {
   valid: [
     // No options or no debounceIntervalMs — inline callback is fine
     { code: 'change(path, value)' },
@@ -27,11 +27,17 @@ ruleTester.run('stable-debounced-listener', stableDebouncedListener, {
 
     // debounceIntervalMs present with stable identifier
     { code: 'change(path, value, { debounceIntervalMs: 300, callback: stableCallback })' },
-    { code: 'formActions.change(path, value, { debounceIntervalMs: 300, callback: stableCallback })' },
+    {
+      code: 'formActions.change(path, value, { debounceIntervalMs: 300, callback: stableCallback })',
+    },
 
     // debounceIntervalMs present with useCallback-wrapped function
-    { code: 'change(path, value, { debounceIntervalMs: 300, callback: useCallback(() => {}, []) })' },
-    { code: 'change(path, value, { debounceIntervalMs: 300, callback: useCallback(function() {}, [deps]) })' },
+    {
+      code: 'change(path, value, { debounceIntervalMs: 300, callback: useCallback(() => {}, []) })',
+    },
+    {
+      code: 'change(path, value, { debounceIntervalMs: 300, callback: useCallback(function() {}, [deps]) })',
+    },
 
     // Different method name — not flagged
     { code: 'replace(path, value, { debounceIntervalMs: 300, callback: () => {} })' },

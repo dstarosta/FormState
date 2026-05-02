@@ -1305,7 +1305,7 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'A', {
           touch: true,
-          // eslint-disable-next-line form-state/stable-debounced-listener
+          // eslint-disable-next-line form-state/stable-debounced-callback
           callback: () => {
             ++updateCounter;
           },
@@ -1313,7 +1313,7 @@ describe('useFormState', () => {
         });
         change('name', 'Ali', {
           touch: true,
-          // eslint-disable-next-line form-state/stable-debounced-listener
+          // eslint-disable-next-line form-state/stable-debounced-callback
           callback: () => {
             ++updateCounter;
           },
@@ -1321,7 +1321,7 @@ describe('useFormState', () => {
         });
         change('name', 'Alice', {
           touch: true,
-          // eslint-disable-next-line form-state/stable-debounced-listener
+          // eslint-disable-next-line form-state/stable-debounced-callback
           callback: () => {
             ++updateCounter;
           },

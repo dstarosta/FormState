@@ -1,4 +1,4 @@
-export const stableDebouncedListener = {
+export const stableDebouncedCallback = {
   meta: {
     type: 'problem',
     docs: {
@@ -34,7 +34,7 @@ export const stableDebouncedListener = {
             p.type === 'Property' &&
             !p.computed &&
             p.key.type === 'Identifier' &&
-            p.key.name === 'debounceIntervalMs',
+            p.key.name === 'debounceIntervalMs'
         );
 
         if (!hasDebounce) return;
@@ -44,7 +44,7 @@ export const stableDebouncedListener = {
             p.type === 'Property' &&
             !p.computed &&
             p.key.type === 'Identifier' &&
-            p.key.name === 'callback',
+            p.key.name === 'callback'
         );
 
         if (!callbackProp) return;
