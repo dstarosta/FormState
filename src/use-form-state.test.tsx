@@ -4315,23 +4315,6 @@ describe('useFormState', () => {
     });
   });
 
-  it('displays a warning with input[type=password]', () => {
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const { result } = renderHook(() => useFormState(schema));
-    const { Form } = result.current;
-
-    render(
-      <Form>
-        <input type="password" />
-      </Form>
-    );
-
-    expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
-
-    consoleWarnSpy.mockReset();
-  });
-
   describe('createSelector', () => {
     it('selects a single primitive field', () => {
       const { result } = renderHook(() => useFormState(schema));

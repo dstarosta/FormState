@@ -569,16 +569,9 @@ li strong {
 }
 
 .prop-desc,
-.prop-note,
 .footnote {
   font-size: 13px;
   color: var(--text-muted);
-}
-
-.prop-note {
-  margin-top: -16px;
-  margin-bottom: 24px;
-  opacity: 0.8;
 }
 
 /* ─── Type chip ───────────────────────────────────────────── */

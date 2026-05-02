@@ -2558,7 +2558,7 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
                 </td>
               </tr>
               <tr>
-                <td class="prop-desc">React 19 post-submit reset prevention *</td>
+                <td class="prop-desc">React 19 post-submit reset prevention <sup>1</sup></td>
                 <td class="prop-desc">
                   Includes <code>&lt;FormResetBlocker&gt;</code> automatically — form fields are not
                   cleared after a form action specified in the <code>action</code> prop completes
@@ -2578,7 +2578,7 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
                 </td>
               </tr>
               <tr>
-                <td class="prop-desc">Form data cache supression **</td>
+                <td class="prop-desc">Form data cache supression <sup>2</sup></td>
                 <td class="prop-desc">Sets <code>autoComplete="off"</code> by default</td>
                 <td class="prop-desc">
                   Must add <code>autoComplete="off"</code> manually or browser can cache form data
@@ -2619,27 +2619,24 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
                 </td>
                 <td class="prop-desc">Browser behaviour varies — may omit the submitter value</td>
               </tr>
-              <tr>
-                <td class="prop-desc">Password field warning</td>
-                <td class="prop-desc">
-                  Warns in dev if a plain <code>input[type=password]</code> is found; prompts use of
-                  <code>SecureInput</code>
-                </td>
-                <td class="prop-desc">No warning</td>
-              </tr>
             </tbody>
           </table>
-          <p class="prop-note">
-            * Certain versions of React and Next.js reset uncontrolled form controls after a server
-            action completes. Because FormState manages all field values internally, this reset is
-            never desirable — the fields would momentarily revert to their HTML defaults before
-            FormState can restore them. <code>&lt;FormResetBlocker&gt;</code> intercepts and cancels
-            that reset at the DOM level.
-          </p>
-          <p class="prop-note">
-            ** The <code>autoComplete</code> attribute/prop can still be set on individual input
-            elements/components.
-          </p>
+          <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
+            <li>
+              Certain versions of React and Next.js reset uncontrolled form controls after a server
+              action completes. Because FormState manages all field values internally, this reset is
+              never desirable — the fields would momentarily revert to their HTML defaults before
+              FormState can restore them.
+              <code>&lt;FormResetBlocker&gt;</code> intercepts and cancels that reset at the DOM
+              level.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              The <code>autoComplete</code> attribute/prop can still be set on individual input
+              elements/components.
+            </li>
+          </ol>
           <h3>Using a plain <code>&lt;form&gt;</code> with <code>onSubmit</code></h3>
           <p>
             If you prefer the traditional <code>onSubmit</code> pattern — or if you're integrating
@@ -3252,13 +3249,6 @@ export default formConnect({
             <li>Ctrl+Z / Ctrl+Y undo protection.</li>
             <li>Compatible with standard <code>onChange</code> for uncontrolled usage.</li>
           </ul>
-          <div class="callout callout-warning">
-            <div class="callout-label">Warning</div>
-            <p>
-              The <code>Form</code> component logs a development warning if it detects a native
-              <code>&lt;input type="password"&gt;</code> — use <code>SecureInput</code> instead.
-            </p>
-          </div>
         </section>
         <section class="section" id="selectors">
           <div class="section-eyebrow">Advanced</div>
