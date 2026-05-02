@@ -4,7 +4,8 @@
   },
   "files": [
     "src",
-    "dist"
+    "dist",
+    "rules"
   ],
   "license": "MIT",
   "name": "form-state",

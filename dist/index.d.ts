@@ -2180,7 +2180,7 @@ declare function SecureInput({
   ...props
 }: Readonly<SecureInputProps>): _$react_jsx_runtime0.JSX.Element;
 declare namespace value_converter_d_exports {
-  export { toBoolean, toDate, toFloat, toInt, toLiteral, toString };
+  export { asBoolean, asNumber, toBoolean, toDate, toFloat, toInt, toLiteral, toString };
 }
 /**
  * Converts an integer in a form string notation to the `number` type.
@@ -2209,7 +2209,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
@@ -2249,6 +2249,28 @@ declare const toString: (value: boolean | string | number | Date | null | undefi
   dateFormat?: FormDateFormat;
   emptyStringAsFalse?: boolean;
 }) => string;
+/**
+ * Returns the value represented by an optional `boolean | ''` type.
+ *
+ * If the `value` is an empty string literal, the `defaultValue`
+ * argument is returned (default: `false`).
+ *
+ * @param value - The provided value.
+ * @param defaultValue - The default value.
+ * @returns The `boolean` value.
+ */
+declare const asBoolean: (value: boolean | "", defaultValue?: boolean) => boolean;
+/**
+ * Returns the value represented by an optional `number | ''` type.
+ *
+ * If the `value` is an empty string literal, the `defaultValue`
+ * argument is returned (default: 0).
+ *
+ * @param value - The provided value.
+ * @param defaultValue - The default value.
+ * @returns The `number` value.
+ */
+declare const asNumber: (value: number | "", defaultValue?: number) => number;
 //#endregion
 export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

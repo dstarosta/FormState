@@ -3610,7 +3610,8 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
           <h2>Value Helpers</h2>
           <p>
             The <code>convert</code> export provides utilities for coercing raw form strings into
-            typed values when wiring native inputs that always return strings.
+            typed values when wiring native inputs that always return strings as well as converting
+            from optional to concrete types.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -3621,12 +3622,22 @@ convert.toInt('42')          // 42
 convert.toFloat('3.14')      // 3.14
 convert.toInt('abc')         // ''
 
+// Optional number to number type conversion
+convert.asNumber(1);          // 1
+convert.asNumber('');         // 0
+convert.asNumber('', 100.0);  // 100.0
+
 // Date parsing with format string
 convert.toDate('12/31/2024', { format: 'MM/dd/yyyy' })  // Date object
 
+// Optional boolean to boolean type conversion
+convert.asBoolean(true);      // true
+convert.asBoolean('', false); // false
+convert.asBoolean('', true);  // true
+
 // Boolean coercion
-convert.toBoolean('true')    // true
-convert.toBoolean('0')       // false
+convert.toBoolean('true')     // true
+convert.toBoolean('0')        // false
 
 // Validated literal — returns the value or '' if not in set
 convert.toLiteral('active', ['active', 'inactive'])  // 'active'
@@ -4875,7 +4886,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <tbody>
               <tr>
                 <td>Bundle size (gzipped)</td>
-                <td>~14 KB <sup>1</sup></td>
+                <td>~15 KB <sup>1</sup></td>
                 <td>~13 KB</td>
                 <td>~10 KB</td>
                 <td>~15 KB</td>
@@ -5067,6 +5078,56 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
             </tbody>
           </table>
+          <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
+            <li>
+              FormState requires <strong>Zod Mini</strong> (~8-14 KB gzipped) and
+              <strong>fast-equals</strong> (~2 KB gzipped). Other libraries are often coupled with
+              schema libraries: TanStack Form and React Hook Form support Zod, Yup, Valibot, and
+              others via adapters; Formik pairs primarily with Yup; Final Form has no built-in
+              schema adapter but is more limited in validation capabilities.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              RHF's <code>register</code> API avoids wrappers for uncontrolled inputs, but
+              controlled inputs require <code>&lt;Controller&gt;</code>. The
+              <code>register</code> abstraction spreads hidden props onto inputs, which can be
+              unintuitive to reason about and debug.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="3" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              FormState re-renders the component that called <code>useFormState</code> on every
+              state change. <code>useWatch</code> isolates keystroke re-renders to subscribers by
+              observing the DOM element's value directly, independent of React state. For
+              high-frequency inputs where even that is undesirable, use uncontrolled inputs instead.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Non-dirty fields automatically reflect changes to <code>initialData</code> (e.g. when
+              server data loads asynchronously). Fields the user has already edited are never
+              overwritten. This does not affect the dirty state of any field.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Requires the <code>SecureInput</code> component instead of a plain
+              <code>&lt;input type="password"&gt;</code>. The value is kept out of the DOM and never
+              appears in <code>FormData</code> or browser autofill inspection. FormState logs a
+              console warning if a regular password input is detected inside the form.
+              <p style="margin-top: 0.5rem">
+                This feature keeps passwords safe from browser extensions that scan the DOM,
+                prevents accidental copy/cut/paste/undo/redo of sensitive data.
+              </p>
+            </li>
+          </ol>
+          <ol class="prop-desc" start="6" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Opt-in via <code>confirmDirtyStateNavigation: true</code>. Prompts the user before
+              navigating away when the form has unsaved changes.
+            </li>
+          </ol>
           <h3>Ref-Based Form Library Issues</h3>
           <table class="prop-table">
             <thead>

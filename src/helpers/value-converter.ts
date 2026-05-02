@@ -163,3 +163,29 @@ export const toString = (
 
   return EMPTY_STRING;
 };
+
+/**
+ * Returns the value represented by an optional `boolean | ''` type.
+ *
+ * If the `value` is an empty string literal, the `defaultValue`
+ * argument is returned (default: `false`).
+ *
+ * @param value - The provided value.
+ * @param defaultValue - The default value.
+ * @returns The `boolean` value.
+ */
+export const asBoolean = (value: boolean | '', defaultValue: boolean = false) =>
+  typeof value === 'boolean' ? value : defaultValue;
+
+/**
+ * Returns the value represented by an optional `number | ''` type.
+ *
+ * If the `value` is an empty string literal, the `defaultValue`
+ * argument is returned (default: 0).
+ *
+ * @param value - The provided value.
+ * @param defaultValue - The default value.
+ * @returns The `number` value.
+ */
+export const asNumber = (value: number | '', defaultValue: number = 0) =>
+  typeof value === 'number' ? value : defaultValue;

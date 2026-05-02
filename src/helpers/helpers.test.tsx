@@ -16,7 +16,16 @@ import {
 } from './state-manager';
 import { getSchemaType } from './schema-visitor';
 import { isValidDate } from './date-formatter';
-import { toInt, toFloat, toDate, toBoolean, toLiteral, toString } from './value-converter';
+import {
+  toInt,
+  toFloat,
+  toDate,
+  toBoolean,
+  toLiteral,
+  toString,
+  asBoolean,
+  asNumber,
+} from './value-converter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { debounce } from './debouncer';
 import { createFormStore } from './form-store';
@@ -39,11 +48,11 @@ describe('helpers', () => {
       a: z.array(
         z.object({
           id: z.symbol(),
-          i: z.number(),
+          i: z.formNumber({ required: true }),
         })
       ),
       b: z.formBoolean(),
-      b2: z.boolean(),
+      b2: z.formBoolean({ required: true }),
       n: z.formNumber(),
       s: z.formString(),
       s2: z.formString({ allowEmpty: false }),
@@ -793,6 +802,38 @@ describe('helpers', () => {
         const invalid = new Date('invalid');
 
         expect(toString(invalid)).toBe('');
+      });
+    });
+
+    describe('asBoolean', () => {
+      it('converts a valid boolean value', () => {
+        expect(asBoolean(true)).toBe(true);
+        expect(asBoolean(false)).toBe(false);
+        expect(asBoolean(true, false)).toBe(true);
+        expect(asBoolean(false, true)).toBe(false);
+      });
+
+      it('converts an empty string to the default value', () => {
+        expect(asBoolean('')).toBe(false);
+        expect(asBoolean('', false)).toBe(false);
+        expect(asBoolean('', true)).toBe(true);
+      });
+    });
+
+    describe('asNumber', () => {
+      it('converts a valid number value', () => {
+        expect(asNumber(0)).toBe(0);
+        expect(asNumber(0, 1)).toBe(0);
+        expect(asNumber(Infinity)).toBe(Infinity);
+        expect(asNumber(Infinity, 1)).toBe(Infinity);
+        expect(asNumber(-1.2451)).toBe(-1.2451);
+        expect(asNumber(-1.2451, 1)).toBe(-1.2451);
+      });
+
+      it('converts an empty string to the default value', () => {
+        expect(asNumber('')).toBe(0);
+        expect(asNumber('', 1)).toBe(1);
+        expect(asNumber('', -1.2451)).toBe(-1.2451);
       });
     });
   });

@@ -135,6 +135,7 @@ const recursiveCollect = <T>(
     (schema.def.element instanceof z.ZodMiniArray ||
       schema.def.element instanceof z.ZodMiniObject ||
       schema.def.element instanceof z.ZodMiniNumber ||
+      schema.def.element instanceof z.ZodMiniPipe ||
       schema.def.element instanceof z.ZodMiniUnion)
   ) {
     Object.assign(obj, collect(schema.def.element, '0', key));
@@ -400,14 +401,6 @@ export const collectDescriptions = <T extends z.ZodMiniType>(
 
   if (description) {
     descriptions[key] = description;
-  }
-
-  if (baseSchema instanceof z.ZodMiniArray && baseSchema.def.element instanceof z.ZodMiniType) {
-    const baseElementSchema = getBaseType(baseSchema.def.element);
-
-    if (z.globalRegistry.get(baseElementSchema)?.description) {
-      descriptions[key + '.0'] = z.globalRegistry.get(baseElementSchema)?.description;
-    }
   }
 
   recursiveCollect(baseSchema, descriptions, key, collectDescriptions);

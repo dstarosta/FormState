@@ -69,8 +69,8 @@ describe('useFormState', () => {
       tags: z
         .formArray(
           z
-            .string()
-            .check(
+            .formString(
+              { required: true },
               z.maxLength(255, 'Tag is too long'),
               z.regex(/^[\w\\-]*$/, 'Tag contains invalid characters')
             )
@@ -90,15 +90,17 @@ describe('useFormState', () => {
       updateDates: z
         .formArray(
           z
-            .date()
-            .check(z.lte(new Date(2099, 11, 31), 'Date is too early'))
+            .formDate({ required: true }, z.lte(new Date(2099, 11, 31), 'Date is too early'))
             .with(z.describe('Update date'))
         )
         .with(z.describe('Update dates')),
       previousVersions: z
-        .formArray(z.number().check(z.lte(9999)).with(z.describe('Previous version')), {
-          required: false,
-        })
+        .formArray(
+          z.formNumber({ required: true }, z.lte(9999)).with(z.describe('Previous version')),
+          {
+            required: false,
+          }
+        )
         .with(z.describe('Previous versions')),
       specialNumber: z
         .default(
@@ -826,7 +828,7 @@ describe('useFormState', () => {
       'tags.0': {
         type: 'length',
         format: 'integer',
-        min: undefined,
+        min: 1,
         max: 255,
       },
     };
@@ -1069,7 +1071,7 @@ describe('useFormState', () => {
         expect(state.ranges.get((path) => path.tags[0])).toStrictEqual({
           type: 'length',
           format: 'integer',
-          min: undefined,
+          min: 1,
           max: 255,
         });
         expect(state.ranges.version).toStrictEqual({
@@ -1303,6 +1305,7 @@ describe('useFormState', () => {
       act(() => {
         change('name', 'A', {
           touch: true,
+          // eslint-disable-next-line form-state/stable-debounced-listener
           callback: () => {
             ++updateCounter;
           },
@@ -1310,6 +1313,7 @@ describe('useFormState', () => {
         });
         change('name', 'Ali', {
           touch: true,
+          // eslint-disable-next-line form-state/stable-debounced-listener
           callback: () => {
             ++updateCounter;
           },
@@ -1317,6 +1321,7 @@ describe('useFormState', () => {
         });
         change('name', 'Alice', {
           touch: true,
+          // eslint-disable-next-line form-state/stable-debounced-listener
           callback: () => {
             ++updateCounter;
           },
@@ -4487,10 +4492,10 @@ describe('useFormState', () => {
       const orderSchema = z.strictObject({
         orders: z.array(
           z.object({
-            product: z.string(),
-            quantity: z.number(),
-            unitPrice: z.number(),
-            shipped: z.boolean(),
+            product: z.formString({ required: true }),
+            quantity: z.formNumber({ required: true }),
+            unitPrice: z.formNumber({ required: true }),
+            shipped: z.formBoolean({ required: true }),
           })
         ),
         discountPct: z.formNumber(),
@@ -4521,10 +4526,9 @@ describe('useFormState', () => {
         useSelector(
           [selectPendingOrdersHook.result.current, (state) => state.discountPct],
           (pending, discountPct) => {
-            const subtotal = pending.reduce(
-              (sum, order) => sum + order.quantity * order.unitPrice,
-              0
-            );
+            const subtotal = pending.reduce((sum, order) => {
+              return sum + convert.asNumber(order.quantity) * convert.asNumber(order.unitPrice);
+            }, 0);
             const discount = typeof discountPct === 'number' ? discountPct / 100 : 0;
 
             return { count: pending.length, subtotal, total: subtotal * (1 - discount) };

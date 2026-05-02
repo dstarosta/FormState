@@ -13,7 +13,7 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -38,7 +38,8 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": true,
     "erasableSyntaxOnly": true,
-    "useUnknownInCatchVariables": true
+    "useUnknownInCatchVariables": true,
+    "allowJs": true
   },
   "include": ["src/**/*", "*.ts"],
   "exclude": ["node_modules", "dist"]
