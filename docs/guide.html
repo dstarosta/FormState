@@ -39,6 +39,7 @@
           <span class="nav-section-label">Getting Started</span>
           <a href="#overview" class="nav-link active">Overview</a>
           <a href="#installation" class="nav-link">Installation</a>
+          <a href="#eslint" class="nav-link">ESLint</a>
           <a href="#philosophy" class="nav-link">Philosophy</a>
           <a href="#typescript" class="nav-link">TypeScript</a>
           <a href="#license" class="nav-link">License</a>
@@ -157,6 +158,137 @@ npm install github:dstarosta/FormState#v1.0.0</code></pre>
             <code>z</code> should be imported from <strong>'form-state'</strong>, not
             <code>'zod'</code> or <code>'zod/mini'</code>.
           </p>
+        </section>
+        <section class="section" id="eslint">
+          <div class="section-eyebrow">Getting Started</div>
+          <h2>ESLint</h2>
+          <p>
+            FormState ships an official ESLint plugin that catches common mistakes at development
+            time — unstable references, incorrect schema primitives, and unsafe password inputs.
+            <code>recommended</code> is the only available config and enables all rules.
+          </p>
+          <p>
+            Add <code>formStatePlugin.configs.recommended</code> to the <code>extends</code> array
+            of your flat config:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">javascript</span></div>
+            <pre><code class="language-javascript">// eslint.config.js
+import { defineConfig } from 'eslint/config';
+import formStatePlugin from 'form-state/eslint';
+
+export default defineConfig([
+  {
+    extends: [
+      // ... your other configs
+      formStatePlugin.configs.recommended,
+    ],
+    rules: {},
+  },
+]);</code></pre>
+          </div>
+          <p>Rule severities can be overridden individually via <code>rules</code>:</p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">javascript</span></div>
+            <pre><code class="language-javascript">rules: {
+  'form-state/avoid-input-password': 'error',
+}</code></pre>
+          </div>
+          <h3>Rules</h3>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Rule</th>
+                <th>Description</th>
+                <th>Default</th>
+                <th>Fixable</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <a
+                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/avoid-input-password.md"
+                    target="_blank"
+                    ><code>avoid-input-password</code></a
+                  >
+                </td>
+                <td>
+                  Enforces using <code>&lt;SecureInput&gt;</code> instead of
+                  <code>&lt;input type="password"&gt;</code> inside forms with an
+                  <code>action</code> or <code>onSubmit</code> handler. Plain password inputs
+                  expose the value in the DOM, in DevTools, and to browser extension scanners.
+                </td>
+                <td>warn</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <a
+                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/no-watch-dependency.md"
+                    target="_blank"
+                    ><code>no-watch-dependency</code></a
+                  >
+                </td>
+                <td>
+                  Prevents using <code>useWatch()</code> return values as hook dependencies.
+                  <code>useWatch</code> values change via external store subscriptions and are not
+                  synchronized to React state — they must not appear in dependency arrays.
+                </td>
+                <td>error</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <a
+                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/stable-debounced-callback.md"
+                    target="_blank"
+                    ><code>stable-debounced-callback</code></a
+                  >
+                </td>
+                <td>
+                  Enforces stable callback references in <code>change()</code> calls that set
+                  <code>debounceIntervalMs</code>. An inline function resets the debounce timer on
+                  every render, preventing the callback from ever firing.
+                </td>
+                <td>error</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <a
+                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/stable-listener.md"
+                    target="_blank"
+                    ><code>stable-listener</code></a
+                  >
+                </td>
+                <td>
+                  Enforces stable listener references passed to <code>useListener()</code>. Inline
+                  functions create a new reference on every render, causing the subscription to
+                  unsubscribe and resubscribe continuously.
+                </td>
+                <td>error</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <a
+                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/use-form-schema.md"
+                    target="_blank"
+                    ><code>use-form-schema</code></a
+                  >
+                </td>
+                <td>
+                  Enforces using FormState's <code>formString()</code>, <code>formNumber()</code>,
+                  <code>formBoolean()</code>, <code>formDate()</code>, and
+                  <code>formArray()</code> helpers instead of raw Zod primitives in form schemas.
+                  These helpers add the blank-value and optionality semantics HTML inputs require.
+                </td>
+                <td>warn</td>
+                <td>✅</td>
+              </tr>
+            </tbody>
+          </table>
         </section>
         <section class="section" id="philosophy">
           <div class="section-eyebrow">Getting Started</div>
@@ -5057,6 +5189,14 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
                 <td>🛑</td>
               </tr>
               <tr>
+                <td>ESLint plugin</td>
+                <td>✅</td>
+                <td>❓ <sup>7</sup></td>
+                <td>❓ <sup>8</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
                 <td>First-party DevTools</td>
                 <td>✅</td>
                 <td>✅</td>
@@ -5113,6 +5253,24 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <li>
               Opt-in via <code>confirmDirtyStateNavigation: true</code>. Prompts the user before
               navigating away when the form has unsaved changes.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="7" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              TanStack Query ships
+              <a href="https://tanstack.com/query/v4/docs/eslint/eslint-plugin-query" target="_blank"
+                >@tanstack/eslint-plugin-query</a
+              >. TanStack Form does not have a dedicated ESLint plugin.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="8" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              React Hook Form has a
+              <a
+                href="https://github.com/andykao1213/eslint-plugin-react-hook-form"
+                target="_blank"
+                >community-maintained ESLint plugin</a
+              >. It is not officially supported by the React Hook Form team.
             </li>
           </ol>
           <h3>Ref-Based Form Library Issues</h3>

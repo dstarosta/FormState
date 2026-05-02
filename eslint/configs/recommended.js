@@ -8,6 +8,7 @@ export default (plugin) => {
       },
       rules: {
         [`${name}/avoid-input-password`]: 'warn',
+        [`${name}/no-watch-dependency`]: 'error',
         [`${name}/stable-debounced-callback`]: 'error',
         [`${name}/stable-listener`]: 'error',
         [`${name}/use-form-schema`]: 'warn',
