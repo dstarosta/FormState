@@ -168,6 +168,10 @@ npm install github:dstarosta/FormState#v1.0.0</code></pre>
             <code>recommended</code> is the only available config and enables all rules.
           </p>
           <p>
+            The plugin requires <strong>ESLint 9.0 or greater</strong>, which introduced flat config
+            as the default format.
+          </p>
+          <p>
             Add <code>formStatePlugin.configs.recommended</code> to the <code>extends</code> array
             of your flat config:
           </p>
@@ -216,8 +220,8 @@ export default defineConfig([
                 <td>
                   Enforces using <code>&lt;SecureInput&gt;</code> instead of
                   <code>&lt;input type="password"&gt;</code> inside forms with an
-                  <code>action</code> or <code>onSubmit</code> handler. Plain password inputs
-                  expose the value in the DOM, in DevTools, and to browser extension scanners.
+                  <code>action</code> or <code>onSubmit</code> handler. Plain password inputs expose
+                  the value in the DOM, in DevTools, and to browser extension scanners.
                 </td>
                 <td>warn</td>
                 <td></td>
@@ -5258,7 +5262,9 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
           <ol class="prop-desc" start="7" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               TanStack Query ships
-              <a href="https://tanstack.com/query/v4/docs/eslint/eslint-plugin-query" target="_blank"
+              <a
+                href="https://tanstack.com/query/v4/docs/eslint/eslint-plugin-query"
+                target="_blank"
                 >@tanstack/eslint-plugin-query</a
               >. TanStack Form does not have a dedicated ESLint plugin.
             </li>
@@ -5266,9 +5272,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
           <ol class="prop-desc" start="8" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               React Hook Form has a
-              <a
-                href="https://github.com/andykao1213/eslint-plugin-react-hook-form"
-                target="_blank"
+              <a href="https://github.com/andykao1213/eslint-plugin-react-hook-form" target="_blank"
                 >community-maintained ESLint plugin</a
               >. It is not officially supported by the React Hook Form team.
             </li>

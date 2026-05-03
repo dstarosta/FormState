@@ -75,21 +75,15 @@ function LoginForm() {
 
 **[Full Developer Guide →](https://dstarosta.github.io/FormState/)**
 
-The guide covers:
+**Getting Started** — [Overview](https://dstarosta.github.io/FormState/#overview) · [Installation](https://dstarosta.github.io/FormState/#installation) · [ESLint](https://dstarosta.github.io/FormState/#eslint) · [Philosophy](https://dstarosta.github.io/FormState/#philosophy) · [TypeScript](https://dstarosta.github.io/FormState/#typescript)
 
-- Schema definition with ranges, descriptions, patterns, and metadata
-- Path expressions (string vs arrow function)
-- Form state, status, and validation
-- Array fields
-- Submission handling (sync, async, React 19 server actions)
-- Manual / server-side errors
-- Readonly and disabled modes
-- CSS class helpers
-- Context & Provider pattern
-- SecureInput for password fields
-- TypeScript types reference
-- Debounced changes, state listeners, `useWatch`
-- DevTools (`form-state-tools`)
+**Core Concepts** — [Defining a Schema](https://dstarosta.github.io/FormState/#schema) · [Schema Methods](https://dstarosta.github.io/FormState/#schema-methods) · [Basic Usage](https://dstarosta.github.io/FormState/#basic-usage) · [Path Expressions](https://dstarosta.github.io/FormState/#path-expressions) · [Form State](https://dstarosta.github.io/FormState/#form-state) · [Form Status](https://dstarosta.github.io/FormState/#form-status) · [Schema Metadata](https://dstarosta.github.io/FormState/#ranges-descriptions)
+
+**Features** — [Array Fields](https://dstarosta.github.io/FormState/#arrays) · [Validation](https://dstarosta.github.io/FormState/#validation) · [Form Submission](https://dstarosta.github.io/FormState/#submission) · [Manual Errors](https://dstarosta.github.io/FormState/#manual-errors) · [Readonly & Disabled](https://dstarosta.github.io/FormState/#readonly-disabled) · [CSS Classes](https://dstarosta.github.io/FormState/#css-classes) · [Context & Provider](https://dstarosta.github.io/FormState/#context) · [SecureInput](https://dstarosta.github.io/FormState/#secure-input)
+
+**Advanced** — [Selectors](https://dstarosta.github.io/FormState/#selectors) · [Debounced Changes](https://dstarosta.github.io/FormState/#debounce) · [State Listener](https://dstarosta.github.io/FormState/#listener) · [useWatch](https://dstarosta.github.io/FormState/#watch) · [inferName](https://dstarosta.github.io/FormState/#infer-name) · [Value Helpers](https://dstarosta.github.io/FormState/#helpers) · [Next.js](https://dstarosta.github.io/FormState/#nextjs) · [React Router 7](https://dstarosta.github.io/FormState/#remix) · [TanStack Query](https://dstarosta.github.io/FormState/#tanstack-query) · [DevTools](https://dstarosta.github.io/FormState/#devtools)
+
+**Reference** — [Form Library Comparison](https://dstarosta.github.io/FormState/#comparison)
 
 ## License
 

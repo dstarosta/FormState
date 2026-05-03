@@ -73,7 +73,9 @@ export const useFormSchema = {
           current = current.parent;
         }
 
-        if (!isDirectInObjectSchema) return;
+        if (!isDirectInObjectSchema) {
+          return;
+        }
 
         if (method === 'array' && node.arguments.length > 0) {
           const firstArg = node.arguments[0];
@@ -96,16 +98,14 @@ export const useFormSchema = {
             primitive: method,
           },
           fix(fixer) {
-            if (!callee.property.range) return null;
-
             const nameFix = fixer.replaceTextRange(callee.property.range, target);
 
-            if (method === 'array') return nameFix;
+            if (method === 'array') {
+              return nameFix;
+            }
 
             const insertPos =
-              node.arguments.length > 0
-                ? node.arguments[0].range[0]
-                : node.callee.range[1] + 1;
+              node.arguments.length > 0 ? node.arguments[0].range[0] : node.callee.range[1] + 1;
             const requiredArg =
               node.arguments.length > 0 ? '{ required: true }, ' : '{ required: true }';
 

@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import eslintPluginUnicorn from 'eslint-plugin-unicorn';
+import formState from './eslint/index.js';
 import sonarjs from 'eslint-plugin-sonarjs';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -8,7 +9,6 @@ import tseslint from 'typescript-eslint';
 import testingLibrary from 'eslint-plugin-testing-library';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
-import formStatePlugin from './eslint/index.js';
 
 export default defineConfig([
   globalIgnores(['coverage', 'dist', 'node_modules']),
@@ -18,13 +18,13 @@ export default defineConfig([
       js.configs.recommended,
       tseslint.configs.strictTypeChecked,
       eslintPluginUnicorn.configs.all,
+      formState.configs.recommended,
       sonarjs.configs.recommended,
       react.configs.flat.recommended,
       react.configs.flat['jsx-runtime'],
       reactHooks.configs.flat.recommended,
       testingLibrary.configs['flat/dom'],
       eslintConfigPrettier,
-      formStatePlugin.configs.recommended,
     ],
     languageOptions: {
       ecmaVersion: 2022,

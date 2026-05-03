@@ -46,6 +46,24 @@ ruleTester.run('use-form-schema', useFormSchema, {
     { code: 'z.object({ name: z.string().optional() })' },
     { code: 'z.object({ name: z.string().min(1) })' },
     { code: 'z.object({ age: z.number().min(0).max(120) })' },
+
+    // callee.type !== 'MemberExpression' — plain function call, not z.*
+    { code: 'z.object({ name: string() })' },
+
+    // callee.object.type !== 'Identifier' — nested member expression
+    { code: 'z.object({ name: foo.bar.string() })' },
+
+    // callee.property.type !== 'Identifier' — computed property
+    { code: "z.object({ name: z['string']() })" },
+
+    // call.type !== 'CallExpression' — object literal not inside a z.*() call
+    { code: 'const schema = { name: z.string() }' },
+
+    // call.callee.type !== 'MemberExpression' — object inside a plain function call
+    { code: 'fn({ name: z.string() })' },
+
+    // call.callee.object.name !== 'z' — object inside a non-z namespace call
+    { code: 'schemas.object({ name: z.string() })' },
   ],
   invalid: [
     {
@@ -148,6 +166,33 @@ ruleTester.run('use-form-schema', useFormSchema, {
         { messageId: 'useFormSchema', data: { formHelper: 'formString', primitive: 'string' } },
       ],
       output: 'z.object({ address: z.object({ city: z.formString({ required: true }) }) })',
+    },
+
+    // z.array with an Identifier first arg — exemption does not apply
+    {
+      code: 'z.object({ tags: z.array(items) })',
+      errors: [
+        { messageId: 'useFormSchema', data: { formHelper: 'formArray', primitive: 'array' } },
+      ],
+      output: 'z.object({ tags: z.formArray(items) })',
+    },
+
+    // z.array with a plain function call first arg (callee is Identifier, not MemberExpression)
+    {
+      code: 'z.object({ tags: z.array(getItems()) })',
+      errors: [
+        { messageId: 'useFormSchema', data: { formHelper: 'formArray', primitive: 'array' } },
+      ],
+      output: 'z.object({ tags: z.formArray(getItems()) })',
+    },
+
+    // Primitive with existing argument — { required: true } inserted before existing arg
+    {
+      code: 'z.object({ name: z.string(z.minLength(3)) })',
+      errors: [
+        { messageId: 'useFormSchema', data: { formHelper: 'formString', primitive: 'string' } },
+      ],
+      output: 'z.object({ name: z.formString({ required: true }, z.minLength(3)) })',
     },
   ],
 });
