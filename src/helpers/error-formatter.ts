@@ -33,11 +33,11 @@ export const formatErrors = <T extends object>(
       const flatErrors = issue.errors
         .flat()
         .sort(
-          (err1, err2) =>
-            Number(isGenericMessage(err1.message)) - Number(isGenericMessage(err2.message))
+          (error1, error2) =>
+            Number(isGenericMessage(error1.message)) - Number(isGenericMessage(error2.message))
         );
 
-      const flatIssue = flatErrors.find((err) => Boolean(err.message));
+      const flatIssue = flatErrors.find((flatError) => Boolean(flatError.message));
 
       if (flatIssue && flatIssue.message) {
         addError(flatIssue.message);

@@ -2885,8 +2885,8 @@ describe('useFormState', () => {
                 <button
                   name="submitter"
                   value="submitManual"
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={(event) => {
+                    event.preventDefault();
                     submitForm(formRef.current, screen.getByText('Submit', { selector: 'button' }));
                   }}
                 >
@@ -2941,8 +2941,8 @@ describe('useFormState', () => {
             type="input"
             data-testid="nameInput"
             value={data.name}
-            onChange={(e) => {
-              change('name', e.target.value);
+            onChange={(event) => {
+              change('name', event.target.value);
             }}
           />
           {errors.name && <p data-testid="nameError">Error: {errors.name}</p>}
@@ -4281,7 +4281,7 @@ describe('useFormState', () => {
         const TestForm = () => {
           const { Form, formActions, formClasses } = useFormState(schema, {
             validateOnMount: true,
-            CSSPrefix: 'my-form',
+            cssPrefix: 'my-form',
           });
 
           return (

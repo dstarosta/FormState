@@ -112,7 +112,7 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
  *                                            function. (default: 50). A non-positive value means no debouncing of
  *                                            change callbacks is allowed.
  * @param formOptions.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
- * @param formOptions.CSSPrefix - Form CSS class prefix (default: "form-state").
+ * @param formOptions.cssPrefix - Form CSS class prefix (default: "form-state").
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                            same state property (default: "|").
@@ -135,7 +135,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     validateOnChange = true,
     validateOnTouch = false,
     debounceCacheCapacity = 50,
-    CSSPrefix = 'form-state',
+    cssPrefix = 'form-state',
     inferredNameFormat = 'bracket',
     errorMessageSeparator = '|',
     confirmDirtyStateNavigation = false,
@@ -505,7 +505,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       const requiredPathNotation = path ? getPathNotation(path) : (nameOrPath as string);
 
-      const prefix = options?.prefix?.trim() || CSSPrefix;
+      const prefix = options?.prefix?.trim() || cssPrefix;
 
       if (formState.required[requiredPathNotation]) {
         classes += `${prefix}__required `;
@@ -537,7 +537,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       formState.touched,
       formState.validated,
       formState.errors,
-      CSSPrefix,
+      cssPrefix,
     ]
   );
 
@@ -1293,7 +1293,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   const focusOnFirstError = useCallback(
     (options?: Omit<ElementFocusOptions<T>, 'errorKey'>) => {
       const doFocus = () => {
-        const errorClass = `${CSSPrefix}__error`;
+        const errorClass = `${cssPrefix}__error`;
         const element = document.querySelector<HTMLElement>(
           `form input.${errorClass}, form textarea.${errorClass}`
         );
@@ -1315,7 +1315,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       // Allow elements with the error classes to re-render.
       setTimeout(doFocus, 0);
     },
-    [CSSPrefix]
+    [cssPrefix]
   );
 
   // The memoized Form component.

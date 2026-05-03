@@ -21,7 +21,7 @@ const ALWAYS_VALIDATE = () => true;
 /**
  * Converts an inferred schema instance into an object without empty literal unions.
  */
-(z.ZodMiniObject.prototype as Record<string, unknown>)['toObject'] = function <
+(z.ZodMiniObject.prototype as Record<string, unknown>)['toObject'] = function toObject<
   T extends z.ZodMiniObject,
 >(this: T, data: z.infer<T>) {
   return cleanEmpty(this, data) as SchemaDataObject<z.infer<T>>;

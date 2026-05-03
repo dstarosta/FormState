@@ -17,8 +17,8 @@ export function createFormStore() {
       const listeners = fieldListeners.get(name);
 
       if (listeners) {
-        for (const cb of listeners) {
-          cb();
+        for (const callback of listeners) {
+          callback();
         }
       }
     }

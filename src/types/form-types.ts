@@ -356,7 +356,7 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    *
    * CSS class example: "form-state__touched"
    */
-  CSSPrefix?: string;
+  cssPrefix?: string;
   /**
    * Sets the default format for the `inferName` function (default: "bracket").
    */

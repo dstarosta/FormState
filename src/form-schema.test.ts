@@ -486,7 +486,7 @@ describe('form schema', () => {
         z.validate((obj) => obj.users.filter((user) => user.name.startsWith('M')).length === 2, {
           path: 'users',
           error: 'Not enough names that start with "M"',
-          condition: (errors) => errors.every((err) => err.pathNotation !== 'users'),
+          condition: (errors) => errors.every((error) => error.pathNotation !== 'users'),
         })
       );
 
@@ -551,7 +551,7 @@ describe('form schema', () => {
         z.validate((obj) => obj.users.filter((user) => user.name.startsWith('M')).length === 2, {
           path: 'users',
           error: 'No names that start with "M"',
-          condition: (errors) => errors.every((err) => err.pathNotation !== 'users'),
+          condition: (errors) => errors.every((error) => error.pathNotation !== 'users'),
         })
       );
 

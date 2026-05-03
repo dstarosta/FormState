@@ -244,7 +244,7 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    *
    * CSS class example: "form-state__touched"
    */
-  CSSPrefix?: string;
+  cssPrefix?: string;
   /**
    * Sets the default format for the `inferName` function (default: "bracket").
    */
@@ -1890,7 +1890,7 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  *                                            function. (default: 50). A non-positive value means no debouncing of
  *                                            change callbacks is allowed.
  * @param formOptions.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
- * @param formOptions.CSSPrefix - Form CSS class prefix (default: "form-state").
+ * @param formOptions.cssPrefix - Form CSS class prefix (default: "form-state").
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                            same state property (default: "|").
@@ -1960,7 +1960,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  *                                        function. (default: 50). A non-positive value means no debouncing of
  *                                        change callbacks is allowed.
  * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
- * @param options.CSSPrefix - Form CSS class prefix (default: "form-state").
+ * @param options.cssPrefix - Form CSS class prefix (default: "form-state").
  * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param options.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                        same state property (default: "|").

@@ -145,17 +145,19 @@ export function SecureInput({
           break;
         }
         case 'deleteContentBackward': {
-          if (start !== end)
+          if (start !== end) {
             commit(existingValue.slice(0, start) + existingValue.slice(end), start);
-          else if (start > 0)
+          } else if (start > 0) {
             commit(existingValue.slice(0, start - 1) + existingValue.slice(start), start - 1);
+          }
           break;
         }
         case 'deleteContentForward': {
-          if (start !== end)
+          if (start !== end) {
             commit(existingValue.slice(0, start) + existingValue.slice(end), start);
-          else if (start < existingValue.length)
+          } else if (start < existingValue.length) {
             commit(existingValue.slice(0, start) + existingValue.slice(start + 1), start);
+          }
           break;
         }
         case 'deleteWordBackward':
@@ -240,14 +242,14 @@ export function SecureInput({
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
+  const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
 
     if (readOnly || disabled) {
       return;
     }
 
-    const text = e.clipboardData.getData('text/plain');
+    const text = event.clipboardData.getData('text/plain');
 
     if (!text) {
       return;
