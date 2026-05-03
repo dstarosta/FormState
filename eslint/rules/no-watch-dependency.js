@@ -26,7 +26,18 @@ export const noWatchDependency = {
       description: 'Prevent using useWatch values as hook dependencies',
       recommended: true,
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          additionalHooks: {
+            type: 'object',
+            additionalProperties: { type: 'integer', minimum: 0 },
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
     messages: {
       watchDependency:
         '"{{name}}" comes from useWatch() and changes via external store subscriptions outside of React state. Do not use it as a hook dependency.',
@@ -34,6 +45,9 @@ export const noWatchDependency = {
   },
 
   create(context) {
+    const { additionalHooks = {} } = context.options[0] ?? {};
+    const hooksMap = new Map([...HOOKS_DEPS_ARG, ...Object.entries(additionalHooks)]);
+
     const scopeStack = [];
 
     function currentScope() {
@@ -74,7 +88,7 @@ export const noWatchDependency = {
               ? callee.property.name
               : null;
 
-        const depsIndex = hookName ? HOOKS_DEPS_ARG.get(hookName) : undefined;
+        const depsIndex = hookName ? hooksMap.get(hookName) : undefined;
         if (depsIndex === undefined) {
           return;
         }

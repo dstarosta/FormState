@@ -156,5 +156,19 @@ ruleTester.run('no-watch-dependency', noWatchDependency, {
       code: 'function C() { const value = useWatch("field"); useEffect(() => {}, [, value]); }',
       errors: [{ messageId: 'watchDependency', data: { name: 'value' } }],
     },
+
+    // additionalHooks option — custom hook with deps at index 1
+    {
+      code: 'function C() { const value = useWatch("field"); useCustomEffect(() => {}, [value]); }',
+      options: [{ additionalHooks: { useCustomEffect: 1 } }],
+      errors: [{ messageId: 'watchDependency', data: { name: 'value' } }],
+    },
+
+    // additionalHooks option — custom hook with deps at index 2
+    {
+      code: 'function C() { const value = useWatch("field"); useCustomHandle(ref, () => ({}), [value]); }',
+      options: [{ additionalHooks: { useCustomHandle: 2 } }],
+      errors: [{ messageId: 'watchDependency', data: { name: 'value' } }],
+    },
   ],
 });

@@ -105,7 +105,7 @@ ruleTester.run('use-form-schema', useFormSchema, {
       ],
       output: 'z.strictObject({ name: z.formString() })',
     },
-    // Other ALLOWED_PARENTS
+    // Other z.* wrappers that take object literals
     {
       code: 'z.nullable({ value: z.number() })',
       errors: [

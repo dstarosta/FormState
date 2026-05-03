@@ -1,15 +1,3 @@
-const ALLOWED_PARENTS = new Set([
-  'object',
-  'strictObject',
-  'default',
-  'catch',
-  'catchAll',
-  'optional',
-  'nonoptional',
-  'nullable',
-  'nullish',
-]);
-
 const mapping = {
   string: 'formString',
   number: 'formNumber',
@@ -75,8 +63,7 @@ export const useFormSchema = {
                 call.callee.type === 'MemberExpression' &&
                 call.callee.object.type === 'Identifier' &&
                 call.callee.object.name === 'z' &&
-                call.callee.property.type === 'Identifier' &&
-                ALLOWED_PARENTS.has(call.callee.property.name)
+                call.callee.property.type === 'Identifier'
               ) {
                 isDirectInObjectSchema = true;
                 break;

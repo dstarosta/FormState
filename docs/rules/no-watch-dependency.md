@@ -12,7 +12,18 @@ Using a `useWatch` value as a dependency in `useEffect`, `useMemo`, `useCallback
 
 ## Rule Details
 
-The rule tracks variables assigned from `useWatch()` and flags any that appear in the dependency array of: `useEffect`, `useLayoutEffect`, `useInsertionEffect`, `useMemo`, or `useCallback`. Variable shadowing is handled correctly — only the declaration that actually resolves in scope is checked.
+The rule tracks variables assigned from `useWatch()` and flags any that appear in the dependency array of the following hooks. Variable shadowing is handled correctly — only the declaration that actually resolves in scope is checked.
+
+| Hook | Deps argument |
+|------|--------------|
+| `useCallback` | 2nd |
+| `useDeepMemo` | 2nd |
+| `useEffect` | 2nd |
+| `useImperativeHandle` | 3rd |
+| `useInsertionEffect` | 2nd |
+| `useIsomorphicLayoutEffect` | 2nd |
+| `useLayoutEffect` | 2nd |
+| `useMemo` | 2nd |
 
 ### ❌ Incorrect
 
@@ -43,6 +54,24 @@ function SearchPreview() {
   }, []);
 
   return <p>Searching for: {query}</p>;
+}
+```
+
+## Options
+
+### `additionalHooks`
+
+An object mapping additional hook names to the zero-based index of their dependency array argument. Use this to extend the rule to custom hooks in your project.
+
+```js
+// eslint.config.js
+rules: {
+  'form-state/no-watch-dependency': ['error', {
+    additionalHooks: {
+      useCustomEffect: 1,       // deps is the 2nd argument
+      useCustomHandle: 2,       // deps is the 3rd argument
+    },
+  }],
 }
 ```
 
