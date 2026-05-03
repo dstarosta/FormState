@@ -810,6 +810,27 @@ const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCou
 // In your component:
 formHooks.useListener(listener);</code></pre>
           </div>
+          <h3><span class="type-chip">DeepPartial&lt;T&gt;</span></h3>
+          <p>
+            A recursive <code>Partial</code> — every property at every level of nesting becomes
+            optional. The <code>initialData</code> option accepts
+            <code>DeepPartial&lt;T&gt;</code>, so you can seed the form from an API response or a
+            saved draft without providing every field.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type DeepPartial } from 'form-state';
+
+const { data: draft } = useQuery&lt;DeepPartial&lt;FormSchema&gt;&gt;({
+  queryKey: ['draft', draftId],
+  queryFn:  () =&gt; api.getDraft(draftId),
+});
+
+// Pass it directly as initialData — no need to fill in every field
+const { formState, formActions } = useFormState(schema, {
+  initialData: draft,
+});</code></pre>
+          </div>
         </section>
         <section class="section" id="license">
           <div class="section-eyebrow">Getting Started</div>
@@ -2174,7 +2195,9 @@ await api.post('/users', payload);</code></pre>
           </table>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">const schema = z.strictObject({
+            <pre><code class="language-tsx">import { useFormState, z, convert } from "form-state";
+
+const schema = z.strictObject({
   username: z
     .formString(z.minLength(3, 'Too short'), z.maxLength(20, 'Too long'))
     .with(z.describe('Username')),
@@ -3980,7 +4003,7 @@ export default function ContactForm() {
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// app/contact/page.tsx
 import { parseState } from "form-state";
-import { ContactForm, schema } from "./contact-form";
+import ContactForm, { schema } from "./contact-form";
 
 export default async function ContactPage() {
   const user = await db.users.findFirst({ where: { id: await getSessionUserId() } });
@@ -4176,7 +4199,7 @@ export default function ContactForm() {
             <pre><code class="language-tsx">// app/routes/contact.tsx
 import type { Route } from "./+types/contact";
 import { parseState } from "form-state";
-import { ContactForm, schema } from "../contact-form";
+import ContactForm, { schema } from "../contact-form";
 
 export async function loader() {
   const user = await db.users.findFirst({ where: { id: await getSessionUserId() } });
@@ -4383,8 +4406,6 @@ function ProfilePage({ userId }: { userId: string }) {
           </div>
           <h3>Seeding <code>initialData</code> from a query</h3>
           <p>
-            The <code>initialData</code> option accepts
-            <code>DeepPartial&lt;z.infer&lt;T&gt;&gt;</code>, so you can pass query data directly.
             With <code>useSuspenseQuery</code>, <code>data</code> is always defined — the component
             suspends until the query resolves, so <code>useFormState</code> always receives the full
             server value on first render.
@@ -4468,7 +4489,7 @@ const { data } = useSuspenseQuery({
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">const { mutateAsync } = useMutation({
-  mutationFn: (values: ProfileData) =&gt; api.updateProfile(userId, values),
+  mutationFn: (values: ProfileApiData) =&gt; api.updateProfile(userId, values),
 });
 
 const handleSubmit = formHandlers.handleSubmit(
@@ -4477,7 +4498,7 @@ const handleSubmit = formHandlers.handleSubmit(
     if (!submitState.valid) return submitState.errors;
 
     try {
-      await mutateAsync(submitState.data); // fully typed ProfileData
+      await mutateAsync(profileSchema.toObject(submitState.data));
       return true;                         // signals success to formStatus
     } catch (err) {
       // Returning an object surfaces it as a manual error in the form

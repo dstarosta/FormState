@@ -61,7 +61,7 @@ function SearchPreview() {
 
 ### `additionalHooks`
 
-An object mapping additional hook names to the zero-based index of their dependency array argument. Use this to extend the rule to custom hooks in your project.
+An object mapping additional hook names to the **zero-based index** of their dependency array argument. Use this to extend the rule to custom hooks in your project.
 
 ```js
 // eslint.config.js
