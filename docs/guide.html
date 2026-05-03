@@ -3970,6 +3970,55 @@ export default function ContactForm() {
               strips FormState metadata on the server side.
             </p>
           </div>
+          <h3>Pre-filling from a server component</h3>
+          <p>
+            A Server Component can fetch data and forward it as <code>initialData</code> to seed the
+            form before it reaches the client — useful for pre-filling fields from a user profile or
+            a saved draft.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// app/contact/page.tsx
+import { parseState } from "form-state";
+import { ContactForm, schema } from "./contact-form";
+
+export default async function ContactPage() {
+  const user = await db.users.findFirst({ where: { id: await getSessionUserId() } });
+  const result = parseState(schema, user);
+
+  if (!result.success) {
+    throw new TypeError("Unexpected user data shape");
+  }
+
+  return &lt;ContactForm user={result.data} /&gt;;
+}</code></pre>
+          </div>
+          <p>Update <code>ContactForm</code> to accept and forward the prop:</p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">"use client";
+
+import { useFormState, z } from "form-state";
+import { submitContact } from "./actions";
+
+// schema definition unchanged …
+
+export default function ContactForm({
+  user,
+}: {
+  user?: z.infer&lt;typeof schema&gt;;
+}) {
+  const {
+    formState: { data, errors },
+    formStatus: { dirty, submitting },
+    formActions,
+    formHandlers,
+    Form,
+  } = useFormState(schema, { initialData: user });
+
+  // … rest of the component unchanged
+}</code></pre>
+          </div>
         </section>
         <section class="section" id="remix">
           <div class="section-eyebrow">Advanced</div>
@@ -4115,6 +4164,57 @@ export default function ContactForm() {
               <code>Request</code>. Posting JSON keeps the handler simple and the response shape
               entirely in your control.
             </p>
+          </div>
+          <h3>Pre-filling from a loader</h3>
+          <p>
+            Export a <code>loader</code> from the route file to fetch data on the server and pass it
+            as <code>initialData</code> — for example, pre-filling fields from the current user's
+            profile.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// app/routes/contact.tsx
+import type { Route } from "./+types/contact";
+import { parseState } from "form-state";
+import { ContactForm, schema } from "../contact-form";
+
+export async function loader() {
+  const user = await db.users.findFirst({ where: { id: await getSessionUserId() } });
+  const result = parseState(schema, user);
+
+  if (!result.success) {
+    throw new Response("Unexpected user data shape", { status: 500 });
+  }
+
+  return result.data;
+}
+
+export default function ContactRoute({ loaderData }: Route.ComponentProps) {
+  return &lt;ContactForm user={loaderData} /&gt;;
+}</code></pre>
+          </div>
+          <p>Update <code>ContactForm</code> to accept and forward the prop:</p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { useFormState, z } from "form-state";
+
+// schema definition unchanged …
+
+export default function ContactForm({
+  user,
+}: {
+  user?: z.infer&lt;typeof schema&gt;;
+}) {
+  const {
+    formState: { data, errors },
+    formStatus: { dirty, submitting },
+    formActions,
+    formHandlers,
+    Form,
+  } = useFormState(schema, { initialData: user });
+
+  // … rest of the component unchanged
+}</code></pre>
           </div>
         </section>
         <section class="section" id="tanstack-query">
