@@ -2,7 +2,7 @@
 
 Enforces using `<SecureInput>` instead of `<input type="password">` inside forms with an `action` or `onSubmit` handler.
 
-**Severity (recommended config):** warn
+**Severity:** warn
 
 ## Why
 
@@ -35,12 +35,14 @@ import { SecureInput } from 'form-state';
 
 <form action={handleSubmit}>
   <SecureInput name="password" />
-</form>
+</form>;
 
-{/* Forms without a handler are not flagged */}
+{
+  /* Forms without a handler are not flagged */
+}
 <form>
   <input type="password" name="password" />
-</form>
+</form>;
 ```
 
 ## When Not to Use It

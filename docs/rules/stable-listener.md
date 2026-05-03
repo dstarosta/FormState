@@ -2,7 +2,7 @@
 
 Enforces stable listener references passed to `useListener()`.
 
-**Severity (recommended config):** error
+**Severity:** error
 
 ## Why
 
@@ -23,7 +23,7 @@ useListener(() => {
 });
 
 // Inline function expression — same problem
-useListener(function({ type, data }) {
+useListener(function ({ type, data }) {
   handleChange(type, data);
 });
 
@@ -55,4 +55,4 @@ function MyForm() {
 
 ## When Not to Use It
 
-Disable this rule only if you intentionally want the listener to be replaced on every render and have accounted for any subscription gaps.
+If you are using the **React Compiler**, it automatically memoizes inline functions and gives them stable references — the same effect as wrapping manually with `useCallback`. In that case this rule will flag code that is already correct at runtime and can be disabled.

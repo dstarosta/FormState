@@ -2,7 +2,7 @@
 
 Enforces stable callback references in `change()` calls that use `debounceIntervalMs`.
 
-**Severity (recommended config):** error
+**Severity:** error
 
 ## Why
 
@@ -26,7 +26,9 @@ formActions.change('query', value, {
 // Inline function expression — same problem
 formActions.change('query', value, {
   debounceIntervalMs: 300,
-  callback: function() { saveToServer(); },
+  callback: function () {
+    saveToServer();
+  },
 });
 ```
 
@@ -53,3 +55,7 @@ formActions.change('query', value, {
   callback: saveAfterChange,
 });
 ```
+
+## When Not to Use It
+
+If you are using the **React Compiler**, it automatically memoizes inline functions and gives them stable references — the same effect as wrapping manually with `useCallback`. In that case this rule will flag code that is already correct at runtime and can be disabled.

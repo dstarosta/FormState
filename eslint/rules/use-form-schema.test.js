@@ -53,26 +53,26 @@ ruleTester.run('use-form-schema', useFormSchema, {
       errors: [
         { messageId: 'useFormSchema', data: { formHelper: 'formString', primitive: 'string' } },
       ],
-      output: 'z.object({ name: z.formString() })',
+      output: 'z.object({ name: z.formString({ required: true }) })',
     },
     {
       code: 'z.object({ age: z.number() })',
       errors: [
         { messageId: 'useFormSchema', data: { formHelper: 'formNumber', primitive: 'number' } },
       ],
-      output: 'z.object({ age: z.formNumber() })',
+      output: 'z.object({ age: z.formNumber({ required: true }) })',
     },
     {
       code: 'z.object({ active: z.boolean() })',
       errors: [
         { messageId: 'useFormSchema', data: { formHelper: 'formBoolean', primitive: 'boolean' } },
       ],
-      output: 'z.object({ active: z.formBoolean() })',
+      output: 'z.object({ active: z.formBoolean({ required: true }) })',
     },
     {
       code: 'z.object({ date: z.date() })',
       errors: [{ messageId: 'useFormSchema', data: { formHelper: 'formDate', primitive: 'date' } }],
-      output: 'z.object({ date: z.formDate() })',
+      output: 'z.object({ date: z.formDate({ required: true }) })',
     },
     {
       code: 'z.object({ tags: z.array() })',
@@ -103,7 +103,7 @@ ruleTester.run('use-form-schema', useFormSchema, {
       errors: [
         { messageId: 'useFormSchema', data: { formHelper: 'formString', primitive: 'string' } },
       ],
-      output: 'z.strictObject({ name: z.formString() })',
+      output: 'z.strictObject({ name: z.formString({ required: true }) })',
     },
     // Other z.* wrappers that take object literals
     {
@@ -111,26 +111,26 @@ ruleTester.run('use-form-schema', useFormSchema, {
       errors: [
         { messageId: 'useFormSchema', data: { formHelper: 'formNumber', primitive: 'number' } },
       ],
-      output: 'z.nullable({ value: z.formNumber() })',
+      output: 'z.nullable({ value: z.formNumber({ required: true }) })',
     },
     {
       code: 'z.optional({ flag: z.boolean() })',
       errors: [
         { messageId: 'useFormSchema', data: { formHelper: 'formBoolean', primitive: 'boolean' } },
       ],
-      output: 'z.optional({ flag: z.formBoolean() })',
+      output: 'z.optional({ flag: z.formBoolean({ required: true }) })',
     },
     {
       code: 'z.nullish({ ts: z.date() })',
       errors: [{ messageId: 'useFormSchema', data: { formHelper: 'formDate', primitive: 'date' } }],
-      output: 'z.nullish({ ts: z.formDate() })',
+      output: 'z.nullish({ ts: z.formDate({ required: true }) })',
     },
     {
       code: 'z.default({ name: z.string() })',
       errors: [
         { messageId: 'useFormSchema', data: { formHelper: 'formString', primitive: 'string' } },
       ],
-      output: 'z.default({ name: z.formString() })',
+      output: 'z.default({ name: z.formString({ required: true }) })',
     },
     // Multiple primitives in one schema — both fixed in one pass
     {
@@ -139,7 +139,7 @@ ruleTester.run('use-form-schema', useFormSchema, {
         { messageId: 'useFormSchema', data: { formHelper: 'formString', primitive: 'string' } },
         { messageId: 'useFormSchema', data: { formHelper: 'formNumber', primitive: 'number' } },
       ],
-      output: 'z.object({ name: z.formString(), age: z.formNumber() })',
+      output: 'z.object({ name: z.formString({ required: true }), age: z.formNumber({ required: true }) })',
     },
     // Primitive inside a nested z.object()
     {
@@ -147,7 +147,7 @@ ruleTester.run('use-form-schema', useFormSchema, {
       errors: [
         { messageId: 'useFormSchema', data: { formHelper: 'formString', primitive: 'string' } },
       ],
-      output: 'z.object({ address: z.object({ city: z.formString() }) })',
+      output: 'z.object({ address: z.object({ city: z.formString({ required: true }) }) })',
     },
   ],
 });

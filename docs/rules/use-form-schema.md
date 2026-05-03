@@ -2,26 +2,28 @@
 
 Enforces using FormState's `form*` schema helpers instead of raw Zod primitives in form schemas.
 
-**Severity (recommended config):** warn  
+**Severity:** warn  
 **Fixable:** yes — ESLint's `--fix` flag replaces the primitive automatically.
 
 ## Why
 
-FormState ships wrapper helpers for Zod's primitive types — `formString`, `formNumber`, `formBoolean`, `formDate`, and `formArray` — exported from `'form-state'` alongside `z`. These wrappers configure each field with the correct blank-value and optionality semantics that HTML form inputs require. Using a raw Zod primitive like `z.string()` directly will cause type mismatches, incorrect validation, and fields that do not clear or reset as expected.
+FormState extends the `z` object with form-specific helpers — `z.formString()`, `z.formNumber()`, `z.formBoolean()`, `z.formDate()`, and `z.formArray()`. These configure each field with the correct blank-value and optionality semantics that HTML form inputs require. Using a raw Zod primitive like `z.string()` directly will cause type mismatches, incorrect validation, and fields that do not clear or reset as expected.
 
-| Raw Zod | FormState helper |
-|---------|-----------------|
-| `z.string()` | `formString()` |
-| `z.number()` | `formNumber()` |
-| `z.boolean()` | `formBoolean()` |
-| `z.date()` | `formDate()` |
-| `z.array(z.string())` | `formArray(z.string())` |
+| Raw Zod               | FormState helper          | Required by default |
+| --------------------- | ------------------------- | :-----------------: |
+| `z.string()`          | `z.formString()`          |         no          |
+| `z.number()`          | `z.formNumber()`          |         no          |
+| `z.boolean()`         | `z.formBoolean()`         |         no          |
+| `z.date()`            | `z.formDate()`            |         no          |
+| `z.array(z.string())` | `z.formArray(z.string())` |         yes         |
 
-The rule only fires when the primitive is used directly as a property value inside a `z.object()`, `z.strictObject()`, `z.default()`, `z.catch()`, `z.catchAll()`, `z.optional()`, `z.nonoptional()`, `z.nullable()`, or `z.nullish()` call — i.e., in places where a field definition is expected.
+`z.formString()`, `z.formNumber()`, `z.formBoolean()`, and `z.formDate()` are **optional by default** — pass `{ required: true }` to require the field. `z.formArray()` is required by default.
 
-`z.array(z.object(...))` and `z.array(z.array(...))` are exempt because the outer `formArray` wraps the inner complex type without needing a separate helper.
+`z.array(z.object(...))` and `z.array(z.array(...))` are exempt because the outer `z.formArray()` wraps the inner complex type without needing a separate helper.
 
 ## Rule Details
+
+The rule fires when a primitive is used directly as a property value inside any `z.*()` call that takes an object of field definitions.
 
 ### ❌ Incorrect
 
@@ -29,39 +31,42 @@ The rule only fires when the primitive is used directly as a property value insi
 import { z } from 'form-state';
 
 const schema = z.object({
-  name: z.string(),       // ← should be formString()
-  age: z.number(),        // ← should be formNumber()
-  active: z.boolean(),    // ← should be formBoolean()
-  tags: z.array(z.string()), // ← should be formArray(z.string())
+  name: z.string(), // ← z.formString({ required: true })
+  age: z.number(), // ← z.formNumber({ required: true })
+  active: z.boolean(), // ← z.formBoolean({ required: true })
+  tags: z.array(z.string()), // ← z.formArray(z.string())
 });
 ```
 
 ### ✅ Correct
 
 ```jsx
-import { z, formString, formNumber, formBoolean, formArray } from 'form-state';
+import { z } from 'form-state';
 
 const schema = z.object({
-  name: formString(),
-  age: formNumber(),
-  active: formBoolean(),
-  tags: formArray(z.string()),
+  name: z.formString({ required: true }),
+  age: z.formNumber({ required: true }),
+  active: z.formBoolean({ required: true }),
+  tags: z.formArray(z.string()),
 
-  // z.object() inside z.array() is fine — use formArray on the outside
-  addresses: formArray(z.object({ city: formString() })),
+  // Optional fields - { required: false } by default
+  nickname: z.formString(),
+
+  // z.object() inside z.array() is fine — use z.formArray() on the outside
+  addresses: z.formArray(z.object({ city: z.formString({ required: true }) })),
 });
 ```
 
 ## Auto-fix
 
-Running `eslint --fix` replaces each flagged primitive name in-place:
+Running `eslint --fix` replaces each flagged primitive and inserts `{ required: true }` for non-array helpers to match Zod's default required semantics:
 
 ```
-z.string()  →  formString()
-z.number()  →  formNumber()
-z.boolean() →  formBoolean()
-z.date()    →  formDate()
-z.array()   →  formArray()
+z.string()  →  z.formString({ required: true })
+z.number()  →  z.formNumber({ required: true })
+z.boolean() →  z.formBoolean({ required: true })
+z.date()    →  z.formDate({ required: true })
+z.array()   →  z.formArray()
 ```
 
-The fix only changes the method name — all chained calls (e.g. `.min(3)`, `.describe('...')`) are preserved.
+All chained calls (e.g. `.min(3)`, `.describe('...')`) are preserved.

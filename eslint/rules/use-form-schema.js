@@ -95,8 +95,22 @@ export const useFormSchema = {
             formHelper: target,
             primitive: method,
           },
-          fix: (fixer) =>
-            callee.property.range ? fixer.replaceTextRange(callee.property.range, target) : null,
+          fix(fixer) {
+            if (!callee.property.range) return null;
+
+            const nameFix = fixer.replaceTextRange(callee.property.range, target);
+
+            if (method === 'array') return nameFix;
+
+            const insertPos =
+              node.arguments.length > 0
+                ? node.arguments[0].range[0]
+                : node.callee.range[1] + 1;
+            const requiredArg =
+              node.arguments.length > 0 ? '{ required: true }, ' : '{ required: true }';
+
+            return [nameFix, fixer.replaceTextRange([insertPos, insertPos], requiredArg)];
+          },
         });
       },
     };

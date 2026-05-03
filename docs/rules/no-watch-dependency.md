@@ -2,7 +2,7 @@
 
 Prevents using values returned by `useWatch()` as dependencies in other hooks.
 
-**Severity (recommended config):** error
+**Severity:** error
 
 ## Why
 
@@ -14,16 +14,16 @@ Using a `useWatch` value as a dependency in `useEffect`, `useMemo`, `useCallback
 
 The rule tracks variables assigned from `useWatch()` and flags any that appear in the dependency array of the following hooks. Variable shadowing is handled correctly — only the declaration that actually resolves in scope is checked.
 
-| Hook | Deps argument |
-|------|--------------|
-| `useCallback` | 2nd |
-| `useDeepMemo` | 2nd |
-| `useEffect` | 2nd |
-| `useImperativeHandle` | 3rd |
-| `useInsertionEffect` | 2nd |
-| `useIsomorphicLayoutEffect` | 2nd |
-| `useLayoutEffect` | 2nd |
-| `useMemo` | 2nd |
+| Hook                        | Deps argument |
+| --------------------------- | ------------- |
+| `useCallback`               | 2nd           |
+| `useDeepMemo`               | 2nd           |
+| `useEffect`                 | 2nd           |
+| `useImperativeHandle`       | 3rd           |
+| `useInsertionEffect`        | 2nd           |
+| `useIsomorphicLayoutEffect` | 2nd           |
+| `useLayoutEffect`           | 2nd           |
+| `useMemo`                   | 2nd           |
 
 ### ❌ Incorrect
 
