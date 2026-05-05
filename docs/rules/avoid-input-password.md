@@ -2,7 +2,8 @@
 
 Enforces using `<SecureInput>` instead of `<input type="password">` inside forms with an `action` or `onSubmit` handler.
 
-**Severity:** warn
+**Severity:** warn  
+**Fixable:** yes (`--fix`)
 
 ## Why
 
