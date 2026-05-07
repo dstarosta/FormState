@@ -276,7 +276,6 @@ export const advanced = {
  * @param options - Options for the boolean schema.
  * @param options.required - Indicates whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
- * @param options.checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for boolean values.
  */
 export function formBoolean(options?: FormTypeOptions) {
@@ -329,7 +328,7 @@ export function formDate(): z.ZodMiniPipe<
  * Zod schema for a control with a date value that can optionally be an empty string.
  *
  * @param zodDate - The Zod date schema.
- * @param options.checks - Zod checks.
+ * @param checks - Zod checks.
  * @returns A Zod schema with preprocessing for date values.
  */
 export function formDate(
@@ -348,7 +347,7 @@ export function formDate(
  * @param options.error - Optional custom error message for required validation.
  * @param options.dateFormat - Optional date format string (default: 'yyyy-MM-dd').
  * @param options.dateFormatError - Optional custom error for invalid dates.
- * @param options.checks - Optional Zod checks.
+ * @param checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for date values.
  */
 export function formDate(
@@ -455,7 +454,7 @@ export function formNumber(): z.ZodMiniPipe<
  * Zod schema for a control with a numeric value that can optionally be an empty string.
  *
  * @param zodNumber - The Zod number schema.
- * @param options.checks - Zod checks.
+ * @param checks - Zod checks.
  * @returns A Zod schema with preprocessing for number values.
  */
 export function formNumber(
@@ -472,7 +471,7 @@ export function formNumber(
  * @param options - Options for the number schema.
  * @param options.required - Whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
- * @param options.checks - Optional Zod checks.
+ * @param checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for number values.
  */
 export function formNumber(
@@ -553,7 +552,7 @@ export function formString(): z.ZodMiniPipe<
 /**
  * Zod schema for a control with a string value that can optionally be empty.
  *
- * @param options.checks - Zod checks.
+ * @param checks - Zod checks.
  * @returns A Zod string schema with required or optional validation.
  */
 export function formString(
@@ -571,7 +570,14 @@ export function formString(
  * @param options.allowEmpty - Indicates whether the `toObject()` method on the `data` form state
  *                             property should keep an empty string value (default: `true`).
  * @param options.error - Optional custom error message for required validation.
- * @param options.checks - Optional Zod checks.
+ * @param options.normalize - Optional Unicode normalization form to apply to the string value
+ *                            before validation (default: `undefined`).
+ *
+ *                            ```
+ *                            // 'n' + ~ [combining tilde] (length 2) is normalized to a single 'ñ' (length 1)
+ *                            z.formString({ normalize: 'NFC' }).parse('ñ'); // → 'ñ'
+ *                            ```
+ * @param checks - Optional Zod checks.
  * @returns A Zod string schema with required or optional validation.
  */
 export function formString(
@@ -586,14 +592,19 @@ export function formString(
   first?: FormStringOptions | z.core.CheckFn<string> | z.core.$ZodCheck<string>,
   ...rest: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]
 ) {
-  let options: { required?: boolean; allowEmpty?: boolean; error?: string };
+  let options: {
+    required?: boolean;
+    allowEmpty?: boolean;
+    error?: string;
+    normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
+  };
   let checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[] = [];
 
   if (first === undefined) {
     options = {};
   } else if (
     typeof first === 'object' &&
-    ('required' in first || 'allowEmpty' in first || 'error' in first)
+    ('required' in first || 'allowEmpty' in first || 'error' in first || 'normalize' in first)
   ) {
     options = first;
     checks = rest;
@@ -629,7 +640,7 @@ export function formString(
           input: value,
         });
       }
-      return value as string;
+      return options.normalize ? (value as string).normalize(options.normalize) : (value as string);
     }),
     options.required
       ? zodString

@@ -179,9 +179,10 @@ export type FormDateOptions =
   | { required?: boolean; dateFormat?: FormDateFormat; error?: string; dateFormatError: string };
 
 export type FormStringOptions =
-  | { required: boolean; allowEmpty?: boolean; error?: string }
-  | { required?: boolean; allowEmpty: boolean; error?: string }
-  | { required?: boolean; allowEmpty?: boolean; error: string };
+  | { required: boolean; allowEmpty?: boolean; error?: string; normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD' }
+  | { required?: boolean; allowEmpty: boolean; error?: string; normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD' }
+  | { required?: boolean; allowEmpty?: boolean; error: string; normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD' }
+  | { required?: boolean; allowEmpty?: boolean; error?: string; normalize: 'NFC' | 'NFD' | 'NFKC' | 'NFKD' };
 
 export type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> =
   P extends FormPath<T> ? FormPathValue<T, P> : unknown;

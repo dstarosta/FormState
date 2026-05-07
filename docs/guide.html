@@ -477,7 +477,9 @@ const data = createState(schema, { name: 'John', info: { age: 24 } });</code></p
           <p>
             The <code>updateState</code> method is used to update partial state graphs and assigning
             them back using the <code>change</code> method. The syntax is very similar to the
-            <code>produce</code> method in the <code>Immer</code> library.
+            <code>produce</code> method in the
+            <a href="https://immerjs.github.io/immer/produce#example" target="_blank">Immer</a>
+            library.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
@@ -1135,6 +1137,19 @@ type Schema = z.infer&lt;typeof schema&gt;;
                 <td class="prop-desc">
                   Whether <code>toObject()</code> retains an empty string in the output. Set to
                   <code>false</code> to strip blank fields from submitted data.
+                </td>
+              </tr>
+              <tr>
+                <td><code>normalize</code></td>
+                <td>
+                  <code>'NFC'&nbsp;|</code><br /><code>'NFD'&nbsp;|</code><br /><code
+                    >'NFKC'&nbsp;|</code
+                  ><br /><code>'NFKD'</code>
+                </td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Unicode normalization form to apply to the string before validation, equivalent to
+                  <code>String.prototype.normalize(form)</code>. Omit to skip normalization.
                 </td>
               </tr>
             </tbody>

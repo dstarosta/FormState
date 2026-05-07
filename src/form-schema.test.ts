@@ -140,6 +140,14 @@ describe('form schema', () => {
     expect(requiredStringSchema.safeParse(null).success).toBe(false);
     expect(requiredStringSchema.safeParse('').success).toBe(false);
     expect(requiredStringSchema.safeParse('test').success).toBe(true);
+
+    const nfcSchema = z.formString({ normalize: 'NFC' });
+    const decomposed = '\u006E\u0303'; // 'n' + combining tilde, length 2
+    const composed = '\u00F1';            // single 'n with tilde', length 1
+    expect(nfcSchema.safeParse(decomposed).data).toBe(composed);
+
+    const nfdSchema = z.formString({ normalize: 'NFD' });
+    expect(nfdSchema.safeParse(composed).data).toBe(decomposed);
   });
 
   it('formValues should not allow empty values', () => {
