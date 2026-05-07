@@ -87,14 +87,22 @@ type FormStringOptions = {
   required: boolean;
   allowEmpty?: boolean;
   error?: string;
+  normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
 } | {
   required?: boolean;
   allowEmpty: boolean;
   error?: string;
+  normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
 } | {
   required?: boolean;
   allowEmpty?: boolean;
   error: string;
+  normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
+} | {
+  required?: boolean;
+  allowEmpty?: boolean;
+  error?: string;
+  normalize: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
 };
 type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> = P extends FormPath<T> ? FormPathValue<T, P> : unknown;
 type Selector<S, R> = (state: S) => R;
@@ -1631,7 +1639,6 @@ declare const advanced: {
  * @param options - Options for the boolean schema.
  * @param options.required - Indicates whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
- * @param options.checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for boolean values.
  */
 declare function formBoolean(options?: FormTypeOptions): z.ZodMiniPipe<z.ZodMiniTransform<boolean | "", unknown>, z.ZodMiniBoolean<boolean> | z.ZodMiniUnion<readonly [z.ZodMiniBoolean<boolean>, z.ZodMiniLiteral<"">]>>;
@@ -1646,7 +1653,7 @@ declare function formDate(): z.ZodMiniPipe<z.ZodMiniTransform<string | Date>, z.
  * Zod schema for a control with a date value that can optionally be an empty string.
  *
  * @param zodDate - The Zod date schema.
- * @param options.checks - Zod checks.
+ * @param checks - Zod checks.
  * @returns A Zod schema with preprocessing for date values.
  */
 declare function formDate(...checks: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[]): z.ZodMiniPipe<z.ZodMiniTransform<string | Date>, z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>>;
@@ -1659,7 +1666,7 @@ declare function formDate(...checks: readonly (z.core.CheckFn<Date> | z.core.$Zo
  * @param options.error - Optional custom error message for required validation.
  * @param options.dateFormat - Optional date format string (default: 'yyyy-MM-dd').
  * @param options.dateFormatError - Optional custom error for invalid dates.
- * @param options.checks - Optional Zod checks.
+ * @param checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for date values.
  */
 declare function formDate(options: FormDateOptions, ...checks: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[]): z.ZodMiniPipe<z.ZodMiniTransform<string | Date>, z.ZodMiniUnion<readonly [z.ZodMiniDate<Date>, z.ZodMiniString<string>]>>;
@@ -1674,7 +1681,7 @@ declare function formNumber(): z.ZodMiniPipe<z.ZodMiniTransform<number | ''>, z.
  * Zod schema for a control with a numeric value that can optionally be an empty string.
  *
  * @param zodNumber - The Zod number schema.
- * @param options.checks - Zod checks.
+ * @param checks - Zod checks.
  * @returns A Zod schema with preprocessing for number values.
  */
 declare function formNumber(...checks: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[]): z.ZodMiniPipe<z.ZodMiniTransform<number | ''>, z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<''>]>>;
@@ -1685,7 +1692,7 @@ declare function formNumber(...checks: readonly (z.core.CheckFn<number> | z.core
  * @param options - Options for the number schema.
  * @param options.required - Whether a value is required (default: `false`).
  * @param options.error - Optional custom error message for required validation.
- * @param options.checks - Optional Zod checks.
+ * @param checks - Optional Zod checks.
  * @returns A Zod schema with preprocessing for number values.
  */
 declare function formNumber(options: FormTypeOptions, ...checks: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[]): z.ZodMiniPipe<z.ZodMiniTransform<number | ''>, z.ZodMiniNumber<number> | z.ZodMiniUnion<readonly [z.ZodMiniNumber<number>, z.ZodMiniLiteral<''>]>>;
@@ -1698,7 +1705,7 @@ declare function formString(): z.ZodMiniPipe<z.ZodMiniTransform<string>, z.ZodMi
 /**
  * Zod schema for a control with a string value that can optionally be empty.
  *
- * @param options.checks - Zod checks.
+ * @param checks - Zod checks.
  * @returns A Zod string schema with required or optional validation.
  */
 declare function formString(...checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]): z.ZodMiniPipe<z.ZodMiniTransform<string>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<''>]>>;
@@ -1710,7 +1717,14 @@ declare function formString(...checks: readonly (z.core.CheckFn<string> | z.core
  * @param options.allowEmpty - Indicates whether the `toObject()` method on the `data` form state
  *                             property should keep an empty string value (default: `true`).
  * @param options.error - Optional custom error message for required validation.
- * @param options.checks - Optional Zod checks.
+ * @param options.normalize - Optional Unicode normalization form to apply to the string value
+ *                            before validation (default: `undefined`).
+ *
+ *                            ```
+ *                            // 'n' + ~ [combining tilde] (length 2) is normalized to a single 'ñ' (length 1)
+ *                            z.formString({ normalize: 'NFC' }).parse('ñ'); // → 'ñ'
+ *                            ```
+ * @param checks - Optional Zod checks.
  * @returns A Zod string schema with required or optional validation.
  */
 declare function formString(options: FormStringOptions, ...checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]): z.ZodMiniPipe<z.ZodMiniTransform<string>, z.ZodMiniString<string> | z.ZodMiniUnion<readonly [z.ZodMiniString<string>, z.ZodMiniLiteral<''>]>>;
@@ -2209,7 +2223,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
