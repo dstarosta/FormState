@@ -180,7 +180,7 @@ describe('MaskedInput', () => {
     });
   });
 
-  describe('slotChar', () => {
+  describe('placeholderChar', () => {
     it('uses _ when not specified', () => {
       render(<MaskedInput mask="999-9999" />);
 
@@ -188,13 +188,13 @@ describe('MaskedInput', () => {
     });
 
     it('uses spaces when set to " "', () => {
-      render(<MaskedInput mask="999-9999" slotChar=" " />);
+      render(<MaskedInput mask="999-9999" placeholderChar=" " />);
 
       expect(getInput().placeholder).toBe('   -    ');
     });
 
-    it('shows slotChar at unfilled slots after typing', () => {
-      render(<MaskedInput mask="999-9999" slotChar=" " />);
+    it('shows placeholderChar at unfilled slots after typing', () => {
+      render(<MaskedInput mask="999-9999" placeholderChar=" " />);
 
       const input = getInput();
 
@@ -205,7 +205,7 @@ describe('MaskedInput', () => {
     });
 
     it('only fills positions not covered by placeholder', () => {
-      render(<MaskedInput mask="999-9999" placeholder="DDD" slotChar=" " />);
+      render(<MaskedInput mask="999-9999" placeholder="DDD" placeholderChar=" " />);
 
       expect(getInput().placeholder).toBe('DDD-    ');
     });
@@ -214,7 +214,12 @@ describe('MaskedInput', () => {
       const onChange = vi.fn();
 
       render(
-        <MaskedInput mask="999-9999" slotChar=" " defaultValue="555-1234" onChange={onChange} />
+        <MaskedInput
+          mask="999-9999"
+          placeholderChar=" "
+          defaultValue="555-1234"
+          onChange={onChange}
+        />
       );
 
       const input = getInput();
@@ -324,22 +329,19 @@ describe('MaskedInput', () => {
   });
 
   describe('rejected input', () => {
-    it.each(['a', 'Z', '@', '#', '!', '+', '-', '.', ' ', '\t'])(
-      'rejects %j in a 9 slot',
-      (ch) => {
-        const onChange = vi.fn();
+    it.each(['a', 'Z', '@', '#', '!', '+', '-', '.', ' ', '\t'])('rejects %j in a 9 slot', (ch) => {
+      const onChange = vi.fn();
 
-        render(<MaskedInput mask="999" onChange={onChange} />);
+      render(<MaskedInput mask="999" onChange={onChange} />);
 
-        const input = getInput();
+      const input = getInput();
 
-        setSelection(input, 0, 0);
-        fireBeforeInput(input, 'insertText', ch);
+      setSelection(input, 0, 0);
+      fireBeforeInput(input, 'insertText', ch);
 
-        expect(input.value).toBe('');
-        expect(onChange).not.toHaveBeenCalled();
-      }
-    );
+      expect(input.value).toBe('');
+      expect(onChange).not.toHaveBeenCalled();
+    });
 
     it.each(['0', '5', '9', '@', '#', '!', ' ', '\t'])('rejects %j in an a slot', (ch) => {
       const onChange = vi.fn();
@@ -881,6 +883,165 @@ describe('MaskedInput', () => {
       fireEvent(input, event);
 
       expect(event.defaultPrevented).toBe(true);
+    });
+  });
+
+  describe('cut (beforeinput deleteByCut)', () => {
+    it('clears the selected slots so the OS can copy the original to clipboard', () => {
+      render(<MaskedInput mask="999-9999" defaultValue="555-1234" />);
+
+      const input = getInput();
+
+      setSelection(input, 4, 8);
+      fireBeforeInput(input, 'deleteByCut');
+
+      expect(input.value).toBe('555-____');
+    });
+
+    it('does nothing when there is no selection', () => {
+      const onChange = vi.fn();
+
+      render(<MaskedInput mask="999-9999" defaultValue="555-1234" onChange={onChange} />);
+
+      const input = getInput();
+
+      setSelection(input, 5, 5);
+      fireBeforeInput(input, 'deleteByCut');
+
+      expect(input.value).toBe('555-1234');
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clipboard and history pass-through', () => {
+    it('does not block historyUndo', () => {
+      render(<MaskedInput mask="999" defaultValue="123" />);
+
+      const input = getInput();
+      const event = new InputEvent('beforeinput', {
+        inputType: 'historyUndo',
+        bubbles: true,
+        cancelable: true,
+      });
+
+      act(() => {
+        input.dispatchEvent(event);
+      });
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('does not block historyRedo', () => {
+      render(<MaskedInput mask="999" defaultValue="123" />);
+
+      const input = getInput();
+      const event = new InputEvent('beforeinput', {
+        inputType: 'historyRedo',
+        bubbles: true,
+        cancelable: true,
+      });
+
+      act(() => {
+        input.dispatchEvent(event);
+      });
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+  });
+
+  describe('native clear (search clear button, select-all + delete)', () => {
+    it('lets the browser clear when deleteContentBackward selects the full input', () => {
+      render(<MaskedInput mask="999-9999" type="search" defaultValue="555-1234" />);
+
+      const input = screen.getByRole<HTMLInputElement>('searchbox');
+
+      setSelection(input, 0, 8);
+      const event = new InputEvent('beforeinput', {
+        inputType: 'deleteContentBackward',
+        bubbles: true,
+        cancelable: true,
+      });
+
+      act(() => {
+        input.dispatchEvent(event);
+      });
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('still preventDefaults a non-full selection', () => {
+      render(<MaskedInput mask="999-9999" defaultValue="555-1234" />);
+
+      const input = getInput();
+
+      setSelection(input, 1, 6);
+      const event = new InputEvent('beforeinput', {
+        inputType: 'deleteContentBackward',
+        bubbles: true,
+        cancelable: true,
+      });
+
+      act(() => {
+        input.dispatchEvent(event);
+      });
+
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('clears all slots when the input value becomes empty', () => {
+      const onChange = vi.fn();
+
+      render(
+        <MaskedInput mask="999-9999" type="search" defaultValue="555-1234" onChange={onChange} />
+      );
+
+      const input = screen.getByRole<HTMLInputElement>('searchbox');
+
+      act(() => {
+        input.value = '';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      expect(input.value).toBe('');
+      expect(lastChange(onChange).target.value).toBe('');
+      expect(lastChange(onChange).unmaskedValue).toBe('');
+    });
+
+    it('does not fire when slots are already empty', () => {
+      const onChange = vi.fn();
+
+      render(<MaskedInput mask="999-9999" onChange={onChange} />);
+
+      const input = getInput();
+
+      act(() => {
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('does not fire onChange when readOnly', () => {
+      const onChange = vi.fn();
+
+      render(
+        <MaskedInput
+          mask="999-9999"
+          type="search"
+          defaultValue="555-1234"
+          readOnly
+          onChange={onChange}
+        />
+      );
+
+      const input = screen.getByRole<HTMLInputElement>('searchbox');
+
+      act(() => {
+        input.value = '';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      expect(onChange).not.toHaveBeenCalled();
     });
   });
 

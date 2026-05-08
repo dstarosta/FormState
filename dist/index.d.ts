@@ -2202,12 +2202,12 @@ interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
    * Use `' '` to keep the mask invisible until the user types into it
    * while still reserving the layout.
    */
-  slotChar?: '_' | ' ';
+  placeholderChar?: '_' | ' ';
   /**
    * Per-position fill characters shown at unfilled slots. Aligns with the
    * rendered mask (`?` markers stripped). Literal positions are ignored —
    * the mask's literal always wins. Slot positions not covered by the
-   * placeholder fall back to `slotChar`.
+   * placeholder fall back to `placeholderChar`.
    */
   placeholder?: string;
   /**
@@ -2246,9 +2246,9 @@ interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
  * If provided it must align with the rendered mask (i.e. with `?` markers
  * stripped). Literal positions in the placeholder are ignored — the mask's
  * literal character is always shown. Slot positions not covered by the
- * placeholder fall back to `slotChar`.
+ * placeholder fall back to `placeholderChar`.
  *
- * `slotChar` sets the fill character used at unfilled slot positions
+ * `placeholderChar` sets the fill character used at unfilled slot positions
  * when `placeholder` is not supplied (or is shorter than the rendered mask).
  * Allowed values are `'_'` (default) and `' '` — useful when the mask should
  * stay invisible until the user types into it.
@@ -2262,7 +2262,7 @@ interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
  *
  * Additional props:
  *   - `mask: string`
- *   - `slotChar?: '_' | ' '`
+ *   - `placeholderChar?: '_' | ' '`
  *   - `placeholder?: string`
  *   - `onChange?: (event: MaskedChangeEvent) => void`
  *
@@ -2271,7 +2271,7 @@ interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
 declare function MaskedInput({
   mask,
   type,
-  slotChar,
+  placeholderChar,
   placeholder,
   inputMode,
   value,

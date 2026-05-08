@@ -3461,13 +3461,14 @@ export default formConnect({
             <pre><code class="language-tsx">&lt;MaskedInput mask="99/99/9999" placeholder="DD/MM/YYYY" /&gt;</code></pre>
           </div>
           <p>
-            For slot positions not covered by <code>placeholder</code>, set <code>slotChar</code> to
-            <code>'_'</code> (default) or <code>' '</code>. A space keeps the mask visually
-            invisible until the user types into it, while still reserving the layout.
+            For slot positions not covered by <code>placeholder</code>, set
+            <code>placeholderChar</code> to <code>'_'</code> (default) or <code>' '</code>. A space
+            keeps the mask visually invisible until the user types into it, while still reserving
+            the layout.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">&lt;MaskedInput mask="(999) 999-9999" slotChar=" " /&gt;</code></pre>
+            <pre><code class="language-tsx">&lt;MaskedInput mask="(999) 999-9999" placeholderChar=" " /&gt;</code></pre>
           </div>
 
           <h4>Input type and mobile keyboard</h4>

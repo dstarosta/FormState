@@ -57,12 +57,12 @@ interface MaskedInputProps extends Omit<
    * Use `' '` to keep the mask invisible until the user types into it
    * while still reserving the layout.
    */
-  slotChar?: '_' | ' ';
+  placeholderChar?: '_' | ' ';
   /**
    * Per-position fill characters shown at unfilled slots. Aligns with the
    * rendered mask (`?` markers stripped). Literal positions are ignored —
    * the mask's literal always wins. Slot positions not covered by the
-   * placeholder fall back to `slotChar`.
+   * placeholder fall back to `placeholderChar`.
    */
   placeholder?: string;
   /**
@@ -102,7 +102,7 @@ type Slots = (string | null)[];
 
 const buildMaskInfo = (
   mask: string,
-  slotChar: string,
+  placeholderChar: string,
   placeholder: string | undefined
 ): MaskInfo => {
   const positions: MaskPosition[] = [];
@@ -113,11 +113,18 @@ const buildMaskInfo = (
       optional = true;
       continue;
     }
+
     const tokenPattern = TOKEN_PATTERNS[ch];
-    const placeholderChar = placeholder?.charAt(positions.length) || slotChar;
+
     positions.push(
       tokenPattern
-        ? { isSlot: true, pattern: tokenPattern, literal: null, placeholderChar, optional }
+        ? {
+            isSlot: true,
+            pattern: tokenPattern,
+            literal: null,
+            placeholderChar: placeholder?.charAt(positions.length) || placeholderChar,
+            optional,
+          }
         : { isSlot: false, pattern: null, literal: ch, placeholderChar: ch, optional }
     );
   }
@@ -254,9 +261,9 @@ const remapSlots = (prev: Slots, info: MaskInfo) => {
  * If provided it must align with the rendered mask (i.e. with `?` markers
  * stripped). Literal positions in the placeholder are ignored — the mask's
  * literal character is always shown. Slot positions not covered by the
- * placeholder fall back to `slotChar`.
+ * placeholder fall back to `placeholderChar`.
  *
- * `slotChar` sets the fill character used at unfilled slot positions
+ * `placeholderChar` sets the fill character used at unfilled slot positions
  * when `placeholder` is not supplied (or is shorter than the rendered mask).
  * Allowed values are `'_'` (default) and `' '` — useful when the mask should
  * stay invisible until the user types into it.
@@ -270,7 +277,7 @@ const remapSlots = (prev: Slots, info: MaskInfo) => {
  *
  * Additional props:
  *   - `mask: string`
- *   - `slotChar?: '_' | ' '`
+ *   - `placeholderChar?: '_' | ' '`
  *   - `placeholder?: string`
  *   - `onChange?: (event: MaskedChangeEvent) => void`
  *
@@ -279,7 +286,7 @@ const remapSlots = (prev: Slots, info: MaskInfo) => {
 export function MaskedInput({
   mask,
   type = 'text',
-  slotChar = '_',
+  placeholderChar = '_',
   placeholder,
   inputMode,
   value,
@@ -297,8 +304,8 @@ export function MaskedInput({
   const caretRef = useRef<number | null>(null);
 
   const info = useMemo(
-    () => buildMaskInfo(mask, slotChar, placeholder),
-    [mask, slotChar, placeholder]
+    () => buildMaskInfo(mask, placeholderChar, placeholder),
+    [mask, placeholderChar, placeholder]
   );
 
   const resolvedInputMode = inputMode ?? (/[*a]/.test(mask) ? undefined : 'numeric');
@@ -401,9 +408,8 @@ export function MaskedInput({
     }
 
     const handler = (event: InputEvent) => {
-      event.preventDefault();
-
       if (readOnly || disabled) {
+        event.preventDefault();
         return;
       }
 
@@ -418,28 +424,40 @@ export function MaskedInput({
         case 'insertReplacementText':
         case 'insertFromPaste':
         case 'insertFromDrop': {
+          event.preventDefault();
           const result = insertChars(current, info, start, end, data);
           commit(result.slots, result.caret);
           break;
         }
-        case 'deleteContentBackward': {
-          if (start === end) {
-            const idx = prevSlotIndex(info, start - 1);
-            if (idx !== -1) {
-              commit(clearRange(current, info, idx, idx + 1), idx);
-            }
-          } else {
-            commit(clearRange(current, info, start, end), start);
+        case 'deleteContentBackward':
+        case 'deleteContentForward':
+        case 'deleteByCut': {
+          // Chrome's search clear button and "select all + delete/cut" should
+          // let the browser handle the input. The useEffect listener takes
+          // care of the state sync.
+          if (start === 0 && end === info.length) {
+            return;
           }
-          break;
-        }
-        case 'deleteContentForward': {
-          if (start === end) {
-            const idx = nextSlotIndex(info, start);
-            if (idx !== -1) {
-              commit(clearRange(current, info, idx, idx + 1), start);
+          event.preventDefault();
+          if (event.inputType === 'deleteContentBackward') {
+            if (start === end) {
+              const idx = prevSlotIndex(info, start - 1);
+              if (idx !== -1) {
+                commit(clearRange(current, info, idx, idx + 1), idx);
+              }
+            } else {
+              commit(clearRange(current, info, start, end), start);
             }
-          } else {
+          } else if (event.inputType === 'deleteContentForward') {
+            if (start === end) {
+              const idx = nextSlotIndex(info, start);
+              if (idx !== -1) {
+                commit(clearRange(current, info, idx, idx + 1), start);
+              }
+            } else {
+              commit(clearRange(current, info, start, end), start);
+            }
+          } else if (start !== end) {
             commit(clearRange(current, info, start, end), start);
           }
           break;
@@ -447,6 +465,7 @@ export function MaskedInput({
         case 'deleteWordBackward':
         case 'deleteSoftLineBackward':
         case 'deleteHardLineBackward': {
+          event.preventDefault();
           const from = start === end ? 0 : start;
           commit(clearRange(current, info, from, end), from);
           break;
@@ -454,6 +473,7 @@ export function MaskedInput({
         case 'deleteWordForward':
         case 'deleteSoftLineForward':
         case 'deleteHardLineForward': {
+          event.preventDefault();
           const to = start === end ? info.length : end;
           commit(clearRange(current, info, start, to), start);
           break;
@@ -461,10 +481,23 @@ export function MaskedInput({
       }
     };
 
+    const inputHandler = () => {
+      if (readOnly || disabled || element.value !== '') {
+        return;
+      }
+      if (slotsRef.current.every((slot) => slot === null)) {
+        return;
+      }
+      const cleared: Slots = info.positions.map(() => null);
+      commit(cleared, 0);
+    };
+
     element.addEventListener('beforeinput', handler);
+    element.addEventListener('input', inputHandler);
 
     return () => {
       element.removeEventListener('beforeinput', handler);
+      element.removeEventListener('input', inputHandler);
     };
   }, [commit, info, readOnly, disabled]);
 
