@@ -3553,36 +3553,61 @@ describe('useFormState', () => {
       });
     });
 
-    it('should detect unstable listener function', () => {
-      vi.useFakeTimers();
-
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const actionMock = vi.fn();
+    it('should invoke the latest listener across rerenders with inline functions', async () => {
+      const actionMock = vi.fn<(marker: string, event: StateChangeEvent<Schema>) => void>();
 
       const { rerender } = render(
         <FormComponent
           initialValue="Tom"
           watch={false}
-          listener={(...args) => {
-            actionMock(...args);
+          listener={(event) => {
+            actionMock('first', event);
           }}
         />
       );
+
+      const nameInput = screen.getByLabelText('Name');
+
+      fireEvent.change(nameInput, { target: { value: 'John' } });
+
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          'first',
+          expect.objectContaining({
+            type: 'change',
+            data: expect.objectContaining({ name: 'John' }) as StateChangeEvent<Schema>['data'],
+          })
+        );
+      });
 
       rerender(
         <FormComponent
           initialValue="Tom"
           watch={false}
-          listener={(...args) => {
-            actionMock(...args);
+          listener={(event) => {
+            actionMock('second', event);
           }}
         />
       );
 
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      fireEvent.change(nameInput, { target: { value: 'Jane' } });
 
-      consoleWarnSpy.mockReset();
+      await waitFor(() => {
+        expect(actionMock).toHaveBeenCalledWith(
+          'second',
+          expect.objectContaining({
+            type: 'change',
+            data: expect.objectContaining({ name: 'Jane' }) as StateChangeEvent<Schema>['data'],
+          })
+        );
+      });
+
+      expect(actionMock).not.toHaveBeenCalledWith(
+        'first',
+        expect.objectContaining({
+          data: expect.objectContaining({ name: 'Jane' }) as StateChangeEvent<Schema>['data'],
+        })
+      );
     });
 
     it('should watch the changes', async () => {

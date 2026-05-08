@@ -7,6 +7,7 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 import testingLibrary from 'eslint-plugin-testing-library';
+import reactYouMightNotNeedAnEffect from 'eslint-plugin-react-you-might-not-need-an-effect';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 
@@ -24,6 +25,7 @@ export default defineConfig([
       react.configs.flat['jsx-runtime'],
       reactHooks.configs.flat.recommended,
       testingLibrary.configs['flat/dom'],
+      reactYouMightNotNeedAnEffect.configs.recommended,
       eslintConfigPrettier,
     ],
     languageOptions: {
@@ -67,6 +69,8 @@ export default defineConfig([
       // TS rules
       '@typescript-eslint/no-dynamic-delete': 'off', // mutable state objects cannot be replaced with Maps due to Zod and strongly typed paths
       '@typescript-eslint/unified-signatures': 'off', // allow various overloads
+      // You might not need a useEffect
+      'react-you-might-not-need-an-effect/no-event-handler': 'off', // handlers cannot be moved to a parent component outside the library
       // Annoying Sonar rules
       'sonarjs/cognitive-complexity': 'off', // reducers and schema visitors are difficult to break up into _readable_ small functions
       'sonarjs/function-return-type': 'off', // different return types (ex: discriminated unions) are not an issue

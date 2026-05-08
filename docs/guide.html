@@ -164,17 +164,15 @@ npm install github:dstarosta/FormState#v1.0.0</code></pre>
           <h2>ESLint</h2>
           <p>
             FormState ships an official ESLint plugin that catches common mistakes at development
-            time — unstable references, incorrect schema primitives, and unsafe password inputs.
-            <code>recommended</code> is the only available config and enables all rules.
+            time — incorrect schema primitives, <code>useWatch</code> return values as hook
+            dependencies, unsafe password inputs, and unstable debounced callbacks.
           </p>
           <p>
             The plugin requires <strong>ESLint 9.0 or greater</strong>, which introduced flat config
             as the default format.
           </p>
-          <p>
-            Add <code>formStatePlugin.configs.recommended</code> to the <code>extends</code> array
-            of your flat config:
-          </p>
+          <p>The only available config is <code>recommended</code>. It enables all the rules.</p>
+          <h3>Configuration (flat config only)</h3>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">javascript</span></div>
             <pre><code class="language-javascript">// eslint.config.js
@@ -254,22 +252,6 @@ export default defineConfig([
                   Enforces stable callback references in <code>change()</code> calls that set
                   <code>debounceIntervalMs</code>. An inline function resets the debounce timer on
                   every render, preventing the callback from ever firing.
-                </td>
-                <td>error</td>
-                <td></td>
-              </tr>
-              <tr>
-                <td>
-                  <a
-                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/stable-listener.md"
-                    target="_blank"
-                    ><code>stable-listener</code></a
-                  >
-                </td>
-                <td>
-                  Enforces stable listener references passed to <code>useListener()</code>. Inline
-                  functions create a new reference on every render, causing the subscription to
-                  unsubscribe and resubscribe continuously.
                 </td>
                 <td>error</td>
                 <td></td>
@@ -802,14 +784,14 @@ function JsonData({ data }: { data: SchemaDataObject&lt;FormSchema&gt; }) {
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { type StateChangeListener } from 'form-state';
 
-// Define once outside the component to keep the reference stable
+// Defined outside the component
 const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCount }) =&gt; {
   if (type === 'submit') {
     analytics.track('form_submit', { count: submitCount, name: data.name });
   }
 };
 
-// In your component:
+// In the component
 formHooks.useListener(listener);</code></pre>
           </div>
           <h3><span class="type-chip">DeepPartial&lt;T&gt;</span></h3>
@@ -3729,13 +3711,6 @@ formActions.change((path) =&gt; path.notes[index].text, e.target.value, {
             Subscribe to form state changes from inside a component without triggering extra
             re-renders.
           </p>
-          <div class="callout callout-warning">
-            <div class="callout-label">Warning</div>
-            <p>
-              The listener must be a stable reference — define it outside the component or wrap it
-              in <code>useCallback</code>.
-            </p>
-          </div>
 
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
