@@ -36,5 +36,6 @@ export {
 export { formatDate, safeParseDate } from './helpers/date-formatter';
 export { formDataEncode, submitForm } from './helpers/form-builder';
 export { FormResetBlocker } from './helpers/form-reset-blocker';
+export { MaskedInput, type MaskedChangeEvent } from './masked-input';
 export { SecureInput } from './secure-input';
 export * as convert from './helpers/value-converter';

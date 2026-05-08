@@ -63,7 +63,7 @@
           <a href="#readonly-disabled" class="nav-link">Readonly &amp; Disabled</a>
           <a href="#css-classes" class="nav-link">CSS Classes</a>
           <a href="#context" class="nav-link">Context &amp; Provider</a>
-          <a href="#secure-input" class="nav-link">SecureInput</a>
+          <a href="#input-controls" class="nav-link">Input Controls</a>
         </div>
         <div class="nav-section">
           <span class="nav-section-label">Advanced</span>
@@ -3392,9 +3392,149 @@ export default formConnect({
             </p>
           </div>
         </section>
-        <section class="section" id="secure-input">
+        <section class="section" id="input-controls">
           <div class="section-eyebrow">Features</div>
-          <h2>SecureInput</h2>
+          <h2>Input Controls</h2>
+          <p>
+            Drop-in input components that pair with <code>useFormState</code> for common
+            value-shaping needs.
+          </p>
+
+          <h3 class="super-h3">MaskedInput</h3>
+          <p>
+            <code>MaskedInput</code> restricts user input to a fixed pattern of slots and literal
+            characters and always renders the full mask in place. Typing into a literal position
+            jumps to the next slot; deleting a character clears the slot to its placeholder
+            character (e.g. <code>_</code>) without shifting the rest of the input.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { MaskedInput } from 'form-state';
+
+&lt;MaskedInput
+  mask="(999) 999-9999"
+  onChange={(event) =&gt; {
+    formActions.change('phone', event.target.value);
+    if (event.complete) {
+      // Fires on the change that fills every required slot
+    }
+  }}
+/&gt;</code></pre>
+          </div>
+
+          <h4>Mask tokens</h4>
+          <p>
+            The <code>mask</code> prop is composed of tokens (slots that accept user input) and
+            literal characters that are rendered as-is and skipped over while typing.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Token</th>
+                <th>Accepts</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>9</code></td>
+                <td>A single digit (<code>0</code>–<code>9</code>)</td>
+              </tr>
+              <tr>
+                <td><code>a</code></td>
+                <td>
+                  A single letter (<code>A</code>–<code>Z</code>, <code>a</code>–<code>z</code>)
+                </td>
+              </tr>
+              <tr>
+                <td><code>*</code></td>
+                <td>A single alphanumeric character</td>
+              </tr>
+              <tr>
+                <td><code>?</code></td>
+                <td>
+                  Marks every following position as optional — they accept input but are not
+                  required for <code>event.complete</code> to flip to <code>true</code>. Useful for
+                  trailing extensions like <code>(999) 999-9999? x99999</code>.
+                </td>
+              </tr>
+              <tr>
+                <td>any other character</td>
+                <td>
+                  Treated as a literal — parentheses, dashes, slashes, dots, commas, colons, spaces,
+                  etc.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>Customizing the placeholder</h4>
+          <p>
+            Slot positions display <code>_</code> by default. Use the <code>placeholder</code> prop
+            to override the character shown at unfilled slots — provide a string aligned with the
+            rendered mask. Literal positions in the placeholder are ignored; the mask's literal
+            always wins.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;MaskedInput mask="99/99/9999" placeholder="DD/MM/YYYY" /&gt;</code></pre>
+          </div>
+          <p>
+            For slot positions not covered by <code>placeholder</code>, set <code>slotChar</code> to
+            <code>'_'</code> (default) or <code>' '</code>. A space keeps the mask visually
+            invisible until the user types into it, while still reserving the layout.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;MaskedInput mask="(999) 999-9999" slotChar=" " /&gt;</code></pre>
+          </div>
+
+          <h4>Input type and mobile keyboard</h4>
+          <p>
+            <code>type</code> is constrained to <code>'text'</code> (default) or
+            <code>'search'</code> — types that respect the formatted mask string. Other native types
+            like <code>number</code> or <code>email</code> would strip mask literals or apply
+            conflicting validation, so they are intentionally not allowed.
+          </p>
+          <p>
+            <code>inputMode</code> is auto-detected from the mask: a digit-only mask (no
+            <code>a</code> or <code>*</code> tokens) gets <code>inputMode="numeric"</code> so mobile
+            users see the number pad without any extra config. Pass <code>inputMode</code>
+            explicitly to override.
+          </p>
+
+          <h4>Value semantics</h4>
+          <p>
+            <code>value</code>, <code>defaultValue</code>, and <code>onChange</code> all use the
+            formatted string with placeholder characters at unfilled slots — exactly what is
+            rendered in the DOM. The one exception: when no slot has been filled, the value is the
+            empty string (so a freshly-rendered field doesn't submit a placeholder template through
+            <code>FormData</code>).
+          </p>
+          <ul>
+            <li>Empty: <code>""</code> (browser shows the empty mask via the HTML placeholder)</li>
+            <li>Partial: <code>"(555) 1__-____"</code></li>
+            <li>
+              Complete: <code>"(555) 123-4567"</code> — the <code>onChange</code> event fires with
+              <code>event.complete === true</code> on the transition
+            </li>
+          </ul>
+          <p>
+            The <code>onChange</code> event also exposes <code>event.unmaskedValue</code> — just the
+            user-entered characters with all literals and unfilled slot placeholders stripped.
+            Useful when you want to store or submit the raw digits/letters without the mask.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">&lt;MaskedInput
+  mask="(999) 999-9999"
+  onChange={(event) =&gt; {
+    // event.target.value   = "(555) 123-4567"
+    // event.unmaskedValue  = "5551234567"
+  }}
+/&gt;</code></pre>
+          </div>
+
+          <h3 class="super-h3">SecureInput</h3>
           <p>
             <code>SecureInput</code> is a drop-in password component that
             <strong>never stores the real value in the DOM</strong>. It shows bullets visually but
@@ -5146,7 +5286,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <tbody>
               <tr>
                 <td>Bundle size (gzipped)</td>
-                <td>~15 KB <sup>1</sup></td>
+                <td>~16 KB <sup>1</sup></td>
                 <td>~13 KB</td>
                 <td>~10 KB</td>
                 <td>~15 KB</td>
@@ -5306,6 +5446,14 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
               <tr>
                 <td>Built-in readonly / disabled mode</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Built-in input masking</td>
                 <td>✅</td>
                 <td>🛑</td>
                 <td>🛑</td>

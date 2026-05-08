@@ -7,11 +7,38 @@ interface SecureInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
   'onChange' | 'type' | 'value' | 'defaultValue'
 > {
+  /**
+   * Visual rendering of the input. `'text'` shows the bullet mask in the
+   * DOM; `'password'` lets the browser apply its own password-style mask
+   * on top. Defaults to `'text'`.
+   */
   type?: 'text' | 'password';
+  /**
+   * Controlled value — the real plaintext. Never appears in the DOM; it is
+   * mirrored visually as bullets of equal length.
+   */
   value?: string;
+  /**
+   * Initial plaintext value for uncontrolled usage.
+   */
   defaultValue?: string;
+  /**
+   * Fires on every edit with a synthetic event whose `target.value` is the
+   * masked bullet string. Use {@link onSecureChange} to receive the real
+   * plaintext.
+   */
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  /**
+   * Fires on every edit with the real plaintext value. Wire this to your
+   * form state — the DOM never sees the plaintext, so neither does the
+   * standard `onChange`.
+   */
   onSecureChange?: (value: string) => void;
+  /**
+   * Fires on blur with the real plaintext value. Useful for `touch`-on-blur
+   * form-state patterns where you want to mark the field touched alongside
+   * the latest value.
+   */
   onSecureBlur?: (value: string) => void;
 }
 
