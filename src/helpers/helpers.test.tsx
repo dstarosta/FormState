@@ -25,6 +25,7 @@ import {
   toString,
   asBoolean,
   asNumber,
+  asDateString,
 } from './value-converter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { debounce } from './debouncer';
@@ -834,6 +835,19 @@ describe('helpers', () => {
         expect(asNumber('')).toBe(0);
         expect(asNumber('', 1)).toBe(1);
         expect(asNumber('', -1.2451)).toBe(-1.2451);
+      });
+    });
+
+    describe('asDateString', () => {
+      it('converts a valid Date value', () => {
+        expect(asDateString(new Date(2022, 1, 28))).toBe('2022-02-28');
+        expect(asDateString(new Date(2022, 21, 28))).toBe('2023-10-28');
+        expect(asDateString(new Date('invalid'))).toBe('Invalid Date');
+      });
+
+      it('passes a string value through', () => {
+        expect(asDateString('2022-02-28')).toBe('2022-02-28');
+        expect(asDateString('Invalid Date')).toBe('Invalid Date');
       });
     });
   });

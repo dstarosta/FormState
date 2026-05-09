@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 
-import type { FieldRange, FormStatePath } from '../types/form-types';
+import type { FieldRange, FormDateFormat, FormStatePath } from '../types/form-types';
 import { toUTC } from './date-formatter';
 
 // There are 9 distinct wrapper types unwrapped by getBaseType; 20 allows each to appear
@@ -208,6 +208,19 @@ export const getBaseType = (value: unknown) => {
 
 export function getSchemaType(schema: z.ZodMiniType, path: string) {
   return getSchema(schema, path, true).type;
+}
+
+export function getDateFormat(schema: z.ZodMiniType, path: string) {
+  const pathSchema = getSchema(schema, path, false);
+  const meta = z.globalRegistry.get(pathSchema);
+  const formatMeta = meta?.['format'];
+
+  const format: FormDateFormat =
+    typeof formatMeta === 'string' && formatMeta.length === 10
+      ? (formatMeta as FormDateFormat)
+      : 'yyyy-MM-dd';
+
+  return format;
 }
 
 export function allowEmptyString(schema: z.ZodMiniType, path: string) {

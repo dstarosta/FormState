@@ -59,7 +59,7 @@ describe('useFormState', () => {
             .with(z.describe('Email')),
           birthDate: z
             .formDate(
-              { dateFormat: 'MM/dd/yyyy' },
+              { dateFormat: 'MM-dd-yyyy' },
               z.gte(new Date(2020, 0, 1), 'Invalid date range'),
               z.lte(new Date(2039, 11, 31), 'Invalid date range')
             )
@@ -407,7 +407,7 @@ describe('useFormState', () => {
 
       act(() => {
         change((path) => path.info.age, 42);
-        change((path) => path.info.birthDate, '12/31/2020');
+        change((path) => path.info.birthDate, '12-31-2020');
       });
 
       const { formState, formStatus } = result.current;
@@ -730,7 +730,7 @@ describe('useFormState', () => {
 
       expect(apiData.name).toBe('John');
       expect(apiData.info.age).toBe(30);
-      expect(apiData.info.birthDate).toBeInstanceOf(Date);
+      expect(apiData.info.birthDate).toBe('12-31-2020');
       expect(apiData.info.email).toBeUndefined();
       expect(apiData.tags).toHaveLength(2);
       expect(apiData.tags[0]).toBe('a');
@@ -739,8 +739,8 @@ describe('useFormState', () => {
       expect(apiData.info.uuid).toBeUndefined();
       expect(apiData.isActive).toBe(true);
       expect(apiData.version).toBe(0);
-      expect(apiData.registeredOn).toStrictEqual(new Date(2020, 5, 30));
-      expect(apiData.updateDates).toStrictEqual([new Date(2019, 11, 12), new Date(2020, 3, 15)]);
+      expect(apiData.registeredOn).toBe('06/30/2020');
+      expect(apiData.updateDates).toStrictEqual(['2019-12-12', '2020-04-15']);
       expect(apiData.previousVersions).toBeUndefined();
       expect(apiData.specialNumber).toBe(Math.PI);
 
@@ -800,7 +800,7 @@ describe('useFormState', () => {
       'info.age': { type: 'range', format: 'integer', min: 1, max: undefined },
       'info.birthDate': {
         type: 'range',
-        format: 'MM/dd/yyyy',
+        format: 'MM-dd-yyyy',
         min: new Date(Date.UTC(2020, 0, 1)),
         max: new Date(Date.UTC(2039, 11, 31)),
       },
@@ -1000,7 +1000,7 @@ describe('useFormState', () => {
       });
       expect(formState.ranges.get((path) => path.info.birthDate)).toStrictEqual({
         type: 'range',
-        format: 'MM/dd/yyyy',
+        format: 'MM-dd-yyyy',
         min: new Date('2020-01-01'),
         max: new Date('2039-12-31'),
       });
@@ -1088,7 +1088,7 @@ describe('useFormState', () => {
         });
         expect(state.ranges.get((path) => path.info.birthDate)).toStrictEqual({
           type: 'range',
-          format: 'MM/dd/yyyy',
+          format: 'MM-dd-yyyy',
           min: new Date('2020-01-01'),
           max: new Date('2039-12-31'),
         });

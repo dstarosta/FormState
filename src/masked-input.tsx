@@ -9,16 +9,33 @@ const TOKEN_PATTERNS: Record<string, RegExp> = {
 };
 
 /**
+ * `React.FocusEvent` augmented with a {@link MaskedFocusEvent.complete}
+ * flag and an {@link MaskedFocusEvent.unmaskedValue} string carrying just
+ * the user-entered characters.
+ */
+export interface MaskedFocusEvent extends React.FocusEvent<HTMLInputElement> {
+  /**
+   * `true` if every required mask slot in the mask is filled. otherwise `false`.
+   * Optional slots can be unfilled.
+   */
+  complete: boolean;
+  /**
+   * The user-entered characters concatenated in order, with all literals
+   * and unfilled slot placeholders stripped. For mask `"(999) 999-9999"`
+   * and value `"(555) 123-____"`, this is `"555123"`.
+   */
+  unmaskedValue: string;
+}
+
+/**
  * `React.ChangeEvent` augmented with a {@link MaskedChangeEvent.complete}
  * flag and an {@link MaskedChangeEvent.unmaskedValue} string carrying just
  * the user-entered characters.
  */
 export interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
   /**
-   * `true` only on the change that transitions the field from incomplete
-   * to complete (every required slot just became filled). Stays `false` on
-   * subsequent edits while the field remains complete, and on edits to
-   * optional positions defined with `?` in the mask.
+   * `true` if every required slot in the mask is filled. otherwise `false`.
+   * Optional slots can be unfilled.
    */
   complete: boolean;
   /**
@@ -31,7 +48,7 @@ export interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
 
 interface MaskedInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
-  'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'
+  'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'
 > {
   /**
    * Mask pattern. Tokens accept user input — `9` (digit), `a` (letter),
@@ -76,10 +93,18 @@ interface MaskedInputProps extends Omit<
    */
   defaultValue?: string;
   /**
+   * Fires when the control loses focus. The event's `target.value` is
+   * the formatted mask (or `""` when no slot is filled).
+   * `event.unmaskedValue` is the raw user-entered characters in order.
+   * `event.complete` is `true` if all the required mask slots are
+   * filled.
+   */
+  onBlur?: (event: MaskedFocusEvent) => void;
+  /**
    * Fires on every edit. The event's `target.value` is the formatted mask
    * (or `""` when no slot is filled). `event.unmaskedValue` is the raw
-   * user-entered characters in order. `event.complete` is `true` on the
-   * change that transitions the field to complete.
+   * user-entered characters in order. `event.complete` is `true` if all
+   * the required mask slots are filled.
    */
   onChange?: (event: MaskedChangeEvent) => void;
 }
@@ -268,10 +293,11 @@ const remapSlots = (prev: Slots, info: MaskInfo) => {
  * Allowed values are `'_'` (default) and `' '` — useful when the mask should
  * stay invisible until the user types into it.
  *
- * `value`, `defaultValue` and `onChange` all use the formatted string with
- * placeholder characters at unfilled slots, matching what is rendered in the
- * DOM. The `onChange` event has an extra `complete` boolean that is `true`
- * on the change that transitions the field from incomplete to complete.
+ * `value`, `defaultValue`, `onBlur` and `onChange` all use the formatted
+ * string with placeholder characters at unfilled slots, matching what is
+ * rendered in the DOM. The `onBlur` and `onChange` event has an extra
+ * `complete` boolean that is `true` when all the required mask slots are
+ * filled.
  *
  * @param props - see: {@link React.InputHTMLAttributes | InputHTMLAttributes}
  *
@@ -279,6 +305,7 @@ const remapSlots = (prev: Slots, info: MaskInfo) => {
  *   - `mask: string`
  *   - `placeholderChar?: '_' | ' '`
  *   - `placeholder?: string`
+ *   - `onBlur?: (event: MaskedFocusEvent) => void`
  *   - `onChange?: (event: MaskedChangeEvent) => void`
  *
  * @returns The component instance.
@@ -291,8 +318,8 @@ export function MaskedInput({
   inputMode,
   value,
   defaultValue,
-  onChange,
   onBlur,
+  onChange,
   onFocus,
   onClick,
   name,
@@ -334,7 +361,6 @@ export function MaskedInput({
   const formatted = formatSlots(slots, info);
   const displayed = formatted === info.empty ? '' : formatted;
 
-  const wasCompleteRef = useRef(slotsAreComplete(slots, info));
   const callbacksRef = useRef({ onChange, onBlur });
   const slotsRef = useRef(slots);
 
@@ -381,7 +407,7 @@ export function MaskedInput({
         target: { value: nextValue, name } as EventTarget & HTMLInputElement,
         currentTarget: { value: nextValue, name } as EventTarget & HTMLInputElement,
         nativeEvent: new Event('change'),
-        complete: complete && !wasCompleteRef.current,
+        complete,
         unmaskedValue,
         bubbles: true,
         preventDefault: () => {},
@@ -392,8 +418,6 @@ export function MaskedInput({
       } as MaskedChangeEvent;
 
       callbacksRef.current.onChange?.(event);
-
-      wasCompleteRef.current = complete;
     },
     [isControlled, info, name]
   );
@@ -538,6 +562,15 @@ export function MaskedInput({
     }
   };
 
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    const blurEvent = Object.assign(event, {
+      complete: slotsAreComplete(slotsRef.current, info),
+      unmaskedValue: slotsRef.current.filter((ch): ch is string => ch !== null).join(''),
+    });
+
+    onBlur?.(blurEvent);
+  };
+
   const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
     onFocus?.(event);
     requestAnimationFrame(snapCaretToSlot);
@@ -561,7 +594,7 @@ export function MaskedInput({
       value={displayed}
       onChange={() => {}}
       onPaste={handlePaste}
-      onBlur={onBlur}
+      onBlur={handleBlur}
       onFocus={handleFocus}
       onClick={handleClick}
     />

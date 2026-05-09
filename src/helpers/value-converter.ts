@@ -189,3 +189,22 @@ export const asBoolean = (value: boolean | '', defaultValue: boolean = false) =>
  */
 export const asNumber = (value: number | '', defaultValue: number = 0) =>
   typeof value === 'number' ? value : defaultValue;
+
+/**
+ * Returns the value represented by a `Date | string` type.
+ *
+ * @param value - The provided value.
+ * @param dateFormat - The resulting date format in the form string notation (only applied to `string` values).
+ * @return The `string` value containing the Date value.
+ */
+export const asDateString = (value: Date | string, dateFormat: FormDateFormat = 'yyyy-MM-dd') => {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (!isValidDate(value)) {
+    return value.toString();
+  }
+
+  return formatDate(value, dateFormat);
+};

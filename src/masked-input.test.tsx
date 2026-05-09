@@ -1,10 +1,13 @@
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 
-import { MaskedInput, type MaskedChangeEvent } from './masked-input';
+import { MaskedInput, type MaskedChangeEvent, type MaskedFocusEvent } from './masked-input';
 
 const lastChange = (mock: ReturnType<typeof vi.fn>) =>
   mock.mock.calls.at(-1)?.[0] as MaskedChangeEvent;
+
+const lastBlur = (mock: ReturnType<typeof vi.fn>) =>
+  mock.mock.calls.at(-1)?.[0] as MaskedFocusEvent;
 
 const getInput = () => screen.getByRole<HTMLInputElement>('textbox');
 
@@ -451,7 +454,7 @@ describe('MaskedInput', () => {
       expect(event.target.value).toBe('123 x__');
     });
 
-    it('does not flag complete on subsequent edits to optional slots', () => {
+    it('keeps complete=true on edits to optional slots while required slots stay filled', () => {
       const onChange = vi.fn();
 
       render(<MaskedInput mask="999? x99" defaultValue="123 x__" onChange={onChange} />);
@@ -463,7 +466,7 @@ describe('MaskedInput', () => {
       setSelection(input, 7, 7);
       fireBeforeInput(input, 'insertText', '5');
 
-      expect(onChange.mock.calls.every(([event]) => !(event as MaskedChangeEvent).complete)).toBe(
+      expect(onChange.mock.calls.every(([event]) => (event as MaskedChangeEvent).complete)).toBe(
         true
       );
     });
@@ -1253,7 +1256,7 @@ describe('MaskedInput', () => {
       );
     });
 
-    it('is false on edits that keep the field complete (no transition)', () => {
+    it('stays true on edits that keep the field complete', () => {
       const onChange = vi.fn();
 
       render(<MaskedInput mask="999" defaultValue="123" onChange={onChange} />);
@@ -1264,7 +1267,7 @@ describe('MaskedInput', () => {
       fireBeforeInput(input, 'insertText', '9');
 
       const event = lastChange(onChange);
-      expect(event.complete).toBe(false);
+      expect(event.complete).toBe(true);
     });
 
     it('is true again after re-completing from an incomplete state', () => {
@@ -1386,6 +1389,97 @@ describe('MaskedInput', () => {
       expect(() => fireEvent.blur(input)).not.toThrow();
       expect(() => fireEvent.focus(input)).not.toThrow();
       expect(() => fireEvent.click(input)).not.toThrow();
+    });
+  });
+
+  describe('blur event extensions', () => {
+    it('exposes complete=true when every required slot is filled', () => {
+      const onBlur = vi.fn();
+
+      render(<MaskedInput mask="999" defaultValue="123" onBlur={onBlur} />);
+
+      fireEvent.blur(getInput());
+
+      expect(lastBlur(onBlur).complete).toBe(true);
+    });
+
+    it('exposes complete=false when only some required slots are filled', () => {
+      const onBlur = vi.fn();
+
+      render(<MaskedInput mask="999" defaultValue="12_" onBlur={onBlur} />);
+
+      fireEvent.blur(getInput());
+
+      expect(lastBlur(onBlur).complete).toBe(false);
+    });
+
+    it('exposes complete=true when only required slots (not optional) are filled', () => {
+      const onBlur = vi.fn();
+
+      render(<MaskedInput mask="999? x99" defaultValue="123 x__" onBlur={onBlur} />);
+
+      fireEvent.blur(getInput());
+
+      expect(lastBlur(onBlur).complete).toBe(true);
+    });
+
+    it('exposes the unmasked value of just the typed characters', () => {
+      const onBlur = vi.fn();
+
+      render(<MaskedInput mask="(999) 999-9999" defaultValue="(555) 123-4567" onBlur={onBlur} />);
+
+      fireEvent.blur(getInput());
+
+      expect(lastBlur(onBlur).unmaskedValue).toBe('5551234567');
+    });
+
+    it('exposes an empty unmasked value when no slots are filled', () => {
+      const onBlur = vi.fn();
+
+      render(<MaskedInput mask="999-9999" onBlur={onBlur} />);
+
+      fireEvent.blur(getInput());
+
+      expect(lastBlur(onBlur).unmaskedValue).toBe('');
+    });
+
+    it('reflects the latest typed-in state, not the initial state', () => {
+      const onBlur = vi.fn();
+
+      render(<MaskedInput mask="999" onBlur={onBlur} />);
+
+      const input = getInput();
+
+      setSelection(input, 0, 0);
+      fireBeforeInput(input, 'insertText', '1');
+      setSelection(input, 1, 1);
+      fireBeforeInput(input, 'insertText', '2');
+      setSelection(input, 2, 2);
+      fireBeforeInput(input, 'insertText', '3');
+
+      fireEvent.blur(input);
+
+      const event = lastBlur(onBlur);
+      expect(event.complete).toBe(true);
+      expect(event.unmaskedValue).toBe('123');
+    });
+
+    it('preserves SyntheticEvent prototype methods on the blur event', () => {
+      const onBlur = vi.fn();
+
+      render(<MaskedInput mask="999" onBlur={onBlur} />);
+
+      fireEvent.blur(getInput());
+
+      const event = lastBlur(onBlur);
+      expect(typeof event.preventDefault).toBe('function');
+      expect(typeof event.stopPropagation).toBe('function');
+      expect(typeof event.persist).toBe('function');
+      expect(typeof event.isDefaultPrevented).toBe('function');
+      expect(typeof event.isPropagationStopped).toBe('function');
+      expect(() => {
+        event.preventDefault();
+      }).not.toThrow();
     });
   });
 

@@ -24,6 +24,8 @@ type PathValue<T, P extends string> = P extends keyof T ? T[P] : P extends `${in
 type IsUnion<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
 type Flatten<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 type ReplaceEmptyWithUndefined<T> = T extends '' ? undefined : T;
+type DateToString<T> = T extends Date ? string : T extends (infer Item)[] ? DateToString<Item>[] : T extends object ? { [K in keyof T]: DateToString<T[K]> } : T;
+type NormalizePrimitives<T> = DateToString<ReplaceEmptyWithUndefined<T>>;
 type RangeOf<T> = undefined | Date | number | (IsUnion<T, Date | string> extends true ? Date | string : never) | (IsUnion<T, number | ''> extends true ? number | '' : never);
 type ImmutablePrimitive = undefined | null | boolean | string | number | symbol | Date | Error | Function | RegExp | Promise<unknown>;
 type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
@@ -273,7 +275,7 @@ type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
 /**
  * Type of schema data with stripped empty literals from union types.
  */
-type SchemaDataObject<T> = T extends ImmutablePrimitive ? ReplaceEmptyWithUndefined<T> : T extends unknown[] ? T extends (infer Item)[] ? SchemaDataObject<ReplaceEmptyWithUndefined<Item>>[] : T : Flatten<{ [K in keyof T as T[K] extends object ? K : ReplaceEmptyWithUndefined<T[K]> extends never ? never : undefined extends ReplaceEmptyWithUndefined<T[K]> ? never : K]: T[K] extends object ? SchemaDataObject<T[K]> : ReplaceEmptyWithUndefined<T[K]> } & { [K in keyof T as T[K] extends object ? never : ReplaceEmptyWithUndefined<T[K]> extends never ? never : undefined extends ReplaceEmptyWithUndefined<T[K]> ? K : never]?: ReplaceEmptyWithUndefined<T[K]> }>;
+type SchemaDataObject<T> = T extends ImmutablePrimitive ? NormalizePrimitives<T> : T extends unknown[] ? T extends (infer Item)[] ? SchemaDataObject<NormalizePrimitives<Item>>[] : T : Flatten<{ [K in keyof T as T[K] extends object ? K : ReplaceEmptyWithUndefined<T[K]> extends never ? never : undefined extends NormalizePrimitives<T[K]> ? never : K]: T[K] extends object ? SchemaDataObject<T[K]> : NormalizePrimitives<T[K]> } & { [K in keyof T as T[K] extends object ? never : NormalizePrimitives<T[K]> extends never ? never : undefined extends NormalizePrimitives<T[K]> ? K : never]?: NormalizePrimitives<T[K]> }>;
 /**
  * Form state on submission.
  *
@@ -2158,16 +2160,14 @@ declare function FormResetBlocker({
 //#endregion
 //#region src/masked-input.d.ts
 /**
- * `React.ChangeEvent` augmented with a {@link MaskedChangeEvent.complete}
- * flag and an {@link MaskedChangeEvent.unmaskedValue} string carrying just
+ * `React.FocusEvent` augmented with a {@link MaskedFocusEvent.complete}
+ * flag and an {@link MaskedFocusEvent.unmaskedValue} string carrying just
  * the user-entered characters.
  */
-interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
+interface MaskedFocusEvent extends React.FocusEvent<HTMLInputElement> {
   /**
-   * `true` only on the change that transitions the field from incomplete
-   * to complete (every required slot just became filled). Stays `false` on
-   * subsequent edits while the field remains complete, and on edits to
-   * optional positions defined with `?` in the mask.
+   * `true` if every required mask slot in the mask is filled. otherwise `false`.
+   * Optional slots can be unfilled.
    */
   complete: boolean;
   /**
@@ -2177,7 +2177,25 @@ interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
    */
   unmaskedValue: string;
 }
-interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'> {
+/**
+ * `React.ChangeEvent` augmented with a {@link MaskedChangeEvent.complete}
+ * flag and an {@link MaskedChangeEvent.unmaskedValue} string carrying just
+ * the user-entered characters.
+ */
+interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
+  /**
+   * `true` if every required slot in the mask is filled. otherwise `false`.
+   * Optional slots can be unfilled.
+   */
+  complete: boolean;
+  /**
+   * The user-entered characters concatenated in order, with all literals
+   * and unfilled slot placeholders stripped. For mask `"(999) 999-9999"`
+   * and value `"(555) 123-____"`, this is `"555123"`.
+   */
+  unmaskedValue: string;
+}
+interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'> {
   /**
    * Mask pattern. Tokens accept user input — `9` (digit), `a` (letter),
    * `*` (alphanumeric). `?` marks every following position as optional.
@@ -2221,10 +2239,18 @@ interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
    */
   defaultValue?: string;
   /**
+   * Fires when the control loses focus. The event's `target.value` is
+   * the formatted mask (or `""` when no slot is filled).
+   * `event.unmaskedValue` is the raw user-entered characters in order.
+   * `event.complete` is `true` if all the required mask slots are
+   * filled.
+   */
+  onBlur?: (event: MaskedFocusEvent) => void;
+  /**
    * Fires on every edit. The event's `target.value` is the formatted mask
    * (or `""` when no slot is filled). `event.unmaskedValue` is the raw
-   * user-entered characters in order. `event.complete` is `true` on the
-   * change that transitions the field to complete.
+   * user-entered characters in order. `event.complete` is `true` if all
+   * the required mask slots are filled.
    */
   onChange?: (event: MaskedChangeEvent) => void;
 }
@@ -2253,10 +2279,11 @@ interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
  * Allowed values are `'_'` (default) and `' '` — useful when the mask should
  * stay invisible until the user types into it.
  *
- * `value`, `defaultValue` and `onChange` all use the formatted string with
- * placeholder characters at unfilled slots, matching what is rendered in the
- * DOM. The `onChange` event has an extra `complete` boolean that is `true`
- * on the change that transitions the field from incomplete to complete.
+ * `value`, `defaultValue`, `onBlur` and `onChange` all use the formatted
+ * string with placeholder characters at unfilled slots, matching what is
+ * rendered in the DOM. The `onBlur` and `onChange` event has an extra
+ * `complete` boolean that is `true` when all the required mask slots are
+ * filled.
  *
  * @param props - see: {@link React.InputHTMLAttributes | InputHTMLAttributes}
  *
@@ -2264,6 +2291,7 @@ interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
  *   - `mask: string`
  *   - `placeholderChar?: '_' | ' '`
  *   - `placeholder?: string`
+ *   - `onBlur?: (event: MaskedFocusEvent) => void`
  *   - `onChange?: (event: MaskedChangeEvent) => void`
  *
  * @returns The component instance.
@@ -2276,8 +2304,8 @@ declare function MaskedInput({
   inputMode,
   value,
   defaultValue,
-  onChange,
   onBlur,
+  onChange,
   onFocus,
   onClick,
   name,
@@ -2351,7 +2379,7 @@ declare function SecureInput({
   ...props
 }: Readonly<SecureInputProps>): _$react_jsx_runtime0.JSX.Element;
 declare namespace value_converter_d_exports {
-  export { asBoolean, asNumber, toBoolean, toDate, toFloat, toInt, toLiteral, toString };
+  export { asBoolean, asDateString, asNumber, toBoolean, toDate, toFloat, toInt, toLiteral, toString };
 }
 /**
  * Converts an integer in a form string notation to the `number` type.
@@ -2442,6 +2470,14 @@ declare const asBoolean: (value: boolean | "", defaultValue?: boolean) => boolea
  * @returns The `number` value.
  */
 declare const asNumber: (value: number | "", defaultValue?: number) => number;
+/**
+ * Returns the value represented by a `Date | string` type.
+ *
+ * @param value - The provided value.
+ * @param dateFormat - The resulting date format in the form string notation (only applied to `string` values).
+ * @return The `string` value containing the Date value.
+ */
+declare const asDateString: (value: Date | string, dateFormat?: FormDateFormat) => string;
 //#endregion
 export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type MaskedChangeEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

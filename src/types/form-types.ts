@@ -41,6 +41,16 @@ type Flatten<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
 type ReplaceEmptyWithUndefined<T> = T extends '' ? undefined : T;
 
+type DateToString<T> = T extends Date
+  ? string
+  : T extends (infer Item)[]
+    ? DateToString<Item>[]
+    : T extends object
+      ? { [K in keyof T]: DateToString<T[K]> }
+      : T;
+
+type NormalizePrimitives<T> = DateToString<ReplaceEmptyWithUndefined<T>>;
+
 // Internal types
 
 export type RangeOf<T> =
@@ -179,10 +189,30 @@ export type FormDateOptions =
   | { required?: boolean; dateFormat?: FormDateFormat; error?: string; dateFormatError: string };
 
 export type FormStringOptions =
-  | { required: boolean; allowEmpty?: boolean; error?: string; normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD' }
-  | { required?: boolean; allowEmpty: boolean; error?: string; normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD' }
-  | { required?: boolean; allowEmpty?: boolean; error: string; normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD' }
-  | { required?: boolean; allowEmpty?: boolean; error?: string; normalize: 'NFC' | 'NFD' | 'NFKC' | 'NFKD' };
+  | {
+      required: boolean;
+      allowEmpty?: boolean;
+      error?: string;
+      normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
+    }
+  | {
+      required?: boolean;
+      allowEmpty: boolean;
+      error?: string;
+      normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
+    }
+  | {
+      required?: boolean;
+      allowEmpty?: boolean;
+      error: string;
+      normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
+    }
+  | {
+      required?: boolean;
+      allowEmpty?: boolean;
+      error?: string;
+      normalize: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
+    };
 
 export type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> =
   P extends FormPath<T> ? FormPathValue<T, P> : unknown;
@@ -381,10 +411,10 @@ export type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions
  * Type of schema data with stripped empty literals from union types.
  */
 export type SchemaDataObject<T> = T extends ImmutablePrimitive
-  ? ReplaceEmptyWithUndefined<T>
+  ? NormalizePrimitives<T>
   : T extends unknown[]
     ? T extends (infer Item)[]
-      ? SchemaDataObject<ReplaceEmptyWithUndefined<Item>>[]
+      ? SchemaDataObject<NormalizePrimitives<Item>>[]
       : T
     : Flatten<
         {
@@ -392,19 +422,17 @@ export type SchemaDataObject<T> = T extends ImmutablePrimitive
             ? K
             : ReplaceEmptyWithUndefined<T[K]> extends never
               ? never
-              : undefined extends ReplaceEmptyWithUndefined<T[K]>
+              : undefined extends NormalizePrimitives<T[K]>
                 ? never
-                : K]: T[K] extends object
-            ? SchemaDataObject<T[K]>
-            : ReplaceEmptyWithUndefined<T[K]>;
+                : K]: T[K] extends object ? SchemaDataObject<T[K]> : NormalizePrimitives<T[K]>;
         } & {
           [K in keyof T as T[K] extends object
             ? never
-            : ReplaceEmptyWithUndefined<T[K]> extends never
+            : NormalizePrimitives<T[K]> extends never
               ? never
-              : undefined extends ReplaceEmptyWithUndefined<T[K]>
+              : undefined extends NormalizePrimitives<T[K]>
                 ? K
-                : never]?: ReplaceEmptyWithUndefined<T[K]>;
+                : never]?: NormalizePrimitives<T[K]>;
         }
       >;
 

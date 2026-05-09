@@ -764,7 +764,8 @@ function App() {
           <p>
             Produced by <code>schema.toObject(data)</code> or
             <code>parseState(schema, obj, true).data</code>
-            — internal fields stripped, optional empties removed.
+            — internal fields stripped, optional empties removed, <code>Date</code> values
+            serialized to strings via each field's configured <code>format</code>.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -1248,10 +1249,24 @@ z.formBoolean({ required: true })</code></pre>
 
           <h3><span class="type-chip">z.formDate(opts?, ...checks)</span></h3>
           <p>
-            Returns a schema that accepts <code>Date | ''</code>. String input is parsed according
-            to <code>dateFormat</code>; invalid strings produce a validation error rather than
-            crashing. An empty string represents a blank date input.
+            Returns a schema that accepts <code>Date | string</code>. String input is parsed
+            according to <code>dateFormat</code>; invalid strings produce a validation error rather
+            than crashing. An empty string represents a blank date input.
           </p>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              If you have a time component for the date, use a separate
+              <code>z.formString</code> schema field. Most forms have individual controls for the
+              date and the time components. If a combined field is required, use the
+              <code>z.formString</code> field for the both components and do the formatting manually
+              in event handlers. <br /><br />
+              Use <code>z.regex</code> to validate a specific date/time format. Zod provides
+              <code>z.regexes.date</code>, <code>z.regexes.datetime</code> and
+              <code>z.regexes.time</code> helpers to define regular expressions to match your
+              format.
+            </p>
+          </div>
           <table class="prop-table">
             <thead>
               <tr>
@@ -1988,6 +2003,27 @@ formState.patterns.get((path) =&gt; path.info.id)
             <pre><code class="language-tsx">const payload = schema.toObject(formState.data);
 // uuid symbols stripped, optional empty strings omitted
 await api.post('/users', payload);</code></pre>
+          </div>
+          <p>
+            <code>Date</code> values are converted to strings using each field's configured
+            <code>format</code> metadata (defaulting to <code>"yyyy-MM-dd"</code>). This applies to
+            top-level dates, nested dates inside objects, and date elements inside arrays. Send the
+            output straight to JSON-based APIs without an extra serialization pass.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">const schema = z.object({
+  birthDate: z.formDate(z.date(), { format: 'MM-dd-yyyy' }),
+  registeredOn: z.formDate(z.date(), { format: 'MM/dd/yyyy' }),
+  updateDates: z.formArray(z.formDate(z.date())), // default 'yyyy-MM-dd'
+});
+
+schema.toObject(formState.data);
+// {
+//   birthDate: '12-31-2020',
+//   registeredOn: '06/30/2020',
+//   updateDates: ['2019-12-12', '2020-04-15'],
+// }</code></pre>
           </div>
         </section>
         <section class="section" id="form-status">
@@ -3496,16 +3532,26 @@ export default formConnect({
           <ul>
             <li>Empty: <code>""</code> (browser shows the empty mask via the HTML placeholder)</li>
             <li>Partial: <code>"(555) 1__-____"</code></li>
+            <li>Complete: <code>"(555) 123-4567"</code></li>
+          </ul>
+
+          <h4>Change and blur events</h4>
+          <p>
+            Both <code>onChange</code> and <code>onBlur</code> receive an event extended with two
+            extra fields:
+          </p>
+          <ul>
             <li>
-              Complete: <code>"(555) 123-4567"</code> — the <code>onChange</code> event fires with
-              <code>event.complete === true</code> on the transition
+              <code>event.complete</code> — <code>true</code> when every required mask slot is
+              filled at the moment the event fires, otherwise <code>false</code>. Optional slots
+              (declared with <code>?</code>) do not need to be filled.
+            </li>
+            <li>
+              <code>event.unmaskedValue</code> — the user-entered characters concatenated in slot
+              order, with literals and unfilled-slot placeholders stripped. Useful when you want to
+              store or submit the raw digits/letters without the mask.
             </li>
           </ul>
-          <p>
-            The <code>onChange</code> event also exposes <code>event.unmaskedValue</code> — just the
-            user-entered characters with all literals and unfilled slot placeholders stripped.
-            Useful when you want to store or submit the raw digits/letters without the mask.
-          </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">&lt;MaskedInput
@@ -3513,6 +3559,12 @@ export default formConnect({
   onChange={(event) =&gt; {
     // event.target.value   = "(555) 123-4567"
     // event.unmaskedValue  = "5551234567"
+    // event.complete       = true
+  }}
+  onBlur={(event) =&gt; {
+    if (!event.complete) {
+      formActions.touch('phone', { error: 'Please enter a full phone number' });
+    }
   }}
 /&gt;</code></pre>
           </div>
@@ -3895,15 +3947,21 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">import { convert } from 'form-state';
 
+// Optional number to number type conversion
+convert.asNumber(1);          // 1
+convert.asNumber('');         // 0
+convert.asNumber('', 100.0);  // 100.0
+
 // Safe numeric parsing — returns the number or '' if invalid
 convert.toInt('42')          // 42
 convert.toFloat('3.14')      // 3.14
 convert.toInt('abc')         // ''
 
-// Optional number to number type conversion
-convert.asNumber(1);          // 1
-convert.asNumber('');         // 0
-convert.asNumber('', 100.0);  // 100.0
+// Date to string type conversion
+convert.asDateString('')                                 // ''
+convert.asDateString('2022-01-01')                       // '2022-01-01'
+convert.asDateString(new Date(2022, 0, 1))               // '2022-01-01'
+convert.asDateString(new Date(2022, 0, 1), 'MM/dd/yyyy') // '01/01/2022'
 
 // Date parsing with format string
 convert.toDate('12/31/2024', { format: 'MM/dd/yyyy' })  // Date object

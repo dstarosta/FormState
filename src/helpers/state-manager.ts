@@ -21,12 +21,14 @@ import { generateUniqueId } from './random-id-generator';
 import {
   allowEmptyString,
   getBaseType,
+  getDateFormat,
   getPath,
   getPathNotation,
   getSchemaType,
 } from './schema-visitor';
 import { IS_DEVELOPMENT } from './development-helper';
 import { formatErrors } from './error-formatter';
+import { formatDate } from './date-formatter';
 
 // Private functions
 
@@ -77,6 +79,10 @@ export const cleanEmpty = <T>(
   }
 
   if (isNotRecordObject(obj)) {
+    if (obj instanceof Date) {
+      return formatDate(obj, getDateFormat(schema, path)) as DeepPartial<T>;
+    }
+
     return obj as DeepPartial<T>;
   }
 
@@ -85,13 +91,16 @@ export const cleanEmpty = <T>(
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = (obj as UnknownObject)[key];
+      const valuePath = path ? `${path}.${key}` : key;
 
       if (typeof value === 'function' || value instanceof Promise) {
         continue;
       }
 
       if (isNotRecordObject(value) && typeof value !== 'symbol' && typeof value !== 'string') {
-        if (value !== undefined) {
+        if (value instanceof Date) {
+          innerObj[key] = formatDate(value, getDateFormat(schema, valuePath));
+        } else if (value !== undefined) {
           innerObj[key] = value;
         }
 
@@ -108,8 +117,6 @@ export const cleanEmpty = <T>(
       ) {
         continue;
       }
-
-      const valuePath = path ? `${path}.${key}` : key;
 
       const isEmptyString = typeof cleanedValue === 'string' && cleanedValue === '';
       const hasEmptyStringSchema =
