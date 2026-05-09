@@ -104,11 +104,11 @@ export function SecureInput({
   }, [realValue]);
 
   const realValueRef = useRef(realValue);
-  const callbacksRef = useRef({ onChange, onSecureChange, onSecureBlur, onBlur });
+  const callbacksRef = useRef({ onChange, onSecureChange });
 
   useIsomorphicLayoutEffect(() => {
     realValueRef.current = realValue;
-    callbacksRef.current = { onChange, onSecureChange, onSecureBlur, onBlur };
+    callbacksRef.current = { onChange, onSecureChange };
   });
 
   useIsomorphicLayoutEffect(() => {

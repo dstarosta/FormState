@@ -478,8 +478,6 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Cleanup on unmount.
   useEffect(() => {
-    isMountedRef.current = true;
-
     const currentCache = debounceCache.current;
 
     return () => {

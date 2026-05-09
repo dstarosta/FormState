@@ -451,7 +451,7 @@ type FormState<T extends object> = {
        * @returns The minimum range value.
        * @throws `TypeError` when a range with the minimum value is not defined in the schema.
        */
-      (name: { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never }[keyof T]): Date extends T[keyof T] ? Date : number;
+      <K extends { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never }[keyof T]>(name: K): T[K] extends Date ? Date : number;
       /**
        * Gets the minimum range value from the corresponding range of a field.
        *
@@ -469,7 +469,7 @@ type FormState<T extends object> = {
        * @returns The maximum range value.
        * @throws `TypeError` when a range with the maximum value is not defined in the schema.
        */
-      (name: { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never }[keyof T]): Date extends T[keyof T] ? Date : number;
+      <K extends { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never }[keyof T]>(name: K): T[K] extends Date ? Date : number;
       /**
        * Gets the maximum range value from the corresponding range of a field.
        *
@@ -2479,5 +2479,5 @@ declare const asNumber: (value: number | "", defaultValue?: number) => number;
  */
 declare const asDateString: (value: Date | string, dateFormat?: FormDateFormat) => string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type MaskedChangeEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

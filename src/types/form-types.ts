@@ -627,11 +627,13 @@ export type FormState<T extends object> = {
          * @returns The minimum range value.
          * @throws `TypeError` when a range with the minimum value is not defined in the schema.
          */
-        (
-          name: {
+        <
+          K extends {
             [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never;
-          }[keyof T]
-        ): Date extends T[keyof T] ? Date : number;
+          }[keyof T],
+        >(
+          name: K
+        ): T[K] extends Date ? Date : number;
         /**
          * Gets the minimum range value from the corresponding range of a field.
          *
@@ -651,11 +653,13 @@ export type FormState<T extends object> = {
          * @returns The maximum range value.
          * @throws `TypeError` when a range with the maximum value is not defined in the schema.
          */
-        (
-          name: {
+        <
+          K extends {
             [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never;
-          }[keyof T]
-        ): Date extends T[keyof T] ? Date : number;
+          }[keyof T],
+        >(
+          name: K
+        ): T[K] extends Date ? Date : number;
         /**
          * Gets the maximum range value from the corresponding range of a field.
          *
