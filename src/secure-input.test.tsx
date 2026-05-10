@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 
@@ -1122,6 +1123,54 @@ describe('SecureInput', () => {
       setSelection(input, 3, 3);
 
       expect(() => fireEvent.keyDown(input, { key: 'd' })).not.toThrow();
+    });
+  });
+
+  describe('ref', () => {
+    it('populates a ref object with the input element', () => {
+      const ref = createRef<HTMLInputElement>();
+      render(<SecureInput ref={ref} />);
+
+      expect(ref.current).toBe(getInput());
+    });
+
+    it('clears the ref object on unmount', () => {
+      const ref = createRef<HTMLInputElement>();
+      const { unmount } = render(<SecureInput ref={ref} />);
+
+      expect(ref.current).not.toBeNull();
+      unmount();
+      expect(ref.current).toBeNull();
+    });
+
+    it('invokes a function ref with the input element', () => {
+      const ref = vi.fn();
+      render(<SecureInput ref={ref} />);
+
+      expect(ref).toHaveBeenCalledWith(getInput());
+    });
+
+    it('invokes a function ref with null on unmount', () => {
+      const ref = vi.fn();
+      const { unmount } = render(<SecureInput ref={ref} />);
+
+      ref.mockClear();
+      unmount();
+
+      expect(ref).toHaveBeenCalledWith(null);
+    });
+
+    it('keeps internal behavior working when an external ref is provided', () => {
+      const ref = createRef<HTMLInputElement>();
+      const onSecureChange = vi.fn();
+      render(<SecureInput ref={ref} defaultValue="abc" onSecureChange={onSecureChange} />);
+
+      const input = getInput();
+      setSelection(input, 3, 3);
+      fireEvent.keyDown(input, { key: 'd' });
+
+      expect(ref.current).toBe(input);
+      expect(onSecureChange).toHaveBeenLastCalledWith('abcd');
     });
   });
 });

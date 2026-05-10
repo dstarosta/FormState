@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { mergeRefs } from './helpers/ref-merge';
 import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 
 const TOKEN_PATTERNS: Record<string, RegExp> = {
@@ -47,7 +48,7 @@ export interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
 }
 
 interface MaskedInputProps extends Omit<
-  React.InputHTMLAttributes<HTMLInputElement>,
+  React.ComponentPropsWithRef<'input'>,
   'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'
 > {
   /**
@@ -325,9 +326,12 @@ export function MaskedInput({
   name,
   readOnly,
   disabled,
+  ref,
   ...props
 }: Readonly<MaskedInputProps>) {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const setInputRef = useMemo(() => mergeRefs(inputRef, ref), [ref]);
   const caretRef = useRef<number | null>(null);
 
   const info = useMemo(
@@ -584,7 +588,7 @@ export function MaskedInput({
   return (
     <input
       {...props}
-      ref={inputRef}
+      ref={setInputRef}
       name={name}
       type={type}
       inputMode={resolvedInputMode}

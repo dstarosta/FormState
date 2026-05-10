@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 
@@ -1538,6 +1539,54 @@ describe('MaskedInput', () => {
       rerender(<MaskedInput mask="999" placeholder="000" />);
 
       expect(getInput().placeholder).toBe('000');
+    });
+  });
+
+  describe('ref', () => {
+    it('populates a ref object with the input element', () => {
+      const ref = createRef<HTMLInputElement>();
+      render(<MaskedInput mask="999-9999" ref={ref} />);
+
+      expect(ref.current).toBe(getInput());
+    });
+
+    it('clears the ref object on unmount', () => {
+      const ref = createRef<HTMLInputElement>();
+      const { unmount } = render(<MaskedInput mask="999-9999" ref={ref} />);
+
+      expect(ref.current).not.toBeNull();
+      unmount();
+      expect(ref.current).toBeNull();
+    });
+
+    it('invokes a function ref with the input element', () => {
+      const ref = vi.fn();
+      render(<MaskedInput mask="999-9999" ref={ref} />);
+
+      expect(ref).toHaveBeenCalledWith(getInput());
+    });
+
+    it('invokes a function ref with null on unmount', () => {
+      const ref = vi.fn();
+      const { unmount } = render(<MaskedInput mask="999-9999" ref={ref} />);
+
+      ref.mockClear();
+      unmount();
+
+      expect(ref).toHaveBeenCalledWith(null);
+    });
+
+    it('keeps internal behavior working when an external ref is provided', () => {
+      const ref = createRef<HTMLInputElement>();
+      const onChange = vi.fn();
+      render(<MaskedInput mask="999-9999" ref={ref} onChange={onChange} />);
+
+      const input = getInput();
+      setSelection(input, 0, 0);
+      fireBeforeInput(input, 'insertText', '5');
+
+      expect(ref.current).toBe(input);
+      expect(lastChange(onChange).unmaskedValue).toBe('5');
     });
   });
 });

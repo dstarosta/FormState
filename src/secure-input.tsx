@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { setFormData } from './helpers/form-builder';
+import { mergeRefs } from './helpers/ref-merge';
 import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 
 interface SecureInputProps extends Omit<
-  React.InputHTMLAttributes<HTMLInputElement>,
+  React.ComponentPropsWithRef<'input'>,
   'onChange' | 'type' | 'value' | 'defaultValue'
 > {
   /**
@@ -73,9 +74,12 @@ export function SecureInput({
   name,
   readOnly,
   disabled,
+  ref,
   ...props
 }: Readonly<SecureInputProps>) {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const setInputRef = useMemo(() => mergeRefs(inputRef, ref), [ref]);
   const caretRef = useRef<number | null>(null);
 
   const [internalValue, setInternalValue] = useState(defaultValue);
@@ -302,7 +306,7 @@ export function SecureInput({
   return (
     <input
       {...props}
-      ref={inputRef}
+      ref={setInputRef}
       name={name}
       type={type}
       readOnly={readOnly}

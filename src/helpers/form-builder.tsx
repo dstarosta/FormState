@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef } from 'react';
 
 import type { FormAction, FormProps, FormStore } from '../types/form-types';
 import { FormResetBlocker } from './form-reset-blocker';
+import { mergeRefs } from './ref-merge';
 
 const elementValues = new WeakMap<HTMLInputElement, string>();
 
@@ -152,13 +153,7 @@ export const createFormComponent = <T extends object>(
 
     const formRefCallback = useCallback(
       (node: HTMLFormElement | null) => {
-        if (typeof forwardedRef === 'function') {
-          forwardedRef(node);
-        } else if (forwardedRef) {
-          forwardedRef.current = node;
-        }
-
-        formRef.current = node;
+        mergeRefs(formRef, forwardedRef)(node);
 
         const form = node as HTMLFormElement;
 

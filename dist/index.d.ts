@@ -2195,7 +2195,7 @@ interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
    */
   unmaskedValue: string;
 }
-interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'> {
+interface MaskedInputProps extends Omit<React.ComponentPropsWithRef<'input'>, 'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'> {
   /**
    * Mask pattern. Tokens accept user input — `9` (digit), `a` (letter),
    * `*` (alphanumeric). `?` marks every following position as optional.
@@ -2311,11 +2311,12 @@ declare function MaskedInput({
   name,
   readOnly,
   disabled,
+  ref,
   ...props
 }: Readonly<MaskedInputProps>): _$react_jsx_runtime0.JSX.Element;
 //#endregion
 //#region src/secure-input.d.ts
-interface SecureInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'type' | 'value' | 'defaultValue'> {
+interface SecureInputProps extends Omit<React.ComponentPropsWithRef<'input'>, 'onChange' | 'type' | 'value' | 'defaultValue'> {
   /**
    * Visual rendering of the input. `'text'` shows the bullet mask in the
    * DOM; `'password'` lets the browser apply its own password-style mask
@@ -2376,6 +2377,7 @@ declare function SecureInput({
   name,
   readOnly,
   disabled,
+  ref,
   ...props
 }: Readonly<SecureInputProps>): _$react_jsx_runtime0.JSX.Element;
 declare namespace value_converter_d_exports {
