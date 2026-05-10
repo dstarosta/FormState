@@ -1982,12 +1982,13 @@ formState.ranges.getMax('name')             // 50  (string maxLength)
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// z.describe() values are available at runtime
 formState.descriptions.name                         // 'Full Name'
-formState.descriptions.get((path) =&gt; path.info.age)      // 'Age'
-formState.descriptions.get((path) =&gt; path.notes[0])      // 'Note'  (index normalised to [0])
+formState.descriptions.get((path) =&gt; path.info.age) // 'Age'
+formState.descriptions.get((path) =&gt; path.notes[0]) // 'Note'  (index normalised to [0])
 
-// Patterns (from z.regex()) as raw strings for input[pattern]
+// Patterns (from z.regex(), or z.formDate()) as raw strings for input[pattern]
 formState.patterns.name                             // '^[\\w\\s\'-]+$'
-formState.patterns.get((path) =&gt; path.info.id)
+formState.patterns.get((path) =&gt; path.info.id)      // '^\d+(-\d+)?$'
+formState.patterns.get((path) =&gt; path.birthDate)    // 'yyyy-MM-dd'
 
 // Use in JSX
 &lt;label&gt;{formState.descriptions.get((path) =&gt; path.auto.modelId)}&lt;/label&gt;</code></pre>
@@ -2149,9 +2150,13 @@ schema.toObject(formState.data);
               </tr>
               <tr>
                 <td><code>patterns</code></td>
-                <td class="prop-desc"><code>z.regex(…)</code></td>
                 <td class="prop-desc">
-                  Wire the <code>pattern</code> attribute for screen-reader hints
+                  <code>z.regex(…)</code> on strings, or the <code>dateFormat</code> option on
+                  <code>z.formDate(...)</code>
+                </td>
+                <td class="prop-desc">
+                  Wire the <code>pattern</code> attribute for screen-reader hints, or surface the
+                  expected date format
                 </td>
               </tr>
               <tr>
@@ -2350,7 +2355,9 @@ formState.required.get((path) =&gt; path.info.age)       // true | false
             through <code>formState.patterns</code>. Pass them to the native
             <code>pattern</code> attribute so the browser and screen readers can communicate the
             constraint — even when <code>noValidate</code> suppresses the browser's own validation
-            UI.
+            UI. <code>z.formDate()</code> fields also contribute their
+            <code>dateFormat</code> (defaulting to <code>'yyyy-MM-dd'</code>) so you can surface the
+            expected format in placeholders, titles, or labels.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
@@ -2359,6 +2366,9 @@ formState.patterns.id                            // "^\d+(-\d+)?$" | undefined
 
 // Nested field
 formState.patterns.get((path) =&gt; path.info.code)      // string | undefined
+
+// Date field — returns the dateFormat (defaults to 'yyyy-MM-dd')
+formState.patterns.get((path) =&gt; path.birthDate)      // 'MM-dd-yyyy'
 
 // In JSX
 &lt;input
@@ -2372,9 +2382,9 @@ formState.patterns.get((path) =&gt; path.info.code)      // string | undefined
           <div class="callout callout-info">
             <div class="callout-label">Note</div>
             <p>
-              When a field has multiple <code>z.regex()</code> checks, only the first one is stored
-              in <code>patterns</code>. The <code>title</code> attribute is a good place to describe
-              the full constraint in plain language.
+              When a string field has multiple <code>z.regex()</code> checks, only the first one is
+              stored in <code>patterns</code>. The <code>title</code> attribute is a good place to
+              describe the full constraint in plain language.
             </p>
           </div>
           <h3>touched</h3>
@@ -5320,7 +5330,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <tbody>
               <tr>
                 <td>Bundle size (gzipped)</td>
-                <td>~16 KB <sup>1</sup></td>
+                <td>~17 KB <sup>1</sup></td>
                 <td>~13 KB</td>
                 <td>~10 KB</td>
                 <td>~15 KB</td>

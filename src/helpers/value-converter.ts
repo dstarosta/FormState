@@ -194,10 +194,10 @@ export const asNumber = (value: number | '', defaultValue: number = 0) =>
  * Returns the value represented by a `Date | string` type.
  *
  * @param value - The provided value.
- * @param dateFormat - The resulting date format in the form string notation (only applied to `string` values).
+ * @param dateFormat - The resulting date format in the form string notation (only applied to `Date` values).
  * @return The `string` value containing the Date value.
  */
-export const asDateString = (value: Date | string, dateFormat: FormDateFormat = 'yyyy-MM-dd') => {
+export const asDateString = (value: Date | string, dateFormat: FormDateFormat) => {
   if (typeof value === 'string') {
     return value;
   }

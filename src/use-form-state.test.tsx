@@ -893,6 +893,9 @@ describe('useFormState', () => {
     const expectedPatterns = {
       name: String.raw`^[\d'A-Za-z-]*$`,
       'tags.0': String.raw`^[\w\\-]*$`,
+      'info.birthDate': 'MM-dd-yyyy',
+      registeredOn: 'MM/dd/yyyy',
+      'updateDates.0': 'yyyy-MM-dd',
     };
 
     const { get, getKeys, ...actualPatterns } = patterns;

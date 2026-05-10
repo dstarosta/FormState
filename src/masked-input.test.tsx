@@ -1518,6 +1518,56 @@ describe('MaskedInput', () => {
       expect(input.selectionStart).toBe(0);
       expect(input.selectionEnd).toBe(5);
     });
+
+    it('advances the caret when typing the same character over a filled slot', () => {
+      render(<MaskedInput mask="999" defaultValue="555" />);
+
+      const input = getInput();
+
+      setSelection(input, 0, 0);
+      fireBeforeInput(input, 'insertText', '5');
+
+      expect(input.selectionStart).toBe(1);
+      expect(input.selectionEnd).toBe(1);
+    });
+
+    it('selects all on focus when partially filled', () => {
+      render(<MaskedInput mask="(999) 999" defaultValue="(555)" />);
+
+      const input = getInput();
+
+      setSelection(input, 9, 9);
+      fireEvent.focus(input);
+
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(input.value.length);
+    });
+
+    it('selects all on focus when every slot is filled', () => {
+      render(<MaskedInput mask="(999) 999" defaultValue="(555) 123" />);
+
+      const input = getInput();
+
+      setSelection(input, 0, 0);
+      fireEvent.focus(input);
+
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(9);
+    });
+
+    it('lets click handle caret placement when focus follows a mousedown', () => {
+      render(<MaskedInput mask="(999) 999" defaultValue="(555)" />);
+
+      const input = getInput();
+
+      fireEvent.mouseDown(input);
+      setSelection(input, 2, 2);
+      fireEvent.focus(input);
+      fireEvent.click(input);
+
+      // snapCaretToSlot keeps the caret at position 2 since it's already on a slot.
+      expect(input.selectionStart).toBe(2);
+    });
   });
 
   describe('mask change', () => {

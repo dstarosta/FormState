@@ -108,8 +108,14 @@ const getDateSchemaRange = (schema: z.ZodMiniDate) => {
   return { type: 'range', format: dateFormat, min: toUTC(minDate), max: toUTC(maxDate) };
 };
 
-const getSchemaPattern = (schema: z.ZodMiniString) => {
+const getSchemaPattern = (schema: z.ZodMiniString | z.ZodMiniDate) => {
   let pattern: string | undefined;
+
+  if (schema instanceof z.ZodMiniDate) {
+    const format = z.globalRegistry.get(schema)?.['format'];
+
+    return typeof format === 'string' && format.length > 0 ? format : 'yyyy-MM-dd';
+  }
 
   if (Array.isArray(schema.def.checks)) {
     const check = schema.def.checks.find(
@@ -370,7 +376,7 @@ export const collectPatterns = <T extends z.ZodMiniType>(
 
   const baseSchema = getBaseType(schema);
 
-  if (baseSchema instanceof z.ZodMiniString) {
+  if (baseSchema instanceof z.ZodMiniString || baseSchema instanceof z.ZodMiniDate) {
     const pattern = getSchemaPattern(baseSchema);
 
     if (pattern) {
@@ -382,7 +388,10 @@ export const collectPatterns = <T extends z.ZodMiniType>(
   ) {
     const baseElementSchema = getBaseType(baseSchema.def.element);
 
-    if (baseElementSchema instanceof z.ZodMiniString) {
+    if (
+      baseElementSchema instanceof z.ZodMiniString ||
+      baseElementSchema instanceof z.ZodMiniDate
+    ) {
       const elementPattern = getSchemaPattern(baseElementSchema);
 
       if (elementPattern) {

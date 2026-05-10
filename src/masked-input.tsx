@@ -323,6 +323,7 @@ export function MaskedInput({
   onChange,
   onFocus,
   onClick,
+  onMouseDown,
   name,
   readOnly,
   disabled,
@@ -333,6 +334,7 @@ export function MaskedInput({
 
   const setInputRef = useMemo(() => mergeRefs(inputRef, ref), [ref]);
   const caretRef = useRef<number | null>(null);
+  const focusFromMouseRef = useRef(false);
 
   const info = useMemo(
     () => buildMaskInfo(mask, placeholderChar, placeholder),
@@ -392,6 +394,7 @@ export function MaskedInput({
   const commit = useCallback(
     (nextSlots: Slots, caret: number) => {
       if (slotsEqual(nextSlots, slotsRef.current)) {
+        inputRef.current?.setSelectionRange(caret, caret);
         return;
       }
 
@@ -548,25 +551,35 @@ export function MaskedInput({
 
   const snapCaretToSlot = () => {
     const element = inputRef.current;
+
+    // Unreachable guard needed for type safety
+    /* v8 ignore if -- @preserve */
     if (!element) {
       return;
     }
+
     const start = element.selectionStart ?? 0;
     const end = element.selectionEnd ?? 0;
+
     if (start !== end) {
       return;
     }
+
     if (start < info.length && info.positions[start]?.isSlot) {
       return;
     }
+
     const next = nextSlotIndex(info, start);
     const target = next === -1 ? info.length : next;
+
     if (target !== start) {
       element.setSelectionRange(target, target);
     }
   };
 
   const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    focusFromMouseRef.current = false;
+
     const blurEvent = Object.assign(event, {
       complete: slotsAreComplete(slotsRef.current, info),
       unmaskedValue: slotsRef.current.filter((ch): ch is string => ch !== null).join(''),
@@ -575,12 +588,24 @@ export function MaskedInput({
     onBlur?.(blurEvent);
   };
 
+  const handleMouseDown = (event: React.MouseEvent<HTMLInputElement>) => {
+    focusFromMouseRef.current = true;
+    onMouseDown?.(event);
+  };
+
   const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
     onFocus?.(event);
-    requestAnimationFrame(snapCaretToSlot);
+
+    const fromMouse = focusFromMouseRef.current;
+    focusFromMouseRef.current = false;
+
+    if (!fromMouse) {
+      inputRef.current?.select();
+    }
   };
 
   const handleClick = (event: React.MouseEvent<HTMLInputElement>) => {
+    focusFromMouseRef.current = false;
     onClick?.(event);
     snapCaretToSlot();
   };
@@ -601,6 +626,7 @@ export function MaskedInput({
       onBlur={handleBlur}
       onFocus={handleFocus}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
     />
   );
 }

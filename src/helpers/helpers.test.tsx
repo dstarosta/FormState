@@ -840,14 +840,14 @@ describe('helpers', () => {
 
     describe('asDateString', () => {
       it('converts a valid Date value', () => {
-        expect(asDateString(new Date(2022, 1, 28))).toBe('2022-02-28');
-        expect(asDateString(new Date(2022, 21, 28))).toBe('2023-10-28');
-        expect(asDateString(new Date('invalid'))).toBe('Invalid Date');
+        expect(asDateString(new Date(2022, 1, 28), 'yyyy-MM-dd')).toBe('2022-02-28');
+        expect(asDateString(new Date(2022, 21, 28), 'MM/dd/yyyy')).toBe('10/28/2023');
+        expect(asDateString(new Date('invalid value'), 'yyyy-MM-dd')).toBe('Invalid Date');
       });
 
       it('passes a string value through', () => {
-        expect(asDateString('2022-02-28')).toBe('2022-02-28');
-        expect(asDateString('Invalid Date')).toBe('Invalid Date');
+        expect(asDateString('2022-02-28', 'MM/dd/yyyy')).toBe('2022-02-28');
+        expect(asDateString('Invalid Date', 'MM/dd/yyyy')).toBe('Invalid Date');
       });
     });
   });
