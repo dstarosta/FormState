@@ -3343,16 +3343,18 @@ describe('useFormState', () => {
 
     it('should listen to form changes', async () => {
       const actionMock = vi.fn<StateChangeListener<Schema>>(
-        ({ type, data, formData, errors, submitCount }) => {
+        ({ type, data, formData, errors, submitCount, valid }) => {
           expect(type).toBeOneOf(['change', 'submit']);
           expect(submitCount).toBeOneOf([0, 1]);
 
           if (data.name === '') {
             expect(errors['name']).toBe('Name is required');
             expect(errors.getAll()).toStrictEqual(['Name is required']);
+            expect(valid).toBe(false);
           } else {
             expect(errors.get((path) => path.name)).toBeUndefined();
             expect(errors.getManual('name')).toBeUndefined();
+            expect(valid).toBe(true);
           }
 
           if (type === 'submit') {

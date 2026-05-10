@@ -393,8 +393,10 @@ export function useFormState<T extends z.ZodMiniObject>(
       formStateRef.current.data,
       errorMessageSeparator
     );
+    const submitCount = formStateRef.current.submitCount;
+    const valid = Object.keys(formStateRef.current.errors).length === 0;
 
-    return { data, errors };
+    return { data, errors, submitCount, valid };
   }, [errorMessageSeparator]);
 
   const initialDataChanged = useMemo(
@@ -431,10 +433,16 @@ export function useFormState<T extends z.ZodMiniObject>(
       return;
     }
 
-    const { data, errors } = generateListenerState();
+    const { data, errors, submitCount, valid } = generateListenerState();
 
     for (const listener of changeListeners) {
-      listener({ type: 'change', data, errors, submitCount: formStateRef.current.submitCount });
+      listener({
+        type: 'change',
+        data,
+        errors,
+        submitCount,
+        valid,
+      });
     }
   }, [formState.data, formState.changed, generateListenerState, changeListeners]);
 
@@ -444,15 +452,16 @@ export function useFormState<T extends z.ZodMiniObject>(
       return;
     }
 
-    const { data, errors } = generateListenerState();
+    const { data, errors, submitCount, valid } = generateListenerState();
 
     for (const listener of changeListeners) {
       listener({
         type: 'submit',
         formData: lastSubmittedFormData.current,
-        submitCount: formStateRef.current.submitCount,
         data,
         errors,
+        submitCount,
+        valid,
       });
     }
   }, [formState.submitCount, generateListenerState, changeListeners]);

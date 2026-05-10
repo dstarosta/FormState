@@ -306,6 +306,10 @@ export type StateChangeEvent<T extends object> = {
    * Form errors.
    */
   errors: FormState<T>['errors'];
+  /**
+   * `false` if the form has any errors; otherwise, `true`.
+   */
+  valid: boolean;
 };
 
 /**
