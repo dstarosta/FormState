@@ -599,9 +599,25 @@ export function MaskedInput({
     const fromMouse = focusFromMouseRef.current;
     focusFromMouseRef.current = false;
 
-    if (!fromMouse) {
-      inputRef.current?.select();
+    if (fromMouse) {
+      return;
     }
+
+    let target = 0;
+
+    for (let i = slotsRef.current.length - 1; i >= 0; i--) {
+      if (slotsRef.current[i] !== null) {
+        target = i + 1;
+        break;
+      }
+    }
+
+    if (target < info.length && !info.positions[target]?.isSlot) {
+      const next = nextSlotIndex(info, target);
+      target = next === -1 ? info.length : next;
+    }
+
+    inputRef.current?.setSelectionRange(0, target);
   };
 
   const handleClick = (event: React.MouseEvent<HTMLInputElement>) => {

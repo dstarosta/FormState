@@ -2477,10 +2477,18 @@ declare const asNumber: (value: number | "", defaultValue?: number) => number;
  * Returns the value represented by a `Date | string` type.
  *
  * @param value - The provided value.
- * @param dateFormat - The resulting date format in the form string notation (only applied to `Date` values).
+ * @param dateFormat - The resulting date format notation (only applied to `Date` values).
  * @return The `string` value containing the Date value.
  */
-declare const asDateString: (value: Date | string, dateFormat: FormDateFormat) => string;
+declare function asDateString(value: Date | string, dateFormat: FormDateFormat): string;
+/**
+ * Returns the value represented by a `Date | string` type.
+ *
+ * @param value - The provided value.
+ * @param dateFormat - An optional date format in the form string notation (only applied to `Date` values).
+ * @return The `string` value containing the Date value.
+ */
+declare function asDateString(value: Date | string, dateFormat: string | undefined): string;
 //#endregion
 export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

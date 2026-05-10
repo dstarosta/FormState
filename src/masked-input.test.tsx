@@ -1531,7 +1531,7 @@ describe('MaskedInput', () => {
       expect(input.selectionEnd).toBe(1);
     });
 
-    it('selects all on focus when partially filled', () => {
+    it('selects the filled portion on focus when partially filled', () => {
       render(<MaskedInput mask="(999) 999" defaultValue="(555)" />);
 
       const input = getInput();
@@ -1540,10 +1540,10 @@ describe('MaskedInput', () => {
       fireEvent.focus(input);
 
       expect(input.selectionStart).toBe(0);
-      expect(input.selectionEnd).toBe(input.value.length);
+      expect(input.selectionEnd).toBe(6);
     });
 
-    it('selects all on focus when every slot is filled', () => {
+    it('selects the whole value on focus when every slot is filled', () => {
       render(<MaskedInput mask="(999) 999" defaultValue="(555) 123" />);
 
       const input = getInput();
@@ -1553,6 +1553,17 @@ describe('MaskedInput', () => {
 
       expect(input.selectionStart).toBe(0);
       expect(input.selectionEnd).toBe(9);
+    });
+
+    it('places the caret at the start on focus when no slots are filled', () => {
+      render(<MaskedInput mask="(999) 999" />);
+
+      const input = getInput();
+
+      fireEvent.focus(input);
+
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(0);
     });
 
     it('lets click handle caret placement when focus follows a mousedown', () => {
