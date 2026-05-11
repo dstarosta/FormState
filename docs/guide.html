@@ -4459,12 +4459,10 @@ export default function ContactForm({
             <pre><code class="language-tsx">import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFormState, parseState, z, type SchemaDataObject, type SubmitState } from 'form-state';
 
-const DATE_FORMAT = 'MM/dd/yyyy';
-
 const profileSchema = z.strictObject({
   name:        z.formString({ required: true }).with(z.describe('Name')),
   email:       z.formString({ required: true }).with(z.describe('Email')),
-  dateOfBirth: z.formDate({ dateFormat: DATE_FORMAT }).with(z.describe('Date of Birth')),
+  dateOfBirth: z.formDate({ dateFormat: 'MM/dd/yyyy' }).with(z.describe('Date of Birth')),
   bio:         z.formString().with(z.describe('Bio')),
 });
 
@@ -4570,7 +4568,7 @@ function ProfileForm({ userId }: { userId: string }) {
         {formState.descriptions.dateOfBirth}
         &lt;input
           type="text"
-          placeholder={DATE_FORMAT}
+          placeholder={formState.patterns.dateOfBirth}
           value={formState.data.dateOfBirth}
           onChange={(e) =&gt; formActions.change('dateOfBirth', e.target.value)}
           onBlur={() =&gt; formActions.touch('dateOfBirth')}
