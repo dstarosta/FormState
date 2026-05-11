@@ -206,9 +206,9 @@ export function asDateString(value: Date | string, dateFormat: FormDateFormat): 
  * @param dateFormat - An optional date format in the form string notation (only applied to `Date` values).
  * @return The `string` value containing the Date value.
  */
-export function asDateString(value: Date | string, dateFormat: string | undefined): string;
+export function asDateString(value: Date | string, dateFormat?: string): string;
 
-export function asDateString(value: Date | string, dateFormat: string | undefined) {
+export function asDateString(value: Date | string, dateFormat?: string) {
   if (typeof value === 'string') {
     return value;
   }
