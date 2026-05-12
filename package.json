@@ -21,7 +21,8 @@
       "types": "./dist/index.d.ts"
     },
     "./eslint": {
-      "import": "./eslint/index.js"
+      "import": "./eslint/index.js",
+      "types": "./eslint/index.d.ts"
     }
   },
   "scripts": {
