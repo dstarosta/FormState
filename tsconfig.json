@@ -41,6 +41,6 @@
     "useUnknownInCatchVariables": true,
     "allowJs": true
   },
-  "include": ["src/**/*", "*.ts"],
+  "include": ["src/**/*", "*.ts", "eslint/index.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
