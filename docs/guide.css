@@ -457,7 +457,7 @@ li strong {
 }
 
 .callout p {
-  margin: 0;
+  margin: 12px 0 0 0;
   font-size: 14px;
 }
 
@@ -510,18 +510,9 @@ li strong {
 .callout-tip :not(pre) > code,
 .callout-warning :not(pre) > code {
   color: #e6e6e6;
-}
-.callout-info :not(pre) > code {
-  background: color-mix(in srgb, var(--tag-blue-text) 15%, transparent);
-  border-color: color-mix(in srgb, var(--tag-blue-text) 35%, transparent);
-}
-.callout-tip :not(pre) > code {
-  background: color-mix(in srgb, var(--tag-green-text) 15%, transparent);
-  border-color: color-mix(in srgb, var(--tag-green-text) 35%, transparent);
-}
-.callout-warning :not(pre) > code {
-  background: color-mix(in srgb, var(--tag-amber-text) 15%, transparent);
-  border-color: color-mix(in srgb, var(--tag-amber-text) 35%, transparent);
+  background: transparent;
+  border-color: transparent;
+  padding: 0 2px;
 }
 
 /* ─── Prop table ──────────────────────────────────────────── */

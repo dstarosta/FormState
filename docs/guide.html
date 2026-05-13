@@ -2635,6 +2635,19 @@ formActions.validate(
             Return <code>true</code> for success or a <code>Record&lt;string, string&gt;</code> of
             <code>field-key: error</code> pairs to inject errors.
           </p>
+          <div class="callout callout-tip">
+            <div class="callout-label">Auto-touch on error</div>
+            <p>
+              When <code>formActions.validate</code> runs, every field that has an error — whether
+              from the schema or from a manual error keyed to a real field — is automatically marked
+              as touched. The same happens when <code>formHandlers.handleSubmit</code> encounters
+              errors.
+            </p>
+            <p>
+              If your UI renders errors only for touched fields, every error becomes visible as soon
+              as the user submits the form or runs full form validation.
+            </p>
+          </div>
           <h3>Touching fields to reveal errors</h3>
           <p>
             Errors are computed on every change, but you typically only show them after the user has
