@@ -75,6 +75,7 @@
           <a href="#helpers" class="nav-link">Value Helpers</a>
           <a href="#nextjs" class="nav-link">Next.js</a>
           <a href="#remix" class="nav-link">React Router 7</a>
+          <a href="#tanstack-start" class="nav-link">TanStack Start</a>
           <a href="#tanstack-query" class="nav-link">TanStack Query</a>
           <a href="#devtools" class="nav-link">DevTools</a>
         </div>
@@ -315,12 +316,13 @@ export default defineConfig([
           <ul>
             <li>
               The browser's native form submission behavior is fully preserved. See
-              <a href="#submission">Form Submission</a>, <a href="#nextjs">Next.js</a> and
-              <a href="#remix">React Router 7</a>.
+              <a href="#submission">Form Submission</a>, <a href="#nextjs">Next.js</a>,
+              <a href="#remix">React Router 7</a> and <a href="#tanstack-start">TanStack Start</a>.
             </li>
             <li>
               Server Actions drop in seamlessly with no adapters or wrappers required. See
-              <a href="#nextjs">Next.js</a> and <a href="#remix">React Router 7</a>.
+              <a href="#nextjs">Next.js</a>, <a href="#remix">React Router 7</a> and
+              <a href="#tanstack-start">TanStack Start</a>.
             </li>
             <li>
               <code>FormData</code> is natively supported along with <code>JSON</code> data. See
@@ -4412,6 +4414,229 @@ export async function loader() {
 }
 
 export default function ContactRoute({ loaderData }: Route.ComponentProps) {
+  return &lt;ContactForm user={loaderData} /&gt;;
+}</code></pre>
+          </div>
+          <p>Update <code>ContactForm</code> to accept and forward the prop:</p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { useFormState, z } from "form-state";
+
+// schema definition unchanged …
+
+export default function ContactForm({
+  user,
+}: {
+  user?: z.infer&lt;typeof schema&gt;;
+}) {
+  const {
+    formState: { data, errors },
+    formStatus: { dirty, submitting },
+    formActions,
+    formHandlers,
+    Form,
+  } = useFormState(schema, { initialData: user });
+
+  // … rest of the component unchanged
+}</code></pre>
+          </div>
+        </section>
+        <section class="section" id="tanstack-start">
+          <div class="section-eyebrow">Advanced</div>
+          <h2>TanStack Start</h2>
+          <p>
+            FormState works naturally with TanStack Start. A single file route can colocate the page
+            component, a loader for pre-fill, and an HTTP handler for the submission — the form
+            component validates on the client and POSTs typed data to the same route via
+            <code>fetch</code>.
+          </p>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              This example is included for completeness. If you're already on the TanStack stack,
+              you're more likely to reach for
+              <a href="https://tanstack.com/form" target="_blank" rel="noopener">TanStack Form</a>
+              — FormState is shown here to demonstrate that it drops into TanStack Start the same
+              way it does into Next.js or React Router.
+            </p>
+          </div>
+          <h3>Route with server handler</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// src/routes/contact.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { parseState, z } from "form-state";
+import ContactForm, { schema } from "../contact-form";
+
+export const Route = createFileRoute("/contact")({
+  component: ContactRoute,
+  server: {
+    handlers: {
+      POST: async ({ request }) =&gt; {
+        const { data: formData } = (await request.json()) as {
+          data: z.infer&lt;typeof schema&gt;;
+        };
+        const result = parseState(schema, formData, true);
+
+        if (!result.success) {
+          return Response.json(
+            { error: result.errors.getAll().join(" | ") },
+            { status: 400 },
+          );
+        }
+
+        await db.contacts.create({ data: result.data });
+
+        return Response.json({ success: true });
+      },
+    },
+  },
+});
+
+function ContactRoute() {
+  return &lt;ContactForm /&gt;;
+}</code></pre>
+          </div>
+          <h3>Form component</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { useFormState, z } from "form-state";
+
+export const schema = z.object({
+  name: z.formString({ required: true, error: "Name is required" }),
+  email: z.formString(
+    { required: true, error: "Email is required" },
+    z.regex(z.regexes.email, "Enter a valid email"),
+  ),
+  message: z.formString(
+    { required: true, error: "Message is required" },
+    z.minLength(10, "Must be at least 10 characters"),
+  ),
+  agreeToTerms: z.formBoolean({ required: true, error: "Agreement is required" })
+    .check(z.validate((v) =&gt; v === true, "You must agree to continue")),
+});
+
+export default function ContactForm() {
+  const {
+    formState: { data, errors },
+    formStatus: { dirty, submitting },
+    formActions,
+    formHandlers,
+    Form,
+  } = useFormState(schema);
+
+  const handleSubmit = formHandlers.handleSubmit(async (state) =&gt; {
+    if (!state.valid) {
+      formActions.focusOnFirstError({ selectText: true });
+      return {};
+    }
+
+    const res = await fetch("/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: state.data }),
+    });
+
+    if (!res.ok) {
+      const error = (await res.json()) as Error;
+      return { _serverError: error?.message ?? "Server error" };
+    }
+
+    return true;
+  });
+
+  return (
+    &lt;Form action={handleSubmit}&gt;
+      {errors.getManual("_serverError") &amp;&amp; (
+        &lt;p className="error"&gt;{errors.getManual("_serverError")}&lt;/p&gt;
+      )}
+
+      &lt;label&gt;
+        Name
+        &lt;input
+          type="text"
+          name={formActions.inferName("name")}
+          defaultValue={data.name}
+          onBlur={(e) =&gt; formActions.change("name", e.target.value, { touch: true })}
+        /&gt;
+        {errors.name &amp;&amp; &lt;span&gt;{errors.name}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        Email
+        &lt;input
+          type="email"
+          name={formActions.inferName("email")}
+          defaultValue={data.email}
+          onBlur={(e) =&gt; formActions.change("email", e.target.value, { touch: true })}
+        /&gt;
+        {errors.email &amp;&amp; &lt;span&gt;{errors.email}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        Message
+        &lt;textarea
+          name={formActions.inferName("message")}
+          defaultValue={data.message}
+          onBlur={(e) =&gt; formActions.change("message", e.target.value, { touch: true })}
+        /&gt;
+        {errors.message &amp;&amp; &lt;span&gt;{errors.message}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;label&gt;
+        &lt;input
+          type="checkbox"
+          name={formActions.inferName("agreeToTerms")}
+          defaultChecked={data.agreeToTerms === true}
+          onChange={(e) =&gt; formActions.change("agreeToTerms", e.target.checked, { touch: true })}
+        /&gt;
+        I agree to the terms
+        {errors.agreeToTerms &amp;&amp; &lt;span&gt;{errors.agreeToTerms}&lt;/span&gt;}
+      &lt;/label&gt;
+
+      &lt;button type="submit" disabled={submitting}&gt;
+        {submitting ? "Sending…" : "Send"}
+      &lt;/button&gt;
+
+      &lt;button type="reset" disabled={!dirty}&gt;
+        Reset
+      &lt;/button&gt;
+    &lt;/Form&gt;
+  );
+}</code></pre>
+          </div>
+          <h3>Pre-filling from a loader</h3>
+          <p>
+            Add a <code>loader</code> to the route to fetch data on the server and pass it to the
+            form as <code>initialData</code> — for example, pre-filling fields from the current
+            user's profile.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// src/routes/contact.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { parseState } from "form-state";
+import ContactForm, { schema } from "../contact-form";
+
+export const Route = createFileRoute("/contact")({
+  component: ContactRoute,
+  loader: async () =&gt; {
+    const user = await db.users.findFirst({ where: { id: await getSessionUserId() } });
+    const result = parseState(schema, user);
+
+    if (!result.success) {
+      throw new Error("Unexpected user data shape");
+    }
+
+    return result.data;
+  },
+  server: {
+    // … POST handler unchanged
+  },
+});
+
+function ContactRoute() {
+  const loaderData = Route.useLoaderData();
   return &lt;ContactForm user={loaderData} /&gt;;
 }</code></pre>
           </div>
