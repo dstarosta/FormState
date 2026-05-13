@@ -316,11 +316,25 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         // form validate event
         case 'validate': {
           const errors = parseAndCache(prevState.data).errors;
+          const mergedErrors = { ...errors, ...prevManualErrors };
+
+          const touched = { ...prevState.touched };
+
+          for (const key of Object.keys(mergedErrors)) {
+            const topSegment = key.split('.', 1)[0];
+
+            if (!topSegment || !(topSegment in prevState.data)) {
+              continue;
+            }
+
+            touched[key as keyof State] = true;
+          }
 
           return {
             ...prevState,
             validated: true,
-            errors: { ...errors, ...prevManualErrors },
+            errors: mergedErrors,
+            touched,
           } satisfies FormMutableState<State>;
         }
         // set manual error event

@@ -395,6 +395,101 @@ describe('useFormState', () => {
       expect(changedStatus.valid).toBe(true);
     });
 
+    it('should re-validate on replace after validate when validateBeforeSubmit is false', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialData, validateBeforeSubmit: false })
+      );
+
+      act(() => {
+        result.current.formActions.validate();
+      });
+      expect(result.current.formStatus.valid).toBe(true);
+
+      act(() => {
+        result.current.formActions.replace({ name: '', info: { age: 30 } }, { validate: true });
+      });
+
+      expect(result.current.formState.errors.name).toBe('Name is required');
+      expect(result.current.formStatus.valid).toBe(false);
+    });
+
+    it('should re-validate on touch after validate when validateBeforeSubmit is false', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialData, validateBeforeSubmit: false })
+      );
+
+      act(() => {
+        result.current.formActions.validate();
+      });
+      expect(result.current.formStatus.valid).toBe(true);
+
+      act(() => {
+        result.current.formActions.touch('name', { validate: true });
+      });
+
+      expect(result.current.formStatus.valid).toBe(true);
+      expect(result.current.formState.touched.name).toBe(true);
+    });
+
+    it('should re-validate on setError after validate when validateBeforeSubmit is false', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialData, validateBeforeSubmit: false })
+      );
+
+      act(() => {
+        result.current.formActions.validate();
+      });
+      expect(result.current.formStatus.valid).toBe(true);
+
+      act(() => {
+        result.current.formActions.setError('serverError', 'Server failure', { validate: true });
+      });
+
+      expect(result.current.formState.errors.getManual('serverError')).toBe('Server failure');
+      expect(result.current.formStatus.valid).toBe(false);
+    });
+
+    it('should re-validate on clearManualErrors after validate when validateBeforeSubmit is false', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialData, validateBeforeSubmit: false })
+      );
+
+      act(() => {
+        result.current.formActions.setError('serverError', 'Server failure');
+      });
+      act(() => {
+        result.current.formActions.validate();
+      });
+      expect(result.current.formStatus.valid).toBe(false);
+
+      act(() => {
+        result.current.formActions.clearManualErrors({ validate: true });
+      });
+
+      expect(result.current.formState.errors.getManual('serverError')).toBeUndefined();
+      expect(result.current.formStatus.valid).toBe(true);
+    });
+
     it('should handle number and date fields', () => {
       const initialData: InitialSchema = {
         name: 'John',
@@ -1861,6 +1956,44 @@ describe('useFormState', () => {
       expect(formState.dirty.info).toBe(false);
     });
 
+    it('should reset the form while retaining the data', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { change, touch, reset },
+      } = result.current;
+
+      act(() => {
+        touch('name');
+        change('name', 'Jonathan');
+        change((path) => path.info.age, 29);
+      });
+
+      act(() => {
+        reset({
+          retainData: true,
+          resetTouched: true,
+          callback: (state) => {
+            expect(state.data.name).toBe('Jonathan');
+            expect(state.data.info.age).toBe(29);
+            expect(state.dirty.name).toBe(false);
+            expect(state.dirty.info).toBe(false);
+            expect(state.touched.name).toBe(false);
+          },
+        });
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.data.name).toBe('Jonathan');
+      expect(formState.data.info.age).toBe(29);
+      expect(formStatus.dirty).toBe(false);
+      expect(formStatus.touched).toBe(false);
+    });
+
     it('should reset specific fields', () => {
       const initialData: InitialSchema = {
         name: 'John',
@@ -2350,6 +2483,253 @@ describe('useFormState', () => {
       expect(formStatus.submitted).toBe(false);
       expect(formStatus.valid).toBe(false);
       expect(formState.errors.getManual('custom')).toBe('Jonathan is not an acceptable name');
+    });
+
+    it('should mark all errored fields as touched on validate', () => {
+      const { result } = renderHook(() => useFormState(schema));
+      const {
+        formActions: { validate },
+      } = result.current;
+
+      const { formStatus: initialFormStatus } = result.current;
+
+      expect(initialFormStatus.touched).toBe(false);
+
+      act(() => {
+        validate();
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.errors.name).toBe('Name is required');
+      expect(formState.touched.name).toBe(true);
+      expect(formState.touched.get((path) => path.info.age)).toBe(true);
+      expect(formStatus.touched).toBe(true);
+    });
+
+    it('should mark all errored fields as touched on validate with submit when invalid', () => {
+      const { result } = renderHook(() => useFormState(schema));
+      const {
+        formActions: { validate },
+      } = result.current;
+
+      act(() => {
+        validate({ submit: true });
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(false);
+      expect(formState.touched.name).toBe(true);
+      expect(formState.touched.get((path) => path.info.age)).toBe(true);
+    });
+
+    it('should mark matching manual errors as touched on validate', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { setError, validate },
+      } = result.current;
+
+      act(() => {
+        setError('name', 'Manual name error');
+      });
+
+      act(() => {
+        validate();
+      });
+
+      const { formState } = result.current;
+
+      expect(formState.errors.name).toBe('Manual name error');
+      expect(formState.touched.name).toBe(true);
+    });
+
+    it('should NOT touch manual error keys that do not match any field on validate', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { setError, validate },
+      } = result.current;
+
+      act(() => {
+        setError('serverError', 'Something went wrong');
+      });
+
+      act(() => {
+        validate();
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.errors.getManual('serverError')).toBe('Something went wrong');
+      expect(formState.touched.getKeys()).not.toContain('serverError');
+      expect(formStatus.touched).toBe(false);
+    });
+
+    it('should mark nested errored fields as touched on validate', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { validate },
+      } = result.current;
+
+      act(() => {
+        validate();
+      });
+
+      const { formState } = result.current;
+
+      expect(formState.errors.get((path) => path.info.age)).toBe('Age is required');
+      expect(formState.touched.get((path) => path.info.age)).toBe(true);
+      expect(formState.touched.name).toBe(false);
+    });
+
+    it('should not mark any fields as touched on validate when there are no errors', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { validate },
+      } = result.current;
+
+      act(() => {
+        validate();
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formStatus.touched).toBe(false);
+      expect(formState.touched.name).toBe(false);
+    });
+
+    it('should mark errored fields as touched on validate with custom onValidate logic', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { validate },
+      } = result.current;
+
+      act(() => {
+        validate(() => ({ name: 'The name must not be John' }));
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formState.errors.name).toBe('The name must not be John');
+      expect(formState.touched.name).toBe(true);
+      expect(formStatus.touched).toBe(true);
+    });
+
+    it('should mark errored fields as touched on handleSubmit', async () => {
+      const { result } = renderHook(() => useFormState(schema));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      await act(async () => {
+        await handleSubmit(() => Promise.resolve(true))(new FormData());
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(false);
+      expect(formState.errors.name).toBe('Name is required');
+      expect(formState.touched.name).toBe(true);
+      expect(formState.touched.get((path) => path.info.age)).toBe(true);
+    });
+
+    it('should mark matching manual submission errors as touched on handleSubmit', async () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      await act(async () => {
+        await handleSubmit(() => Promise.resolve({ name: 'Submission rejected the name' }))(
+          new FormData()
+        );
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(false);
+      expect(formState.errors.name).toBe('Submission rejected the name');
+      expect(formState.touched.name).toBe(true);
+    });
+
+    it('should NOT touch non-matching manual submission errors on handleSubmit', async () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      await act(async () => {
+        await handleSubmit(() => Promise.resolve({ serverError: 'Backend went down' }))(
+          new FormData()
+        );
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(false);
+      expect(formState.errors.getManual('serverError')).toBe('Backend went down');
+      expect(formState.touched.getKeys()).not.toContain('serverError');
+      expect(formStatus.touched).toBe(false);
+    });
+
+    it('should still honor resetTouched on a successful validate submit (no errors)', () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formActions: { change, validate },
+      } = result.current;
+
+      act(() => {
+        change('name', 'Jonathan', { touch: true });
+      });
+
+      act(() => {
+        validate({ submit: true, resetTouched: false });
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(formStatus.submitted).toBe(true);
+      expect(formStatus.touched).toBe(true);
+      expect(formState.touched.name).toBe(true);
     });
 
     it('should set and clear manual errors', () => {
