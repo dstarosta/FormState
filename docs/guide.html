@@ -2966,7 +2966,7 @@ formStatus.touched                               // true if any field is touched
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// Append one or more items
 formActions.array.append('tags', ['react', 'typescript']);
-formActions.array.append((path) =&gt; path.notes, [{ text: '', typeId: '' }], { validate: true });
+formActions.array.append((path) =&gt; path.notes, [{ text: '', typeId: '' }]);
 
 // Insert at a specific position
 formActions.array.insert('tags', 0, 'featured');
@@ -4526,7 +4526,7 @@ formActions.setDirty('#avatar', false);</code></pre>
 const result = parseState(formSchema, apiResponse);
 
 if (result.success) {
-  formActions.replace(result.data, { validate: true });
+  formActions.replace(result.data);
 } else {
   // result.errors.getAll() — array of validation messages
   // result.errors.getKeys() — failed field paths
