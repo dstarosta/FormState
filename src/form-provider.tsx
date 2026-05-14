@@ -98,7 +98,7 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  *                                       "setError"/"clearManualErrors" form actions (default: `true`);
  * @param options.validateOnMount - Validate the schema after the form mounts with the initial values (default: `false`).
  * @param options.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
- * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
+ * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `true`).
  * @param options.debounceCacheCapacity - Sets the capacity of the debounce callback cache used by the "change"
  *                                        function. (default: 50). A non-positive value means no debouncing of
  *                                        change callbacks is allowed.

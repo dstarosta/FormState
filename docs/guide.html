@@ -590,9 +590,9 @@ formActions.change('tags', updatedTags);</code></pre>
           <div class="section-eyebrow">Getting Started</div>
           <h2>TypeScript</h2>
           <p>
-            FormState is built around a handful of exported generic types that flow from your schema
-            through every callback, accessor, and component prop. Understanding them unlocks the
-            full type-safety story.
+            FormState is built around a handful of exported generic state types that flow from your
+            schema through every callback, accessor, and component prop. Understanding them unlocks
+            the full type-safety story.
           </p>
           <h3>Requirements</h3>
           <p>
@@ -636,7 +636,15 @@ formActions.change('tags', updatedTags);</code></pre>
               level rather than nesting further.
             </p>
           </div>
-          <h3><span class="type-chip">FormPath&lt;T&gt;</span></h3>
+          <h3 id="generic-types">Common Types</h3>
+          <p>
+            These helper types are exported from <code>form-state</code> for typing wrapper
+            components, callbacks, and reusable helpers. The generic parameter <code>T</code> is
+            your Zod schema type — the same one you pass to <code>useFormState(schema, ...)</code>.
+            Provide it explicitly when inference does not apply (for example, in the props of a
+            generic component) so paths, errors, and state values stay typed end-to-end.
+          </p>
+          <h4><span class="type-chip">FormPath&lt;T&gt;</span></h4>
           <p>
             The type of a path expression — either a top-level key string or an arrow function that
             navigates the form data tree. Use it when passing a field reference as a prop.
@@ -660,7 +668,7 @@ function FormError&lt;T&gt;({
 // Caller — the compiler checks the path against FormSchema
 &lt;FormError path={(path: FormSchema) =&gt; path.info.age} errors={formState.errors} /&gt;</code></pre>
           </div>
-          <h3><span class="type-chip">FormState&lt;T&gt;</span></h3>
+          <h4><span class="type-chip">FormState&lt;T&gt;</span></h4>
           <p>
             The type of <code>formState</code> itself. Use it when writing callbacks that receive
             the state snapshot — e.g. debounce callbacks or change listeners.
@@ -699,7 +707,7 @@ function NoteTextInput({
   );
 }</code></pre>
           </div>
-          <h3><span class="type-chip">FormMode</span></h3>
+          <h4><span class="type-chip">FormMode</span></h4>
           <p>
             The union <code>'editable' | 'readOnly' | 'disabled'</code>. Use it when building mode
             selector components.
@@ -717,7 +725,7 @@ type ModeSelectorProps = {
 formActions.setMode('readOnly');   // ✅
 formActions.setMode('published');  // ❌ Type error</code></pre>
           </div>
-          <h3><span class="type-chip">SubmitState&lt;T&gt;</span></h3>
+          <h4><span class="type-chip">SubmitState&lt;T&gt;</span></h4>
           <p>
             The discriminated union passed to your <code>handleSubmit</code> callback. Narrow on
             <code>valid</code> to get a typed <code>data</code> object.
@@ -739,7 +747,7 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
   return true;
 };</code></pre>
           </div>
-          <h3><span class="type-chip">SubmitSuccessState&lt;T&gt;</span></h3>
+          <h4><span class="type-chip">SubmitSuccessState&lt;T&gt;</span></h4>
           <p>
             Passed to the <code>onSuccess</code> callback — guaranteed valid data plus the raw
             <code>FormData</code>.
@@ -762,7 +770,7 @@ function App() {
   return &lt;AppForm onSubmitted={handleFormSubmit} /&gt;;
 }</code></pre>
           </div>
-          <h3><span class="type-chip">SchemaDataObject&lt;T&gt;</span></h3>
+          <h4><span class="type-chip">SchemaDataObject&lt;T&gt;</span></h4>
           <p>
             Produced by <code>schema.toObject(data)</code> or
             <code>parseState(schema, obj, true).data</code>
@@ -781,7 +789,7 @@ function JsonData({ data }: { data: SchemaDataObject&lt;FormSchema&gt; }) {
 // Usage
 &lt;JsonData data={schema.toObject(formState.data)} /&gt;</code></pre>
           </div>
-          <h3><span class="type-chip">StateChangeListener&lt;T&gt;</span></h3>
+          <h4><span class="type-chip">StateChangeListener&lt;T&gt;</span></h4>
           <p>The type for <code>formHooks.useListener</code> callbacks.</p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -797,7 +805,7 @@ const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCou
 // In the component
 formHooks.useListener(listener);</code></pre>
           </div>
-          <h3><span class="type-chip">DeepPartial&lt;T&gt;</span></h3>
+          <h4><span class="type-chip">DeepPartial&lt;T&gt;</span></h4>
           <p>
             A recursive <code>Partial</code> — every property at every level of nesting becomes
             optional. The <code>initialData</code> option accepts <code>DeepPartial&lt;T&gt;</code>,
@@ -818,6 +826,465 @@ const { formState, formActions } = useFormState(schema, {
   initialData: draft,
 });</code></pre>
           </div>
+          <h3 id="options-types">Options Types</h3>
+          <p>
+            Every form action accepts an options object whose type is exported from
+            <code>form-state</code>. Import these when typing wrapper components or helpers that
+            forward action options. Types parameterized by <code>T</code> take your Zod schema type.
+          </p>
+          <h4 id="element-focus-options">
+            <span class="type-chip">ElementFocusOptions&lt;T&gt;</span>
+          </h4>
+          <p>Options for <code>formActions.focus</code>.</p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>errorKey</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  When provided, focuses only if there is an active error at the given field path or
+                  manual error key. Accepts a path expression or a string key.
+                </td>
+              </tr>
+              <tr>
+                <td><code>focusVisible</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Shows that the element is focused using an outline style, if defined.
+                </td>
+              </tr>
+              <tr>
+                <td><code>preventScroll</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Do not scroll the focused element into view.</td>
+              </tr>
+              <tr>
+                <td><code>selectText</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Selects the text content of the focused input.</td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-change-array-options">
+            <span class="type-chip">FormChangeArrayOptions&lt;T&gt;</span>
+          </h4>
+          <p>
+            Options for the <code>formActions.array.*</code> methods (<code>append</code>,
+            <code>insert</code>, <code>remove</code>, <code>move</code>, <code>swap</code>,
+            <code>replace</code>). Same shape as
+            <a href="#form-change-options"><code>FormChangeOptions</code></a> minus
+            <code>debounceIntervalMs</code>.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>callback</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Optional callback to run after the form state has been changed. Receives the
+                  updated <code>FormState</code> and <code>FormStatus</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>touch</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Mark affected fields as touched.</td>
+              </tr>
+              <tr>
+                <td><code>validate</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Validate the form after the array change. Overridable via the
+                  <code>validateOnChange</code> hook option.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-change-options">
+            <span class="type-chip">FormChangeOptions&lt;T&gt;</span>
+          </h4>
+          <p>Options for <code>formActions.change</code>.</p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>callback</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Optional callback to run after the form state has been changed. Receives the
+                  updated <code>FormState</code> and <code>FormStatus</code>. Must be stable —
+                  define it at module scope or wrap it in <code>useCallback</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>debounceIntervalMs</code></td>
+                <td><code>0</code></td>
+                <td class="prop-desc">
+                  Debounce interval in milliseconds before dispatching the change. Intended for text
+                  inputs paired with <code>defaultValue</code> — see
+                  <a href="#debounce">Debounced Changes</a>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>touch</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Mark the field as touched.</td>
+              </tr>
+              <tr>
+                <td><code>validate</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Validate the field after the change. Overridable via the
+                  <code>validateOnChange</code> hook option.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-init-options">
+            <span class="type-chip">FormInitOptions&lt;T&gt;</span>
+          </h4>
+          <p>
+            The second argument to <code>useFormState(schema, options)</code> — controls initial
+            data, validation timing, and miscellaneous form-wide behavior.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>confirmDirtyStateNavigation</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Confirm browser navigation when the form status is dirty.</td>
+              </tr>
+              <tr>
+                <td><code>cssPrefix</code></td>
+                <td><code>'form-state'</code></td>
+                <td class="prop-desc">
+                  Prefix applied to the generated CSS classes — see
+                  <a href="#css-classes">CSS Classes</a>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>debounceCacheCapacity</code></td>
+                <td><code>50</code></td>
+                <td class="prop-desc">
+                  Capacity of the debounce callback cache used by <code>change</code>. A
+                  non-positive value disables debouncing. Smaller values save memory but can drop
+                  pending callbacks under heavy concurrent use.
+                </td>
+              </tr>
+              <tr>
+                <td><code>errorMessageSeparator</code></td>
+                <td><code>'|'</code></td>
+                <td class="prop-desc">
+                  Separator used when multiple errors are joined into one message for the same state
+                  property.
+                </td>
+              </tr>
+              <tr>
+                <td><code>inferredNameFormat</code></td>
+                <td><code>'bracket'</code></td>
+                <td class="prop-desc">
+                  Default format used by <code>inferName</code> — <code>'bracket'</code> produces
+                  <code>info[address][city]</code>, <code>'dot'</code> produces
+                  <code>info.address.city</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>initialData</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  <code>DeepPartial</code> object with property values applied on mount. Non-dirty
+                  fields stay in sync with reactive updates to this reference.
+                </td>
+              </tr>
+              <tr>
+                <td><code>initialMode</code></td>
+                <td><code>'editable'</code></td>
+                <td class="prop-desc">
+                  Initial <code>FormMode</code> — one of <code>'editable'</code>,
+                  <code>'readOnly'</code>, or <code>'disabled'</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>initialTouched</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  An array of field names or path expressions to mark as touched at mount — useful
+                  when editing existing data so errors show without the user visiting each field.
+                </td>
+              </tr>
+              <tr>
+                <td><code>resetTouchedOnFormReset</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">
+                  Reset the touched status when the form element fires <code>reset</code>. Only
+                  applies to a <code>&lt;Form&gt;</code> without a custom <code>onReset</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>validateBeforeSubmit</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Validate on <code>change</code>, <code>touch</code>, <code>replace</code>, and
+                  <code>setError</code>/<code>clearManualErrors</code> before the form has been
+                  explicitly validated. Skipped once <code>validated</code> is set by
+                  <code>validateOnMount</code> or a manual <code>validate</code> call.
+                </td>
+              </tr>
+              <tr>
+                <td><code>validateOnChange</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Default value for <code>change</code>'s <code>validate</code> option.
+                </td>
+              </tr>
+              <tr>
+                <td><code>validateOnMount</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Run validation immediately when the hook mounts.</td>
+              </tr>
+              <tr>
+                <td><code>validateOnTouch</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Default value for <code>touch</code>'s <code>validate</code> option.
+                </td>
+              </tr>
+              <tr>
+                <td><code>watch</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">
+                  Enable the <code>useWatch</code> hook. Adds some memory overhead — leave off
+                  unless you need it.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-provider-init-options">
+            <span class="type-chip">FormProviderInitOptions&lt;T&gt;</span>
+          </h4>
+          <p>
+            The options object passed to <code>FormStateProvider</code>. Extends
+            <a href="#form-init-options"><code>FormInitOptions&lt;T&gt;</code></a> with one
+            additional required field.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>schema</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  The Zod Mini schema for the form — same value you would pass as the first argument
+                  to <code>useFormState</code>.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-reset-options">
+            <span class="type-chip">FormResetOptions&lt;T&gt;</span>
+          </h4>
+          <p>Options for <code>formActions.reset</code>.</p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>callback</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Optional callback to run after the form state has been reset.
+                </td>
+              </tr>
+              <tr>
+                <td><code>names</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Optional array of root-level field names to reset. If not provided, all fields are
+                  reset.
+                </td>
+              </tr>
+              <tr>
+                <td><code>resetTouched</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">Reset the touched state of the fields.</td>
+              </tr>
+              <tr>
+                <td><code>retainData</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">
+                  Retain the current field values instead of restoring initials.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-submit-options">
+            <span class="type-chip">FormSubmitOptions&lt;T&gt;</span>
+          </h4>
+          <p>
+            Options for <code>formHooks.useSubmit</code> / the submit pipeline — passed alongside an
+            <code>onSubmit</code> callback.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>onError</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Callback invoked when submission fails — either due to validation errors or
+                  <code>onSubmit</code> returning <code>false</code>. Receives the updated
+                  <code>FormState</code> and <code>FormStatus</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>onSuccess</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Callback invoked on successful submission. Receives a
+                  <code>SubmitSuccessState</code> — typed <code>data</code> plus the raw
+                  <code>FormData</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>resetDirty</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Reset the dirty state of the fields after a successful submit.
+                </td>
+              </tr>
+              <tr>
+                <td><code>resetTouched</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Reset the touched state of the fields after a successful submit.
+                </td>
+              </tr>
+              <tr>
+                <td><code>updateInitialData</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Update the initial form data with the submitted data so a subsequent
+                  <code>reset</code> restores the submitted snapshot.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-touch-options"><span class="type-chip">FormTouchOptions</span></h4>
+          <p>Options for <code>formActions.touch</code>.</p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>validate</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Validate the field after marking it as touched. Overridable via the
+                  <code>validateOnTouch</code> hook option.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-validate-options">
+            <span class="type-chip">FormValidateOptions&lt;T&gt;</span>
+          </h4>
+          <p>Options for <code>formActions.validate</code>.</p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>callback</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Optional callback to run after the form state has been validated.
+                </td>
+              </tr>
+              <tr>
+                <td><code>resetDirty</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">Reset the dirty state of the fields.</td>
+              </tr>
+              <tr>
+                <td><code>resetTouched</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Reset the touched state after submission. Only applies when <code>submit</code> is
+                  <code>true</code>; regular validations leave touched flags alone.
+                </td>
+              </tr>
+              <tr>
+                <td><code>submit</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">
+                  Mark the form as submitted when the state is valid. Useful for treating
+                  <code>validate({ submit: true })</code> as a programmatic submission.
+                </td>
+              </tr>
+              <tr>
+                <td><code>updateInitialData</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">
+                  Update the initial form data with the validated data so a subsequent
+                  <code>reset</code> restores it.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </section>
         <section class="section" id="license">
           <div class="section-eyebrow">Getting Started</div>
@@ -2416,8 +2883,8 @@ formActions.change((path) =&gt; path.category, value, { touch: true });
 formActions.touch('name');
 formActions.touch((path) =&gt; path.notes[index].text);
 
-// Touch with optional validation
-formActions.touch('name', { validate: true });
+// Touch without running validation (validation runs by default)
+formActions.touch('name', { validate: false });
 
 // Inspect which fields have been touched
 formState.touched.getKeys()                      // ['name', 'info.age', ...]
@@ -2576,9 +3043,10 @@ formActions.array.clear('tags');</code></pre>
           <div class="section-eyebrow">Features</div>
           <h2>Validation</h2>
           <p>
-            Validation runs automatically on every <code>change</code> call by default. You control
-            when errors surface to users through the <em>touched</em> pattern: only show an error
-            once the field has been touched.
+            Validation runs automatically on every <code>change</code> and <code>touch</code> call
+            by default. You control when errors surface to users through the <em>touched</em>
+            pattern: only show an error once the field has been touched. Running validation on touch
+            ensures empty required fields light up after a user tabs through them without typing.
           </p>
           <h3>Validation options</h3>
           <table class="prop-table">
@@ -2602,7 +3070,7 @@ formActions.array.clear('tags');</code></pre>
               </tr>
               <tr>
                 <td><code>validateOnTouch</code></td>
-                <td><code>false</code></td>
+                <td><code>true</code></td>
                 <td class="prop-desc">Run validation when a field is touched.</td>
               </tr>
               <tr>

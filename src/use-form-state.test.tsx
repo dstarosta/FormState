@@ -434,7 +434,7 @@ describe('useFormState', () => {
       expect(result.current.formStatus.valid).toBe(true);
 
       act(() => {
-        result.current.formActions.touch('name', { validate: true });
+        result.current.formActions.touch('name');
       });
 
       expect(result.current.formStatus.valid).toBe(true);
@@ -1953,19 +1953,35 @@ describe('useFormState', () => {
       expect(schema.toObject(data)).toStrictEqual({});
     });
 
-    it('should validate field when touched and validate option is "always"', () => {
+    it('should validate field on touch by default', () => {
       const { result } = renderHook(() => useFormState(schema));
       const {
         formActions: { touch },
       } = result.current;
 
       act(() => {
-        touch('name', { validate: true });
+        touch('name');
       });
 
       const { formState } = result.current;
 
       expect(formState.errors.name).toBe('Name is required');
+      expect(formState.touched.name).toBe(true);
+    });
+
+    it('should not validate field on touch when validateOnTouch is false', () => {
+      const { result } = renderHook(() => useFormState(schema, { validateOnTouch: false }));
+      const {
+        formActions: { touch },
+      } = result.current;
+
+      act(() => {
+        touch('name');
+      });
+
+      const { formState } = result.current;
+
+      expect(formState.errors.name).toBeUndefined();
       expect(formState.touched.name).toBe(true);
     });
 

@@ -234,7 +234,7 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   validateOnChange?: boolean;
   /**
-   * Validate the schema, by default, after a `touch` action  (default: `false`).
+   * Validate the schema, by default, after a `touch` action  (default: `true`).
    */
   validateOnTouch?: boolean;
   /**
@@ -663,7 +663,7 @@ type FormReplaceOptions = {
  */
 type FormTouchOptions = {
   /**
-   * Indicates whether to validate the field (default: `false`).
+   * Indicates whether to validate the field (default: `true`).
    *
    * The default value can be overridden in the options of the `useFormState` hook.
    */
@@ -1905,7 +1905,7 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  *                                           "setError"/"clearManualErrors" form actions (default: `true`);
  * @param formOptions.validateOnMount - Validate the schema after the form mounts with the initial values (default: `false`).
  * @param formOptions.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
- * @param formOptions.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
+ * @param formOptions.validateOnTouch - Validate the form, by default, after a `touch` action (default: `true`).
  * @param formOptions.debounceCacheCapacity - Sets the capacity of the debounce callback cache used by the "change"
  *                                            function. (default: 50). A non-positive value means no debouncing of
  *                                            change callbacks is allowed.
@@ -1975,7 +1975,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  *                                       "setError"/"clearManualErrors" form actions (default: `true`);
  * @param options.validateOnMount - Validate the schema after the form mounts with the initial values (default: `false`).
  * @param options.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
- * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
+ * @param options.validateOnTouch - Validate the form, by default, after a `touch` action (default: `true`).
  * @param options.debounceCacheCapacity - Sets the capacity of the debounce callback cache used by the "change"
  *                                        function. (default: 50). A non-positive value means no debouncing of
  *                                        change callbacks is allowed.
@@ -2494,5 +2494,5 @@ declare function asDateString(value: Date | string, dateFormat: FormDateFormat):
  */
 declare function asDateString(value: Date | string, dateFormat?: string): string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormMode, type FormPath, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

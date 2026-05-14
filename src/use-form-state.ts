@@ -108,7 +108,7 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
  *                                           "setError"/"clearManualErrors" form actions (default: `true`);
  * @param formOptions.validateOnMount - Validate the schema after the form mounts with the initial values (default: `false`).
  * @param formOptions.validateOnChange - Validate the form, by default, after a `change` action. (default: `true`).
- * @param formOptions.validateOnTouch - Validate the form, by default, after a `touch` action (default: `false`).
+ * @param formOptions.validateOnTouch - Validate the form, by default, after a `touch` action (default: `true`).
  * @param formOptions.debounceCacheCapacity - Sets the capacity of the debounce callback cache used by the "change"
  *                                            function. (default: 50). A non-positive value means no debouncing of
  *                                            change callbacks is allowed.
@@ -134,7 +134,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     validateBeforeSubmit = true,
     validateOnMount = false,
     validateOnChange = true,
-    validateOnTouch = false,
+    validateOnTouch = true,
     debounceCacheCapacity = 50,
     cssPrefix = 'form-state',
     inferredNameFormat = 'bracket',

@@ -367,7 +367,7 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   validateOnChange?: boolean;
   /**
-   * Validate the schema, by default, after a `touch` action  (default: `false`).
+   * Validate the schema, by default, after a `touch` action  (default: `true`).
    */
   validateOnTouch?: boolean;
   /**
@@ -881,7 +881,7 @@ export type FormReplaceOptions = {
  */
 export type FormTouchOptions = {
   /**
-   * Indicates whether to validate the field (default: `false`).
+   * Indicates whether to validate the field (default: `true`).
    *
    * The default value can be overridden in the options of the `useFormState` hook.
    */
