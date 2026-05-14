@@ -113,7 +113,13 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
  *                                            function. (default: 50). A non-positive value means no debouncing of
  *                                            change callbacks is allowed.
  * @param formOptions.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
- * @param formOptions.cssPrefix - Form CSS class prefix (default: "form-state").
+ * @param formOptions.cssOptions - Form-level defaults for `formClasses`. Supports every
+ *                                 `FormClassOptions` field — `prefix` (default `"form-state"`,
+ *                                 or `null` to skip prefix-based classes) and the per-state
+ *                                 class-name lists (`classNames`, `errorClassNames`,
+ *                                 `touchedClassNames`, `disabledClassNames`, …). Per-call
+ *                                 `formClasses(field, options)` values fully replace the
+ *                                 form-level defaults for the same key.
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                            same state property (default: "|").
@@ -136,13 +142,13 @@ export function useFormState<T extends z.ZodMiniObject>(
     validateOnChange = true,
     validateOnTouch = true,
     debounceCacheCapacity = 50,
-    cssPrefix = 'form-state',
     inferredNameFormat = 'bracket',
     errorMessageSeparator = '|',
     confirmDirtyStateNavigation = false,
     initialData,
     initialTouched,
     watch,
+    cssOptions,
   }: FormInitOptions<T> = formOptions ?? {};
 
   // The manual errors that are not a part of the schema.
@@ -155,6 +161,9 @@ export function useFormState<T extends z.ZodMiniObject>(
     () => createState(schema, initialData),
     [schema, initialData]
   );
+
+  // Stable reference for form-level `formClasses` defaults.
+  const stableCssOptions = useDeepMemo(() => cssOptions ?? {}, [cssOptions]);
 
   // The processed initial state with default property values and optional errors during the
   // initial validation.
@@ -507,7 +516,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Generates CSS form classes based on the form state.
   const formClasses = useCallback(
-    (nameOrPath: FormPath<T>, additionalClasses?: string | null, options?: FormClassOptions) => {
+    (nameOrPath: FormPath<T>, options?: FormClassOptions) => {
       let classes = '';
 
       const path = typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : null;
@@ -515,30 +524,76 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       const requiredPathNotation = path ? getPathNotation(path) : (nameOrPath as string);
 
-      const prefix = options?.prefix?.trim() || cssPrefix;
+      // Per-call options replace form-level defaults when a key is present.
+      const merged: FormClassOptions = { ...stableCssOptions, ...options };
 
-      if (formState.required[requiredPathNotation]) {
+      // Prefix: explicit `null` (at either level, with per-call winning) disables prefix classes.
+      const prefix = merged.prefix === null ? null : merged.prefix?.trim() || 'form-state';
+
+      if (prefix && formState.required[requiredPathNotation]) {
         classes += `${prefix}__required `;
       }
 
       if (formState.mode === 'disabled') {
-        classes += `${prefix}__disabled `;
+        if (prefix) {
+          classes += `${prefix}__disabled `;
+        }
+
+        if (merged.disabledClassNames?.length) {
+          classes += `${merged.disabledClassNames} `;
+        }
       } else if (formState.mode === 'readOnly') {
-        classes += `${prefix}__readonly `;
+        if (prefix) {
+          classes += `${prefix}__readonly `;
+        }
+
+        if (merged.readOnlyClassNames?.length) {
+          classes += `${merged.readOnlyClassNames} `;
+        }
+
+        if (
+          merged.readOnlyErrorClassNames?.length &&
+          formState.validated &&
+          formState.errors[pathNotation]
+        ) {
+          classes += `${merged.readOnlyErrorClassNames} `;
+        }
       } else {
-        if (formState.touched[pathNotation]) {
-          classes += `${prefix}__touched `;
+        const isTouched = !!formState.touched[pathNotation];
+        const isInvalid = formState.validated && !!formState.errors[pathNotation];
+
+        if (merged.editableClassNames?.length) {
+          classes += `${merged.editableClassNames} `;
         }
-        if (formState.validated && formState.errors[pathNotation]) {
-          classes += `${prefix}__error `;
+
+        if (isTouched) {
+          if (prefix) {
+            classes += `${prefix}__touched `;
+          }
+          if (merged.touchedClassNames?.length) {
+            classes += `${merged.touchedClassNames} `;
+          }
+        }
+
+        if (isInvalid) {
+          if (prefix) {
+            classes += `${prefix}__error `;
+          }
+          if (merged.errorClassNames?.length) {
+            classes += `${merged.errorClassNames} `;
+          }
+        }
+
+        if (isInvalid && isTouched && merged.errorTouchedClassNames?.length) {
+          classes += `${merged.errorTouchedClassNames} `;
         }
       }
 
-      if (!additionalClasses?.length) {
-        return classes.trim();
+      if (merged.classNames?.length) {
+        classes += `${merged.classNames} `;
       }
 
-      return (classes.trim() + ' ' + additionalClasses).trim();
+      return classes.trim();
     },
     [
       formState.data,
@@ -547,7 +602,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       formState.touched,
       formState.validated,
       formState.errors,
-      cssPrefix,
+      stableCssOptions,
     ]
   );
 
@@ -1304,11 +1359,33 @@ export function useFormState<T extends z.ZodMiniObject>(
   // Focuses the first input or textarea in the form with the error CSS class.
   const focusOnFirstError = useCallback(
     (options?: Omit<ElementFocusOptions<T>, 'errorKey'>) => {
+      const prefix =
+        stableCssOptions.prefix === null ? null : stableCssOptions.prefix?.trim() || 'form-state';
+
       const doFocus = () => {
-        const errorClass = `${cssPrefix}__error`;
-        const element = document.querySelector<HTMLElement>(
-          `form input.${errorClass}, form textarea.${errorClass}`
-        );
+        let element: HTMLElement | null = null;
+
+        if (prefix) {
+          const errorClass = `${prefix}__error`;
+          element = document.querySelector<HTMLElement>(
+            `form input.${errorClass}, form textarea.${errorClass}`
+          );
+        } else {
+          const errors = formStateRef.current.errors;
+
+          for (const key in errors) {
+            if (key && errors[key as keyof State]) {
+              const candidate = document.querySelector<HTMLElement>(
+                `form input[name="${key}"], form textarea[name="${key}"]`
+              );
+
+              if (candidate) {
+                element = candidate;
+                break;
+              }
+            }
+          }
+        }
 
         if (!element) {
           return;
@@ -1327,7 +1404,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       // Allow elements with the error classes to re-render.
       setTimeout(doFocus, 0);
     },
-    [cssPrefix]
+    [stableCssOptions]
   );
 
   // The memoized Form component.

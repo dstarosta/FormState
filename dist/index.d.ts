@@ -254,12 +254,6 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   watch?: boolean;
   /**
-   * Form CSS class prefix (default: "form-state").
-   *
-   * CSS class example: "form-state__touched"
-   */
-  cssPrefix?: string;
-  /**
    * Sets the default format for the `inferName` function (default: "bracket").
    */
   inferredNameFormat?: 'bracket' | 'dot';
@@ -272,6 +266,12 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    * Confirm browser navigation when the form status is dirty (default: `false`).
    */
   confirmDirtyStateNavigation?: boolean;
+  /**
+   * Form-level defaults for the `formClasses` function.
+   *
+   * See: {@link FormClassOptions}
+   */
+  cssOptions?: FormClassOptions | undefined;
 };
 type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
   schema: T;
@@ -600,12 +600,47 @@ type FormClassOptions = {
   /**
    * A custom CSS class prefix for the form. The default prefix is `form-state`.
    *
+   * Set the value to `null` to skip prefix-based CSS classes.
+   *
    * CSS classes that are generated based on the form state:
    *
    * - `[prefix]__error` (form-state__error)
    * - `[prefix]__touched` (form-state__touched)
    */
-  prefix?: string;
+  prefix?: string | null;
+  /**
+   * A list of CSS class names that are always added.
+   */
+  classNames?: string;
+  /**
+   * A list of CSS class names that are added when the form (not just the field) is disabled.
+   */
+  disabledClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the form (not just the field) is editable.
+   */
+  editableClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the field is invalid.
+   */
+  errorClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the field is invalid and touched.
+   */
+  errorTouchedClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the form (not just the field) is read-only.
+   */
+  readOnlyClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the form (not just the field) is read-only
+   * and the field is invalid.
+   */
+  readOnlyErrorClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the field is touched.
+   */
+  touchedClassNames?: string;
 };
 /**
  * Form change options.
@@ -1289,11 +1324,10 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
    *
    * @typeParam T - form state type.
    * @param nameOrPath - Root level field name or a state path expression.
-   * @param additionalClasses - Optional string containing additional CSS classes for the control.
    * @param options - Options for form CSS classes.
    * @returns A `string` containing the form and the additional CSS class names.
    */
-  formClasses: (nameOrPath: FormPath<T>, additionalClasses?: string | null, options?: FormClassOptions) => string;
+  formClasses: (nameOrPath: FormPath<T>, options?: FormClassOptions) => string;
   /**
    * The Form component with pre-wired reset logic.
    *
@@ -1910,7 +1944,13 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  *                                            function. (default: 50). A non-positive value means no debouncing of
  *                                            change callbacks is allowed.
  * @param formOptions.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
- * @param formOptions.cssPrefix - Form CSS class prefix (default: "form-state").
+ * @param formOptions.cssOptions - Form-level defaults for `formClasses`. Supports every
+ *                                 `FormClassOptions` field — `prefix` (default `"form-state"`,
+ *                                 or `null` to skip prefix-based classes) and the per-state
+ *                                 class-name lists (`classNames`, `errorClassNames`,
+ *                                 `touchedClassNames`, `disabledClassNames`, …). Per-call
+ *                                 `formClasses(field, options)` values fully replace the
+ *                                 form-level defaults for the same key.
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                            same state property (default: "|").
@@ -1980,11 +2020,11 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  *                                        function. (default: 50). A non-positive value means no debouncing of
  *                                        change callbacks is allowed.
  * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
- * @param options.cssPrefix - Form CSS class prefix (default: "form-state").
  * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param options.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                        same state property (default: "|").
  * @param options.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty (default: `false`).
+ * @param options.cssOptions - Form-level defaults for `formClasses`.
  *
  * @returns A curried function to wrap the component.
  */
@@ -2494,5 +2534,5 @@ declare function asDateString(value: Date | string, dateFormat: FormDateFormat):
  */
 declare function asDateString(value: Date | string, dateFormat?: string): string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassOptions, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

@@ -103,11 +103,11 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
  *                                        function. (default: 50). A non-positive value means no debouncing of
  *                                        change callbacks is allowed.
  * @param options.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
- * @param options.cssPrefix - Form CSS class prefix (default: "form-state").
  * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param options.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                        same state property (default: "|").
  * @param options.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty (default: `false`).
+ * @param options.cssOptions - Form-level defaults for `formClasses`.
  *
  * @returns A curried function to wrap the component.
  */

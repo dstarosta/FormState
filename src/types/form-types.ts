@@ -387,12 +387,6 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   watch?: boolean;
   /**
-   * Form CSS class prefix (default: "form-state").
-   *
-   * CSS class example: "form-state__touched"
-   */
-  cssPrefix?: string;
-  /**
    * Sets the default format for the `inferName` function (default: "bracket").
    */
   inferredNameFormat?: 'bracket' | 'dot';
@@ -405,6 +399,12 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    * Confirm browser navigation when the form status is dirty (default: `false`).
    */
   confirmDirtyStateNavigation?: boolean;
+  /**
+   * Form-level defaults for the `formClasses` function.
+   *
+   * See: {@link FormClassOptions}
+   */
+  cssOptions?: FormClassOptions | undefined;
 };
 
 export type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
@@ -811,12 +811,48 @@ export type FormClassOptions = {
   /**
    * A custom CSS class prefix for the form. The default prefix is `form-state`.
    *
+   * Set the value to `null` to skip prefix-based CSS classes.
+   *
    * CSS classes that are generated based on the form state:
    *
    * - `[prefix]__error` (form-state__error)
    * - `[prefix]__touched` (form-state__touched)
    */
-  prefix?: string;
+  prefix?: string | null;
+  /**
+   * A list of CSS class names that are always added.
+   */
+  // eslint-disable-next-line unicorn/no-keyword-prefix
+  classNames?: string;
+  /**
+   * A list of CSS class names that are added when the form (not just the field) is disabled.
+   */
+  disabledClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the form (not just the field) is editable.
+   */
+  editableClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the field is invalid.
+   */
+  errorClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the field is invalid and touched.
+   */
+  errorTouchedClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the form (not just the field) is read-only.
+   */
+  readOnlyClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the form (not just the field) is read-only
+   * and the field is invalid.
+   */
+  readOnlyErrorClassNames?: string;
+  /**
+   * A list of CSS class names that are added when the field is touched.
+   */
+  touchedClassNames?: string;
 };
 
 /**
@@ -1565,15 +1601,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
    *
    * @typeParam T - form state type.
    * @param nameOrPath - Root level field name or a state path expression.
-   * @param additionalClasses - Optional string containing additional CSS classes for the control.
    * @param options - Options for form CSS classes.
    * @returns A `string` containing the form and the additional CSS class names.
    */
-  formClasses: (
-    nameOrPath: FormPath<T>,
-    additionalClasses?: string | null,
-    options?: FormClassOptions
-  ) => string;
+  formClasses: (nameOrPath: FormPath<T>, options?: FormClassOptions) => string;
   /**
    * The Form component with pre-wired reset logic.
    *

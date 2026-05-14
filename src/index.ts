@@ -5,6 +5,7 @@ export type {
   ElementFocusOptions,
   FormChangeOptions,
   FormChangeArrayOptions,
+  FormClassOptions,
   FormControlWithStateProps,
   FormDateFormat,
   FormEventType,

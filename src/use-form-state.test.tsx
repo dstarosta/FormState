@@ -18,6 +18,7 @@ import {
   formatDate,
   z,
   type DeepPartial,
+  type FormClassOptions,
   type FormMode,
   type FormPath,
   type FormState,
@@ -3195,7 +3196,10 @@ describe('useFormState', () => {
         >
           {formStatus.submitting && <p>Submitting...</p>}
           {Boolean(getSubmittedData()?.data) && <p>Form Submitted</p>}
-          <p title="name" className={formClasses('name', 'block', { prefix: 'form-text' })}>
+          <p
+            title="name"
+            className={formClasses('name', { prefix: 'form-text', classNames: 'block' })}
+          >
             {data.name}
           </p>
           {watch !== false && <WatchedComponent inferName={inferName} useWatch={useWatch} />}
@@ -4753,7 +4757,7 @@ describe('useFormState', () => {
         const TestForm = () => {
           const { Form, formActions, formClasses } = useFormState(schema, {
             validateOnMount: true,
-            cssPrefix: 'my-form',
+            cssOptions: { prefix: 'my-form' },
           });
 
           return (
@@ -4783,6 +4787,338 @@ describe('useFormState', () => {
 
         expect(input.selectionStart).toBe(0);
         expect(input.selectionEnd).toBe(input.value.length);
+      });
+
+      it('skips prefix-based classes for a single call when options.prefix is null', () => {
+        const TestForm = () => {
+          const { Form, formClasses } = useFormState(schema, {
+            validateOnMount: true,
+          });
+
+          return (
+            <Form>
+              <input aria-label="prefixed" className={formClasses('name')} defaultValue="" />
+              <input
+                aria-label="prefixless"
+                className={formClasses('name', {
+                  prefix: null,
+                  classNames: 'always',
+                  errorClassNames: 'has-error',
+                })}
+                defaultValue=""
+              />
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        const prefixed = screen
+          .getByRole<HTMLInputElement>('textbox', { name: 'prefixed' })
+          .className.split(' ')
+          .filter(Boolean);
+        const prefixless = screen
+          .getByRole<HTMLInputElement>('textbox', { name: 'prefixless' })
+          .className.split(' ')
+          .filter(Boolean);
+
+        expect(prefixed).toContain('form-state__error');
+        expect(prefixed).toContain('form-state__required');
+
+        expect(prefixless).toContain('always');
+        expect(prefixless).toContain('has-error');
+        expect(prefixless).not.toContain('form-state__error');
+        expect(prefixless).not.toContain('form-state__required');
+      });
+
+      it('skips prefix-based classes when cssOptions.prefix is null', () => {
+        const TestForm = () => {
+          const { Form, formClasses } = useFormState(schema, {
+            validateOnMount: true,
+            cssOptions: { prefix: null },
+          });
+
+          return (
+            <Form>
+              <input
+                aria-label="name"
+                className={formClasses('name', {
+                  classNames: 'always',
+                  errorClassNames: 'has-error',
+                })}
+                defaultValue=""
+              />
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'name' });
+        const classes = input.className.split(' ').filter(Boolean);
+
+        expect(classes).toContain('always');
+        expect(classes).toContain('has-error');
+        expect(classes).not.toContain('form-state__error');
+        expect(classes).not.toContain('form-state__required');
+        expect(classes.every((c) => !c.startsWith('null'))).toBe(true);
+      });
+
+      it('focuses first errored field by name attribute when cssOptions.prefix is null', async () => {
+        const TestForm = () => {
+          const { Form, formActions } = useFormState(schema, {
+            validateOnMount: true,
+            cssOptions: { prefix: null },
+          });
+
+          return (
+            <Form>
+              <input aria-label="name" name="name" defaultValue="" />
+              <button
+                type="button"
+                onClick={() => {
+                  formActions.focusOnFirstError();
+                }}
+              >
+                Focus First Error
+              </button>
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        fireEvent.click(screen.getByText('Focus First Error'));
+
+        await waitFor(() => {
+          expect(screen.getByRole('textbox', { name: 'name' })).toHaveFocus();
+        });
+      });
+
+      it('per-call options replace cssOptions defaults for every class-name key', () => {
+        const invalidData: InitialSchema = {
+          name: '',
+          info: { age: 30 },
+          tags: [],
+        };
+
+        type Setup = (actions: {
+          setMode: (mode: FormMode) => void;
+          validate: () => void;
+          touch: (field: 'name') => void;
+        }) => void;
+
+        const cases: Array<{
+          key: Exclude<keyof FormClassOptions, 'prefix'>;
+          setup: Setup;
+        }> = [
+          { key: 'classNames', setup: () => {} },
+          { key: 'editableClassNames', setup: () => {} },
+          {
+            key: 'touchedClassNames',
+            setup: ({ touch }) => {
+              touch('name');
+            },
+          },
+          {
+            key: 'errorClassNames',
+            setup: ({ validate }) => {
+              validate();
+            },
+          },
+          {
+            key: 'errorTouchedClassNames',
+            setup: ({ validate, touch }) => {
+              validate();
+              touch('name');
+            },
+          },
+          {
+            key: 'disabledClassNames',
+            setup: ({ setMode }) => {
+              setMode('disabled');
+            },
+          },
+          {
+            key: 'readOnlyClassNames',
+            setup: ({ setMode }) => {
+              setMode('readOnly');
+            },
+          },
+          {
+            key: 'readOnlyErrorClassNames',
+            setup: ({ setMode, validate }) => {
+              setMode('readOnly');
+              validate();
+            },
+          },
+        ];
+
+        for (const { key, setup } of cases) {
+          const { result, unmount } = renderHook(() =>
+            useFormState(schema, {
+              initialData: invalidData,
+              cssOptions: { [key]: 'level-default' },
+            })
+          );
+
+          act(() => {
+            setup({
+              setMode: result.current.formActions.setMode,
+              validate: () => {
+                result.current.formActions.validate();
+              },
+              touch: (field) => {
+                result.current.formActions.touch(field);
+              },
+            });
+          });
+
+          const withDefault = result.current.formClasses('name').split(' ').filter(Boolean);
+          expect(withDefault, `${key}: form-level default applies`).toContain('level-default');
+
+          const withOverride = result.current
+            .formClasses('name', { [key]: 'per-call-value' })
+            .split(' ')
+            .filter(Boolean);
+          expect(withOverride, `${key}: per-call replaces default`).toContain('per-call-value');
+          expect(withOverride, `${key}: form-level default dropped`).not.toContain('level-default');
+
+          unmount();
+        }
+      });
+
+      it('applies cssOptions class-name defaults across all formClasses calls', () => {
+        const TestForm = () => {
+          const { Form, formClasses } = useFormState(schema, {
+            validateOnMount: true,
+            cssOptions: {
+              classNames: 'always-default',
+              errorClassNames: 'default-error',
+            },
+          });
+
+          return (
+            <Form>
+              <input aria-label="name" className={formClasses('name')} defaultValue="" />
+              <input
+                aria-label="age"
+                className={formClasses((path) => path.info.age)}
+                defaultValue=""
+              />
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        for (const label of ['name', 'age']) {
+          const classes = screen
+            .getByRole<HTMLInputElement>('textbox', { name: label })
+            .className.split(' ')
+            .filter(Boolean);
+
+          expect(classes).toContain('always-default');
+          expect(classes).toContain('default-error');
+          expect(classes).toContain('form-state__error');
+        }
+      });
+
+      it('resolves prefix across the form-level × per-call matrix', () => {
+        const cases: Array<{
+          label: string;
+          formLevel: string | null | undefined;
+          perCall: string | null | undefined;
+          expectedPrefix: string | null;
+        }> = [
+          { label: 'a', formLevel: undefined, perCall: undefined, expectedPrefix: 'form-state' },
+          { label: 'b', formLevel: 'foo', perCall: undefined, expectedPrefix: 'foo' },
+          { label: 'c', formLevel: null, perCall: undefined, expectedPrefix: null },
+          { label: 'd', formLevel: undefined, perCall: 'bar', expectedPrefix: 'bar' },
+          { label: 'e', formLevel: 'foo', perCall: 'bar', expectedPrefix: 'bar' },
+          { label: 'f', formLevel: null, perCall: 'bar', expectedPrefix: 'bar' },
+          { label: 'g', formLevel: undefined, perCall: null, expectedPrefix: null },
+          { label: 'h', formLevel: 'foo', perCall: null, expectedPrefix: null },
+          { label: 'i', formLevel: null, perCall: null, expectedPrefix: null },
+        ];
+
+        for (const { label, formLevel, perCall, expectedPrefix } of cases) {
+          const cssOptions: FormClassOptions | undefined =
+            formLevel === undefined ? undefined : { prefix: formLevel };
+          const perCallOpts: FormClassOptions | undefined =
+            perCall === undefined ? undefined : { prefix: perCall };
+
+          const { result, unmount } = renderHook(() => {
+            return useFormState(schema, { validateOnMount: true, cssOptions });
+          });
+
+          const classes = result.current.formClasses('name', perCallOpts);
+          const tokens = classes.split(' ').filter(Boolean);
+
+          if (expectedPrefix === null) {
+            expect(
+              tokens.filter((t) => t.includes('__')),
+              `case ${label}: no prefix classes`
+            ).toEqual([]);
+          } else {
+            expect(tokens, `case ${label}: expected prefix "${expectedPrefix}"`).toContain(
+              `${expectedPrefix}__required`
+            );
+            expect(
+              tokens.some((t) => t.includes('__') && !t.startsWith(`${expectedPrefix}__`)),
+              `case ${label}: only "${expectedPrefix}__*" prefix classes expected`
+            ).toBe(false);
+          }
+
+          unmount();
+        }
+      });
+
+      it('per-call options replace cssOptions defaults for the same key', () => {
+        const TestForm = () => {
+          const { Form, formClasses } = useFormState(schema, {
+            validateOnMount: true,
+            cssOptions: {
+              classNames: 'default-always',
+              errorClassNames: 'default-error',
+            },
+          });
+
+          return (
+            <Form>
+              <input
+                aria-label="overridden"
+                className={formClasses('name', { errorClassNames: 'per-call-error' })}
+                defaultValue=""
+              />
+              <input
+                aria-label="kept"
+                className={formClasses((path) => path.info.age)}
+                defaultValue=""
+              />
+            </Form>
+          );
+        };
+
+        render(<TestForm />);
+
+        const overridden = screen
+          .getByRole<HTMLInputElement>('textbox', { name: 'overridden' })
+          .className.split(' ')
+          .filter(Boolean);
+
+        // `errorClassNames` was overridden: per-call wins, default is dropped.
+        expect(overridden).toContain('per-call-error');
+        expect(overridden).not.toContain('default-error');
+        // `classNames` was not overridden: form-level default still applies.
+        expect(overridden).toContain('default-always');
+
+        const kept = screen
+          .getByRole<HTMLInputElement>('textbox', { name: 'kept' })
+          .className.split(' ')
+          .filter(Boolean);
+        expect(kept).toContain('default-always');
+        expect(kept).toContain('default-error');
       });
     });
   });
@@ -5247,6 +5583,455 @@ describe('useFormState', () => {
 
         expect(resultFn).toHaveBeenCalledTimes(3);
       });
+    });
+  });
+
+  describe('formClasses options', () => {
+    const baseData: InitialSchema = {
+      name: 'John',
+      info: { age: 30 },
+      tags: [],
+    };
+
+    it('always appends classNames regardless of field state', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      const classes = result.current.formClasses('name', { classNames: 'input input--lg' });
+
+      expect(classes.split(' ')).toEqual(expect.arrayContaining(['input', 'input--lg']));
+      expect(classes).not.toContain('form-state__error');
+      expect(classes).not.toContain('form-state__touched');
+    });
+
+    it('appends touchedClassNames only when the field is touched', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      const before = result.current.formClasses('name', { touchedClassNames: 'is-touched' });
+      expect(before).not.toContain('is-touched');
+      expect(before).not.toContain('form-state__touched');
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      const after = result.current.formClasses('name', { touchedClassNames: 'is-touched' });
+      expect(after).toContain('form-state__touched');
+      expect(after).toContain('is-touched');
+    });
+
+    it('appends errorClassNames only when the field is invalid (validated)', () => {
+      const invalidData: InitialSchema = {
+        name: '',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData: invalidData }));
+
+      const beforeValidate = result.current.formClasses('name', {
+        errorClassNames: 'is-invalid',
+      });
+      expect(beforeValidate).not.toContain('is-invalid');
+      expect(beforeValidate).not.toContain('form-state__error');
+
+      act(() => {
+        result.current.formActions.validate();
+      });
+
+      const afterValidate = result.current.formClasses('name', {
+        errorClassNames: 'is-invalid',
+      });
+      expect(afterValidate).toContain('form-state__error');
+      expect(afterValidate).toContain('is-invalid');
+    });
+
+    it('appends errorTouchedClassNames only when invalid AND touched', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      // Make 'name' invalid without touching it.
+      act(() => {
+        result.current.formActions.change('name', '', { validate: true, touch: false });
+      });
+
+      const onlyInvalid = result.current.formClasses('name', {
+        errorTouchedClassNames: 'is-invalid-touched',
+      });
+      expect(onlyInvalid).toContain('form-state__error');
+      expect(onlyInvalid).not.toContain('form-state__touched');
+      expect(onlyInvalid).not.toContain('is-invalid-touched');
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      const both = result.current.formClasses('name', {
+        errorTouchedClassNames: 'is-invalid-touched',
+      });
+      expect(both).toContain('form-state__error');
+      expect(both).toContain('form-state__touched');
+      expect(both).toContain('is-invalid-touched');
+    });
+
+    it('does not append errorTouchedClassNames when touched but valid', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      const classes = result.current.formClasses('name', {
+        errorTouchedClassNames: 'is-invalid-touched',
+      });
+
+      expect(classes).toContain('form-state__touched');
+      expect(classes).not.toContain('form-state__error');
+      expect(classes).not.toContain('is-invalid-touched');
+    });
+
+    it('combines all option class names with the right conditions', () => {
+      const invalidData: InitialSchema = {
+        name: '',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData: invalidData }));
+
+      act(() => {
+        result.current.formActions.validate();
+        result.current.formActions.touch('name');
+      });
+
+      const classes = result.current.formClasses('name', {
+        classNames: 'field',
+        touchedClassNames: 'field--touched',
+        errorClassNames: 'field--error',
+        errorTouchedClassNames: 'field--error-touched',
+      });
+
+      const tokens = classes.split(' ');
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          'form-state__required',
+          'form-state__touched',
+          'form-state__error',
+          'field',
+          'field--touched',
+          'field--error',
+          'field--error-touched',
+        ])
+      );
+    });
+
+    it('appends disabledClassNames and skips field-state options in disabled mode', () => {
+      const invalidData: InitialSchema = {
+        name: '',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialData: invalidData, initialMode: 'disabled' })
+      );
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      const classes = result.current.formClasses('name', {
+        classNames: 'field',
+        disabledClassNames: 'field--disabled',
+        readOnlyClassNames: 'field--readonly',
+        touchedClassNames: 'field--touched',
+        errorClassNames: 'field--error',
+        errorTouchedClassNames: 'field--error-touched',
+      });
+
+      expect(classes).toContain('form-state__disabled');
+      expect(classes).toContain('field');
+      expect(classes).toContain('field--disabled');
+      expect(classes).not.toContain('field--readonly');
+      expect(classes).not.toContain('field--touched');
+      expect(classes).not.toContain('field--error');
+      expect(classes).not.toContain('field--error-touched');
+      expect(classes).not.toContain('form-state__touched');
+      expect(classes).not.toContain('form-state__error');
+    });
+
+    it('appends readOnlyClassNames and skips field-state options in readOnly mode', () => {
+      const invalidData: InitialSchema = {
+        name: '',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialData: invalidData, initialMode: 'readOnly' })
+      );
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      const classes = result.current.formClasses('name', {
+        classNames: 'field',
+        disabledClassNames: 'field--disabled',
+        readOnlyClassNames: 'field--readonly',
+        touchedClassNames: 'field--touched',
+        errorClassNames: 'field--error',
+      });
+
+      expect(classes).toContain('form-state__readonly');
+      expect(classes).toContain('field');
+      expect(classes).toContain('field--readonly');
+      expect(classes).not.toContain('field--disabled');
+      expect(classes).not.toContain('field--touched');
+      expect(classes).not.toContain('field--error');
+    });
+
+    it('appends readOnlyErrorClassNames only in readOnly mode AND when invalid', () => {
+      const invalidData: InitialSchema = {
+        name: '',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData: invalidData }));
+
+      // Editable + invalid: must NOT include the readOnly-error class.
+      act(() => {
+        result.current.formActions.validate();
+      });
+
+      const editableInvalid = result.current.formClasses('name', {
+        readOnlyClassNames: 'field--readonly',
+        readOnlyErrorClassNames: 'field--readonly-error',
+      });
+
+      expect(editableInvalid).toContain('form-state__error');
+      expect(editableInvalid).not.toContain('field--readonly');
+      expect(editableInvalid).not.toContain('field--readonly-error');
+
+      // readOnly + valid: must NOT include the readOnly-error class.
+      act(() => {
+        result.current.formActions.change('name', 'John', { validate: true, touch: false });
+        result.current.formActions.setMode('readOnly');
+      });
+
+      const readOnlyValid = result.current.formClasses('name', {
+        readOnlyClassNames: 'field--readonly',
+        readOnlyErrorClassNames: 'field--readonly-error',
+      });
+
+      expect(readOnlyValid).toContain('form-state__readonly');
+      expect(readOnlyValid).toContain('field--readonly');
+      expect(readOnlyValid).not.toContain('field--readonly-error');
+
+      // readOnly + invalid: include the readOnly-error class.
+      act(() => {
+        result.current.formActions.change('name', '', { validate: true, touch: false });
+      });
+
+      const readOnlyInvalid = result.current.formClasses('name', {
+        readOnlyClassNames: 'field--readonly',
+        readOnlyErrorClassNames: 'field--readonly-error',
+      });
+
+      expect(readOnlyInvalid).toContain('form-state__readonly');
+      expect(readOnlyInvalid).toContain('field--readonly');
+      expect(readOnlyInvalid).toContain('field--readonly-error');
+
+      // Field-state options remain suppressed in readOnly mode.
+      expect(readOnlyInvalid).not.toContain('form-state__error');
+    });
+
+    it('does not append readOnlyErrorClassNames in disabled mode even when invalid', () => {
+      const invalidData: InitialSchema = {
+        name: '',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialData: invalidData, initialMode: 'disabled' })
+      );
+
+      act(() => {
+        result.current.formActions.validate();
+      });
+
+      const classes = result.current.formClasses('name', {
+        readOnlyErrorClassNames: 'field--readonly-error',
+      });
+
+      expect(classes).toContain('form-state__disabled');
+      expect(classes).not.toContain('field--readonly-error');
+    });
+
+    it('appends editableClassNames only in editable mode', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      const editable = result.current.formClasses('name', {
+        editableClassNames: 'field--editable',
+      });
+
+      expect(editable).toContain('field--editable');
+
+      act(() => {
+        result.current.formActions.setMode('disabled');
+      });
+
+      const disabled = result.current.formClasses('name', {
+        editableClassNames: 'field--editable',
+      });
+
+      expect(disabled).not.toContain('field--editable');
+      expect(disabled).toContain('form-state__disabled');
+
+      act(() => {
+        result.current.formActions.setMode('readOnly');
+      });
+
+      const readOnly = result.current.formClasses('name', {
+        editableClassNames: 'field--editable',
+      });
+
+      expect(readOnly).not.toContain('field--editable');
+      expect(readOnly).toContain('form-state__readonly');
+    });
+
+    it('combines editableClassNames with touched/error options in editable mode', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      act(() => {
+        result.current.formActions.change('name', '', { validate: true, touch: false });
+      });
+
+      const errored = result.current.formClasses('name', {
+        editableClassNames: 'field--editable',
+        errorClassNames: 'field--error',
+        errorTouchedClassNames: 'field--error-touched',
+      });
+
+      expect(errored).toContain('field--editable');
+      expect(errored).toContain('field--error');
+      expect(errored).not.toContain('field--error-touched');
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      const erroredTouched = result.current.formClasses('name', {
+        editableClassNames: 'field--editable',
+        touchedClassNames: 'field--touched',
+        errorClassNames: 'field--error',
+        errorTouchedClassNames: 'field--error-touched',
+      });
+      const tokens = erroredTouched.split(' ');
+
+      expect(tokens).toEqual(
+        expect.arrayContaining([
+          'field--editable',
+          'field--touched',
+          'field--error',
+          'field--error-touched',
+        ])
+      );
+    });
+
+    it('does not append disabledClassNames or readOnlyClassNames in editable mode', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      const classes = result.current.formClasses('name', {
+        disabledClassNames: 'field--disabled',
+        readOnlyClassNames: 'field--readonly',
+      });
+
+      expect(classes).not.toContain('field--disabled');
+      expect(classes).not.toContain('field--readonly');
+      expect(classes).not.toContain('form-state__disabled');
+      expect(classes).not.toContain('form-state__readonly');
+    });
+
+    it('switches between disabledClassNames and readOnlyClassNames as mode changes', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      act(() => {
+        result.current.formActions.setMode('readOnly');
+      });
+
+      const readOnly = result.current.formClasses('name', {
+        disabledClassNames: 'field--disabled',
+        readOnlyClassNames: 'field--readonly',
+      });
+
+      expect(readOnly).toContain('field--readonly');
+      expect(readOnly).not.toContain('field--disabled');
+
+      act(() => {
+        result.current.formActions.setMode('disabled');
+      });
+
+      const disabled = result.current.formClasses('name', {
+        disabledClassNames: 'field--disabled',
+        readOnlyClassNames: 'field--readonly',
+      });
+
+      expect(disabled).toContain('field--disabled');
+      expect(disabled).not.toContain('field--readonly');
+
+      act(() => {
+        result.current.formActions.setMode('editable');
+      });
+
+      const editable = result.current.formClasses('name', {
+        disabledClassNames: 'field--disabled',
+        readOnlyClassNames: 'field--readonly',
+      });
+
+      expect(editable).not.toContain('field--disabled');
+      expect(editable).not.toContain('field--readonly');
+    });
+
+    it('honors the custom prefix together with option class names', () => {
+      const invalidData: InitialSchema = {
+        name: '',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData: invalidData }));
+
+      act(() => {
+        result.current.formActions.validate();
+        result.current.formActions.touch('name');
+      });
+
+      const classes = result.current.formClasses('name', {
+        prefix: 'fld',
+        classNames: 'field',
+        errorTouchedClassNames: 'field--err-tch',
+      });
+
+      const tokens = classes.split(' ');
+
+      expect(tokens).toEqual(
+        expect.arrayContaining(['fld__error', 'fld__touched', 'field', 'field--err-tch'])
+      );
+      expect(classes).not.toContain('form-state__error');
+      expect(classes).not.toContain('form-state__touched');
+    });
+
+    it('ignores empty option class names', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      const baseline = result.current.formClasses('name');
+      const withEmpty = result.current.formClasses('name', {
+        classNames: '',
+        touchedClassNames: '',
+        errorClassNames: '',
+        errorTouchedClassNames: '',
+      });
+
+      expect(withEmpty).toBe(baseline);
+      expect(withEmpty).toContain('form-state__touched');
     });
   });
 });
