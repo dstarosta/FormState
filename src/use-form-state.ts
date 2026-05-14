@@ -584,7 +584,7 @@ export function useFormState<T extends z.ZodMiniObject>(
               type: 'touch',
               name: path,
               options: {
-                validate: false,
+                validate: validateOnTouch && formStateRef.current.submitCount === 0,
               },
             });
           }
@@ -708,7 +708,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         });
       }
     },
-    [debounceCacheCapacity, validateOnChange, dispatch]
+    [debounceCacheCapacity, validateOnChange, validateOnTouch, dispatch]
   );
 
   // The memoized "replace" function.
