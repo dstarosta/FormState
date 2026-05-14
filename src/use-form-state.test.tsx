@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, type Ref } from 'react';
+import React, { StrictMode, useEffect, useMemo, useRef, type Ref } from 'react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import {
   act,
@@ -1766,6 +1766,52 @@ describe('useFormState', () => {
       });
 
       expect(updateCounter).toBe(1);
+    });
+
+    it('should apply debounced change under StrictMode (mount/cleanup/mount cycle)', () => {
+      expect(process.env['NODE_ENV']).toBe('development');
+
+      vi.useFakeTimers();
+
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 18 },
+      };
+
+      const interval = 500;
+      let callbackCount = 0;
+      const callback = (state: FormState<Schema>) => {
+        ++callbackCount;
+        expect(state.data.name).toBe('Alice');
+      };
+
+      let formRef!: ReturnType<typeof useFormState<typeof schema>>;
+
+      const Probe = () => {
+        formRef = useFormState(schema, { initialData });
+        return null;
+      };
+
+      render(
+        <StrictMode>
+          <Probe />
+        </StrictMode>
+      );
+
+      act(() => {
+        formRef.formActions.change('name', 'Alice', {
+          touch: true,
+          callback,
+          debounceIntervalMs: interval,
+        });
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(interval);
+      });
+
+      expect(formRef.formState.data.name).toBe('Alice');
+      expect(callbackCount).toBe(1);
     });
 
     it('should not called debounced change callbacks if unmounted', () => {

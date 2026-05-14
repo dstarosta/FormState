@@ -1,4 +1,5 @@
 import {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -487,6 +488,8 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Cleanup on unmount.
   useEffect(() => {
+    isMountedRef.current = true;
+
     const currentCache = debounceCache.current;
 
     return () => {
@@ -1107,7 +1110,9 @@ export function useFormState<T extends z.ZodMiniObject>(
               data: cleanEmpty(schema, currentState.data) as State,
             };
 
-        setIsSubmitting(true);
+        startTransition(() => {
+          setIsSubmitting(true);
+        });
 
         const submissionErrors = await onSubmit(submitState, submittedFormData);
 
