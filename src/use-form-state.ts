@@ -20,6 +20,7 @@ import type {
   ElementFocusOptions,
   FormChangeArrayOptions,
   FormChangeOptions,
+  FormClassCallback,
   FormClassOptions,
   FormPath,
   FormClearErrorsOptions,
@@ -72,6 +73,7 @@ import {
   getState,
   updateState,
 } from './helpers/state-manager';
+import { combineClasses } from './helpers/class-helper';
 import { formatErrors } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
@@ -113,12 +115,12 @@ const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an arr
  *                                            function. (default: 50). A non-positive value means no debouncing of
  *                                            change callbacks is allowed.
  * @param formOptions.watch - Sets a value indicating whether the `useWatch` hook should be enabled (default: `false`).
- * @param formOptions.cssOptions - Form-level defaults for `formClasses`. Supports every
- *                                 `FormClassOptions` field — `prefix` (default `"form-state"`,
- *                                 or `null` to skip prefix-based classes) and the per-state
- *                                 class-name lists (`classNames`, `errorClassNames`,
- *                                 `touchedClassNames`, `disabledClassNames`, …). Per-call
- *                                 `formClasses(field, options)` values fully replace the
+ * @param formOptions.cssOptions - Form-level defaults for `formClasses`: `prefix`
+ *                                 (default `"form-state"`, or `null` to skip prefix-based
+ *                                 classes) and `classNames` (a `string` or a callback that
+ *                                 receives `{ isError, isTouched, isRequired, mode }` and
+ *                                 returns a clsx-compatible value). Per-call
+ *                                 `formClasses(field, ...)` values fully replace the
  *                                 form-level defaults for the same key.
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
@@ -516,81 +518,60 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Generates CSS form classes based on the form state.
   const formClasses = useCallback(
-    (nameOrPath: FormPath<T>, options?: FormClassOptions) => {
-      let classes = '';
-
+    (nameOrPath: FormPath<T>, classesOrOptions?: string | FormClassCallback | FormClassOptions) => {
       const path = typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : null;
       const pathNotation = path ? path.join('.') : (nameOrPath as string);
-
       const requiredPathNotation = path ? getPathNotation(path) : (nameOrPath as string);
 
-      // Per-call options replace form-level defaults when a key is present.
-      const merged: FormClassOptions = { ...stableCssOptions, ...options };
+      const perCall: FormClassOptions =
+        typeof classesOrOptions === 'string' || typeof classesOrOptions === 'function'
+          ? { classNames: classesOrOptions }
+          : (classesOrOptions ?? {});
 
-      // Prefix: explicit `null` (at either level, with per-call winning) disables prefix classes.
-      const prefix = merged.prefix === null ? null : merged.prefix?.trim() || 'form-state';
+      const classNames = perCall.classNames ?? stableCssOptions.classNames;
+      const prefixSetting = perCall.prefix === undefined ? stableCssOptions.prefix : perCall.prefix;
+      const prefix = prefixSetting === null ? null : prefixSetting?.trim() || 'form-state';
 
-      if (prefix && formState.required[requiredPathNotation]) {
-        classes += `${prefix}__required `;
-      }
+      const isRequired = Boolean(formState.required[requiredPathNotation]);
+      const isTouched = Boolean(formState.touched[pathNotation]);
+      const isError = Boolean(formState.validated && formState.errors[pathNotation]);
+      const mode = formState.mode;
 
-      if (formState.mode === 'disabled') {
-        if (prefix) {
+      let classes = '';
+
+      if (prefix) {
+        if (isRequired) {
+          classes += `${prefix}__required `;
+        }
+
+        if (mode === 'disabled') {
           classes += `${prefix}__disabled `;
-        }
-
-        if (merged.disabledClassNames?.length) {
-          classes += `${merged.disabledClassNames} `;
-        }
-      } else if (formState.mode === 'readOnly') {
-        if (prefix) {
+        } else if (mode === 'readOnly') {
           classes += `${prefix}__readonly `;
-        }
 
-        if (merged.readOnlyClassNames?.length) {
-          classes += `${merged.readOnlyClassNames} `;
-        }
-
-        if (
-          merged.readOnlyErrorClassNames?.length &&
-          formState.validated &&
-          formState.errors[pathNotation]
-        ) {
-          classes += `${merged.readOnlyErrorClassNames} `;
-        }
-      } else {
-        const isTouched = !!formState.touched[pathNotation];
-        const isInvalid = formState.validated && !!formState.errors[pathNotation];
-
-        if (merged.editableClassNames?.length) {
-          classes += `${merged.editableClassNames} `;
-        }
-
-        if (isTouched) {
-          if (prefix) {
-            classes += `${prefix}__touched `;
-          }
-          if (merged.touchedClassNames?.length) {
-            classes += `${merged.touchedClassNames} `;
-          }
-        }
-
-        if (isInvalid) {
-          if (prefix) {
+          if (isError) {
             classes += `${prefix}__error `;
           }
-          if (merged.errorClassNames?.length) {
-            classes += `${merged.errorClassNames} `;
+        } else {
+          if (isTouched) {
+            classes += `${prefix}__touched `;
           }
-        }
-
-        if (isInvalid && isTouched && merged.errorTouchedClassNames?.length) {
-          classes += `${merged.errorTouchedClassNames} `;
+          if (isError) {
+            classes += `${prefix}__error `;
+          }
         }
       }
 
-      if (merged.classNames?.length) {
-        classes += `${merged.classNames} `;
+      if (classNames !== undefined) {
+        const value =
+          typeof classNames === 'function'
+            ? classNames({ isError, isTouched, isRequired, mode })
+            : classNames;
+        const combinedClasses = combineClasses(value);
+
+        if (combinedClasses) {
+          classes += `${combinedClasses} `;
+        }
       }
 
       return classes.trim();
@@ -1141,7 +1122,13 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The memoized "handleSubmit" function.
   const handleSubmit = useCallback(
     (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions<T>) => {
+      const shouldSubmit = options?.onBeforeSubmit?.();
+
       return async (submittedFormData: FormData) => {
+        if (shouldSubmit === false) {
+          return;
+        }
+
         const currentState = formStateRef.current;
 
         const safeData = schema.safeParse(currentState.data);

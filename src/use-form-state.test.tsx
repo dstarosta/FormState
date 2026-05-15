@@ -18,6 +18,7 @@ import {
   formatDate,
   z,
   type DeepPartial,
+  type FormClassCallback,
   type FormClassOptions,
   type FormMode,
   type FormPath,
@@ -2769,6 +2770,151 @@ describe('useFormState', () => {
       expect(formStatus.touched).toBe(false);
     });
 
+    it('should call onBeforeSubmit when handleSubmit is invoked', async () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      const onBeforeSubmit = vi.fn();
+      const onSubmit = vi.fn(() => Promise.resolve(true as const));
+
+      await act(async () => {
+        await handleSubmit(onSubmit, { onBeforeSubmit })(new FormData());
+      });
+
+      const { formStatus } = result.current;
+
+      expect(onBeforeSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(formStatus.submitted).toBe(true);
+    });
+
+    it('should submit when onBeforeSubmit returns true', async () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      const onSubmit = vi.fn(() => Promise.resolve(true as const));
+
+      await act(async () => {
+        await handleSubmit(onSubmit, { onBeforeSubmit: () => true })(new FormData());
+      });
+
+      const { formStatus } = result.current;
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(formStatus.submitted).toBe(true);
+    });
+
+    it('should submit when onBeforeSubmit returns void', async () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      const onSubmit = vi.fn(() => Promise.resolve(true as const));
+
+      await act(async () => {
+        await handleSubmit(onSubmit, {
+          onBeforeSubmit: () => {
+            // intentionally returns nothing
+          },
+        })(new FormData());
+      });
+
+      const { formStatus } = result.current;
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(formStatus.submitted).toBe(true);
+    });
+
+    it('should NOT submit when onBeforeSubmit returns false', async () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      const onSubmit = vi.fn(() => Promise.resolve(true as const));
+
+      await act(async () => {
+        await handleSubmit(onSubmit, { onBeforeSubmit: () => false })(new FormData());
+      });
+
+      const { formStatus } = result.current;
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(formStatus.submitted).toBe(false);
+      expect(formStatus.submitting).toBe(false);
+    });
+
+    it('should not call onSuccess or onError when onBeforeSubmit returns false', async () => {
+      const initialData: InitialSchema = {
+        name: 'John',
+        info: { age: 30 },
+        tags: [],
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      const onSuccess = vi.fn();
+      const onError = vi.fn();
+
+      await act(async () => {
+        await handleSubmit(() => Promise.resolve(true), {
+          onBeforeSubmit: () => false,
+          onSuccess,
+          onError,
+        })(new FormData());
+      });
+
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('should not validate or touch fields when onBeforeSubmit returns false on an invalid form', async () => {
+      const { result } = renderHook(() => useFormState(schema));
+      const {
+        formHandlers: { handleSubmit },
+      } = result.current;
+
+      const onSubmit = vi.fn(() => Promise.resolve(true as const));
+
+      await act(async () => {
+        await handleSubmit(onSubmit, { onBeforeSubmit: () => false })(new FormData());
+      });
+
+      const { formState, formStatus } = result.current;
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(formStatus.submitted).toBe(false);
+      expect(formState.errors.name).toBeUndefined();
+      expect(formState.touched.name).toBe(false);
+    });
+
     it('should still honor resetTouched on a successful validate submit (no errors)', () => {
       const initialData: InitialSchema = {
         name: 'John',
@@ -4802,8 +4948,7 @@ describe('useFormState', () => {
                 aria-label="prefixless"
                 className={formClasses('name', {
                   prefix: null,
-                  classNames: 'always',
-                  errorClassNames: 'has-error',
+                  classNames: ({ isError }) => ['always', isError && 'has-error'],
                 })}
                 defaultValue=""
               />
@@ -4843,8 +4988,7 @@ describe('useFormState', () => {
               <input
                 aria-label="name"
                 className={formClasses('name', {
-                  classNames: 'always',
-                  errorClassNames: 'has-error',
+                  classNames: ({ isError }) => ['always', isError && 'has-error'],
                 })}
                 defaultValue=""
               />
@@ -4895,106 +5039,72 @@ describe('useFormState', () => {
         });
       });
 
-      it('per-call options replace cssOptions defaults for every class-name key', () => {
+      it('per-call classNames replaces cssOptions classNames default', () => {
+        const initialData: InitialSchema = {
+          name: 'John',
+          info: { age: 30 },
+          tags: [],
+        };
+        const { result } = renderHook(() =>
+          useFormState(schema, {
+            initialData,
+            cssOptions: { classNames: 'level-default' },
+          })
+        );
+
+        const withDefault = result.current.formClasses('name').split(' ').filter(Boolean);
+        expect(withDefault).toContain('level-default');
+
+        const withOverride = result.current
+          .formClasses('name', { classNames: 'per-call-value' })
+          .split(' ')
+          .filter(Boolean);
+
+        expect(withOverride).toContain('per-call-value');
+        expect(withOverride).not.toContain('level-default');
+      });
+
+      it('per-call classNames callback replaces cssOptions classNames callback', () => {
         const invalidData: InitialSchema = {
           name: '',
           info: { age: 30 },
           tags: [],
         };
-
-        type Setup = (actions: {
-          setMode: (mode: FormMode) => void;
-          validate: () => void;
-          touch: (field: 'name') => void;
-        }) => void;
-
-        const cases: Array<{
-          key: Exclude<keyof FormClassOptions, 'prefix'>;
-          setup: Setup;
-        }> = [
-          { key: 'classNames', setup: () => {} },
-          { key: 'editableClassNames', setup: () => {} },
-          {
-            key: 'touchedClassNames',
-            setup: ({ touch }) => {
-              touch('name');
+        const { result } = renderHook(() =>
+          useFormState(schema, {
+            initialData: invalidData,
+            validateOnMount: true,
+            cssOptions: {
+              classNames: ({ isError }) => ['level-default', isError && 'level-error'],
             },
-          },
-          {
-            key: 'errorClassNames',
-            setup: ({ validate }) => {
-              validate();
-            },
-          },
-          {
-            key: 'errorTouchedClassNames',
-            setup: ({ validate, touch }) => {
-              validate();
-              touch('name');
-            },
-          },
-          {
-            key: 'disabledClassNames',
-            setup: ({ setMode }) => {
-              setMode('disabled');
-            },
-          },
-          {
-            key: 'readOnlyClassNames',
-            setup: ({ setMode }) => {
-              setMode('readOnly');
-            },
-          },
-          {
-            key: 'readOnlyErrorClassNames',
-            setup: ({ setMode, validate }) => {
-              setMode('readOnly');
-              validate();
-            },
-          },
-        ];
+          })
+        );
 
-        for (const { key, setup } of cases) {
-          const { result, unmount } = renderHook(() =>
-            useFormState(schema, {
-              initialData: invalidData,
-              cssOptions: { [key]: 'level-default' },
-            })
-          );
+        const withDefault = result.current.formClasses('name').split(' ').filter(Boolean);
+        expect(withDefault).toContain('level-default');
+        expect(withDefault).toContain('level-error');
 
-          act(() => {
-            setup({
-              setMode: result.current.formActions.setMode,
-              validate: () => {
-                result.current.formActions.validate();
-              },
-              touch: (field) => {
-                result.current.formActions.touch(field);
-              },
-            });
-          });
+        const withOverride = result.current
+          .formClasses('name', {
+            classNames: ({ isError }) => isError && 'per-call-error',
+          })
+          .split(' ')
+          .filter(Boolean);
 
-          const withDefault = result.current.formClasses('name').split(' ').filter(Boolean);
-          expect(withDefault, `${key}: form-level default applies`).toContain('level-default');
-
-          const withOverride = result.current
-            .formClasses('name', { [key]: 'per-call-value' })
-            .split(' ')
-            .filter(Boolean);
-          expect(withOverride, `${key}: per-call replaces default`).toContain('per-call-value');
-          expect(withOverride, `${key}: form-level default dropped`).not.toContain('level-default');
-
-          unmount();
-        }
+        expect(withOverride).toContain('per-call-error');
+        expect(withOverride).not.toContain('level-default');
+        expect(withOverride).not.toContain('level-error');
       });
 
-      it('applies cssOptions class-name defaults across all formClasses calls', () => {
+      it('applies cssOptions classNames defaults across all formClasses calls', () => {
         const TestForm = () => {
           const { Form, formClasses } = useFormState(schema, {
             validateOnMount: true,
             cssOptions: {
-              classNames: 'always-default',
-              errorClassNames: 'default-error',
+              classNames: ({ isError }) => ({
+                'always-default': true,
+                'default-error': isError,
+              }),
             },
           });
 
@@ -5052,7 +5162,9 @@ describe('useFormState', () => {
             return useFormState(schema, { validateOnMount: true, cssOptions });
           });
 
-          const classes = result.current.formClasses('name', perCallOpts);
+          const classes = perCallOpts
+            ? result.current.formClasses('name', perCallOpts)
+            : result.current.formClasses('name');
           const tokens = classes.split(' ').filter(Boolean);
 
           if (expectedPrefix === null) {
@@ -5074,13 +5186,15 @@ describe('useFormState', () => {
         }
       });
 
-      it('per-call options replace cssOptions defaults for the same key', () => {
+      it('per-call classNames fully replaces the form-level default', () => {
         const TestForm = () => {
           const { Form, formClasses } = useFormState(schema, {
             validateOnMount: true,
             cssOptions: {
-              classNames: 'default-always',
-              errorClassNames: 'default-error',
+              classNames: ({ isError }) => ({
+                'default-always': true,
+                'default-error': isError,
+              }),
             },
           });
 
@@ -5088,7 +5202,9 @@ describe('useFormState', () => {
             <Form>
               <input
                 aria-label="overridden"
-                className={formClasses('name', { errorClassNames: 'per-call-error' })}
+                className={formClasses('name', {
+                  classNames: ({ isError }) => isError && 'per-call-error',
+                })}
                 defaultValue=""
               />
               <input
@@ -5107,11 +5223,10 @@ describe('useFormState', () => {
           .className.split(' ')
           .filter(Boolean);
 
-        // `errorClassNames` was overridden: per-call wins, default is dropped.
+        // The per-call callback fully replaces the form-level callback.
         expect(overridden).toContain('per-call-error');
+        expect(overridden).not.toContain('default-always');
         expect(overridden).not.toContain('default-error');
-        // `classNames` was not overridden: form-level default still applies.
-        expect(overridden).toContain('default-always');
 
         const kept = screen
           .getByRole<HTMLInputElement>('textbox', { name: 'kept' })
@@ -5593,7 +5708,13 @@ describe('useFormState', () => {
       tags: [],
     };
 
-    it('always appends classNames regardless of field state', () => {
+    const invalidData: InitialSchema = {
+      name: '',
+      info: { age: 30 },
+      tags: [],
+    };
+
+    it('appends a static string of class names regardless of field state', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
 
       const classes = result.current.formClasses('name', { classNames: 'input input--lg' });
@@ -5603,10 +5724,20 @@ describe('useFormState', () => {
       expect(classes).not.toContain('form-state__touched');
     });
 
-    it('appends touchedClassNames only when the field is touched', () => {
+    it('accepts a static string as the shorthand second argument', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
 
-      const before = result.current.formClasses('name', { touchedClassNames: 'is-touched' });
+      const classes = result.current.formClasses('name', 'input input--lg');
+
+      expect(classes.split(' ')).toEqual(expect.arrayContaining(['input', 'input--lg']));
+    });
+
+    it('passes isTouched to the callback', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      const before = result.current.formClasses('name', ({ isTouched }) =>
+        isTouched ? 'is-touched' : null
+      );
       expect(before).not.toContain('is-touched');
       expect(before).not.toContain('form-state__touched');
 
@@ -5614,22 +5745,20 @@ describe('useFormState', () => {
         result.current.formActions.touch('name');
       });
 
-      const after = result.current.formClasses('name', { touchedClassNames: 'is-touched' });
+      const after = result.current.formClasses('name', ({ isTouched }) =>
+        isTouched ? 'is-touched' : null
+      );
       expect(after).toContain('form-state__touched');
       expect(after).toContain('is-touched');
     });
 
-    it('appends errorClassNames only when the field is invalid (validated)', () => {
-      const invalidData: InitialSchema = {
-        name: '',
-        info: { age: 30 },
-        tags: [],
-      };
+    it('passes isError to the callback once the form has been validated', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: invalidData }));
 
-      const beforeValidate = result.current.formClasses('name', {
-        errorClassNames: 'is-invalid',
-      });
+      const beforeValidate = result.current.formClasses(
+        'name',
+        ({ isError }) => isError && 'is-invalid'
+      );
       expect(beforeValidate).not.toContain('is-invalid');
       expect(beforeValidate).not.toContain('form-state__error');
 
@@ -5637,14 +5766,15 @@ describe('useFormState', () => {
         result.current.formActions.validate();
       });
 
-      const afterValidate = result.current.formClasses('name', {
-        errorClassNames: 'is-invalid',
-      });
+      const afterValidate = result.current.formClasses(
+        'name',
+        ({ isError }) => isError && 'is-invalid'
+      );
       expect(afterValidate).toContain('form-state__error');
       expect(afterValidate).toContain('is-invalid');
     });
 
-    it('appends errorTouchedClassNames only when invalid AND touched', () => {
+    it('supports an object (clsx-style) return from the callback', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
 
       // Make 'name' invalid without touching it.
@@ -5652,9 +5782,9 @@ describe('useFormState', () => {
         result.current.formActions.change('name', '', { validate: true, touch: false });
       });
 
-      const onlyInvalid = result.current.formClasses('name', {
-        errorTouchedClassNames: 'is-invalid-touched',
-      });
+      const onlyInvalid = result.current.formClasses('name', ({ isError, isTouched }) => ({
+        'is-invalid-touched': isError && isTouched,
+      }));
       expect(onlyInvalid).toContain('form-state__error');
       expect(onlyInvalid).not.toContain('form-state__touched');
       expect(onlyInvalid).not.toContain('is-invalid-touched');
@@ -5663,36 +5793,45 @@ describe('useFormState', () => {
         result.current.formActions.touch('name');
       });
 
-      const both = result.current.formClasses('name', {
-        errorTouchedClassNames: 'is-invalid-touched',
-      });
+      const both = result.current.formClasses('name', ({ isError, isTouched }) => ({
+        'is-invalid-touched': isError && isTouched,
+      }));
       expect(both).toContain('form-state__error');
       expect(both).toContain('form-state__touched');
       expect(both).toContain('is-invalid-touched');
     });
 
-    it('does not append errorTouchedClassNames when touched but valid', () => {
+    it('omits class names whose object values are falsy', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
 
       act(() => {
         result.current.formActions.touch('name');
       });
 
-      const classes = result.current.formClasses('name', {
-        errorTouchedClassNames: 'is-invalid-touched',
-      });
+      const classes = result.current.formClasses('name', ({ isError, isTouched }) => ({
+        'is-touched': isTouched,
+        'is-invalid-touched': isError && isTouched,
+      }));
 
       expect(classes).toContain('form-state__touched');
+      expect(classes).toContain('is-touched');
       expect(classes).not.toContain('form-state__error');
       expect(classes).not.toContain('is-invalid-touched');
     });
 
-    it('combines all option class names with the right conditions', () => {
-      const invalidData: InitialSchema = {
-        name: '',
-        info: { age: 30 },
-        tags: [],
-      };
+    it('ignores a truthy non-string, non-array, non-object value from the callback', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      const baseline = result.current.formClasses('name');
+      const classes = result.current.formClasses(
+        'name',
+        (() => 42) as unknown as FormClassCallback
+      );
+
+      expect(classes).toBe(baseline);
+    });
+
+    it('supports an array (clsx-style) return from the callback', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: invalidData }));
 
       act(() => {
@@ -5700,12 +5839,12 @@ describe('useFormState', () => {
         result.current.formActions.touch('name');
       });
 
-      const classes = result.current.formClasses('name', {
-        classNames: 'field',
-        touchedClassNames: 'field--touched',
-        errorClassNames: 'field--error',
-        errorTouchedClassNames: 'field--error-touched',
-      });
+      const classes = result.current.formClasses('name', ({ isError, isTouched }) => [
+        'field',
+        isTouched && 'field--touched',
+        isError && 'field--error',
+        isError && isTouched && 'field--error-touched',
+      ]);
 
       const tokens = classes.split(' ');
       expect(tokens).toEqual(
@@ -5721,12 +5860,7 @@ describe('useFormState', () => {
       );
     });
 
-    it('appends disabledClassNames and skips field-state options in disabled mode', () => {
-      const invalidData: InitialSchema = {
-        name: '',
-        info: { age: 30 },
-        tags: [],
-      };
+    it('emits only mode-appropriate classes when the callback branches on mode (disabled)', () => {
       const { result } = renderHook(() =>
         useFormState(schema, { initialData: invalidData, initialMode: 'disabled' })
       );
@@ -5735,14 +5869,13 @@ describe('useFormState', () => {
         result.current.formActions.touch('name');
       });
 
-      const classes = result.current.formClasses('name', {
-        classNames: 'field',
-        disabledClassNames: 'field--disabled',
-        readOnlyClassNames: 'field--readonly',
-        touchedClassNames: 'field--touched',
-        errorClassNames: 'field--error',
-        errorTouchedClassNames: 'field--error-touched',
-      });
+      const classes = result.current.formClasses('name', ({ mode, isError, isTouched }) => ({
+        field: true,
+        'field--disabled': mode === 'disabled',
+        'field--readonly': mode === 'readOnly',
+        'field--touched': mode === 'editable' && isTouched,
+        'field--error': mode === 'editable' && isError,
+      }));
 
       expect(classes).toContain('form-state__disabled');
       expect(classes).toContain('field');
@@ -5750,17 +5883,11 @@ describe('useFormState', () => {
       expect(classes).not.toContain('field--readonly');
       expect(classes).not.toContain('field--touched');
       expect(classes).not.toContain('field--error');
-      expect(classes).not.toContain('field--error-touched');
       expect(classes).not.toContain('form-state__touched');
       expect(classes).not.toContain('form-state__error');
     });
 
-    it('appends readOnlyClassNames and skips field-state options in readOnly mode', () => {
-      const invalidData: InitialSchema = {
-        name: '',
-        info: { age: 30 },
-        tags: [],
-      };
+    it('emits only mode-appropriate classes when the callback branches on mode (readOnly)', () => {
       const { result } = renderHook(() =>
         useFormState(schema, { initialData: invalidData, initialMode: 'readOnly' })
       );
@@ -5769,13 +5896,13 @@ describe('useFormState', () => {
         result.current.formActions.touch('name');
       });
 
-      const classes = result.current.formClasses('name', {
-        classNames: 'field',
-        disabledClassNames: 'field--disabled',
-        readOnlyClassNames: 'field--readonly',
-        touchedClassNames: 'field--touched',
-        errorClassNames: 'field--error',
-      });
+      const classes = result.current.formClasses('name', ({ mode, isError, isTouched }) => [
+        'field',
+        mode === 'disabled' && 'field--disabled',
+        mode === 'readOnly' && 'field--readonly',
+        mode === 'editable' && isTouched && 'field--touched',
+        mode === 'editable' && isError && 'field--error',
+      ]);
 
       expect(classes).toContain('form-state__readonly');
       expect(classes).toContain('field');
@@ -5785,24 +5912,18 @@ describe('useFormState', () => {
       expect(classes).not.toContain('field--error');
     });
 
-    it('appends readOnlyErrorClassNames only in readOnly mode AND when invalid', () => {
-      const invalidData: InitialSchema = {
-        name: '',
-        info: { age: 30 },
-        tags: [],
-      };
+    it('emits the prefix error class in readOnly mode and lets the callback gate readOnly-error classes', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: invalidData }));
 
-      // Editable + invalid: must NOT include the readOnly-error class.
+      // Editable + invalid: must NOT include the readOnly classes.
       act(() => {
         result.current.formActions.validate();
       });
 
-      const editableInvalid = result.current.formClasses('name', {
-        readOnlyClassNames: 'field--readonly',
-        readOnlyErrorClassNames: 'field--readonly-error',
-      });
-
+      const editableInvalid = result.current.formClasses('name', ({ mode, isError }) => ({
+        'field--readonly': mode === 'readOnly',
+        'field--readonly-error': mode === 'readOnly' && isError,
+      }));
       expect(editableInvalid).toContain('form-state__error');
       expect(editableInvalid).not.toContain('field--readonly');
       expect(editableInvalid).not.toContain('field--readonly-error');
@@ -5813,11 +5934,10 @@ describe('useFormState', () => {
         result.current.formActions.setMode('readOnly');
       });
 
-      const readOnlyValid = result.current.formClasses('name', {
-        readOnlyClassNames: 'field--readonly',
-        readOnlyErrorClassNames: 'field--readonly-error',
-      });
-
+      const readOnlyValid = result.current.formClasses('name', ({ mode, isError }) => ({
+        'field--readonly': mode === 'readOnly',
+        'field--readonly-error': mode === 'readOnly' && isError,
+      }));
       expect(readOnlyValid).toContain('form-state__readonly');
       expect(readOnlyValid).toContain('field--readonly');
       expect(readOnlyValid).not.toContain('field--readonly-error');
@@ -5827,25 +5947,17 @@ describe('useFormState', () => {
         result.current.formActions.change('name', '', { validate: true, touch: false });
       });
 
-      const readOnlyInvalid = result.current.formClasses('name', {
-        readOnlyClassNames: 'field--readonly',
-        readOnlyErrorClassNames: 'field--readonly-error',
-      });
-
+      const readOnlyInvalid = result.current.formClasses('name', ({ mode, isError }) => ({
+        'field--readonly': mode === 'readOnly',
+        'field--readonly-error': mode === 'readOnly' && isError,
+      }));
       expect(readOnlyInvalid).toContain('form-state__readonly');
+      expect(readOnlyInvalid).toContain('form-state__error');
       expect(readOnlyInvalid).toContain('field--readonly');
       expect(readOnlyInvalid).toContain('field--readonly-error');
-
-      // Field-state options remain suppressed in readOnly mode.
-      expect(readOnlyInvalid).not.toContain('form-state__error');
     });
 
-    it('does not append readOnlyErrorClassNames in disabled mode even when invalid', () => {
-      const invalidData: InitialSchema = {
-        name: '',
-        info: { age: 30 },
-        tags: [],
-      };
+    it('does not emit prefix__error in disabled mode and lets the callback suppress error classes', () => {
       const { result } = renderHook(() =>
         useFormState(schema, { initialData: invalidData, initialMode: 'disabled' })
       );
@@ -5854,31 +5966,30 @@ describe('useFormState', () => {
         result.current.formActions.validate();
       });
 
-      const classes = result.current.formClasses('name', {
-        readOnlyErrorClassNames: 'field--readonly-error',
-      });
+      const classes = result.current.formClasses('name', ({ mode, isError }) =>
+        mode !== 'disabled' && isError ? 'field--error' : null
+      );
 
       expect(classes).toContain('form-state__disabled');
-      expect(classes).not.toContain('field--readonly-error');
+      expect(classes).not.toContain('form-state__error');
+      expect(classes).not.toContain('field--error');
     });
 
-    it('appends editableClassNames only in editable mode', () => {
+    it('lets the callback drop classes outside editable mode', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
 
-      const editable = result.current.formClasses('name', {
-        editableClassNames: 'field--editable',
-      });
-
-      expect(editable).toContain('field--editable');
+      expect(
+        result.current.formClasses('name', ({ mode }) => mode === 'editable' && 'field--editable')
+      ).toContain('field--editable');
 
       act(() => {
         result.current.formActions.setMode('disabled');
       });
 
-      const disabled = result.current.formClasses('name', {
-        editableClassNames: 'field--editable',
-      });
-
+      const disabled = result.current.formClasses(
+        'name',
+        ({ mode }) => mode === 'editable' && 'field--editable'
+      );
       expect(disabled).not.toContain('field--editable');
       expect(disabled).toContain('form-state__disabled');
 
@@ -5886,27 +5997,27 @@ describe('useFormState', () => {
         result.current.formActions.setMode('readOnly');
       });
 
-      const readOnly = result.current.formClasses('name', {
-        editableClassNames: 'field--editable',
-      });
-
+      const readOnly = result.current.formClasses(
+        'name',
+        ({ mode }) => mode === 'editable' && 'field--editable'
+      );
       expect(readOnly).not.toContain('field--editable');
       expect(readOnly).toContain('form-state__readonly');
     });
 
-    it('combines editableClassNames with touched/error options in editable mode', () => {
+    it('combines mode and field-state classes in a single callback', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
 
       act(() => {
         result.current.formActions.change('name', '', { validate: true, touch: false });
       });
 
-      const errored = result.current.formClasses('name', {
-        editableClassNames: 'field--editable',
-        errorClassNames: 'field--error',
-        errorTouchedClassNames: 'field--error-touched',
-      });
-
+      const errored = result.current.formClasses('name', ({ mode, isError, isTouched }) => ({
+        'field--editable': mode === 'editable',
+        'field--touched': isTouched,
+        'field--error': isError,
+        'field--error-touched': isError && isTouched,
+      }));
       expect(errored).toContain('field--editable');
       expect(errored).toContain('field--error');
       expect(errored).not.toContain('field--error-touched');
@@ -5915,12 +6026,12 @@ describe('useFormState', () => {
         result.current.formActions.touch('name');
       });
 
-      const erroredTouched = result.current.formClasses('name', {
-        editableClassNames: 'field--editable',
-        touchedClassNames: 'field--touched',
-        errorClassNames: 'field--error',
-        errorTouchedClassNames: 'field--error-touched',
-      });
+      const erroredTouched = result.current.formClasses('name', ({ mode, isError, isTouched }) => ({
+        'field--editable': mode === 'editable',
+        'field--touched': isTouched,
+        'field--error': isError,
+        'field--error-touched': isError && isTouched,
+      }));
       const tokens = erroredTouched.split(' ');
 
       expect(tokens).toEqual(
@@ -5933,32 +6044,17 @@ describe('useFormState', () => {
       );
     });
 
-    it('does not append disabledClassNames or readOnlyClassNames in editable mode', () => {
-      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
-
-      const classes = result.current.formClasses('name', {
-        disabledClassNames: 'field--disabled',
-        readOnlyClassNames: 'field--readonly',
-      });
-
-      expect(classes).not.toContain('field--disabled');
-      expect(classes).not.toContain('field--readonly');
-      expect(classes).not.toContain('form-state__disabled');
-      expect(classes).not.toContain('form-state__readonly');
-    });
-
-    it('switches between disabledClassNames and readOnlyClassNames as mode changes', () => {
+    it('switches mode classes as the form mode changes', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
 
       act(() => {
         result.current.formActions.setMode('readOnly');
       });
 
-      const readOnly = result.current.formClasses('name', {
-        disabledClassNames: 'field--disabled',
-        readOnlyClassNames: 'field--readonly',
-      });
-
+      const readOnly = result.current.formClasses('name', ({ mode }) => ({
+        'field--disabled': mode === 'disabled',
+        'field--readonly': mode === 'readOnly',
+      }));
       expect(readOnly).toContain('field--readonly');
       expect(readOnly).not.toContain('field--disabled');
 
@@ -5966,11 +6062,10 @@ describe('useFormState', () => {
         result.current.formActions.setMode('disabled');
       });
 
-      const disabled = result.current.formClasses('name', {
-        disabledClassNames: 'field--disabled',
-        readOnlyClassNames: 'field--readonly',
-      });
-
+      const disabled = result.current.formClasses('name', ({ mode }) => ({
+        'field--disabled': mode === 'disabled',
+        'field--readonly': mode === 'readOnly',
+      }));
       expect(disabled).toContain('field--disabled');
       expect(disabled).not.toContain('field--readonly');
 
@@ -5978,21 +6073,15 @@ describe('useFormState', () => {
         result.current.formActions.setMode('editable');
       });
 
-      const editable = result.current.formClasses('name', {
-        disabledClassNames: 'field--disabled',
-        readOnlyClassNames: 'field--readonly',
-      });
-
+      const editable = result.current.formClasses('name', ({ mode }) => ({
+        'field--disabled': mode === 'disabled',
+        'field--readonly': mode === 'readOnly',
+      }));
       expect(editable).not.toContain('field--disabled');
       expect(editable).not.toContain('field--readonly');
     });
 
-    it('honors the custom prefix together with option class names', () => {
-      const invalidData: InitialSchema = {
-        name: '',
-        info: { age: 30 },
-        tags: [],
-      };
+    it('honors the custom prefix together with the callback class names', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: invalidData }));
 
       act(() => {
@@ -6002,8 +6091,7 @@ describe('useFormState', () => {
 
       const classes = result.current.formClasses('name', {
         prefix: 'fld',
-        classNames: 'field',
-        errorTouchedClassNames: 'field--err-tch',
+        classNames: ({ isError, isTouched }) => ['field', isError && isTouched && 'field--err-tch'],
       });
 
       const tokens = classes.split(' ');
@@ -6015,7 +6103,7 @@ describe('useFormState', () => {
       expect(classes).not.toContain('form-state__touched');
     });
 
-    it('ignores empty option class names', () => {
+    it('ignores falsy and empty values from the callback', () => {
       const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
 
       act(() => {
@@ -6023,15 +6111,27 @@ describe('useFormState', () => {
       });
 
       const baseline = result.current.formClasses('name');
-      const withEmpty = result.current.formClasses('name', {
-        classNames: '',
-        touchedClassNames: '',
-        errorClassNames: '',
-        errorTouchedClassNames: '',
-      });
+      const withEmpty = result.current.formClasses('name', (() => [
+        '',
+        null,
+        false,
+        undefined,
+      ]) as FormClassCallback);
 
       expect(withEmpty).toBe(baseline);
       expect(withEmpty).toContain('form-state__touched');
+    });
+
+    it('passes isRequired to the callback', () => {
+      const { result } = renderHook(() => useFormState(schema, { initialData: baseData }));
+
+      const classes = result.current.formClasses('name', ({ isRequired }) =>
+        isRequired ? 'is-required' : 'is-optional'
+      );
+
+      expect(classes).toContain('form-state__required');
+      expect(classes).toContain('is-required');
+      expect(classes).not.toContain('is-optional');
     });
   });
 });

@@ -254,7 +254,7 @@ export type ZodValidationError = z.core.$ZodRawIssue & {
    */
   message: string;
   /**
-   * Zod path as a string.
+   * Zod path as a `string`.
    */
   pathNotation: string;
 };
@@ -494,7 +494,7 @@ export type FormState<T extends object> = {
        */
       get: (expression: (data: T) => unknown) => string | undefined;
       /**
-       * Gets a manual error message with an arbitrary string key.
+       * Gets a manual error message with an arbitrary `string` key.
        *
        * @param key - Manual error key.
        * @returns Error message for the specified key, or `undefined` if there is no error.
@@ -518,12 +518,12 @@ export type FormState<T extends object> = {
   dirty: Immutable<
     FormMutableState<T>['dirty'] & {
       /**
-       * Gets the dirty state for an arbitrary string key.
+       * Gets the dirty state for an arbitrary `string` key.
        *
        * @example
        * formState.dirty.get("#myError")
        *
-       * @param key - A string key. The key must start with the `#` character
+       * @param key - A `string` key. The key must start with the `#` character
        *              to avoid key collisions.
        * @returns `true` if the key exists and is dirty, `false` otherwise.
        */
@@ -805,6 +805,47 @@ export type FormPathValue<T extends z.ZodMiniObject, P extends FormPath<T>> = P 
       : unknown;
 
 /**
+ * The form-state arguments passed to a {@link FormClassCallback} callback.
+ */
+export type FormClassState = {
+  /**
+   * `true` when the field has a validation error and the form has been validated.
+   */
+  isError: boolean;
+  /**
+   * `true` when the field has been touched.
+   */
+  isTouched: boolean;
+  /**
+   * `true` when the field is required by the schema.
+   */
+  isRequired: boolean;
+  /**
+   * The current form mode (`editable`, `readOnly`, or `disabled`).
+   */
+  mode: FormMode;
+};
+
+/**
+ * A clsx-compatible class value. A `string` is used directly; an `object` emits the keys
+ * whose values are truthy; arrays are flattened recursively; `false`, `null`, and
+ * `undefined` are filtered out.
+ */
+export type FormClassValue =
+  | string
+  | Record<string, boolean | null | undefined>
+  | readonly FormClassValue[]
+  | false
+  | null
+  | undefined;
+
+/**
+ * A callback that produces CSS classes from the current field state. The return value can be
+ * a `string`, a clsx-style `object`, an array of either, or a falsy value.
+ */
+export type FormClassCallback = (state: FormClassState) => FormClassValue;
+
+/**
  * Options for the `formClasses` function.
  */
 export type FormClassOptions = {
@@ -817,42 +858,22 @@ export type FormClassOptions = {
    *
    * - `[prefix]__error` (form-state__error)
    * - `[prefix]__touched` (form-state__touched)
+   * - `[prefix]__required` (form-state__required)
+   * - `[prefix]__disabled` (form-state__disabled)
+   * - `[prefix]__readonly` (form-state__readonly)
    */
   prefix?: string | null;
   /**
-   * A list of CSS class names that are always added.
+   * Classes to append to the prefix classes. Either a static `string` (always applied) or a
+   * callback that receives the current field state and returns a clsx-compatible value.
+   *
+   * @example
+   * formClasses('email', { classNames: 'w-full rounded-md' });
+   * formClasses('email', { classNames: ({ isError, isTouched }) =>
+   *   isError && isTouched ? 'border-red-400' : 'border-zinc-300'
+   * });
    */
-  // eslint-disable-next-line unicorn/no-keyword-prefix
-  classNames?: string;
-  /**
-   * A list of CSS class names that are added when the form (not just the field) is disabled.
-   */
-  disabledClassNames?: string;
-  /**
-   * A list of CSS class names that are added when the form (not just the field) is editable.
-   */
-  editableClassNames?: string;
-  /**
-   * A list of CSS class names that are added when the field is invalid.
-   */
-  errorClassNames?: string;
-  /**
-   * A list of CSS class names that are added when the field is invalid and touched.
-   */
-  errorTouchedClassNames?: string;
-  /**
-   * A list of CSS class names that are added when the form (not just the field) is read-only.
-   */
-  readOnlyClassNames?: string;
-  /**
-   * A list of CSS class names that are added when the form (not just the field) is read-only
-   * and the field is invalid.
-   */
-  readOnlyErrorClassNames?: string;
-  /**
-   * A list of CSS class names that are added when the field is touched.
-   */
-  touchedClassNames?: string;
+  classNames?: string | FormClassCallback;
 };
 
 /**
@@ -1058,6 +1079,12 @@ export type FormSubmitOptions<T extends z.ZodMiniObject> = {
    */
   updateInitialData?: boolean;
   /**
+   * An optional callback to run before the form has been submitted.
+   *
+   * Return `false` from the callback to stop the form submission.
+   */
+  onBeforeSubmit?: (() => boolean) | (() => void) | undefined;
+  /**
    * An optional callback to run after the form state has been submitted.
    *
    * @param state - Submitted form state.
@@ -1095,7 +1122,7 @@ export type ElementFocusOptions<T extends z.ZodMiniObject> = {
   selectText?: boolean;
   /**
    * When provided, focuses only if there is an active error at the given field path or manual
-   * error key. Accepts a path expression or a string key.
+   * error key. Accepts a path expression or a `string` key.
    */
   errorKey?: FormPath<T>;
 };
@@ -1274,9 +1301,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
       (options?: FormValidateOptions<T>): void;
     };
     /**
-     * Marks the form as dirty with an arbitrary string key.
+     * Marks the form as dirty with an arbitrary `string` key.
      *
-     * @param key - Arbitrary string independent of the managed form state. It must start with the `#` sign to avoid collisions.
+     * @param key - Arbitrary `string` independent of the managed form state. It must start with the `#` sign to avoid collisions.
      * @param dirty - `true` to set the key as dirty, `false` to clear it. (default: `true`).
      */
     setDirty: (key: `#${string}`, dirty?: boolean) => void;
@@ -1293,7 +1320,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      * formActions.setError('id', 'Invalid ID', { validate: true })
      * formActions.setError((path) => path.isActive, 'Non-active users cannot be edited')
      *
-     * @param keyOrPath - Arbitrary string or a state path expression.
+     * @param keyOrPath - Arbitrary `string` or a state path expression.
      *                    The first field in the schema is touched if the path is not provided.
      * @param error - Error message. Leave this parameter blank or set it to `null` to clear the manual error.
      * @param options - Options for setting a manual error.
@@ -1347,7 +1374,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
        * @param options.preventScroll - Do not scroll focused element into view (default: `false`).
        * @param options.selectText - Selects the text content of the focused input (default: `false`).
        * @param options.errorKey - When provided, focuses only if there is an active error at the given
-       *                           field path or manual error key. Accepts a path expression or a string key.
+       *                           field path or manual error key. Accepts a path expression or a `string` key.
        */
       (name: string, options?: ElementFocusOptions<T>): void;
       /**
@@ -1360,7 +1387,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
        * @param options.preventScroll - Do not scroll focused element into view (default: `false`).
        * @param options.selectText - Selects the text content of the focused input (default: `false`).
        * @param options.errorKey - When provided, focuses only if there is an active error at the given
-       *                           field path or manual error key. Accepts a path expression or a string key.
+       *                           field path or manual error key. Accepts a path expression or a `string` key.
        */
       (element: HTMLElement | null, options?: ElementFocusOptions<T>): void;
     };
@@ -1596,15 +1623,52 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      */
     useSelector: FormDataSelector<Immutable<z.infer<T>>>;
   };
-  /**
-   * Returns the form CSS classes for the control with the provided path.
-   *
-   * @typeParam T - form state type.
-   * @param nameOrPath - Root level field name or a state path expression.
-   * @param options - Options for form CSS classes.
-   * @returns A `string` containing the form and the additional CSS class names.
-   */
-  formClasses: (nameOrPath: FormPath<T>, options?: FormClassOptions) => string;
+  formClasses: {
+    /**
+     * Returns the prefix CSS classes (`form-state__error`, `form-state__touched`, etc.) for
+     * the control with the provided path.
+     *
+     * @typeParam T - form state type.
+     * @param nameOrPath - Root level field name or a state path expression.
+     * @returns A `string` of space-separated class names.
+     */
+    (nameOrPath: FormPath<T>): string;
+    /**
+     * Returns the prefix CSS classes for the control with the provided path, with the
+     * `classNames` argument appended verbatim.
+     *
+     * @typeParam T - form state type.
+     * @param nameOrPath - Root level field name or a state path expression.
+     * @param classNames - A `string` of space-separated class names appended verbatim.
+     * @returns A `string` of space-separated class names.
+     */
+    (nameOrPath: FormPath<T>, classNames: string): string;
+    /**
+     * Returns the prefix CSS classes for the control with the provided path, with the result
+     * of `callback` rendered as additional classes.
+     *
+     * @typeParam T - form state type.
+     * @param nameOrPath - Root level field name or a state path expression.
+     * @param callback - A callback receiving the current {@link FormClassState}
+     *                   (`{ isError, isTouched, isRequired, mode }`) and returning a
+     *                   {@link FormClassValue} — a `string`, a clsx-style `object`, an array
+     *                   of either, or a falsy value.
+     * @returns A `string` of space-separated class names.
+     */
+    (nameOrPath: FormPath<T>, callback: FormClassCallback): string;
+    /**
+     * Returns the prefix CSS classes for the control with the provided path, with `options`
+     * overriding the form-level `cssOptions` defaults.
+     *
+     * @typeParam T - form state type.
+     * @param nameOrPath - Root level field name or a state path expression.
+     * @param options - {@link FormClassOptions} with `prefix` and/or `classNames`. Per-call
+     *                  values fully replace the form-level `cssOptions` defaults for the same
+     *                  key.
+     * @returns A `string` of space-separated class names.
+     */
+    (nameOrPath: FormPath<T>, options: FormClassOptions): string;
+  };
   /**
    * The Form component with pre-wired reset logic.
    *
@@ -1618,7 +1682,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
 };
 
 /**
- * The date notation format in a string.
+ * The date notation format in a `string`.
  */
 export type FormDateFormat =
   | 'yyyy-MM-dd'

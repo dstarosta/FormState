@@ -965,9 +965,9 @@ const { formState, formActions } = useFormState(schema, {
           </h4>
           <p>
             Options for <code>formClasses(nameOrPath, options)</code>. Combine a custom CSS
-            <code>prefix</code> with per-state user class names so prefix-driven and utility-class
-            (Tailwind, Bootstrap) styling can coexist. See
-            <a href="#css-classes">CSS Classes</a> for the full conditional matrix.
+            <code>prefix</code> with a <code>classNames</code> <code>string</code> or
+            <a href="#form-class-callback"><code>FormClassCallback</code></a
+            >. See <a href="#css-classes">CSS Classes</a> for usage patterns.
           </p>
           <table class="prop-table">
             <thead>
@@ -979,49 +979,6 @@ const { formState, formActions } = useFormState(schema, {
             </thead>
             <tbody>
               <tr>
-                <td><code>classNames</code></td>
-                <td>—</td>
-                <td class="prop-desc">
-                  Class names appended unconditionally — applied in every mode and regardless of
-                  field state.
-                </td>
-              </tr>
-              <tr>
-                <td><code>disabledClassNames</code></td>
-                <td>—</td>
-                <td class="prop-desc">
-                  Class names appended when the form (not just the field) is in
-                  <code>disabled</code> mode. Mutually exclusive with the editable / read-only
-                  options below.
-                </td>
-              </tr>
-              <tr>
-                <td><code>editableClassNames</code></td>
-                <td>—</td>
-                <td class="prop-desc">
-                  Class names appended when the form (not just the field) is in
-                  <code>editable</code> mode. Layered with the field-state options
-                  (<code>touchedClassNames</code>, <code>errorClassNames</code>,
-                  <code>errorTouchedClassNames</code>).
-                </td>
-              </tr>
-              <tr>
-                <td><code>errorClassNames</code></td>
-                <td>—</td>
-                <td class="prop-desc">
-                  Class names appended when the field has a validation error (editable mode only;
-                  applied only after the form has been validated).
-                </td>
-              </tr>
-              <tr>
-                <td><code>errorTouchedClassNames</code></td>
-                <td>—</td>
-                <td class="prop-desc">
-                  Class names appended when the field is both invalid <em>and</em> touched (editable
-                  mode only). Useful for showing errors only after the user has interacted.
-                </td>
-              </tr>
-              <tr>
                 <td><code>prefix</code></td>
                 <td><code>'form-state'</code></td>
                 <td class="prop-desc">
@@ -1029,47 +986,123 @@ const { formState, formActions } = useFormState(schema, {
                   (<code>[prefix]__error</code>, <code>[prefix]__touched</code>,
                   <code>[prefix]__required</code>, <code>[prefix]__disabled</code>,
                   <code>[prefix]__readonly</code>) for this call only. Set globally via the
-                  <code>CSSPrefix</code> option of <code>useFormState</code>.
+                  <code>cssOptions.prefix</code> option of <code>useFormState</code>. Set to
+                  <code>null</code> to disable prefix classes entirely.
                 </td>
               </tr>
               <tr>
-                <td><code>readOnlyClassNames</code></td>
+                <td><code>classNames</code></td>
                 <td>—</td>
                 <td class="prop-desc">
-                  Class names appended when the form (not just the field) is in
-                  <code>readOnly</code> mode.
-                </td>
-              </tr>
-              <tr>
-                <td><code>readOnlyErrorClassNames</code></td>
-                <td>—</td>
-                <td class="prop-desc">
-                  Class names appended when the form (not just the field) is in
-                  <code>readOnly</code> mode <em>and</em>
-                  the field is invalid — useful for surfacing unresolved errors in read-only views.
-                </td>
-              </tr>
-              <tr>
-                <td><code>touchedClassNames</code></td>
-                <td>—</td>
-                <td class="prop-desc">
-                  Class names appended when the field has been touched (editable mode only).
+                  Either a static <code>string</code> appended verbatim, or a
+                  <a href="#form-class-callback"><code>FormClassCallback</code></a> that receives
+                  <code>{ isError, isTouched, isRequired, mode }</code> and returns a
+                  clsx-compatible value (<code>string</code>, <code>object</code>, array, or falsy).
                 </td>
               </tr>
             </tbody>
           </table>
-          <div class="callout callout-info">
-            <div class="callout-label">Mode &amp; state interaction</div>
+          <div class="callout callout-info" style="margin: 4px 0 36px">
+            <div class="callout-label">Prefix classes</div>
             <p>
-              In <code>disabled</code> and <code>readOnly</code> modes the field-state options
-              (<code>editableClassNames</code>, <code>touchedClassNames</code>,
-              <code>errorClassNames</code>, <code>errorTouchedClassNames</code>) are suppressed.
-              <code>readOnlyErrorClassNames</code> is the one exception that pairs an invalid field
-              with a mode option. <code>classNames</code> is always appended. Empty strings are
-              ignored — safe to pass conditional expressions.
+              Prefix classes are emitted automatically based on the field's state and form mode —
+              <code>[prefix]__required</code>, <code>[prefix]__disabled</code>,
+              <code>[prefix]__readonly</code>, <code>[prefix]__touched</code>, and
+              <code>[prefix]__error</code>. They sit at the front of the class string and are
+              independent of <code>classNames</code>. Disable them with <code>prefix: null</code>.
+              See <a href="#css-classes">CSS Classes</a> for the full conditions.
             </p>
           </div>
-          <h4 id="form-init-options">
+          <h4 id="form-class-state">
+            <span class="type-chip">FormClassState</span>
+          </h4>
+          <p>
+            The argument passed to a
+            <a href="#form-class-callback"><code>FormClassCallback</code></a
+            >.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>isError</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">
+                  <code>true</code> when the field has a validation error and the form has been
+                  validated.
+                </td>
+              </tr>
+              <tr>
+                <td><code>isTouched</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc"><code>true</code> when the field has been touched.</td>
+              </tr>
+              <tr>
+                <td><code>isRequired</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">
+                  <code>true</code> when the field is required by the schema.
+                </td>
+              </tr>
+              <tr>
+                <td><code>mode</code></td>
+                <td><code>FormMode</code></td>
+                <td class="prop-desc">
+                  Current form mode — <code>'editable'</code>, <code>'readOnly'</code>, or
+                  <code>'disabled'</code>.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 id="form-class-callback">
+            <span class="type-chip">FormClassCallback</span>
+          </h4>
+          <p>
+            A callback that produces CSS classes from the current field state. Accepted by
+            <code>formClasses(field, ...)</code> and by
+            <a href="#form-class-options"><code>cssOptions.classNames</code></a
+            >. Receives a
+            <a href="#form-class-state"><code>FormClassState</code></a>
+            (<code>{ isError, isTouched, isRequired, mode }</code>) and returns a clsx-compatible
+            value. Import this type when defining the callback outside a component — e.g. to share
+            styling across forms or to keep a stable reference across renders.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">type FormClassCallback = (state: FormClassState) =&gt; FormClassValue;
+
+type FormClassValue =
+  | string
+  | Record&lt;string, boolean | null | undefined&gt;
+  | readonly FormClassValue[]
+  | false
+  | null
+  | undefined;</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type FormClassCallback } from 'form-state';
+
+// Shared field styling — defined once, reused across forms.
+const fieldClasses: FormClassCallback = ({ isError, isTouched, mode }) =&gt; [
+  'block w-full rounded border px-3 py-2',
+  mode === 'disabled' &amp;&amp; 'bg-slate-100 text-slate-400 cursor-not-allowed',
+  isError &amp;&amp; isTouched &amp;&amp; 'border-red-400 bg-red-50/50',
+];
+
+// Apply per call.
+&lt;input className={formClasses('name', fieldClasses)} /&gt;
+
+// Or as the form-level default.
+useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
+          </div>
+          <h4 id="form-init-options" style="margin-top: 36px">
             <span class="type-chip">FormInitOptions&lt;T&gt;</span>
           </h4>
           <p>
@@ -1094,11 +1127,14 @@ const { formState, formActions } = useFormState(schema, {
                 <td><code>cssOptions</code></td>
                 <td><code>{ prefix: 'form-state' }</code></td>
                 <td class="prop-desc">
-                  Form-level defaults for <code>formClasses</code> — accepts every
-                  <a href="#form-class-options"><code>FormClassOptions</code></a> field. Per-call
-                  <code>formClasses(field, options)</code> arguments override these defaults for the
-                  same key. Set <code>cssOptions.prefix</code> to <code>null</code> to opt out of
-                  generated state/mode CSS classes (see <a href="#css-classes">CSS Classes</a>).
+                  Form-level defaults for <code>formClasses</code> — accepts the
+                  <a href="#form-class-options"><code>FormClassOptions</code></a> fields (<code
+                    >prefix</code
+                  >
+                  and <code>classNames</code>). A per-call
+                  <code>formClasses(field, ...)</code> argument fully replaces the form-level value
+                  for the same key. Set <code>cssOptions.prefix</code> to <code>null</code> to opt
+                  out of the generated prefix classes (see <a href="#css-classes">CSS Classes</a>).
                 </td>
               </tr>
               <tr>
@@ -1283,6 +1319,17 @@ const { formState, formActions } = useFormState(schema, {
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td><code>onBeforeSubmit</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Callback invoked before the form is submitted. Return <code>false</code> to
+                  cancel submission — <code>onSubmit</code>, <code>onSuccess</code> and
+                  <code>onError</code> will not run, and <code>formStatus.submitted</code> stays
+                  <code>false</code>. Any other return value (including <code>void</code>) lets
+                  submission proceed.
+                </td>
+              </tr>
               <tr>
                 <td><code>onError</code></td>
                 <td>—</td>
@@ -3883,7 +3930,7 @@ function ModeSelector({
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">// Generates e.g.: "form-state__error form-state__touched form-state__required"
+            <pre><code class="language-tsx">// Generates e.g.: "form-state__required form-state__touched form-state__error"
 
 &lt;div className={formClasses('name')}&gt;
   &lt;label&gt;Name&lt;/label&gt;
@@ -3891,16 +3938,20 @@ function ModeSelector({
   &lt;span&gt;{formState.errors.name}&lt;/span&gt;
 &lt;/div&gt;
 
-// Arrow function path expression — works for nested fields too
+// Arrow function path expression — works for nested fields too.
 &lt;label className={formClasses((path) =&gt; path.info.name)}&gt;
   {formState.descriptions.get((path) =&gt; path.info.name)}
 &lt;/label&gt;
 
-// Custom prefix per-call
-formClasses('name', { prefix: 'my-form' })
-// "my-form__error my-form__required"</code></pre>
+// Custom prefix per call.
+formClasses('name', { prefix: 'my-form' });
+// "my-form__required my-form__error"</code></pre>
           </div>
-          <h3>CSS class names</h3>
+          <h3>Prefix classes</h3>
+          <p>
+            The prefix classes are emitted in the order shown below, before any classes produced by
+            the second argument.
+          </p>
           <table class="prop-table">
             <thead>
               <tr>
@@ -3910,16 +3961,8 @@ formClasses('name', { prefix: 'my-form' })
             </thead>
             <tbody>
               <tr>
-                <td><code>[prefix]__error</code></td>
-                <td class="prop-desc">Field has a validation error.</td>
-              </tr>
-              <tr>
-                <td><code>[prefix]__touched</code></td>
-                <td class="prop-desc">Field has been touched.</td>
-              </tr>
-              <tr>
                 <td><code>[prefix]__required</code></td>
-                <td class="prop-desc">Field is required per schema.</td>
+                <td class="prop-desc">Field is marked required by the schema.</td>
               </tr>
               <tr>
                 <td><code>[prefix]__disabled</code></td>
@@ -3929,163 +3972,157 @@ formClasses('name', { prefix: 'my-form' })
                 <td><code>[prefix]__readonly</code></td>
                 <td class="prop-desc">Form is in <code>readOnly</code> mode.</td>
               </tr>
+              <tr>
+                <td><code>[prefix]__touched</code></td>
+                <td class="prop-desc">
+                  Field has been touched. Only emitted in <code>editable</code> mode.
+                </td>
+              </tr>
+              <tr>
+                <td><code>[prefix]__error</code></td>
+                <td class="prop-desc">
+                  Field has a validation error after the form has been validated. Suppressed in
+                  <code>disabled</code> mode.
+                </td>
+              </tr>
             </tbody>
           </table>
-          <p>Override the prefix globally via <code>cssOptions</code>:</p>
+          <p>Initialize CSS options globally via <code>cssOptions</code>:</p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">useFormState(schema, { cssOptions: { prefix: 'my-form' } });</code></pre>
+            <pre><code class="language-tsx">// Just the prefix.
+useFormState(schema, { cssOptions: { prefix: 'my-form' } });
+
+// Prefix plus a static `classNames` string applied to every field.
+useFormState(schema, {
+  cssOptions: {
+    prefix: 'my-form',
+    classNames: 'block w-full rounded border px-3 py-2',
+  },
+});
+
+// Prefix plus a callback driving classes from the field state.
+useFormState(schema, {
+  cssOptions: {
+    prefix: 'my-form',
+    classNames: ({ isError, isTouched }) =&gt;
+      isError &amp;&amp; isTouched ? 'border-red-400' : 'border-zinc-300',
+  },
+});</code></pre>
           </div>
           <p>
-            <code>cssOptions</code> accepts every <code>FormClassOptions</code> field. Use it to set
-            form-level defaults for the per-call class names below (<code>classNames</code>,
-            <code>errorClassNames</code>, etc.) so they apply to every
-            <code>formClasses(field)</code> call. A per-call options object replaces the form-level
-            value for any key it sets.
+            <code>cssOptions</code> accepts a <code>prefix</code> and a
+            <code>classNames</code> value. Set them once and they apply to every
+            <code>formClasses(field)</code> call. A per-call argument fully replaces the form-level
+            value.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">const { formClasses } = useFormState(schema, {
   cssOptions: {
     prefix: 'my-form',
-    classNames: 'block w-full',
-    errorClassNames: 'text-red-500 border-red-500',
+    classNames: ({ isError }) =&gt; ['field', isError &amp;&amp; 'field--invalid'],
   },
 });
 
 formClasses('name');
-// "my-form__required block w-full"
+// "my-form__required my-form__error field field--invalid"
 
-formClasses('name', { errorClassNames: 'text-pink-500' });
-// "my-form__required text-pink-500 block w-full"  (per-call replaces errorClassNames)</code></pre>
+formClasses('name', ({ isError }) =&gt; isError &amp;&amp; 'field--server-error');
+// "my-form__required my-form__error field--server-error"
+// The per-call callback fully replaces the form-level `classNames`.</code></pre>
           </div>
           <p>
-            Set <code>cssOptions.prefix: null</code> to disable prefix-based classes entirely. The
-            per-call class names still apply — useful when styling exclusively via utility-class
-            frameworks like Tailwind or Bootstrap. When the prefix is <code>null</code>,
-            <code>formActions.focusOnFirstError()</code> falls back to locating the first errored
-            field by its <code>name</code> attribute.
+            Set <code>cssOptions.prefix: null</code> to disable prefix classes entirely. The
+            callback still runs, so you can drive all styling from <code>classNames</code> alone.
+            When the prefix is <code>null</code>, <code>formActions.focusOnFirstError()</code> falls
+            back to locating the first errored field by its <code>name</code> attribute.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">useFormState(schema, { cssOptions: { prefix: null } });</code></pre>
           </div>
-          <h3>Per-call class names</h3>
-          <p>
-            For utility-class CSS frameworks (Tailwind, Bootstrap, etc.) the prefix-based class
-            names alone are often not enough — you want to attach concrete utility classes per field
-            state or form mode. The options object accepts the following fields that get appended to
-            the output based on the same conditions used by the prefix classes (see
-            <a href="#form-class-options"><code>FormClassOptions</code></a> for the full type):
-          </p>
-          <table class="prop-table">
-            <thead>
-              <tr>
-                <th>Option</th>
-                <th>Applied when</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>classNames</code></td>
-                <td class="prop-desc">
-                  Always (even in <code>disabled</code> / <code>readOnly</code> mode).
-                </td>
-              </tr>
-              <tr>
-                <td><code>disabledClassNames</code></td>
-                <td class="prop-desc">
-                  Form (not just the field) is in <code>disabled</code> mode.
-                </td>
-              </tr>
-              <tr>
-                <td><code>editableClassNames</code></td>
-                <td class="prop-desc">
-                  Form (not just the field) is in <code>editable</code> mode (paired with the
-                  field-state options below).
-                </td>
-              </tr>
-              <tr>
-                <td><code>errorClassNames</code></td>
-                <td class="prop-desc">Field has a validation error (editable mode only).</td>
-              </tr>
-              <tr>
-                <td><code>errorTouchedClassNames</code></td>
-                <td class="prop-desc">
-                  Field is both invalid <em>and</em> touched (editable mode only).
-                </td>
-              </tr>
-              <tr>
-                <td><code>readOnlyClassNames</code></td>
-                <td class="prop-desc">
-                  Form (not just the field) is in <code>readOnly</code> mode.
-                </td>
-              </tr>
-              <tr>
-                <td><code>readOnlyErrorClassNames</code></td>
-                <td class="prop-desc">
-                  Form (not just the field) is in <code>readOnly</code> mode <em>and</em> the field
-                  is invalid.
-                </td>
-              </tr>
-              <tr>
-                <td><code>touchedClassNames</code></td>
-                <td class="prop-desc">Field has been touched (editable mode only).</td>
-              </tr>
-            </tbody>
-          </table>
+          <h3>Adding custom classes</h3>
+          <p><code>formClasses(field, ...)</code> accepts four shapes for its second argument:</p>
+          <ul>
+            <li><strong>Omitted</strong> — emits the prefix classes only.</li>
+            <li>
+              <strong>A <code>string</code></strong> — appended verbatim, always applied.
+            </li>
+            <li>
+              <strong
+                >A <a href="#form-class-callback"><code>FormClassCallback</code></a></strong
+              >
+              — receives <code>{ isError, isTouched, isRequired, mode }</code> and returns a
+              clsx-compatible value: a <code>string</code>, an <code>object</code> (keys with truthy
+              values are kept), an array (flattened recursively), or any falsy value
+              (<code>false</code>, <code>null</code>, and <code>undefined</code> are filtered out).
+            </li>
+            <li>
+              <strong
+                >A <a href="#form-class-options"><code>FormClassOptions</code></a> object</strong
+              >
+              with <code>prefix</code> and/or <code>classNames</code>.
+            </li>
+          </ul>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">// Tailwind-style example — utility classes layered on top of the state classes.
+            <pre><code class="language-tsx">// 1) Static string — applied regardless of state.
+&lt;input className={formClasses('name', 'block w-full rounded border px-3 py-2')} /&gt;
+
+// 2) Callback returning a string.
 &lt;input
-  className={formClasses('name', {
-    classNames: 'block w-full rounded border px-3 py-2',
-    touchedClassNames: 'border-slate-400',
-    errorClassNames: 'border-red-500',
-    errorTouchedClassNames: 'ring-1 ring-red-500',
-  })}
-  /* ... */
+  className={formClasses('name', ({ isError, isTouched }) =&gt;
+    isError &amp;&amp; isTouched
+      ? 'border-red-400 bg-red-50/50'
+      : 'border-zinc-300 bg-white'
+  )}
 /&gt;
 
-// Bootstrap-style example — toggle is-invalid only after the user interacts.
+// 3) Callback returning a clsx-style object.
 &lt;input
-  className={formClasses('email', {
-    classNames: 'form-control',
-    errorTouchedClassNames: 'is-invalid',
-  })}
-  /* ... */
+  className={formClasses('email', ({ isError, isTouched }) =&gt; ({
+    'form-control': true,
+    'is-invalid': isError &amp;&amp; isTouched,
+  }))}
 /&gt;
 
-// Mode-aware styling — distinct visuals per form mode.
+// 4) Callback returning an array (falsy entries are dropped).
 &lt;input
-  className={formClasses('name', {
-    classNames: 'block w-full rounded border px-3 py-2',
-    editableClassNames: 'bg-white text-slate-900',
-    disabledClassNames: 'bg-slate-100 text-slate-400 cursor-not-allowed',
-    readOnlyClassNames: 'bg-slate-50 text-slate-600',
-    readOnlyErrorClassNames: 'ring-1 ring-amber-500', // highlight unresolved errors in read-only
-    errorTouchedClassNames: 'ring-1 ring-red-500',    // applied on top of editableClassNames
-  })}
-  /* ... */
+  className={formClasses('name', ({ isError, isTouched, mode }) =&gt; [
+    'block w-full rounded border px-3 py-2',
+    mode === 'disabled' &amp;&amp; 'bg-slate-100 text-slate-400 cursor-not-allowed',
+    mode === 'readOnly' &amp;&amp; 'bg-slate-50 text-slate-600',
+    isTouched &amp;&amp; 'border-slate-400',
+    isError &amp;&amp; isTouched &amp;&amp; 'ring-1 ring-red-500',
+  ])}
 /&gt;
 
-// Combine with a custom prefix for the state classes.
+// 5) Options object — custom prefix plus a callback.
 formClasses('name', {
   prefix: 'fld',
-  classNames: 'field',
-  errorClassNames: 'field--invalid',
-})
+  classNames: ({ isError }) =&gt; ['field', isError &amp;&amp; 'field--invalid'],
+});
 // e.g. "fld__required fld__error field field--invalid"</code></pre>
           </div>
-          <p>
-            Empty strings are ignored, so it is safe to pass conditional expressions like
-            <code>errorClassNames: hasServerError ? 'border-red-500' : ''</code>. In
-            <code>disabled</code> and <code>readOnly</code> modes the field-state options
-            (<code>editableClassNames</code>, <code>touchedClassNames</code>,
-            <code>errorClassNames</code>, <code>errorTouchedClassNames</code>) are suppressed in
-            favor of <code>disabledClassNames</code> / <code>readOnlyClassNames</code>.
-            <code>classNames</code> is always appended.
+          <p class="footnote">
+            The utility classes in the snippets above (<code>block</code>,
+            <code>border-red-400</code>, <code>bg-slate-50</code>, etc.) are
+            <a href="https://tailwindcss.com/" target="_blank" rel="noopener">Tailwind CSS</a>
+            classes, used purely for illustration. FormState has no opinion on the class names you
+            return — substitute Bootstrap, your own CSS, or any other utility framework as
+            appropriate.
           </p>
+          <br />
+          <div class="callout callout-info">
+            <div class="callout-label">Resolving class conflicts</div>
+            <p>
+              FormState does not deduplicate or resolve conflicts between the classes you return. If
+              two of your branches can produce conflicting classes for the same CSS property, gate
+              them through mutually exclusive conditions in the callback — the ternary or object
+              form above — so only one ever reaches the output.
+            </p>
+          </div>
         </section>
         <section class="section" id="context">
           <div class="section-eyebrow">Features</div>
@@ -6247,7 +6284,9 @@ function AppForm() {
                       stroke-linejoin="round"
                       aria-hidden="true"
                     >
-                      <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <path
+                        d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                      />
                       <line x1="3" y1="12" x2="15" y2="12" />
                       <polyline points="10 17 15 12 10 7" />
                     </svg>

@@ -77,7 +77,7 @@ export default defineConfig([
       'sonarjs/no-nested-functions': 'off', // nested functions are very useful for closures in TS/JS
       'sonarjs/todo-tag': 'warn', // a TODO comment should not break the build; but it's a good idea to periodically remind you about it
       // Annoying Unicorn rules
-      'unicorn/no-keyword-prefix': ['error', { checkProperties: false }], // We need classNames for formState.classes().
+      'unicorn/no-keyword-prefix': 'off', // We need classNames for formClasses().
       'unicorn/no-null': 'off', // Douglas Crockford is wrong. "null" should be used as a literal when assigned manually, not "undefined".
       'unicorn/no-array-sort': 'off', // This method is only available in ES2023.
       'unicorn/no-useless-undefined': ['error', { checkArguments: false }], // you cannot omit function arguments in strict TS (in tests)
