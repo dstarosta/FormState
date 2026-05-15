@@ -4115,12 +4115,12 @@ formClasses('name', {
           <h3>Standalone <code>classNames</code> helper</h3>
           <p>
             <code>classNames</code> is the same clsx-style resolver that powers
-            <code>formClasses</code>, exported for use outside of form fields. Pass it a
-            <a href="#form-class-value"><code>FormClassValue</code></a> — a <code>string</code>, a
-            clsx-compatible <code>object</code>, an array of either, or a falsy value — and it
-            returns a space-separated class name string. Object keys with truthy values are kept;
-            arrays are flattened recursively; <code>false</code>, <code>null</code>, and
-            <code>undefined</code> are filtered out.
+            <code>formClasses</code>, exported for use outside of form fields. Pass it any number
+            of <a href="#form-class-value"><code>FormClassValue</code></a> arguments — each one a
+            <code>string</code>, a clsx-compatible <code>object</code>, an array of either, or a
+            falsy value — and it returns a space-separated class name string. Object keys with
+            truthy values are kept; arrays are flattened recursively; <code>false</code>,
+            <code>null</code>, and <code>undefined</code> are filtered out.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -4138,8 +4138,21 @@ classNames({ 'btn': true, 'btn-primary': isPrimary, 'is-disabled': disabled });
 classNames(['btn', isPrimary &amp;&amp; 'btn-primary', { 'is-loading': loading }]);
 // e.g. "btn btn-primary is-loading"
 
+// Sequence — combine any mix of strings, objects, arrays, and falsy values.
+classNames(
+  'btn',
+  isPrimary &amp;&amp; 'btn-primary',
+  { 'is-loading': loading, 'is-disabled': disabled },
+  [size &amp;&amp; `btn-${size}`, extraClass]
+);
+// e.g. "btn btn-primary is-loading btn-lg my-extra-class"
+
 // Falsy input — returns an empty string.
 classNames(null);
+// ""
+
+// No arguments — returns an empty string.
+classNames();
 // ""</code></pre>
           </div>
         </section>

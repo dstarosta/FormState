@@ -2259,10 +2259,10 @@ declare function FormResetBlocker({
  * Strings are returned as-is, arrays are flattened recursively, and object keys are included
  * when their value is truthy. `false`, `null`, and `undefined` are filtered out.
  *
- * @param value - A `string`, a clsx-style `object`, an array of either, or a falsy value.
+ * @param values - A sequence of `string`, clsx-style `object`, array of either, or falsy values.
  * @returns A `string` of space-separated class names, or an empty string if nothing resolved.
  */
-declare const classNames: (value: FormClassValue) => string;
+declare const classNames: (...values: FormClassValue[]) => string;
 //#endregion
 //#region src/masked-input.d.ts
 /**

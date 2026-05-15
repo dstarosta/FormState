@@ -29,6 +29,7 @@ import {
 } from './value-converter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { debounce } from './debouncer';
+import { classNames } from './class-helper';
 import { createFormStore } from './form-store';
 import { createUseWatch } from './use-watch-builder';
 import { FormResetBlocker } from './form-reset-blocker';
@@ -1025,6 +1026,50 @@ describe('helpers', () => {
       debounced.cancel();
 
       expect(fn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('class helper', () => {
+    it('returns empty string when called with no arguments', () => {
+      expect(classNames()).toBe('');
+    });
+
+    it('returns the string as-is for a single string argument', () => {
+      expect(classNames('foo')).toBe('foo');
+    });
+
+    it('joins multiple string arguments with a space', () => {
+      expect(classNames('foo', 'bar', 'baz')).toBe('foo bar baz');
+    });
+
+    it('filters out falsy values', () => {
+      expect(classNames('foo', false, null, undefined, '', 'bar')).toBe('foo bar');
+    });
+
+    it('includes object keys whose values are truthy', () => {
+      expect(classNames({ foo: true, bar: false, baz: true })).toBe('foo baz');
+    });
+
+    it('filters object keys with null or undefined values', () => {
+      expect(classNames({ foo: true, bar: null, baz: undefined })).toBe('foo');
+    });
+
+    it('flattens nested arrays recursively', () => {
+      expect(classNames(['foo', ['bar', ['baz', 'qux']]])).toBe('foo bar baz qux');
+    });
+
+    it('mixes strings, objects, arrays, and falsy values', () => {
+      expect(
+        classNames('foo', { bar: true, baz: false }, ['qux', null, { quux: true }], undefined)
+      ).toBe('foo bar qux quux');
+    });
+
+    it('returns empty string when all arguments are falsy', () => {
+      expect(classNames(false, null, undefined, '', [], {})).toBe('');
+    });
+
+    it('skips empty objects and arrays without adding extra whitespace', () => {
+      expect(classNames('foo', {}, [], 'bar')).toBe('foo bar');
     });
   });
 
