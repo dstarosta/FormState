@@ -5789,42 +5789,76 @@ function AppForm() {
             <div class="dock-size-demo">
               <div class="dock-size-label">Minimized (default) — not yet validated</div>
               <div class="dock-demo">
-                <div class="dock-header">
-                  <span class="dock-header-text">EXPAND FORM TOOLS</span>
-                  <svg
-                    class="dock-header-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="oklch(0.681 0.162 75.834)"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" x2="12" y1="8" y2="12" />
-                    <line x1="12" x2="12.01" y1="16" y2="16" />
-                  </svg>
+                <div class="dock-header dock-header--with-detach">
+                  <span class="dock-detach-icon" title="Detach panel into a separate window">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                      <path d="m21 3-9 9" />
+                      <path d="M15 3h6v6" />
+                    </svg>
+                  </span>
+                  <span class="dock-header-content">
+                    <span class="dock-header-text">EXPAND FORM TOOLS</span>
+                    <svg
+                      class="dock-header-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="oklch(0.681 0.162 75.834)"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" x2="12" y1="8" y2="12" />
+                      <line x1="12" x2="12.01" y1="16" y2="16" />
+                    </svg>
+                  </span>
                 </div>
               </div>
             </div>
             <div class="dock-size-demo">
               <div class="dock-size-label">Minimized — form invalid</div>
               <div class="dock-demo">
-                <div class="dock-header">
-                  <span class="dock-header-text">EXPAND FORM TOOLS</span>
-                  <svg
-                    class="dock-header-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="oklch(0.704 0.191 22.216)"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" x2="12" y1="8" y2="12" />
-                    <line x1="12" x2="12.01" y1="16" y2="16" />
-                  </svg>
+                <div class="dock-header dock-header--with-detach">
+                  <span class="dock-detach-icon" title="Detach panel into a separate window">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                      <path d="m21 3-9 9" />
+                      <path d="M15 3h6v6" />
+                    </svg>
+                  </span>
+                  <span class="dock-header-content">
+                    <span class="dock-header-text">EXPAND FORM TOOLS</span>
+                    <svg
+                      class="dock-header-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="oklch(0.704 0.191 22.216)"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" x2="12" y1="8" y2="12" />
+                      <line x1="12" x2="12.01" y1="16" y2="16" />
+                    </svg>
+                  </span>
                 </div>
               </div>
             </div>
@@ -5834,8 +5868,25 @@ function AppForm() {
             JSON tree. This example shows a valid form with the full structure visible:
           </p>
           <div class="dock-demo">
-            <div class="dock-header">
-              <span class="dock-header-text">COLLAPSE FORM TOOLS</span>
+            <div class="dock-header dock-header--with-detach">
+              <span class="dock-detach-icon" title="Detach panel into a separate window">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                  <path d="m21 3-9 9" />
+                  <path d="M15 3h6v6" />
+                </svg>
+              </span>
+              <span class="dock-header-content">
+                <span class="dock-header-text">COLLAPSE FORM TOOLS</span>
+              </span>
             </div>
             <div class="dock-body">
               <div class="jt-row">
@@ -6018,21 +6069,38 @@ function AppForm() {
             red:
           </p>
           <div class="dock-demo">
-            <div class="dock-header">
-              <span class="dock-header-text">COLLAPSE FORM TOOLS</span>
-              <svg
-                class="dock-header-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="oklch(0.704 0.191 22.216)"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" x2="12" y1="8" y2="12" />
-                <line x1="12" x2="12.01" y1="16" y2="16" />
-              </svg>
+            <div class="dock-header dock-header--with-detach">
+              <span class="dock-detach-icon" title="Detach panel into a separate window">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                  <path d="m21 3-9 9" />
+                  <path d="M15 3h6v6" />
+                </svg>
+              </span>
+              <span class="dock-header-content">
+                <span class="dock-header-text">COLLAPSE FORM TOOLS</span>
+                <svg
+                  class="dock-header-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="oklch(0.704 0.191 22.216)"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" x2="12" y1="8" y2="12" />
+                  <line x1="12" x2="12.01" y1="16" y2="16" />
+                </svg>
+              </span>
             </div>
             <div class="dock-body">
               <div class="jt-row">
@@ -6131,6 +6199,108 @@ function AppForm() {
               </div>
             </div>
           </div>
+
+          <h3 id="dock-detach">Detach into a popup</h3>
+          <p>
+            The header's left-most icon button toggles between the in-page dock and a separate
+            browser popup window. While attached, the button shows a <em>detach</em> glyph (an arrow
+            leaving a frame). Click it to pop the panel out into its own browser window — the
+            in-page dock disappears and the JSON tree renders in the popup instead.
+          </p>
+          <div class="dock-sizes">
+            <div class="dock-size-demo">
+              <div class="dock-size-label">Attached — click to detach</div>
+              <div class="dock-demo">
+                <div class="dock-header dock-header--with-detach">
+                  <span class="dock-detach-icon" title="Detach panel into a separate window">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+                      <path d="m21 3-9 9" />
+                      <path d="M15 3h6v6" />
+                    </svg>
+                  </span>
+                  <span class="dock-header-content">
+                    <span class="dock-header-text">EXPAND FORM TOOLS</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="dock-size-demo">
+              <div class="dock-size-label">Detached — popup header shows attach icon</div>
+              <div class="dock-demo">
+                <div class="dock-header dock-header--with-detach">
+                  <span class="dock-detach-icon" title="Attach panel">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <line x1="3" y1="12" x2="15" y2="12" />
+                      <polyline points="10 17 15 12 10 7" />
+                    </svg>
+                  </span>
+                  <span class="dock-header-content">
+                    <span class="dock-header-text">FORM TOOLS DETACHED</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p>
+            The popup opens centered, sized to 65% of the screen width × 500px tall, and inherits
+            the host page's stylesheets so the JSON tree looks identical. The dock remembers the
+            detached state in <code>sessionStorage</code> under <code>__form-dock-detached</code>,
+            so a page refresh keeps the popup open.
+          </p>
+          <p>There are four ways to dismiss the popup and re-attach the panel:</p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Effect</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="prop-desc">Click the attach icon in the popup header</td>
+                <td class="prop-desc">
+                  Closes the popup and restores the in-page dock to its previous size.
+                </td>
+              </tr>
+              <tr>
+                <td class="prop-desc">Click the popup header text (or right-click it)</td>
+                <td class="prop-desc">
+                  Same as the attach icon — any click on the header while detached re-attaches.
+                </td>
+              </tr>
+              <tr>
+                <td class="prop-desc">Close the popup window directly (browser X button)</td>
+                <td class="prop-desc">
+                  The <code>pagehide</code> event triggers the same re-attach flow.
+                </td>
+              </tr>
+              <tr>
+                <td class="prop-desc">Navigate away from / reload the host page</td>
+                <td class="prop-desc">
+                  The popup closes automatically with its parent. After reload, the dock starts
+                  detached again (state persisted in <code>sessionStorage</code>).
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
           <h3>Error toast</h3>
           <p>
@@ -6233,6 +6403,14 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               <tr>
                 <td class="prop-desc">Right-click header</td>
                 <td class="prop-desc">Toggle between normal and maximized (full screen height)</td>
+              </tr>
+              <tr>
+                <td class="prop-desc">Click the detach / attach icon (left of header)</td>
+                <td class="prop-desc">
+                  Detach the panel into a popup window, or re-attach it. See
+                  <a href="#dock-detach">Detach into a popup</a> above for all the ways to close the
+                  popup.
+                </td>
               </tr>
               <tr>
                 <td class="prop-desc">Space</td>

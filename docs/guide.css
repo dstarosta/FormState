@@ -196,6 +196,11 @@ main {
   scroll-margin-top: calc(var(--header-height) + 24px);
 }
 
+/* Anchored sub-headings need the same offset so the fixed header doesn't cover them. */
+.section h3[id] {
+  scroll-margin-top: calc(var(--header-height) + 24px);
+}
+
 .section-eyebrow {
   font-size: 11px;
   font-weight: 700;
@@ -640,6 +645,33 @@ hr {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
+}
+
+.dock-header--with-detach {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.dock-detach-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: oklch(0.869 0.022 252.894);
+}
+
+.dock-detach-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.dock-header-content {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .dock-body {
