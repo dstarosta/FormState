@@ -2252,6 +2252,18 @@ declare function FormResetBlocker({
   formRef
 }: FormResetBlockerProps): _$react_jsx_runtime0.JSX.Element | null;
 //#endregion
+//#region src/helpers/class-helper.d.ts
+/**
+ * Resolves a clsx-style {@link FormClassValue} into a space-separated class name string.
+ *
+ * Strings are returned as-is, arrays are flattened recursively, and object keys are included
+ * when their value is truthy. `false`, `null`, and `undefined` are filtered out.
+ *
+ * @param value - A `string`, a clsx-style `object`, an array of either, or a falsy value.
+ * @returns A `string` of space-separated class names, or an empty string if nothing resolved.
+ */
+declare const classNames: (value: FormClassValue) => string;
+//#endregion
 //#region src/masked-input.d.ts
 /**
  * `React.FocusEvent` augmented with a {@link MaskedFocusEvent.complete}
@@ -2584,5 +2596,5 @@ declare function asDateString(value: Date | string, dateFormat: FormDateFormat):
  */
 declare function asDateString(value: Date | string, dateFormat?: string): string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, classNames, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

@@ -4112,6 +4112,36 @@ formClasses('name', {
               form above — so only one ever reaches the output.
             </p>
           </div>
+          <h3>Standalone <code>classNames</code> helper</h3>
+          <p>
+            <code>classNames</code> is the same clsx-style resolver that powers
+            <code>formClasses</code>, exported for use outside of form fields. Pass it a
+            <a href="#form-class-value"><code>FormClassValue</code></a> — a <code>string</code>, a
+            clsx-compatible <code>object</code>, an array of either, or a falsy value — and it
+            returns a space-separated class name string. Object keys with truthy values are kept;
+            arrays are flattened recursively; <code>false</code>, <code>null</code>, and
+            <code>undefined</code> are filtered out.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { classNames } from 'form-state';
+
+// String — returned as-is.
+classNames('btn btn-primary');
+// "btn btn-primary"
+
+// Object — keys with truthy values are kept.
+classNames({ 'btn': true, 'btn-primary': isPrimary, 'is-disabled': disabled });
+// e.g. "btn btn-primary"
+
+// Array — flattened recursively, falsy entries dropped.
+classNames(['btn', isPrimary &amp;&amp; 'btn-primary', { 'is-loading': loading }]);
+// e.g. "btn btn-primary is-loading"
+
+// Falsy input — returns an empty string.
+classNames(null);
+// ""</code></pre>
+          </div>
         </section>
         <section class="section" id="context">
           <div class="section-eyebrow">Features</div>

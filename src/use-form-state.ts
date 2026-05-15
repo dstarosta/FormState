@@ -73,7 +73,7 @@ import {
   getState,
   updateState,
 } from './helpers/state-manager';
-import { combineClasses } from './helpers/class-helper';
+import { classNames } from './helpers/class-helper';
 import { formatErrors } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
@@ -528,7 +528,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           ? { classNames: classesOrOptions }
           : (classesOrOptions ?? {});
 
-      const classNames = perCall.classNames ?? stableCssOptions.classNames;
+      const currentClassNames = perCall.classNames ?? stableCssOptions.classNames;
       const prefixSetting = perCall.prefix === undefined ? stableCssOptions.prefix : perCall.prefix;
       const prefix = prefixSetting === null ? null : prefixSetting?.trim() || 'form-state';
 
@@ -562,12 +562,12 @@ export function useFormState<T extends z.ZodMiniObject>(
         }
       }
 
-      if (classNames !== undefined) {
+      if (currentClassNames !== undefined) {
         const value =
-          typeof classNames === 'function'
-            ? classNames({ isError, isTouched, isRequired, mode })
-            : classNames;
-        const combinedClasses = combineClasses(value);
+          typeof currentClassNames === 'function'
+            ? currentClassNames({ isError, isTouched, isRequired, mode })
+            : currentClassNames;
+        const combinedClasses = classNames(value);
 
         if (combinedClasses) {
           classes += `${combinedClasses} `;
