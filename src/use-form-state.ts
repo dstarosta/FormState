@@ -1122,13 +1122,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The memoized "handleSubmit" function.
   const handleSubmit = useCallback(
     (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions<T>) => {
-      const shouldSubmit = options?.onBeforeSubmit?.();
-
       return async (submittedFormData: FormData) => {
-        if (shouldSubmit === false) {
-          return;
-        }
-
         const currentState = formStateRef.current;
 
         const safeData = schema.safeParse(currentState.data);

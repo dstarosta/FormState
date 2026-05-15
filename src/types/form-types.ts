@@ -1079,12 +1079,6 @@ export type FormSubmitOptions<T extends z.ZodMiniObject> = {
    */
   updateInitialData?: boolean;
   /**
-   * An optional callback to run before the form has been submitted.
-   *
-   * Return `false` from the callback to stop the form submission.
-   */
-  onBeforeSubmit?: (() => boolean) | (() => void) | undefined;
-  /**
    * An optional callback to run after the form state has been submitted.
    *
    * @param state - Submitted form state.
