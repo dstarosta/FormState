@@ -4894,6 +4894,89 @@ describe('useFormState', () => {
         });
       });
 
+      it('scopes querying to the form captured from a prior interaction', async () => {
+        const TestForms = () => {
+          const formA = useFormState(schema, { validateOnMount: true });
+          const formB = useFormState(schema, { validateOnMount: true });
+
+          return (
+            <>
+              <formA.Form>
+                <input
+                  aria-label="A-name"
+                  name="name"
+                  className={formA.formClasses('name')}
+                  defaultValue=""
+                />
+              </formA.Form>
+              <formB.Form>
+                <input
+                  aria-label="B-name"
+                  name="name"
+                  className={formB.formClasses('name')}
+                  defaultValue=""
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    formB.formActions.focus('name');
+                    formB.formActions.focusOnFirstError();
+                  }}
+                >
+                  Focus B Error
+                </button>
+              </formB.Form>
+            </>
+          );
+        };
+
+        render(<TestForms />);
+
+        fireEvent.click(screen.getByText('Focus B Error'));
+
+        await waitFor(() => {
+          expect(screen.getByLabelText('B-name')).toHaveFocus();
+        });
+
+        expect(screen.getByLabelText('A-name')).not.toHaveFocus();
+      });
+
+      it('validating plain form focus capture on error', async () => {
+        const TestForms = () => {
+          const form = useFormState(schema, { validateOnMount: true });
+
+          return (
+            <>
+              <form>
+                <input
+                  aria-label="form-name"
+                  name="name"
+                  className={form.formClasses('name')}
+                  defaultValue=""
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    form.formActions.focus('name');
+                    form.formActions.focusOnFirstError();
+                  }}
+                >
+                  Focus Error
+                </button>
+              </form>
+            </>
+          );
+        };
+
+        render(<TestForms />);
+
+        fireEvent.click(screen.getByText('Focus Error'));
+
+        await waitFor(() => {
+          expect(screen.getByLabelText('form-name')).toHaveFocus();
+        });
+      });
+
       it('per-call classNames replaces cssOptions classNames default', () => {
         const initialData: InitialSchema = {
           name: 'John',

@@ -55,7 +55,8 @@ export function setFormData(element: HTMLInputElement, value: string) {
 export const createFormComponent = <T extends object>(
   store: FormStore | null,
   dispatch: (payload: FormAction<T>) => void,
-  resetTouchedOnFormReset: boolean
+  resetTouchedOnFormReset: boolean,
+  externalFormRef?: { current: HTMLFormElement | null }
 ) => {
   /**
    * The Form component with pre-wired reset logic.
@@ -154,6 +155,10 @@ export const createFormComponent = <T extends object>(
     const formRefCallback = useCallback(
       (node: HTMLFormElement | null) => {
         mergeRefs(formRef, forwardedRef)(node);
+
+        if (externalFormRef) {
+          externalFormRef.current = node;
+        }
 
         const form = node as HTMLFormElement;
 

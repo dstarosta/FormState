@@ -38,7 +38,6 @@ import type {
   FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
-  ImmutableArray,
   StateCallback,
   StateChangeListener,
   SubmitState,
@@ -70,8 +69,7 @@ import {
   createImmutableTouched,
   createState,
   freezeObject,
-  getState,
-  updateState,
+  mutateArrayState,
 } from './helpers/state-manager';
 import { classNames } from './helpers/class-helper';
 import { formatErrors } from './helpers/error-formatter';
@@ -81,8 +79,6 @@ import { createFormStore } from './helpers/form-store';
 import { createUseListener } from './helpers/use-listener-builder';
 import { createUseWatch } from './helpers/use-watch-builder';
 import { IS_DEVELOPMENT } from './helpers/development-helper';
-
-const NON_ARRAY_PATH_ERROR = 'The "nameOrPath" argument does not refer to an array type.';
 
 /**
  * Hook that manages form state.
@@ -159,9 +155,12 @@ export function useFormState<T extends z.ZodMiniObject>(
   const [store] = useState(() => (watch ? createFormStore() : null));
 
   const defaultData = useMemo(() => createState(schema), [schema]);
-  const initializedData = useDeepMemo(
-    () => createState(schema, initialData),
-    [schema, initialData]
+
+  const memoizedInitialData = useDeepMemo(() => initialData, [initialData]);
+
+  const initializedData = useMemo(
+    () => createState(schema, memoizedInitialData),
+    [schema, memoizedInitialData]
   );
 
   // Stable reference for form-level `formClasses` defaults.
@@ -232,6 +231,9 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Tracks whether component is mounted.
   const isMountedRef = useRef(true);
+
+  // Form element ref populated by the bundled <Form> component on mount.
+  const formElementRef = useRef<HTMLFormElement | null>(null);
 
   // The queue of "change" callback refs.
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
@@ -412,7 +414,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   }, [errorMessageSeparator]);
 
   const initialDataChanged = useMemo(
-    () => !deepEqual(formState.initialData, state.data),
+    () => formState.initialData !== state.data && !deepEqual(formState.initialData, state.data),
     [formState.initialData, state.data]
   );
 
@@ -589,11 +591,15 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The memoized "change" function.
   const change = useCallback(
-    (nameOrPath: FormPath<T>, value: unknown, options?: FormChangeOptions<T>) => {
-      const path =
+    <P extends FormPath<T>>(
+      nameOrPath: P,
+      value: FormPathValue<T, P>,
+      options?: FormChangeOptions<T>
+    ) => {
+      const path: keyof State | FormStatePath<State> =
         typeof nameOrPath === 'function'
           ? getPath(formStateRef.current.data, nameOrPath)
-          : nameOrPath;
+          : (nameOrPath as keyof State);
       const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
 
       const unchanged = dotPathGet(formStateRef.current.data, pathNotation) === value;
@@ -790,34 +796,24 @@ export function useFormState<T extends z.ZodMiniObject>(
     [validateOnTouch, dispatch]
   );
 
-  const append = useCallback(
-    <P extends FormPath<T>, I = FormPathValue<T, P>>(
-      nameOrPath: P,
-      items: ArrayElement<I>[] | ArrayElement<I>,
+  // Resolves the array at `nameOrPath`, applies `mutator`, and dispatches a "change" action.
+  const mutateArray = useCallback(
+    (
+      nameOrPath: FormPath<T>,
+      mutator: (draft: unknown[]) => void,
       options?: FormChangeArrayOptions<T>
     ) => {
-      const path =
-        typeof nameOrPath === 'function'
-          ? getPath(formStateRef.current.data, nameOrPath)
-          : (nameOrPath as keyof State);
-      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
-
-      if (!Array.isArray(pathState)) {
-        throw new TypeError(NON_ARRAY_PATH_ERROR);
-      }
-
-      const updatedState = updateState(pathState as ImmutableArray<ArrayElement<I>>, (draft) => {
-        if (Array.isArray(items)) {
-          draft.push(...items);
-        } else {
-          draft.push(items);
-        }
-      });
+      const { name, value } = mutateArrayState(
+        schema,
+        formStateRef.current.data,
+        nameOrPath,
+        mutator
+      );
 
       dispatch({
         type: 'change',
-        name: path,
-        value: updatedState,
+        name,
+        value,
         options: {
           touch: Boolean(options?.touch),
           validate: options?.validate ?? validateOnChange,
@@ -825,6 +821,27 @@ export function useFormState<T extends z.ZodMiniObject>(
       });
     },
     [schema, validateOnChange, dispatch]
+  );
+
+  const append = useCallback(
+    <P extends FormPath<T>, I = FormPathValue<T, P>>(
+      nameOrPath: P,
+      items: ArrayElement<I>[] | ArrayElement<I>,
+      options?: FormChangeArrayOptions<T>
+    ) => {
+      mutateArray(
+        nameOrPath,
+        (draft) => {
+          if (Array.isArray(items)) {
+            draft.push(...items);
+          } else {
+            draft.push(items);
+          }
+        },
+        options
+      );
+    },
+    [mutateArray]
   );
 
   const insert = useCallback(
@@ -834,35 +851,19 @@ export function useFormState<T extends z.ZodMiniObject>(
       items: ArrayElement<I>[] | ArrayElement<I>,
       options?: FormChangeArrayOptions<T>
     ) => {
-      const path =
-        typeof nameOrPath === 'function'
-          ? getPath(formStateRef.current.data, nameOrPath)
-          : (nameOrPath as keyof State);
-      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
-
-      if (!Array.isArray(pathState)) {
-        throw new TypeError(NON_ARRAY_PATH_ERROR);
-      }
-
-      const updatedState = updateState(pathState as ImmutableArray<ArrayElement<I>>, (draft) => {
-        if (Array.isArray(items)) {
-          draft.splice(index, 0, ...items);
-        } else {
-          draft.splice(index, 0, items);
-        }
-      });
-
-      dispatch({
-        type: 'change',
-        name: path,
-        value: updatedState,
-        options: {
-          touch: Boolean(options?.touch),
-          validate: options?.validate ?? validateOnChange,
+      mutateArray(
+        nameOrPath,
+        (draft) => {
+          if (Array.isArray(items)) {
+            draft.splice(index, 0, ...items);
+          } else {
+            draft.splice(index, 0, items);
+          }
         },
-      });
+        options
+      );
     },
-    [schema, validateOnChange, dispatch]
+    [mutateArray]
   );
 
   const update = useCallback(
@@ -872,70 +873,38 @@ export function useFormState<T extends z.ZodMiniObject>(
       item: ArrayElement<I>,
       options?: FormChangeArrayOptions<T>
     ) => {
-      const path =
-        typeof nameOrPath === 'function'
-          ? getPath(formStateRef.current.data, nameOrPath)
-          : (nameOrPath as keyof State);
-      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
-
-      if (!Array.isArray(pathState)) {
-        throw new TypeError(NON_ARRAY_PATH_ERROR);
-      }
-
-      const updatedState = updateState(pathState as ImmutableArray<ArrayElement<I>>, (draft) => {
-        draft.splice(index, 1, item);
-      });
-
-      dispatch({
-        type: 'change',
-        name: path,
-        value: updatedState,
-        options: {
-          touch: Boolean(options?.touch),
-          validate: options?.validate ?? validateOnChange,
+      mutateArray(
+        nameOrPath,
+        (draft) => {
+          draft.splice(index, 1, item);
         },
-      });
+        options
+      );
     },
-    [schema, validateOnChange, dispatch]
+    [mutateArray]
   );
 
   const swap = useCallback(
     (nameOrPath: FormPath<T>, from: number, to: number, options?: FormChangeArrayOptions<T>) => {
-      const path =
-        typeof nameOrPath === 'function'
-          ? getPath(formStateRef.current.data, nameOrPath)
-          : nameOrPath;
-      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
+      mutateArray(
+        nameOrPath,
+        (draft) => {
+          if (from < 0 || to < 0 || from >= draft.length || to >= draft.length) {
+            throw new Error(
+              `Index out of bounds: fromIndex=${String(from)}, toIndex=${String(to)}, array length=${String(draft.length)}`
+            );
+          }
 
-      if (!Array.isArray(pathState)) {
-        throw new TypeError(NON_ARRAY_PATH_ERROR);
-      }
-
-      const updatedState = updateState(pathState as unknown[], (draft) => {
-        if (from < 0 || to < 0 || from >= draft.length || to >= draft.length) {
-          throw new Error(
-            `Index out of bounds: fromIndex=${String(from)}, toIndex=${String(to)}, array length=${String(draft.length)}`
-          );
-        }
-
-        if (from !== to) {
-          const temp = draft[from];
-          draft[from] = draft[to];
-          draft[to] = temp;
-        }
-      });
-
-      dispatch({
-        type: 'change',
-        name: path,
-        value: updatedState,
-        options: {
-          touch: Boolean(options?.touch),
-          validate: options?.validate ?? validateOnChange,
+          if (from !== to) {
+            const temp = draft[from];
+            draft[from] = draft[to];
+            draft[to] = temp;
+          }
         },
-      });
+        options
+      );
     },
-    [schema, validateOnChange, dispatch]
+    [mutateArray]
   );
 
   const remove = useCallback(
@@ -946,18 +915,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
       options?: FormChangeArrayOptions<T>
     ) => {
-      const path =
-        typeof nameOrPath === 'function'
-          ? getPath(formStateRef.current.data, nameOrPath)
-          : (nameOrPath as keyof State);
-      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
-
-      if (!Array.isArray(pathState)) {
-        throw new TypeError(NON_ARRAY_PATH_ERROR);
-      }
-
-      const updatedState = updateState(
-        pathState as ImmutableArray<ArrayElement<FormPathValue<T, P>>>,
+      mutateArray(
+        nameOrPath,
         (draft) => {
           if (typeof indexOrPredicate === 'number') {
             draft.splice(indexOrPredicate, 1);
@@ -969,56 +928,31 @@ export function useFormState<T extends z.ZodMiniObject>(
           for (let readIndex = 0; readIndex < draft.length; readIndex++) {
             const value = draft[readIndex];
 
-            if (value && !indexOrPredicate(value, readIndex)) {
+            if (value && !indexOrPredicate(value as ArrayElement<FormPathValue<T, P>>, readIndex)) {
               draft[writeIndex] = value;
               writeIndex++;
             }
           }
 
           draft.length = writeIndex;
-        }
-      );
-
-      dispatch({
-        type: 'change',
-        name: path,
-        value: updatedState,
-        options: {
-          touch: Boolean(options?.touch),
-          validate: options?.validate ?? validateOnChange,
         },
-      });
+        options
+      );
     },
-    [schema, validateOnChange, dispatch]
+    [mutateArray]
   );
 
   const clear = useCallback(
     (nameOrPath: FormPath<T>, options?: FormChangeArrayOptions<T>) => {
-      const path =
-        typeof nameOrPath === 'function'
-          ? getPath(formStateRef.current.data, nameOrPath)
-          : nameOrPath;
-      const pathState = getState(schema, formStateRef.current.data, nameOrPath);
-
-      if (!Array.isArray(pathState)) {
-        throw new TypeError(NON_ARRAY_PATH_ERROR);
-      }
-
-      const updatedState = updateState(pathState as unknown[], (draft) => {
-        draft.length = 0;
-      });
-
-      dispatch({
-        type: 'change',
-        name: path,
-        value: updatedState,
-        options: {
-          touch: Boolean(options?.touch),
-          validate: options?.validate ?? validateOnChange,
+      mutateArray(
+        nameOrPath,
+        (draft) => {
+          draft.length = 0;
         },
-      });
+        options
+      );
     },
-    [schema, validateOnChange, dispatch]
+    [mutateArray]
   );
 
   // The memoized "validate" function.
@@ -1084,8 +1018,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       } else {
         dispatch({ type: 'validate' });
       }
-
-      return true;
     },
     [schema, errorMessageSeparator, manualErrorsState, dispatch]
   );
@@ -1295,6 +1227,16 @@ export function useFormState<T extends z.ZodMiniObject>(
     [inferredNameFormat]
   );
 
+  // Resolves an element within the captured form scope, falling back to the first
+  // form in the document if no form has been captured yet.
+  const queryWithinForm = useCallback((selector: string) => {
+    const form = formElementRef.current;
+    if (form?.isConnected) {
+      return form.querySelector<HTMLElement>(selector);
+    }
+    return document.querySelector<HTMLElement>(`form ${selector}`);
+  }, []);
+
   // Blurs the actively focused element.
   const blur = useCallback(() => {
     if (document.activeElement instanceof HTMLElement) {
@@ -1307,7 +1249,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     (elementOrName: HTMLElement | string | null, options?: ElementFocusOptions<T>) => {
       const element =
         typeof elementOrName === 'string'
-          ? document.querySelector<HTMLElement>(`form [name="${elementOrName.trim()}"]`)
+          ? queryWithinForm(`[name="${elementOrName.trim()}"]`)
           : elementOrName;
 
       if (!element) {
@@ -1334,7 +1276,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         element.select();
       }
     },
-    []
+    [queryWithinForm]
   );
 
   // Focuses the first input or textarea in the form with the error CSS class.
@@ -1348,17 +1290,13 @@ export function useFormState<T extends z.ZodMiniObject>(
 
         if (prefix) {
           const errorClass = `${prefix}__error`;
-          element = document.querySelector<HTMLElement>(
-            `form input.${errorClass}, form textarea.${errorClass}`
-          );
+          element = queryWithinForm(`input.${errorClass}, textarea.${errorClass}`);
         } else {
           const errors = formStateRef.current.errors;
 
           for (const key in errors) {
             if (key && errors[key as keyof State]) {
-              const candidate = document.querySelector<HTMLElement>(
-                `form input[name="${key}"], form textarea[name="${key}"]`
-              );
+              const candidate = queryWithinForm(`input[name="${key}"], textarea[name="${key}"]`);
 
               if (candidate) {
                 element = candidate;
@@ -1382,15 +1320,18 @@ export function useFormState<T extends z.ZodMiniObject>(
         }
       };
 
-      // Allow elements with the error classes to re-render.
-      setTimeout(doFocus, 0);
+      requestAnimationFrame(() => {
+        doFocus();
+      });
     },
-    [stableCssOptions]
+    [stableCssOptions, queryWithinForm]
   );
 
   // The memoized Form component.
   const createComponent = useMemo(
-    () => createFormComponent<State>(store, dispatch, resetTouchedOnFormReset),
+    // The form element ref is not read during render.
+    // eslint-disable-next-line react-hooks/refs
+    () => createFormComponent<State>(store, dispatch, resetTouchedOnFormReset, formElementRef),
     [store, dispatch, resetTouchedOnFormReset]
   );
 

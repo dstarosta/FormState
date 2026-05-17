@@ -7,6 +7,7 @@ import type {
   FormMutableState,
   FormPath,
   FormPathValueOrUnknown,
+  FormStatePath,
   Immutable,
   ImmutableArray,
   ImmutableObject,
@@ -306,6 +307,24 @@ export const difference = <T extends object>(obj1: T, obj2: Record<string, unkno
 
   return result as T;
 };
+
+export function mutateArrayState<T extends z.ZodMiniObject>(
+  schema: T,
+  data: z.infer<T>,
+  nameOrPath: FormPath<T>,
+  mutator: (draft: unknown[]) => void
+): { name: keyof z.infer<T> | FormStatePath<z.infer<T>>; value: unknown[] } {
+  const name = typeof nameOrPath === 'function' ? getPath(data, nameOrPath) : nameOrPath;
+  const pathState = getState(schema, data, nameOrPath);
+
+  if (!Array.isArray(pathState)) {
+    throw new TypeError('The "nameOrPath" argument does not refer to an array type.');
+  }
+
+  const value = updateState(pathState as ImmutableArray<unknown>, mutator);
+
+  return { name, value };
+}
 
 // Public functions
 

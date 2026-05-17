@@ -27,10 +27,15 @@ type ReplaceEmptyWithUndefined<T> = T extends '' ? undefined : T;
 type DateToString<T> = T extends Date ? string : T extends (infer Item)[] ? DateToString<Item>[] : T extends object ? { [K in keyof T]: DateToString<T[K]> } : T;
 type NormalizePrimitives<T> = DateToString<ReplaceEmptyWithUndefined<T>>;
 type RangeOf<T> = undefined | Date | number | (IsUnion<T, Date | string> extends true ? Date | string : never) | (IsUnion<T, number | ''> extends true ? number | '' : never);
-type ImmutablePrimitive = undefined | null | boolean | string | number | symbol | Date | Error | Function | RegExp | Promise<unknown>;
-type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
 type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
 type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
+type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = { [K in keyof Selectors]: Selectors[K] extends Selector<S, infer R> ? R : never };
+type FormDataSelector<S> = {
+  <I extends Selector<S, unknown>, R>(inputSelector: I, resultFn: (input: ReturnType<I>) => R): Selector<S, R>;
+  <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: SelectorResults<S, I>) => R): Selector<S, R>;
+};
+type ImmutablePrimitive = undefined | null | boolean | string | number | symbol | Date | Error | Function | RegExp | Promise<unknown>;
+type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
 type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
 type ArrayElement<A> = A extends readonly (infer U)[] ? U : never;
 type FieldRange = number | Date | undefined;
@@ -108,7 +113,6 @@ type FormStringOptions = {
 };
 type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> = P extends FormPath<T> ? FormPathValue<T, P> : unknown;
 type Selector<S, R> = (state: S) => R;
-type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = { [K in keyof Selectors]: Selectors[K] extends Selector<S, infer R> ? R : never };
 /**
  * Immutable type.
  */
@@ -905,34 +909,6 @@ formData: FormData) => Promise<ValidationResult> | ValidationResult;
  * The form mode type.
  */
 type FormMode = 'editable' | 'readOnly' | 'disabled';
-type FormDataSelector<S> = {
-  /**
-   * Form data selector creator function type.
-   *
-   * @param inputSelector - A selector that extract values from the source state `S`.
-   * @param resultFn - The result function that computes the final value from the extracted input.
-   *
-   * @typeParam S - Source state type.
-   * @typeParam I - Tuple of input selector types.
-   * @typeParam R - Return type of the result function.
-   *
-   * @returns Memoized selector function.
-   */
-  <I extends Selector<S, unknown>, R>(inputSelector: I, resultFn: (input: ReturnType<I>) => R): Selector<S, R>;
-  /**
-   * Form data selector creator function type.
-   *
-   * @param inputSelectors - One or more selectors that extract values from the source state `S`.
-   * @param resultFn - The result function that computes the final value from the extracted inputs.
-   *
-   * @typeParam S - Source state type.
-   * @typeParam I - Tuple of input selector types.
-   * @typeParam R - Return type of the result function.
-   *
-   * @returns Memoized selector function.
-   */
-  <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: SelectorResults<S, I>) => R): Selector<S, R>;
-};
 /**
  * The form state response type.
  *
