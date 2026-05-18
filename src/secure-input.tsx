@@ -155,7 +155,13 @@ export function SecureInput({
   );
 
   useEffect(() => {
-    const element = inputRef.current as HTMLInputElement;
+    const element = inputRef.current;
+
+    // Unreachable guard needed for type safety
+    /* v8 ignore if -- @preserve */
+    if (!element) {
+      return;
+    }
 
     const handler = (event: InputEvent) => {
       event.preventDefault();
@@ -231,12 +237,17 @@ export function SecureInput({
     }
 
     const [start, end] = select();
+    const existingValue = realValueRef.current;
 
     const hasSelection = start !== end;
 
-    if (event.ctrlKey || event.metaKey) {
+    // Ctrl/Meta combos are reserved for shortcuts. The `!event.altKey` carve-out lets
+    // Windows AltGr combos (ctrlKey + altKey) fall through to character insertion.
+    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
       // No undo/redo
-      if (event.key === 'y' || event.key === 'z') {
+      const key = event.key.toLowerCase();
+
+      if (key === 'y' || key === 'z') {
         event.preventDefault();
       }
 
@@ -247,9 +258,9 @@ export function SecureInput({
       event.preventDefault();
 
       if (hasSelection) {
-        commit(spliceValue(realValue, start, end), start);
+        commit(spliceValue(existingValue, start, end), start);
       } else if (start > 0) {
-        commit(spliceValue(realValue, start - 1, start), start - 1);
+        commit(spliceValue(existingValue, start - 1, start), start - 1);
       }
 
       return;
@@ -259,17 +270,24 @@ export function SecureInput({
       event.preventDefault();
 
       if (hasSelection) {
-        commit(spliceValue(realValue, start, end), start);
-      } else if (start < realValue.length) {
-        commit(spliceValue(realValue, start, start + 1), start);
+        commit(spliceValue(existingValue, start, end), start);
+      } else if (start < existingValue.length) {
+        commit(spliceValue(existingValue, start, start + 1), start);
       }
 
       return;
     }
 
-    if (event.key.length === 1 && !event.altKey) {
-      event.preventDefault();
-      commit(spliceValue(realValue, start, end, event.key), start + 1);
+    if (event.key.length === 1) {
+      // Distinguish Mac Option-modified characters (event.code differs from event.key)
+      // from Windows Alt-mnemonics (event.code base matches event.key).
+      const codeChar = event.code.replace(/^(Key|Digit)/, '').toLowerCase();
+      const isAltMnemonic = event.altKey && codeChar === event.key.toLowerCase();
+
+      if (!isAltMnemonic) {
+        event.preventDefault();
+        commit(spliceValue(existingValue, start, end, event.key), start + 1);
+      }
     }
   };
 

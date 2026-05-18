@@ -178,15 +178,10 @@ export type FormMutableState<T extends object> = {
   changed: boolean;
   replaced: boolean;
   validated: boolean;
+  manualErrors: Record<string, string>;
 };
 
 export type StateCallback<T extends object> = (state: FormState<T>, status: FormStatus) => void;
-
-export type ManualErrorState = {
-  get: () => Immutable<Record<string, string>>;
-  set: (value?: Readonly<Record<string, string>>) => void;
-  remove: (predicate: (key: string) => boolean) => void;
-};
 
 export type FormStore = {
   getValue: (name: string) => string | undefined;

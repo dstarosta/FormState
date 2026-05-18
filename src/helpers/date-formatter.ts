@@ -46,7 +46,7 @@ export const toUTC = (date: Date | undefined) => {
 };
 
 export const isValidDate = (date: unknown) => {
-  return date instanceof Date && date !== INVALID_DATE && !Number.isNaN(date.getTime());
+  return date instanceof Date && !Number.isNaN(date.getTime());
 };
 
 export const parseDate = (
@@ -76,9 +76,9 @@ export const parseDate = (
     [, year, month, day] = match;
   }
 
-  const numYear = Number.parseInt(String(year), 10);
-  const numMonth = Number.parseInt(String(month), 10) - 1;
-  const numDay = Number.parseInt(String(day), 10);
+  const numYear = Number.parseInt(year ?? '', 10);
+  const numMonth = Number.parseInt(month ?? '', 10) - 1;
+  const numDay = Number.parseInt(day ?? '', 10);
 
   let date: Date;
   let dateYear: number;
@@ -119,11 +119,13 @@ export function formatDate(date: Date, format: FormDateFormat = 'yyyy-MM-dd') {
     throw new TypeError('Invalid date provided.');
   }
 
-  getParserExpression(format); // validates the format
+  if (!DATE_PATTERNS.has(format)) {
+    throw new TypeError('Invalid date format provided.');
+  }
 
-  const year = date.getUTCFullYear().toString();
-  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-  const day = date.getUTCDate().toString().padStart(2, '0');
+  const year = date.getFullYear().toString();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
 
   switch (format) {
     case 'dd/MM/yyyy': {

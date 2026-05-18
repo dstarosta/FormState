@@ -409,16 +409,21 @@ export function formDate(
         return EMPTY_STRING;
       }
 
-      // This is by design - invalid dates with strings in them (see INVALID_DATE in date-formatter.ts).
-      // eslint-disable-next-line @typescript-eslint/no-base-to-string
-      const dateValue = value instanceof Date ? value : parseDate(String(value), dateFormat);
+      let stringValue: string = EMPTY_STRING;
+
+      if (typeof value === 'string') {
+        stringValue = value;
+      } else if (typeof value === 'number' || typeof value === 'boolean') {
+        stringValue = String(value);
+      }
+
+      // Invalid dates with strings in them are handled (see INVALID_DATE in date-formatter.ts).
+      const dateValue = value instanceof Date ? value : parseDate(stringValue, dateFormat);
 
       if (!isValidDate(dateValue)) {
         ctx.issues.push({
           code: 'custom',
-          message:
-            options.dateFormatError ??
-            'Invalid input: "' + (value as Date | string).toString() + '".',
+          message: options.dateFormatError ?? 'Invalid input: "' + stringValue + '".',
           input: value,
         });
 
@@ -639,8 +644,11 @@ export function formString(
           message: options.error,
           input: value,
         });
+
+        return value as string;
       }
-      return options.normalize ? (value as string).normalize(options.normalize) : (value as string);
+
+      return options.normalize ? value.normalize(options.normalize) : value;
     }),
     options.required
       ? zodString
@@ -972,16 +980,22 @@ export function uniqueItems<T>(
   }
 ) {
   return z.superRefine<T[]>((arr, ctx) => {
-    const seen: unknown[] = [];
+    const seenSet = deepEquality ? null : new Set<unknown>();
+    const seenList: unknown[] = [];
     const ignoredValues = new Set(params?.ignoreValues);
 
     for (const [index, item] of arr.entries()) {
       const value = typeof params?.mapFn === 'function' ? params.mapFn(item, index) : item;
 
-      if (
-        !ignoredValues.has(value) &&
-        seen.some((existing) => (deepEquality ? deepEqual(existing, value) : existing === value))
-      ) {
+      if (ignoredValues.has(value)) {
+        continue;
+      }
+
+      const isDuplicate = seenSet
+        ? seenSet.has(value)
+        : seenList.some((existing) => deepEqual(existing, value));
+
+      if (isDuplicate) {
         ctx.addIssue({
           code: 'custom',
           message: params?.error,
@@ -994,7 +1008,11 @@ export function uniqueItems<T>(
         return;
       }
 
-      seen.push(value);
+      if (seenSet) {
+        seenSet.add(value);
+      } else {
+        seenList.push(value);
+      }
     }
   });
 }

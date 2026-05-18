@@ -3071,6 +3071,129 @@ describe('useFormState', () => {
       expect(editableFormStatus.disabled).toBe(false);
       expect(editableFormStatus.readOnly).toBe(false);
     });
+
+    it('should not re-render when setError is called with the same error', () => {
+      const initialData: InitialSchema = { info: { age: 30 }, tags: [] };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+
+      act(() => {
+        result.current.formActions.setError('id', 'Bad ID');
+      });
+
+      const beforeFormState = result.current.formState;
+      const beforeFormStatus = result.current.formStatus;
+
+      act(() => {
+        result.current.formActions.setError('id', 'Bad ID');
+      });
+
+      expect(result.current.formState).toBe(beforeFormState);
+      expect(result.current.formStatus).toBe(beforeFormStatus);
+    });
+
+    it('should not re-render when setError is called with null on a field with no error', () => {
+      const initialData: InitialSchema = { info: { age: 30 }, tags: [] };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+
+      const before = result.current.formState;
+
+      act(() => {
+        result.current.formActions.setError('id', null);
+      });
+
+      expect(result.current.formState).toBe(before);
+    });
+
+    it('should apply both setError calls when set and clear happen in the same batch', () => {
+      const initialData: InitialSchema = { info: { age: 30 }, tags: [] };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+
+      act(() => {
+        result.current.formActions.setError('id', 'Bad ID');
+        result.current.formActions.setError('id', null);
+      });
+
+      expect(result.current.formState.errors.getManual('id')).toBeUndefined();
+    });
+
+    it('should not re-render when clearManualErrors is called with no manual errors', () => {
+      const initialData: InitialSchema = { info: { age: 30 }, tags: [] };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+
+      const before = result.current.formState;
+
+      act(() => {
+        result.current.formActions.clearManualErrors();
+      });
+
+      expect(result.current.formState).toBe(before);
+    });
+
+    it('should not re-render when clearManualErrors predicate matches nothing', () => {
+      const initialData: InitialSchema = { info: { age: 30 }, tags: [] };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+
+      act(() => {
+        result.current.formActions.setError('id', 'Bad ID');
+      });
+
+      const before = result.current.formState;
+
+      act(() => {
+        result.current.formActions.clearManualErrors({ predicate: (key) => key === 'other' });
+      });
+
+      expect(result.current.formState).toBe(before);
+    });
+
+    it('should not re-render when setMode is called with the current mode', () => {
+      const initialData: InitialSchema = { info: { age: 30 }, tags: [] };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+
+      const before = result.current.formState;
+
+      act(() => {
+        result.current.formActions.setMode('editable');
+      });
+
+      expect(result.current.formState).toBe(before);
+    });
+
+    it('should not re-render when setDirty is called with the same value', () => {
+      const initialData: InitialSchema = { info: { age: 30 }, tags: [] };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+
+      act(() => {
+        result.current.formActions.setDirty('#flag', true);
+      });
+
+      const before = result.current.formState;
+
+      act(() => {
+        result.current.formActions.setDirty('#flag', true);
+      });
+
+      expect(result.current.formState).toBe(before);
+    });
+
+    it('should not re-render when touch is called on an already-touched field without validation', () => {
+      const initialData: InitialSchema = { info: { age: 30 }, tags: [] };
+      const { result } = renderHook(() =>
+        useFormState(schema, { initialData, validateOnTouch: false })
+      );
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      const before = result.current.formState;
+
+      act(() => {
+        result.current.formActions.touch('name');
+      });
+
+      expect(result.current.formState).toBe(before);
+    });
   });
 
   describe('form element tests', () => {
@@ -3505,6 +3628,33 @@ describe('useFormState', () => {
       expect(submittedState).toBeDefined();
       expect(submittedState.formData.has('id')).toBe(true);
       expect(submittedState.formData.get('submitter')).toBe('submit');
+    });
+
+    it('should submit form with "handleSubmit" once despite multiple clicks', async () => {
+      render(<FormComponent watch />);
+
+      const input = screen.getByLabelText('Name');
+      const name = screen.getByTitle('name');
+      const submitButton = screen.getByText('Submit');
+
+      fireEvent.change(input, { target: { value: 'John' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      fireEvent.click(submitButton);
+      fireEvent.click(submitButton);
+      fireEvent.click(submitButton);
+
+      const submittingInfo = await screen.findByText('Submitting...');
+      expect(submittingInfo).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(submittingInfo).not.toBeInTheDocument();
+      });
+
+      expect(submitFn).toHaveBeenCalledOnce();
+      expect(errorFn).not.toHaveBeenCalled();
+
+      expect(name).toContainHTML('John');
     });
 
     it('getSubmittedData should reflect the submitted state when used as a useMemo dependency', async () => {

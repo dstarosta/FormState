@@ -136,6 +136,10 @@ export const diffedState = <T extends z.ZodMiniObject>(
   state: FormMutableState<z.infer<T>>,
   prevState: FormMutableState<z.infer<T>>
 ) => {
+  if (state === prevState) {
+    return prevState;
+  }
+
   if (deepEqual(state, prevState)) {
     return prevState;
   }
@@ -143,8 +147,37 @@ export const diffedState = <T extends z.ZodMiniObject>(
   return state;
 };
 
+const deepFreeze = <T>(value: T): T => {
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+
+  if (
+    value instanceof Date ||
+    value instanceof RegExp ||
+    value instanceof Promise ||
+    value instanceof Set ||
+    value instanceof Map ||
+    Object.isFrozen(value)
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      deepFreeze(item);
+    }
+  } else {
+    for (const key of Object.keys(value)) {
+      deepFreeze((value as Record<string, unknown>)[key]);
+    }
+  }
+
+  return Object.freeze(value);
+};
+
 export const freezeObject = <T extends object>(obj: T) => {
-  return IS_DEVELOPMENT ? (Object.freeze(obj) as Immutable<T>) : (obj as Immutable<T>);
+  return IS_DEVELOPMENT ? (deepFreeze(obj) as Immutable<T>) : (obj as Immutable<T>);
 };
 
 export const createImmutableData = <T extends z.ZodMiniObject>(data: z.infer<T>) =>
@@ -607,8 +640,7 @@ export function updateState<T>(
 
     return draft;
   } else if (typeof state === 'object' && !isNullish(state)) {
-    // eslint-disable-next-line @typescript-eslint/no-misused-spread
-    const draft = { ...state } as T;
+    const draft = Object.assign({}, state) as T;
     updater(draft);
 
     return draft;

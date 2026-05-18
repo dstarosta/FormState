@@ -33,6 +33,8 @@ import { classNames } from './class-helper';
 import { createFormStore } from './form-store';
 import { createUseWatch } from './use-watch-builder';
 import { FormResetBlocker } from './form-reset-blocker';
+import { mergeRefs } from './ref-merge';
+import { generateUniqueId } from './random-id-generator';
 
 const mockUseFormStatus = vi.hoisted(() => vi.fn(() => ({ pending: false })));
 
@@ -517,6 +519,30 @@ describe('helpers', () => {
           'items%5B0%5D%5B%22name%22%5D=Alice&items%5B1%5D%5B%22name%22%5D=Bob'
         );
         expect(decodeURIComponent(urlParams)).toBe('items[0]["name"]=Alice&items[1]["name"]=Bob');
+      });
+
+      it('leaves bracket keys unchanged under bracket notation', () => {
+        const formData = new FormData();
+        formData.append('name', 'Alice');
+        formData.append('info["age"]', '30');
+        formData.append('items[0]["name"]', 'Bob');
+
+        const urlParams = formDataEncode(formData, [], 'bracket').toString();
+
+        expect(decodeURIComponent(urlParams)).toBe(
+          'name=Alice&info["age"]=30&items[0]["name"]=Bob'
+        );
+      });
+
+      it('leaves dot keys unchanged under dot notation', () => {
+        const formData = new FormData();
+        formData.append('name', 'Alice');
+        formData.append('info.age', '30');
+        formData.append('items.0.name', 'Bob');
+
+        expect(formDataEncode(formData, [], 'dot').toString()).toBe(
+          'name=Alice&info.age=30&items.0.name=Bob'
+        );
       });
 
       it('leaves flat keys unchanged under either notation', () => {
@@ -1018,6 +1044,108 @@ describe('helpers', () => {
     });
   });
 
+  describe('mergeRefs', () => {
+    it('assigns the node to object refs and nulls them on cleanup', () => {
+      const ref = createRef<HTMLDivElement>();
+      const node = document.createElement('div');
+
+      const cleanupRefs = mergeRefs<HTMLDivElement>(ref)(node);
+
+      expect(ref.current).toBe(node);
+
+      cleanupRefs();
+
+      expect(ref.current).toBeNull();
+    });
+
+    it('calls a legacy function ref with the node and again with null on cleanup', () => {
+      const fn = vi.fn();
+      const node = document.createElement('div');
+
+      const cleanupRefs = mergeRefs<HTMLDivElement>(fn)(node);
+
+      expect(fn).toHaveBeenCalledWith(node);
+
+      cleanupRefs();
+
+      expect(fn).toHaveBeenLastCalledWith(null);
+    });
+
+    it('invokes the cleanup returned by a function ref instead of calling it with null', () => {
+      const refCleanup = vi.fn();
+      const fn = vi.fn(() => refCleanup);
+      const node = document.createElement('div');
+
+      const cleanupRefs = mergeRefs<HTMLDivElement>(fn)(node);
+
+      expect(fn).toHaveBeenCalledWith(node);
+      expect(refCleanup).not.toHaveBeenCalled();
+
+      cleanupRefs();
+
+      expect(refCleanup).toHaveBeenCalledTimes(1);
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips null or undefined refs', () => {
+      const ref = createRef<HTMLDivElement>();
+      const node = document.createElement('div');
+
+      const cleanupRefs = mergeRefs<HTMLDivElement>(null, undefined, ref)(node);
+
+      expect(ref.current).toBe(node);
+
+      cleanupRefs();
+
+      expect(ref.current).toBeNull();
+    });
+  });
+
+  describe('generateUniqueId', () => {
+    const UUID_PATTERN = /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[\da-f]{4}-[\da-f]{12}$/i;
+
+    it('returns a UUID via crypto.randomUUID when available', () => {
+      expect(generateUniqueId()).toMatch(UUID_PATTERN);
+    });
+
+    it('falls back to crypto.getRandomValues when crypto.randomUUID is unavailable', () => {
+      const originalRandomUUID = crypto.randomUUID.bind(crypto);
+      const originalGetRandomValues = crypto.getRandomValues.bind(crypto);
+
+      const getRandomValuesSpy = vi.fn((buffer: Uint8Array<ArrayBuffer>) =>
+        originalGetRandomValues(buffer)
+      );
+
+      Object.defineProperty(crypto, 'randomUUID', {
+        configurable: true,
+        value: undefined,
+      });
+
+      Object.defineProperty(crypto, 'getRandomValues', {
+        configurable: true,
+        value: getRandomValuesSpy,
+      });
+
+      try {
+        const id = generateUniqueId();
+
+        expect(id).toMatch(UUID_PATTERN);
+        expect(getRandomValuesSpy).toHaveBeenCalledOnce();
+        expect(getRandomValuesSpy.mock.calls[0]?.[0]).toBeInstanceOf(Uint8Array);
+      } finally {
+        Object.defineProperty(crypto, 'randomUUID', {
+          configurable: true,
+          value: originalRandomUUID,
+        });
+
+        Object.defineProperty(crypto, 'getRandomValues', {
+          configurable: true,
+          value: originalGetRandomValues,
+        });
+      }
+    });
+  });
+
   describe('debouncer', () => {
     it('cancel with no pending invocation does nothing', () => {
       const fn = vi.fn();
@@ -1088,6 +1216,64 @@ describe('helpers', () => {
       await Promise.resolve();
 
       expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('still notifies later listeners and listeners on other fields when one throws', async () => {
+      const store = createFormStore();
+      const throwing = vi.fn(() => {
+        throw new Error('boom');
+      });
+      const afterSameField = vi.fn();
+      const otherField = vi.fn();
+
+      store.subscribeToField('x', throwing);
+      store.subscribeToField('x', afterSameField);
+      store.subscribeToField('y', otherField);
+
+      // Swallow the rethrow emitted from the microtask so vitest does not
+      // flag it as an unhandled error.
+      const originalOnError = [...process.listeners('uncaughtException')];
+      process.removeAllListeners('uncaughtException');
+      process.on('uncaughtException', () => {
+        // intentionally empty
+      });
+
+      try {
+        store.setValue('x', 'a');
+        store.setValue('y', 'b');
+
+        await new Promise<void>((resolve) => {
+          queueMicrotask(() => {
+            resolve();
+          });
+        });
+      } finally {
+        process.removeAllListeners('uncaughtException');
+        for (const listener of originalOnError) {
+          process.on('uncaughtException', listener);
+        }
+      }
+
+      expect(throwing).toHaveBeenCalledTimes(1);
+      expect(afterSameField).toHaveBeenCalledTimes(1);
+      expect(otherField).toHaveBeenCalledTimes(1);
+    });
+
+    it('safely handles repeated unsubscribe calls and resubscribe after unsubscribe', () => {
+      const store = createFormStore();
+      const listener = vi.fn();
+
+      const unsubscribe = store.subscribeToField('x', listener);
+
+      unsubscribe();
+      // Second call should be a no-op even though the empty Set was dropped.
+      unsubscribe();
+
+      // Resubscribing creates a fresh Set and resumes notifications.
+      const second = store.subscribeToField('x', listener);
+      second();
+
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 

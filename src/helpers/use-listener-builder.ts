@@ -16,13 +16,19 @@ export function createUseListener<T extends object>(listeners: Set<StateChangeLi
       listener?.(...args);
     });
 
+    const hasListener = listener !== undefined;
+
     useEffect(() => {
+      if (!hasListener) {
+        return;
+      }
+
       listeners.add(eventListener);
 
       return () => {
         listeners.delete(eventListener);
       };
-    }, []);
+    }, [hasListener]);
   }
 
   return useListener;

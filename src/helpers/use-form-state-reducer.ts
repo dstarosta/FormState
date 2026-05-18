@@ -1,21 +1,27 @@
 import { useActionState, useCallback, useRef } from 'react';
 import * as z from 'zod/mini';
 
-import type { FormAction, FormMutableState, ManualErrorState } from '../types/form-types';
-import { formatErrors } from './error-formatter';
+import type { FormAction, FormMutableState } from '../types/form-types';
+import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
+import { formatErrors, normalizeManualError } from './error-formatter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { deepEqual } from 'fast-equals';
-import { createState, diffedState, difference, updateState } from './state-manager';
+import { createState, diffedState, difference } from './state-manager';
 
 export function useFormStateReducer<T extends z.ZodMiniObject>(
   schema: T,
   state: FormMutableState<z.infer<T>>,
-  manualErrorsState: ManualErrorState,
   validateBeforeSubmit: boolean,
   validateOnMount: boolean,
   errorMessageSeparator: string
 ) {
   type State = z.infer<T>;
+
+  const stateRef = useRef<FormMutableState<State>>(state);
+
+  useIsomorphicLayoutEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const validationCacheRef = useRef<{
     schema: z.ZodMiniType;
@@ -26,7 +32,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
   const reducer = useCallback(
     (prevState: FormMutableState<State>, action: FormAction<State>) => {
-      const prevManualErrors = manualErrorsState.get();
+      const prevManualErrors = prevState.manualErrors;
 
       const parseAndCache = (data: State) => {
         const cached = validationCacheRef.current;
@@ -55,7 +61,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const mergedData: State = {
             ...prevState.data,
             ...Object.fromEntries(
-              Object.entries(state.data).filter(([key]) => !prevState.dirty[key])
+              Object.entries(stateRef.current.data).filter(([key]) => !prevState.dirty[key])
             ),
           };
 
@@ -70,8 +76,8 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           return {
             ...prevState,
             data: mergedData,
-            initialData: state.data,
-            initialErrors: state.errors,
+            initialData: stateRef.current.data,
+            initialErrors: stateRef.current.errors,
             errors: { ...errors, ...prevManualErrors },
           } satisfies FormMutableState<State>;
         }
@@ -213,8 +219,8 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           return {
             ...prevState,
             initialData: updateInitialData ? prevState.data : prevState.initialData,
-            dirty: resetDirty ? { ...state.dirty } : { ...prevState.dirty },
-            touched: resetTouched ? { ...state.touched } : { ...prevState.touched },
+            dirty: resetDirty ? { ...stateRef.current.dirty } : { ...prevState.dirty },
+            touched: resetTouched ? { ...stateRef.current.touched } : { ...prevState.touched },
             validated: true,
             submitCount: prevState.submitCount + 1,
             submittedData,
@@ -256,18 +262,11 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const safeData = schema.safeParse(mergedData);
           const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
 
-          const manualErrors = updateState(prevManualErrors, (draft) => {
-            for (const key in draft) {
-              if (
-                Object.prototype.hasOwnProperty.call(draft, key) &&
-                (names.includes(key) || prefixes.some((prefix) => key.startsWith(prefix)))
-              ) {
-                delete draft[key];
-              }
-            }
-
-            manualErrorsState.set(draft);
-          });
+          const manualErrors = Object.fromEntries(
+            Object.entries(prevManualErrors).filter(
+              ([key]) => !(names.includes(key) || prefixes.some((prefix) => key.startsWith(prefix)))
+            )
+          );
 
           return diffedState(
             {
@@ -277,6 +276,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               changed: true,
               dirty,
               touched,
+              manualErrors,
             },
             prevState
           );
@@ -292,8 +292,6 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               ? prevState.initialErrors
               : ({} as typeof prevState.initialErrors);
 
-          manualErrorsState.set();
-
           return {
             initialData: prevState.initialData,
             initialErrors: prevState.initialErrors,
@@ -304,13 +302,14 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             replaced: prevState.replaced,
             validated: prevState.submitCount > 0 || validateOnMount,
             submitCount: prevState.submitCount,
-            dirty: { ...state.dirty },
-            touched: resetTouched ? { ...state.touched } : { ...prevState.touched },
-            required: { ...state.required },
-            ranges: { ...state.ranges },
-            patterns: { ...state.patterns },
-            descriptions: { ...state.descriptions },
+            dirty: { ...stateRef.current.dirty },
+            touched: resetTouched ? { ...stateRef.current.touched } : { ...prevState.touched },
+            required: { ...stateRef.current.required },
+            ranges: { ...stateRef.current.ranges },
+            patterns: { ...stateRef.current.patterns },
+            descriptions: { ...stateRef.current.descriptions },
             errors,
+            manualErrors: {},
           } satisfies FormMutableState<State>;
         }
         // form validate event
@@ -354,20 +353,20 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             prevManualErrors
           );
 
-          const manualErrors = updateState(prevManualErrors, (draft) => {
-            if (error === null) {
-              delete draft[pathNotation];
-            } else {
-              draft[pathNotation] = error.trim() || 'Error';
-            }
+          const manualErrors = { ...prevManualErrors };
+          const normalizedError = normalizeManualError(error);
 
-            manualErrorsState.set(draft);
-          });
+          if (normalizedError === null) {
+            delete manualErrors[pathNotation];
+          } else {
+            manualErrors[pathNotation] = normalizedError;
+          }
 
           return {
             ...prevState,
             errors: { ...errors, ...manualErrors },
             validated: prevState.validated || shouldValidate,
+            manualErrors,
           } satisfies FormMutableState<State>;
         }
         // clear manual errors event
@@ -377,11 +376,6 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           } = action;
 
           const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
-
-          if (Object.keys(manualErrorsState.get()).length === 0) {
-            return prevState;
-          }
-
           const hasPredicate = typeof predicate === 'function';
 
           const errors = difference(
@@ -389,16 +383,17 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             prevManualErrors
           );
 
-          if (hasPredicate) {
-            manualErrorsState.remove(predicate);
-          } else {
-            manualErrorsState.set();
-          }
+          const manualErrors = hasPredicate
+            ? Object.fromEntries(
+                Object.entries(prevManualErrors).filter(([key]) => !predicate(key))
+              )
+            : {};
 
           return {
             ...prevState,
-            errors: hasPredicate ? { ...errors, ...manualErrorsState.get() } : errors,
+            errors: hasPredicate ? { ...errors, ...manualErrors } : errors,
             validated: prevState.validated || shouldValidate,
+            manualErrors,
           } satisfies FormMutableState<State>;
         }
         // set the form mode
@@ -408,9 +403,15 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             mode: action.mode,
           } satisfies FormMutableState<State>;
         }
+        // v8 ignore next
+        default: {
+          action satisfies never;
+
+          throw new Error(`Unexpected form action: ${JSON.stringify(action, null, 2)}`);
+        }
       }
     },
-    [schema, state, manualErrorsState, errorMessageSeparator, validateBeforeSubmit, validateOnMount]
+    [schema, errorMessageSeparator, validateBeforeSubmit, validateOnMount]
   );
 
   return useActionState<FormMutableState<State>, FormAction<State>>(reducer, state);

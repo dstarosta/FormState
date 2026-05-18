@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 
+import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
+
 /**
  * Component props.
  */
@@ -19,6 +21,11 @@ export function FormResetBlocker({ formRef }: FormResetBlockerProps) {
   const innerRef = useRef<HTMLDivElement>(null);
 
   const { pending } = useFormStatus();
+  const pendingRef = useRef(pending);
+
+  useIsomorphicLayoutEffect(() => {
+    pendingRef.current = pending;
+  });
 
   useEffect(() => {
     const form = formRef?.current ?? innerRef.current?.closest('form');
@@ -28,7 +35,7 @@ export function FormResetBlocker({ formRef }: FormResetBlockerProps) {
     }
 
     const blockReset = (event: Event) => {
-      if (pending) {
+      if (pendingRef.current) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
@@ -39,7 +46,7 @@ export function FormResetBlocker({ formRef }: FormResetBlockerProps) {
     return () => {
       form.removeEventListener('reset', blockReset, { capture: true });
     };
-  }, [pending, formRef]);
+  }, [formRef]);
 
   if (formRef) {
     return null;

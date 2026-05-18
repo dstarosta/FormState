@@ -32,6 +32,7 @@ export function useSelector<S, R>(
 
       const shouldRecalculate =
         !cache.current.initialized ||
+        inputs.length !== cache.current.lastInputs.length ||
         inputs.some((input, i) => !deepEqual(input, cache.current.lastInputs[i]));
 
       if (shouldRecalculate) {

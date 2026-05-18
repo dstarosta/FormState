@@ -233,7 +233,7 @@ describe('SecureInput', () => {
       expect(onSecureChange).toHaveBeenCalledWith('aZe');
     });
 
-    it('does not insert when Alt key is held', () => {
+    it('does not insert on a Windows-style Alt mnemonic (event.key matches event.code)', () => {
       const onSecureChange = vi.fn();
 
       render(<SecureInput defaultValue="abc" onSecureChange={onSecureChange} />);
@@ -241,9 +241,37 @@ describe('SecureInput', () => {
       const input = getInput();
 
       setSelection(input, 3, 3);
-      fireEvent.keyDown(input, { key: 'a', altKey: true });
+      fireEvent.keyDown(input, { key: 'a', code: 'KeyA', altKey: true });
 
       expect(onSecureChange).not.toHaveBeenCalled();
+    });
+
+    it('inserts a Mac Option-modified character (event.key differs from event.code)', () => {
+      const onSecureChange = vi.fn();
+
+      render(<SecureInput defaultValue="abc" onSecureChange={onSecureChange} />);
+
+      const input = getInput();
+
+      setSelection(input, 3, 3);
+      // Mac Option+5 produces '∞' on KeyE/Digit5 physical keys.
+      fireEvent.keyDown(input, { key: '∞', code: 'Digit5', altKey: true });
+
+      expect(onSecureChange).toHaveBeenCalledWith('abc∞');
+    });
+
+    it('inserts a Windows AltGr character (ctrlKey + altKey)', () => {
+      const onSecureChange = vi.fn();
+
+      render(<SecureInput defaultValue="abc" onSecureChange={onSecureChange} />);
+
+      const input = getInput();
+
+      setSelection(input, 3, 3);
+      // German AltGr+E produces '€'.
+      fireEvent.keyDown(input, { key: '€', code: 'KeyE', ctrlKey: true, altKey: true });
+
+      expect(onSecureChange).toHaveBeenCalledWith('abc€');
     });
 
     it('does not insert when Ctrl key is held', () => {

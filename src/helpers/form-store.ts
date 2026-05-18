@@ -13,14 +13,25 @@ export function createFormStore() {
     pendingUpdates.clear();
     isFlushing = false;
 
+    let firstError: unknown;
+
     for (const name of fieldsToNotify) {
       const listeners = fieldListeners.get(name);
 
       if (listeners) {
         for (const callback of listeners) {
-          callback();
+          try {
+            callback();
+          } catch (error) {
+            firstError ??= error;
+          }
         }
       }
+    }
+
+    if (firstError) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw firstError;
     }
   };
 
@@ -42,13 +53,26 @@ export function createFormStore() {
     },
 
     subscribeToField: (name: string, listener: () => void) => {
-      if (!fieldListeners.has(name)) {
-        fieldListeners.set(name, new Set());
+      let listeners = fieldListeners.get(name);
+
+      if (!listeners) {
+        listeners = new Set();
+        fieldListeners.set(name, listeners);
       }
 
-      fieldListeners.get(name)?.add(listener);
+      listeners.add(listener);
 
-      return () => fieldListeners.get(name)?.delete(listener);
+      return () => {
+        const current = fieldListeners.get(name);
+
+        if (current) {
+          current.delete(listener);
+
+          if (current.size === 0) {
+            fieldListeners.delete(name);
+          }
+        }
+      };
     },
   };
 

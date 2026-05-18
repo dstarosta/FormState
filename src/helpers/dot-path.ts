@@ -78,7 +78,8 @@ export function dotPathGet(obj: object, prop: string | number | string[]) {
  * Creates a new object/array structure with the specified value set at the path.
  * @param obj The object to evaluate.
  * @param prop The path to be set.
- * @param value The value to set.
+ * @param value The new value, or an updater function that receives the current
+ *              value at the leaf and returns the new value.
  * @returns A new object with the value set at the specified path.
  */
 export function dotPathSet(obj: object, prop: string | number | string[], value: unknown) {

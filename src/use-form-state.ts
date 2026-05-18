@@ -56,7 +56,6 @@ import {
   getPathNotation,
 } from './helpers/schema-visitor';
 import { useDeepMemo } from './helpers/use-deep-memo';
-import { useManualErrorState } from './helpers/use-manual-error-state';
 import {
   cleanEmpty,
   createImmutableData,
@@ -72,7 +71,7 @@ import {
   mutateArrayState,
 } from './helpers/state-manager';
 import { classNames } from './helpers/class-helper';
-import { formatErrors } from './helpers/error-formatter';
+import { formatErrors, normalizeManualError } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
 import { createFormStore } from './helpers/form-store';
@@ -149,9 +148,6 @@ export function useFormState<T extends z.ZodMiniObject>(
     cssOptions,
   }: FormInitOptions<T> = formOptions ?? {};
 
-  // The manual errors that are not a part of the schema.
-  const manualErrorsState = useManualErrorState();
-
   const [store] = useState(() => (watch ? createFormStore() : null));
 
   const defaultData = useMemo(() => createState(schema), [schema]);
@@ -217,6 +213,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       errors,
       dirty,
       touched,
+      manualErrors: {},
     } satisfies FormMutableState<State>;
   }, [
     schema,
@@ -264,7 +261,6 @@ export function useFormState<T extends z.ZodMiniObject>(
   const [formState, dispatch] = useFormStateReducer(
     schema,
     state,
-    manualErrorsState,
     validateBeforeSubmit,
     validateOnMount,
     errorMessageSeparator
@@ -272,8 +268,13 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Ref to avoid stale closures in validate/handleSubmit callbacks.
   const formStateRef = useRef(formState);
+
+  // Ref to avoid manual errors in the setError/clearManualErrors actions.
+  const pendingManualErrorsRef = useRef<Record<string, string> | null>(null);
+
   useIsomorphicLayoutEffect(() => {
     formStateRef.current = formState;
+    pendingManualErrorsRef.current = null;
   });
 
   // Ref to store the last submittedFormData.
@@ -281,6 +282,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The pending state during the form submit action.
   const [isSubmitting, setIsSubmitting] = useOptimistic(false);
+  const inFlightSubmitRef = useRef(false);
 
   // Dirty form state.
   const formDirty = useMemo(() => Object.values(formState.dirty).some(Boolean), [formState.dirty]);
@@ -303,7 +305,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       return null;
     }
 
-    const manualErrors = Object.entries(manualErrorsState.get());
+    const manualErrors = Object.entries(formState.manualErrors);
     const allErrors = Object.entries(formState.errors);
 
     const allErrorsAreManual = allErrors.every((error) =>
@@ -311,7 +313,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     );
 
     return allErrorsAreManual;
-  }, [formState.errors, formState.validated, manualErrorsState]);
+  }, [formState.errors, formState.manualErrors, formState.validated]);
 
   // The memoized "formStatus" object.
   const formStatus = useMemo<FormStatus>(() => {
@@ -439,11 +441,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Calls registered listeners on form change.
   useEffect(() => {
-    if (!formState.changed) {
-      return;
-    }
-
-    if (changeListeners.size === 0) {
+    if (!formState.changed || changeListeners.size === 0) {
       return;
     }
 
@@ -462,7 +460,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Calls registered listeners on form submission.
   useEffect(() => {
-    if (formState.submitCount === 0) {
+    if (formState.submitCount === 0 || changeListeners.size === 0) {
       return;
     }
 
@@ -785,15 +783,22 @@ export function useFormState<T extends z.ZodMiniObject>(
         path = names[0];
       }
 
+      const validate = options?.validate ?? validateOnTouch;
+      const pathNotation = Array.isArray(path) ? path.join('.') : String(path);
+      const isTouched = formStateRef.current.touched[pathNotation] === true;
+      const shouldValidate = validate && (validateBeforeSubmit || formStateRef.current.validated);
+
+      if (isTouched && (!shouldValidate || formStateRef.current.validated)) {
+        return;
+      }
+
       dispatch({
         type: 'touch',
         name: path,
-        options: {
-          validate: options?.validate ?? validateOnTouch,
-        },
+        options: { validate },
       });
     },
-    [validateOnTouch, dispatch]
+    [validateOnTouch, validateBeforeSubmit, dispatch]
   );
 
   // Resolves the array at `nameOrPath`, applies `mutator`, and dispatches a "change" action.
@@ -994,7 +999,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       if (validationOptions?.submit) {
         const safeData = schema.safeParse(formStateRef.current.data);
         const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
-        const submittedErrors = { ...errors, ...manualErrorsState.get() };
+        const submittedErrors = { ...errors, ...formStateRef.current.manualErrors };
         const hasErrors = Object.keys(submittedErrors).length > 0;
 
         if (hasErrors) {
@@ -1019,7 +1024,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         dispatch({ type: 'validate' });
       }
     },
-    [schema, errorMessageSeparator, manualErrorsState, dispatch]
+    [schema, errorMessageSeparator, dispatch]
   );
 
   // The memoized "handleReset" function.
@@ -1055,87 +1060,102 @@ export function useFormState<T extends z.ZodMiniObject>(
   const handleSubmit = useCallback(
     (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions<T>) => {
       return async (submittedFormData: FormData) => {
-        const currentState = formStateRef.current;
-
-        const safeData = schema.safeParse(currentState.data);
-        const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
-        const submittedErrors = { ...errors, ...manualErrorsState.get() };
-        const hasErrors = Object.keys(submittedErrors).length > 0;
-
-        formStateRef.current.errors = submittedErrors;
-
-        const submitState: SubmitState<State> = hasErrors
-          ? {
-              valid: false,
-              errors: createImmutableErrors(
-                submittedErrors,
-                currentState.data,
-                errorMessageSeparator
-              ),
-            }
-          : {
-              valid: true,
-              data: cleanEmpty(schema, currentState.data) as State,
-            };
-
-        startTransition(() => {
-          setIsSubmitting(true);
-        });
-
-        const submissionErrors = await onSubmit(submitState, submittedFormData);
-
-        if (hasErrors || (submissionErrors !== true && Object.keys(submissionErrors).length > 0)) {
-          if (typeof options?.onError === 'function') {
-            changeCallbackRefs.current.push(options.onError);
-          }
-
-          if (typeof submissionErrors === 'object') {
-            for (const errorName in submissionErrors) {
-              if (Object.hasOwn(submissionErrors, errorName)) {
-                const error = submissionErrors[errorName];
-
-                if (error) {
-                  dispatch({
-                    type: 'setManualError',
-                    name: errorName,
-                    options: { validate: true },
-                    error,
-                  });
-                }
-              }
-            }
-          }
-
-          dispatch({ type: 'validate' });
+        if (inFlightSubmitRef.current) {
           return;
         }
 
-        if (typeof options?.onSuccess === 'function') {
-          changeCallbackRefs.current.push((submittedState) => {
-            options.onSuccess?.({
-              data: cleanEmpty(schema, submittedState.data) as State,
-              formData: submittedFormData,
-            });
+        inFlightSubmitRef.current = true;
+
+        try {
+          const currentState = formStateRef.current;
+
+          const safeData = schema.safeParse(currentState.data);
+          const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
+          const submittedErrors = { ...errors, ...currentState.manualErrors };
+          const hasErrors = Object.keys(submittedErrors).length > 0;
+
+          formStateRef.current.errors = submittedErrors;
+
+          const submitState: SubmitState<State> = hasErrors
+            ? {
+                valid: false,
+                errors: createImmutableErrors(
+                  submittedErrors,
+                  currentState.data,
+                  errorMessageSeparator
+                ),
+              }
+            : {
+                valid: true,
+                data: cleanEmpty(schema, currentState.data) as State,
+              };
+
+          startTransition(() => {
+            setIsSubmitting(true);
           });
+
+          const submissionErrors = await onSubmit(submitState, submittedFormData);
+
+          if (
+            hasErrors ||
+            (submissionErrors !== true && Object.keys(submissionErrors).length > 0)
+          ) {
+            if (typeof options?.onError === 'function') {
+              changeCallbackRefs.current.push(options.onError);
+            }
+
+            if (typeof submissionErrors === 'object') {
+              for (const errorName in submissionErrors) {
+                if (Object.hasOwn(submissionErrors, errorName)) {
+                  const error = submissionErrors[errorName];
+
+                  if (error) {
+                    dispatch({
+                      type: 'setManualError',
+                      name: errorName,
+                      options: { validate: true },
+                      error,
+                    });
+                  }
+                }
+              }
+            }
+
+            dispatch({ type: 'validate' });
+            return;
+          }
+
+          if (typeof options?.onSuccess === 'function') {
+            changeCallbackRefs.current.push((submittedState) => {
+              options.onSuccess?.({
+                data: cleanEmpty(schema, submittedState.data) as State,
+                formData: submittedFormData,
+              });
+            });
+          }
+
+          lastSubmittedFormData.current = submittedFormData;
+
+          dispatch({
+            type: 'submit',
+            submittedData: {
+              data: createImmutableData(currentState.data),
+              formData: submittedFormData,
+            },
+            options: {
+              resetDirty: options?.resetDirty !== false,
+              resetTouched: options?.resetTouched !== false,
+              updateInitialData: options?.updateInitialData !== false,
+            },
+          });
+        } finally {
+          // This ref is just a guard against multiple submits.
+          // eslint-disable-next-line require-atomic-updates
+          inFlightSubmitRef.current = false;
         }
-
-        lastSubmittedFormData.current = submittedFormData;
-
-        dispatch({
-          type: 'submit',
-          submittedData: {
-            data: createImmutableData(currentState.data),
-            formData: submittedFormData,
-          },
-          options: {
-            resetDirty: options?.resetDirty !== false,
-            resetTouched: options?.resetTouched !== false,
-            updateInitialData: options?.updateInitialData !== false,
-          },
-        });
       };
     },
-    [schema, errorMessageSeparator, manualErrorsState, setIsSubmitting, dispatch]
+    [schema, errorMessageSeparator, setIsSubmitting, dispatch]
   );
 
   // The memoized "reset" function.
@@ -1153,10 +1173,16 @@ export function useFormState<T extends z.ZodMiniObject>(
         throw new TypeError('A missing or invalid key was provided.');
       }
 
+      const dirtyValue = isDirty !== false;
+
+      if ((formStateRef.current.dirty[key] ?? false) === dirtyValue) {
+        return;
+      }
+
       dispatch({
         type: 'setDirty',
         name: key,
-        dirty: isDirty !== false,
+        dirty: dirtyValue,
       });
     },
     [dispatch]
@@ -1164,6 +1190,10 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const setMode = useCallback(
     (mode: FormMode) => {
+      if (formStateRef.current.mode === mode) {
+        return;
+      }
+
       dispatch({ type: 'setMode', mode });
     },
     [dispatch]
@@ -1176,12 +1206,30 @@ export function useFormState<T extends z.ZodMiniObject>(
       error?: string | null,
       options?: FormSetErrorOptions
     ) => {
+      const name =
+        typeof nameOrPath === 'function'
+          ? getPath(formStateRef.current.data, nameOrPath)
+          : nameOrPath;
+      const pathNotation = Array.isArray(name) ? name.join('.') : name.trim();
+      const nextError = normalizeManualError(error);
+      const source = pendingManualErrorsRef.current ?? formStateRef.current.manualErrors;
+      const currentError = source[pathNotation] ?? null;
+
+      if (nextError === currentError) {
+        return;
+      }
+
+      const pending = { ...source };
+      if (nextError === null) {
+        delete pending[pathNotation];
+      } else {
+        pending[pathNotation] = nextError;
+      }
+      pendingManualErrorsRef.current = pending;
+
       dispatch({
         type: 'setManualError',
-        name:
-          typeof nameOrPath === 'function'
-            ? getPath(formStateRef.current.data, nameOrPath)
-            : nameOrPath,
+        name,
         error: error ?? null,
         options: {
           validate: options?.validate ?? validateOnChange,
@@ -1194,9 +1242,34 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The memoized "clearManualErrors" function.
   const clearManualErrors = useCallback(
     (options?: FormClearErrorsOptions) => {
+      const source = pendingManualErrorsRef.current ?? formStateRef.current.manualErrors;
+      const predicate = options?.predicate;
+
+      const pending: Record<string, string> = {};
+
+      if (typeof predicate === 'function') {
+        let hasMatch = false;
+
+        for (const [key, value] of Object.entries(source)) {
+          if (predicate(key)) {
+            hasMatch = true;
+          } else {
+            pending[key] = value;
+          }
+        }
+
+        if (!hasMatch) {
+          return;
+        }
+      } else if (Object.keys(source).length === 0) {
+        return;
+      }
+
+      pendingManualErrorsRef.current = pending;
+
       dispatch({
         type: 'clearManualErrors',
-        options: { predicate: options?.predicate, validate: options?.validate ?? validateOnChange },
+        options: { predicate, validate: options?.validate ?? validateOnChange },
       });
     },
     [validateOnChange, dispatch]
@@ -1343,68 +1416,46 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.initialData, formState.initialErrors]
   );
 
-  const response = useMemo<FormStateResponse<T>>(
+  const formStateResponse = useMemo(
     () => ({
-      initialState: initialFormState,
-      formState: {
-        data: formData,
-        errors: formErrors,
-        dirty,
-        touched,
-        required,
-        ranges,
-        patterns,
-        descriptions,
-      },
-      formStatus,
-      formActions: {
-        change,
-        replace,
-        touch,
-        validate,
-        reset,
-        setDirty,
-        setMode,
-        setError,
-        clearManualErrors,
-        getSubmittedData,
-        inferName,
-        blur,
-        focus,
-        focusOnFirstError,
-        array: {
-          append,
-          insert,
-          update,
-          swap,
-          remove,
-          clear,
-        },
-      },
-      formHandlers: {
-        handleSubmit,
-        handleReset,
-      },
-      formHooks: {
-        useListener: listenerHook,
-        useWatch: watchHook,
-        useSelector,
-      },
-      formClasses,
-      Form: createComponent,
-    }),
-    [
-      initialFormState,
-      formData,
-      formErrors,
+      data: formData,
+      errors: formErrors,
       dirty,
       touched,
       required,
       ranges,
       patterns,
       descriptions,
-      formStatus,
-      formClasses,
+    }),
+    [formData, formErrors, dirty, touched, required, ranges, patterns, descriptions]
+  );
+
+  const formActions = useMemo(
+    () => ({
+      change,
+      replace,
+      touch,
+      validate,
+      reset,
+      setDirty,
+      setMode,
+      setError,
+      clearManualErrors,
+      getSubmittedData,
+      inferName,
+      blur,
+      focus,
+      focusOnFirstError,
+      array: {
+        append,
+        insert,
+        update,
+        swap,
+        remove,
+        clear,
+      },
+    }),
+    [
       change,
       replace,
       touch,
@@ -1425,11 +1476,36 @@ export function useFormState<T extends z.ZodMiniObject>(
       swap,
       remove,
       clear,
-      handleSubmit,
-      handleReset,
+    ]
+  );
+
+  const formHandlers = useMemo(() => ({ handleSubmit, handleReset }), [handleSubmit, handleReset]);
+
+  const formHooks = useMemo(
+    () => ({ useListener: listenerHook, useWatch: watchHook, useSelector }),
+    [listenerHook, watchHook]
+  );
+
+  const response = useMemo<FormStateResponse<T>>(
+    () => ({
+      initialState: initialFormState,
+      formState: formStateResponse,
+      formStatus,
+      formActions,
+      formHandlers,
+      formHooks,
+      formClasses,
+      Form: createComponent,
+    }),
+    [
+      initialFormState,
+      formStateResponse,
+      formStatus,
+      formActions,
+      formHandlers,
+      formHooks,
+      formClasses,
       createComponent,
-      listenerHook,
-      watchHook,
     ]
   );
 

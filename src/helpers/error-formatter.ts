@@ -6,6 +6,9 @@ const isGenericMessage = (message: string) => message === 'Invalid input';
 
 // Internal functions
 
+export const normalizeManualError = (error: string | null | undefined): string | null =>
+  error == null ? null : error.trim() || 'Error';
+
 export const formatErrors = <T extends object>(
   error: z.core.$ZodError<object> | undefined,
   errorMessageSeparator: string
@@ -16,9 +19,8 @@ export const formatErrors = <T extends object>(
     return errors;
   }
 
-  const processIssue = (issue: z.core.$ZodIssue, prefix: string[] = []) => {
-    const pathAsStrings = issue.path.map(String);
-    const path = [...prefix, ...pathAsStrings].join('.') as keyof T | '';
+  const processIssue = (issue: z.core.$ZodIssue) => {
+    const path = issue.path.map(String).join('.') as keyof T | '';
 
     const addError = (message: string) => {
       const errorValue = errors[path];
@@ -37,9 +39,12 @@ export const formatErrors = <T extends object>(
             Number(isGenericMessage(error1.message)) - Number(isGenericMessage(error2.message))
         );
 
-      const flatIssue = flatErrors.find((flatError) => Boolean(flatError.message));
+      const flatIssue = flatErrors.find(
+        (flatError): flatError is z.core.$ZodIssue & { message: string } =>
+          Boolean(flatError.message)
+      );
 
-      if (flatIssue && flatIssue.message) {
+      if (flatIssue) {
         addError(flatIssue.message);
         return;
       }

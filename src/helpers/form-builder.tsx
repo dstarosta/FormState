@@ -78,11 +78,13 @@ export const createFormComponent = <T extends object>(
             !event.target.onkeydown
           ) {
             const element = event.target;
+            const styles = globalThis.getComputedStyle(element);
             const isHidden =
               !element.offsetParent ||
               element.getAttribute('aria-hidden') === 'true' ||
-              globalThis.getComputedStyle(element).display === 'none' ||
-              globalThis.getComputedStyle(element).visibility === 'hidden';
+              styles.display === 'none' ||
+              styles.visibility === 'hidden';
+
             if (!isHidden) {
               event.preventDefault();
             }
@@ -93,7 +95,11 @@ export const createFormComponent = <T extends object>(
     );
 
     const resetStore = useCallback(() => {
-      const form = formRef.current as HTMLFormElement;
+      const form = formRef.current;
+
+      if (!form) {
+        return;
+      }
 
       for (const element of form) {
         if (
@@ -154,7 +160,7 @@ export const createFormComponent = <T extends object>(
 
     const formRefCallback = useCallback(
       (node: HTMLFormElement | null) => {
-        mergeRefs(formRef, forwardedRef)(node);
+        const refCleanup = mergeRefs(formRef, forwardedRef)(node);
 
         if (externalFormRef) {
           externalFormRef.current = node;
@@ -186,6 +192,12 @@ export const createFormComponent = <T extends object>(
             form.removeEventListener('change', handleInputChange);
             form.removeEventListener('input', handleInputChange);
           }
+
+          if (externalFormRef) {
+            externalFormRef.current = null;
+          }
+
+          refCleanup();
         };
       },
       [forwardedRef, handleInputChange, handleFormData, handleSubmit, resetStore]

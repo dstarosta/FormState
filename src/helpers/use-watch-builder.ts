@@ -1,4 +1,4 @@
-import { useDebugValue, useSyncExternalStore } from 'react';
+import { useCallback, useDebugValue, useSyncExternalStore } from 'react';
 
 import type { FormStore } from '../types/form-types';
 
@@ -20,19 +20,23 @@ export function createUseWatch(store: FormStore | null) {
       throw new Error('The "watch" property has not been set to "true" in the options.');
     }
 
-    return useSyncExternalStore(
-      (listener) => store.subscribeToField(name, listener),
-      () => {
-        const value = store.getValue(name) ?? '';
-
-        if (typeof compute === 'function') {
-          return compute(value);
-        }
-
-        return value;
-      },
-      () => (typeof compute === 'function' ? compute('') : '')
+    const subscribe = useCallback(
+      (listener: () => void) => store.subscribeToField(name, listener),
+      [name]
     );
+
+    const getSnapshot = useCallback(() => {
+      const value = store.getValue(name) ?? '';
+
+      return typeof compute === 'function' ? compute(value) : value;
+    }, [name, compute]);
+
+    const getServerSnapshot = useCallback(
+      () => (typeof compute === 'function' ? compute('') : ''),
+      [compute]
+    );
+
+    return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   }
 
   return useWatch;

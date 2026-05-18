@@ -136,15 +136,8 @@ const recursiveCollect = <T>(
   key: string,
   collect: (schema: z.ZodMiniType, field: string, parentKey: string) => Record<string, T>
 ) => {
-  if (
-    schema instanceof z.ZodMiniArray &&
-    (schema.def.element instanceof z.ZodMiniArray ||
-      schema.def.element instanceof z.ZodMiniObject ||
-      schema.def.element instanceof z.ZodMiniNumber ||
-      schema.def.element instanceof z.ZodMiniPipe ||
-      schema.def.element instanceof z.ZodMiniUnion)
-  ) {
-    Object.assign(obj, collect(schema.def.element, '0', key));
+  if (schema instanceof z.ZodMiniArray) {
+    Object.assign(obj, collect(schema.def.element as z.ZodMiniType, '0', key));
   } else if (schema instanceof z.ZodMiniObject) {
     for (const prop in schema.shape) {
       if (Object.prototype.hasOwnProperty.call(schema.shape, prop)) {
@@ -483,7 +476,7 @@ export const getPathAsString = <T extends object>(
 export const getPathNotation = <T extends z.ZodMiniObject>(path: FormStatePath<z.infer<T>>) => {
   return path
     .map((pathPart) => {
-      if (!Number.isNaN(Number.parseInt(pathPart, 10))) {
+      if (/^\d+$/.test(pathPart)) {
         // array index is stored as 0
         return '0';
       }

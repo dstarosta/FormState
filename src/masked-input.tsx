@@ -363,8 +363,13 @@ export function MaskedInput({
     }
   }
 
-  const slots = isControlled ? parseFormatted(value, info) : internalSlots;
-  const formatted = formatSlots(slots, info);
+  const slots = useMemo(
+    () => (isControlled ? parseFormatted(value, info) : internalSlots),
+    [isControlled, value, info, internalSlots]
+  );
+
+  const formatted = useMemo(() => formatSlots(slots, info), [slots, info]);
+
   const displayed = formatted === info.empty ? '' : formatted;
 
   const callbacksRef = useRef({ onChange, onBlur });
@@ -372,18 +377,13 @@ export function MaskedInput({
 
   useIsomorphicLayoutEffect(() => {
     callbacksRef.current = { onChange, onBlur };
-  });
+    slotsRef.current = slots;
 
-  useIsomorphicLayoutEffect(() => {
     if (caretRef.current !== null && inputRef.current) {
       const pos = caretRef.current;
       inputRef.current.setSelectionRange(pos, pos);
       caretRef.current = null;
     }
-  });
-
-  useIsomorphicLayoutEffect(() => {
-    slotsRef.current = slots;
   });
 
   const select = (): [number, number] => {

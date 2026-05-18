@@ -127,6 +127,20 @@ describe('form schema', () => {
     expect(refinedFieldSchema.safeParse(date).data).toBeUndefined();
   });
 
+  it('formDate stringifies numeric and boolean inputs in the invalid-input error message', () => {
+    const fieldSchema = z.formDate();
+
+    const numberResult = fieldSchema.safeParse(12345);
+
+    expect(numberResult.success).toBe(false);
+    expect(numberResult.error?.issues[0]?.message).toBe('Invalid input: "12345".');
+
+    const booleanResult = fieldSchema.safeParse(true);
+
+    expect(booleanResult.success).toBe(false);
+    expect(booleanResult.error?.issues[0]?.message).toBe('Invalid input: "true".');
+  });
+
   it('formBoolean should parse values', () => {
     const stringSchema = z.formString();
 

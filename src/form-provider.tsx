@@ -56,7 +56,11 @@ export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
 
   if (context) {
     // The `use` hook can be used conditionally.
-    return use(context as Context<FormStateResponse<T>>);
+    const value = use(context as Context<FormStateResponse<T> | null>);
+
+    if (value) {
+      return value;
+    }
   }
 
   throw new Error(

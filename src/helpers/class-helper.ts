@@ -16,10 +16,11 @@ const resolveClassNames = (value: FormClassValue) => {
   }
 
   if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
     let result = '';
 
-    for (const key in value as Record<string, boolean | null | undefined>) {
-      if ((value as Record<string, boolean | null | undefined>)[key]) {
+    for (const key in obj) {
+      if (obj[key]) {
         result += result ? ` ${key}` : key;
       }
     }

@@ -5,8 +5,8 @@ const EMPTY_STRING = '';
 
 // Private functions
 
-const isValidNumberString = (value: string) => {
-  return value && !/[a-z]/i.test(value);
+const isValidNumberString = (value: string): boolean => {
+  return value.length > 0 && !/[a-z]/i.test(value);
 };
 
 // Public functions
@@ -118,10 +118,8 @@ export const toBoolean = (value: string, options?: { strict?: boolean }) => {
  *                      return value.
  * @returns The converted value.
  */
-export const toLiteral = <T extends string>(value: string, validValues: readonly T[]) => {
-  const parsedValue = validValues.includes(value as T) ? value : EMPTY_STRING;
-
-  return parsedValue as T;
+export const toLiteral = <T extends string>(value: string, validValues: readonly T[]): T | '' => {
+  return validValues.includes(value as T) ? (value as T) : EMPTY_STRING;
 };
 
 /**

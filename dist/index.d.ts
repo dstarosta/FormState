@@ -61,6 +61,7 @@ type FormMutableState<T extends object> = {
   changed: boolean;
   replaced: boolean;
   validated: boolean;
+  manualErrors: Record<string, string>;
 };
 type FormTypeOptions = {
   required: boolean;
@@ -2517,7 +2518,7 @@ declare const toBoolean: (value: string, options?: {
  *                      return value.
  * @returns The converted value.
  */
-declare const toLiteral: <T extends string>(value: string, validValues: readonly T[]) => T;
+declare const toLiteral: <T extends string>(value: string, validValues: readonly T[]) => T | "";
 /**
  * Converts any input form type into a form string notation.
  *
