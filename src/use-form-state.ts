@@ -69,6 +69,7 @@ import {
   createState,
   freezeObject,
   mutateArrayState,
+  safeSyncParse,
 } from './helpers/state-manager';
 import { classNames } from './helpers/class-helper';
 import { formatErrors, isSchemaValid, normalizeManualError } from './helpers/error-formatter';
@@ -166,9 +167,17 @@ export function useFormState<T extends z.ZodMiniObject>(
   // initial validation.
   const state = useMemo<FormMutableState<State>>(() => {
     const mergedData = initialData ? initializedData : defaultData;
-    const safeData = schema.safeParse(mergedData);
+    const { result: safeResult, asyncPending: initialAsyncPending } = safeSyncParse(
+      schema,
+      mergedData
+    );
 
-    const initialErrors = formatErrors<State>(safeData.error, errorMessageSeparator);
+    const initialErrors = initialAsyncPending
+      ? ({} as Record<keyof State | '', string | undefined>)
+      : formatErrors<State>(
+          (safeResult as { error?: Parameters<typeof formatErrors<State>>[0] }).error,
+          errorMessageSeparator
+        );
     const errors = validateOnMount
       ? initialErrors
       : ({} as Record<keyof State | '', string | undefined>);
@@ -194,7 +203,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     }
 
-    const data = safeData.data ?? mergedData;
+    const data = (safeResult as { data?: State } | null)?.data ?? mergedData;
 
     return {
       required: collectRequired(schema),
@@ -214,6 +223,9 @@ export function useFormState<T extends z.ZodMiniObject>(
       dirty,
       touched,
       manualErrors: {},
+      asyncErrors: {} as Record<keyof State | '', string | undefined>,
+      asyncRequestId: initialAsyncPending ? 1 : 0,
+      asyncValidating: initialAsyncPending && validateOnMount,
     } satisfies FormMutableState<State>;
   }, [
     schema,
@@ -294,10 +306,59 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   // Valid form state.
-  const formValid = useMemo(
-    () => (formState.validated ? Object.keys(formState.errors).length === 0 : null),
-    [formState.errors, formState.validated]
-  );
+  const formValid = useMemo(() => {
+    if (!formState.validated || formState.asyncValidating) {
+      return null;
+    }
+    return Object.keys(formState.errors).length === 0;
+  }, [formState.errors, formState.validated, formState.asyncValidating]);
+
+  // Async validation: when the reducer flagged asyncValidating, run safeParseAsync
+  // and dispatch the resolved errors. The request id discards stale results.
+  useEffect(() => {
+    if (!formState.asyncValidating) {
+      return;
+    }
+
+    const requestId = formState.asyncRequestId;
+    let cancelled = false;
+
+    schema
+      .safeParseAsync(formState.data)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        const asyncErrors = formatErrors<State>(result.error, errorMessageSeparator);
+        dispatch({ type: 'asyncErrors', requestId, errors: asyncErrors });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        // The async validator itself rejected (network failure, predicate bug).
+        // Surface it as a root-level error so the form unfreezes and the user
+        // sees something actionable instead of a stuck `validating: true`.
+        const message =
+          error instanceof Error && error.message ? error.message : 'Async validation failed.';
+        dispatch({
+          type: 'asyncErrors',
+          requestId,
+          errors: { '': message } as Record<keyof State | '', string | undefined>,
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    schema,
+    formState.data,
+    formState.asyncValidating,
+    formState.asyncRequestId,
+    errorMessageSeparator,
+    dispatch,
+  ]);
 
   // The memoized "formStatus" object. The `validSchema` getter delegates to
   // `isSchemaValid` and computes lazily on access.
@@ -309,6 +370,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         disabled: formState.mode === 'disabled',
         dirty: formDirty,
         touched: formTouched,
+        validating: formState.asyncValidating,
         submitting: isSubmitting,
         submitted: formState.submitCount > 0,
         valid: formValid,
@@ -323,6 +385,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       formState.validated,
       formState.errors,
       formState.manualErrors,
+      formState.asyncValidating,
       formDirty,
       formTouched,
       isSubmitting,
@@ -1053,9 +1116,9 @@ export function useFormState<T extends z.ZodMiniObject>(
         try {
           const currentState = formStateRef.current;
 
-          const safeData = schema.safeParse(currentState.data);
+          const safeData = await schema.safeParseAsync(currentState.data);
           const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
-          const submittedErrors = { ...errors, ...currentState.manualErrors };
+          const submittedErrors = { ...errors, ...formStateRef.current.manualErrors };
           const hasErrors = Object.keys(submittedErrors).length > 0;
 
           formStateRef.current.errors = submittedErrors;

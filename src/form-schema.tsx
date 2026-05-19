@@ -906,6 +906,81 @@ export function validate<T>(
   });
 }
 
+/**
+ * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
+ *
+ * @param predicate - A function that accepts a schema object instance and returns a `Promise<boolean>` indicating
+ *                    whether the schema object passes the rule.
+ * @param params.condition - An optional function that accepts the schema's errors. It returns a `bool` value
+ *                           indicating whether the validation should run for the current state of the errors.
+ *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
+ * @param params.path - An optional `errors` object key to store the error message with.
+ * @param params.error - An optional custom error message.
+ * @returns The object schema.
+ */
+export function validateAsync<T>(
+  predicate: (item: NoInfer<T>) => Promise<boolean>,
+  params?: {
+    condition?: (errors: ZodValidationError[]) => boolean;
+    path?: PropertyKey[] | PropertyKey;
+    error?: string;
+  }
+): z.core.$ZodCheck<T>;
+
+/**
+ * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
+ *
+ * @param predicate - A function that accepts a schema object instance and returns a `Promise<boolean>` indicating
+ *                    whether the schema object passes the rule.
+ * @param error - A custom error message.
+ * @returns The object schema.
+ */
+export function validateAsync<T>(
+  predicate: (item: NoInfer<T>) => Promise<boolean>,
+  error: string
+): z.core.$ZodCheck<T>;
+
+export function validateAsync<T>(
+  predicate: (item: NoInfer<T>) => Promise<boolean>,
+  params?:
+    | {
+        condition?: (errors: ZodValidationError[]) => boolean;
+        path?: PropertyKey[] | PropertyKey;
+        error?: string;
+      }
+    | string
+) {
+  const paramsIsError = typeof params === 'string';
+  const condition = paramsIsError ? ALWAYS_VALIDATE : (params?.condition ?? ALWAYS_VALIDATE);
+  const path = paramsIsError ? undefined : params?.path;
+  const error = paramsIsError ? params : params?.error;
+
+  return z.refine<T>(async (obj) => predicate(obj), {
+    when: (payload) =>
+      condition(
+        payload.issues.map((issue) => ({
+          ...issue,
+          message:
+            issue.message ||
+            (typeof issue.params === 'object' &&
+            issue.params !== null &&
+            'message' in issue.params &&
+            typeof issue.params.message === 'string'
+              ? issue.params['message']
+              : 'Invalid input'),
+          pathNotation:
+            issue.path
+              ?.filter((part) => typeof part !== 'symbol')
+              .map((part) => part.toString())
+              .join('.') ?? '',
+        }))
+      ),
+    path: Array.isArray(path) || path === undefined ? path : [path],
+    params: error ? { message: error } : undefined,
+    error,
+  });
+}
+
 // Array validations
 
 /**

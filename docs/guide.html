@@ -2315,6 +2315,135 @@ const schema = z
   );</code></pre>
           </div>
 
+          <h3><span class="type-chip">z.validateAsync(predicate, params?)</span></h3>
+          <p>
+            Asynchronous counterpart to <code>z.validate</code>. The predicate returns a
+            <code>Promise&lt;boolean&gt;</code>, making it suitable for checks that depend on
+            network calls — uniqueness lookups, server-side eligibility, address verification, and
+            similar. The parameter shape (<code>condition</code>, <code>path</code>,
+            <code>error</code>) and shorthand string-error overload match <code>z.validate</code>
+            exactly.
+          </p>
+          <p>
+            <code>useFormState</code> automatically detects schemas containing async checks and
+            switches to <code>schema.safeParseAsync</code> for that pass. While an async validation
+            is in flight, <code>formStatus.validating</code> is <code>true</code> and
+            <code>formStatus.valid</code> is <code>null</code>. Stale results from superseded passes
+            are discarded via an internal request id, so rapid keystrokes do not produce
+            out-of-order errors.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>predicate</code></td>
+                <td><code>(item: T) =&gt; Promise&lt;boolean&gt;</code></td>
+                <td>—</td>
+                <td class="prop-desc">Resolves to <code>true</code> when the value is valid.</td>
+              </tr>
+              <tr>
+                <td><code>condition</code></td>
+                <td><code>(errors: ZodValidationError[]) =&gt; boolean</code></td>
+                <td>always runs</td>
+                <td class="prop-desc">
+                  Called with the current validation errors before running the predicate. Return
+                  <code>false</code> to skip this check entirely.
+                </td>
+              </tr>
+              <tr>
+                <td><code>path</code></td>
+                <td><code>PropertyKey | PropertyKey[]</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Key in <code>formState.errors</code> where the error is stored. Defaults to the
+                  root (no path).
+                </td>
+              </tr>
+              <tr>
+                <td><code>error</code></td>
+                <td><code>string</code></td>
+                <td>—</td>
+                <td class="prop-desc">Custom error message.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Field-level async check — verify the username is not already taken
+const schema = z.object({
+  username: z
+    .formString({ required: true, error: 'Username is required' })
+    .check(
+      z.validateAsync(
+        async (name) =&gt; {
+          const res = await fetch(`/api/usernames/${encodeURIComponent(name)}`);
+          const { available } = await res.json();
+          return available;
+        },
+        'Username is already taken'
+      )
+    ),
+});
+
+// Object-level async check with a condition gate
+const orderSchema = z
+  .strictObject({
+    sku: z.formString({ required: true }),
+    quantity: z.formNumber({ required: true }),
+  })
+  .check(
+    z.validateAsync(
+      async (order) =&gt; {
+        const res = await fetch(`/api/stock?sku=${order.sku}&amp;qty=${order.quantity}`);
+        return res.ok;
+      },
+      {
+        // Skip the network call until both fields parse cleanly.
+        condition: (errors) =&gt; errors.length === 0,
+        path: 'quantity',
+        error: 'Not enough stock for the selected quantity',
+      }
+    )
+  );</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Tip</div>
+            <p>
+              Use <code>formStatus.validating</code> to render a spinner next to the submit button
+              or disable it while async checks are pending. <code>handleSubmit</code> also awaits
+              <code>safeParseAsync</code> internally, so async errors gate the submit pipeline
+              automatically.
+            </p>
+          </div>
+          <div class="callout callout-warn">
+            <div class="callout-label">Predicate rejection</div>
+            <p>
+              If the predicate's <code>Promise</code> rejects (network failure, bug in the
+              validator), the rejection is surfaced as a
+              <strong>root-level error</strong> (<code>formState.errors['']</code>) and
+              <code>formStatus.validating</code> flips back to <code>false</code> so the form does
+              not freeze. The error message is the <code>Error.message</code> of the rejection,
+              falling back to <code>'Async validation failed.'</code>.
+            </p>
+            <p>
+              <strong>Known caveat:</strong> on initial mount, <code>useFormState</code> probes the
+              schema once via a synchronous parse to decide whether it needs the async pipeline.
+              That probe invokes the predicate and abandons the returned <code>Promise</code> as
+              soon as Zod detects it is async — so a predicate that rejects (rather than resolves
+              <code>false</code>) will produce one <code>unhandledRejection</code> warning in
+              development. The error is still surfaced correctly via the async pass that runs
+              immediately after. Prefer resolving <code>true</code> / <code>false</code> over
+              throwing in predicates; reserve rejection for unrecoverable failures.
+            </p>
+          </div>
+
           <h3><span class="type-chip">z.someItem(predicate, error?)</span></h3>
           <p>
             Creates a Zod check that passes when <em>at least one</em> array element satisfies the
@@ -2855,6 +2984,16 @@ schema.toObject(formState.data);
                 <td><code>validSchema</code></td>
                 <td><code>boolean | null</code></td>
                 <td class="prop-desc">Schema validity ignoring manual errors.</td>
+              </tr>
+              <tr>
+                <td><code>validating</code></td>
+                <td><code>boolean</code></td>
+                <td class="prop-desc">
+                  True while an async validation pass (see <code>z.validateAsync</code>) is in
+                  flight for the latest data. Always <code>false</code> for schemas without async
+                  checks. While <code>validating</code> is <code>true</code>, <code>valid</code> is
+                  <code>null</code>.
+                </td>
               </tr>
               <tr>
                 <td><code>submitting</code></td>
@@ -6739,7 +6878,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <tbody>
               <tr>
                 <td>Bundle size (gzipped)</td>
-                <td>~17 KB <sup>1</sup></td>
+                <td>~18 KB <sup>1</sup></td>
                 <td>~13 KB</td>
                 <td>~10 KB</td>
                 <td>~15 KB</td>

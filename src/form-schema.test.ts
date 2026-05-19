@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 
 import { formatErrors } from './helpers/error-formatter';
 import { useFormState, z } from '.';
@@ -614,6 +614,168 @@ describe('form schema', () => {
 
     expect(result.current.formStatus.valid).toBe(false);
     expect(result.current.formState.errors.users).toBe(error);
+  });
+
+  it('should asynchronously validate object schema', async () => {
+    const allowedNames = new Set(['Mike', 'John', 'Mary']);
+    const lookupAllowedName = (name: string) =>
+      new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          resolve(allowedNames.has(name));
+        }, 0);
+      });
+
+    const testSchema = z.object({
+      users: z.array(
+        z.object({
+          name: z
+            .formString()
+            .check(z.validateAsync((name) => lookupAllowedName(name), 'Name is not allowed')),
+        })
+      ),
+    });
+
+    const initialData: z.infer<typeof testSchema> = {
+      users: [{ name: 'Mike' }, { name: 'Xavier' }],
+    };
+
+    const { result } = renderHook(() =>
+      useFormState(testSchema, { initialData, validateOnMount: true })
+    );
+
+    expect(result.current.formStatus.validating).toBe(true);
+    expect(result.current.formStatus.valid).toBe(null);
+
+    await waitFor(() => {
+      expect(result.current.formStatus.validating).toBe(false);
+    });
+
+    expect(result.current.formStatus.valid).toBe(false);
+    expect(result.current.formState.errors.get((path) => path.users[1]?.name)).toBe(
+      'Name is not allowed'
+    );
+  });
+
+  it('should asynchronously validate object schema with params', async () => {
+    const testSchema = z
+      .object({
+        users: z.array(z.object({ name: z.formString() })),
+      })
+      .check(
+        z.validateAsync(
+          (obj) =>
+            new Promise<boolean>((resolve) => {
+              setTimeout(() => {
+                resolve(obj.users.length >= 2);
+              }, 0);
+            }),
+          { path: 'users', error: 'Need at least 2 users' }
+        )
+      );
+
+    const result = await testSchema.safeParseAsync({ users: [{ name: 'Mike' }] });
+    expect(result.success).toBe(false);
+
+    const errors = formatErrors<z.infer<typeof testSchema>>(result.error, '|');
+    expect(errors.users).toBe('Need at least 2 users');
+  });
+
+  it('should suppress an async conditional error when other errors exist', async () => {
+    const testSchema = z
+      .object({
+        users: z
+          .array(
+            z.object({
+              name: z
+                .formString({ required: false })
+                .check(z.validate((name) => name.trim().length > 0, 'Empty names are not allowed')),
+            })
+          )
+          .check(z.validate((arr) => arr.length > 2, 'Not enough names')),
+      })
+      .check(
+        z.validateAsync(
+          (obj) =>
+            new Promise<boolean>((resolve) => {
+              setTimeout(() => {
+                resolve(obj.users.filter((u) => u.name.startsWith('M')).length === 2);
+              }, 0);
+            }),
+          {
+            path: 'users',
+            error: 'No names that start with "M"',
+            condition: (errors) => errors.every((error) => error.pathNotation !== 'users'),
+          }
+        )
+      );
+
+    const result = await testSchema.safeParseAsync({
+      users: [{ name: 'Mike' }, { name: 'John' }],
+    });
+    expect(result.success).toBe(false);
+
+    const errors = formatErrors<z.infer<typeof testSchema>>(result.error, '|');
+    // 'Not enough names' is on the 'users' path, so the conditional async
+    // validator must not run — its error string should not appear.
+    expect(errors.users).toBe('Not enough names');
+    expect(errors.users).not.toContain('No names that start with "M"');
+  });
+
+  it('should surface an async conditional error when its precondition is met', async () => {
+    const testSchema = z
+      .object({
+        users: z.array(
+          z.object({
+            name: z.formString({ required: false }),
+          })
+        ),
+      })
+      .check(
+        z.validateAsync(
+          (obj) =>
+            new Promise<boolean>((resolve) => {
+              setTimeout(() => {
+                resolve(obj.users.filter((u) => u.name.startsWith('M')).length === 2);
+              }, 0);
+            }),
+          {
+            path: 'users',
+            error: 'No names that start with "M"',
+            // No other errors exist for 'users', so the condition is satisfied
+            // and the async check runs.
+            condition: (errors) => errors.every((error) => error.pathNotation !== 'users'),
+          }
+        )
+      );
+
+    const result = await testSchema.safeParseAsync({
+      users: [{ name: 'Mike' }, { name: 'John' }],
+    });
+    expect(result.success).toBe(false);
+
+    const errors = formatErrors<z.infer<typeof testSchema>>(result.error, '|');
+    expect(errors.users).toBe('No names that start with "M"');
+  });
+
+  it('should pass async validation when the predicate resolves true', async () => {
+    const testSchema = z
+      .object({
+        users: z.array(z.object({ name: z.formString() })),
+      })
+      .check(
+        z.validateAsync(
+          (obj) =>
+            new Promise<boolean>((resolve) => {
+              setTimeout(() => {
+                resolve(obj.users.length > 0);
+              }, 0);
+            }),
+          { path: 'users', error: 'Need at least one user' }
+        )
+      );
+
+    const result = await testSchema.safeParseAsync({ users: [{ name: 'Mike' }] });
+    expect(result.success).toBe(true);
   });
 
   it('should validate some items in a ZodArray', () => {

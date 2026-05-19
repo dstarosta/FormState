@@ -374,6 +374,23 @@ export function mutateArrayState<T extends z.ZodMiniObject>(
   return { name, value };
 }
 
+export function safeSyncParse<T extends z.ZodMiniType>(
+  schema: T,
+  data: unknown
+): { result: ReturnType<T['safeParse']> | null; asyncPending: boolean } {
+  try {
+    return {
+      result: schema.safeParse(data) as ReturnType<T['safeParse']>,
+      asyncPending: false,
+    };
+  } catch (error) {
+    if (error instanceof z.core.$ZodAsyncError) {
+      return { result: null, asyncPending: true };
+    }
+    throw error;
+  }
+}
+
 // Public functions
 
 /**

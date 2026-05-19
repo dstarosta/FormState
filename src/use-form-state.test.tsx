@@ -31,6 +31,28 @@ import {
 } from '.';
 import { toLiteral } from './helpers/value-converter';
 
+const swallowNetworkDown = (reason: unknown) => {
+  if (reason instanceof Error && reason.message === 'Network down') {
+    return;
+  }
+  throw reason;
+};
+
+const buildAsyncSchema = (allowed: Set<string>, delay = 0) => {
+  const lookup = (name: string) =>
+    new Promise<boolean>((resolve) => {
+      setTimeout(() => {
+        resolve(allowed.has(name));
+      }, delay);
+    });
+
+  return z.object({
+    name: z
+      .formString({ required: true, error: 'Name is required' })
+      .check(z.validateAsync(lookup, 'Name is not allowed')),
+  });
+};
+
 describe('useFormState', () => {
   const schema = z
     .strictObject({
@@ -1000,6 +1022,192 @@ describe('useFormState', () => {
     expect(expectedPatterns).toStrictEqual(actualPatterns);
     expect(get((path) => path.tags[1])).toBe(expectedPatterns['tags.0']);
     expect(getKeys()).toHaveLength(Object.keys(expectedPatterns).length);
+  });
+
+  describe('async schema validation', () => {
+    it('should mark the form as validating on mount and resolve to invalid for a disallowed value', async () => {
+      const asyncSchema = buildAsyncSchema(new Set(['Mike', 'John']), 50);
+
+      const { result } = renderHook(() =>
+        useFormState(asyncSchema, {
+          initialData: { name: 'Xavier' },
+          validateOnMount: true,
+        })
+      );
+
+      expect(result.current.formStatus.validating).toBe(true);
+      expect(result.current.formStatus.valid).toBe(null);
+
+      await waitFor(() => {
+        expect(result.current.formStatus.validating).toBe(false);
+      });
+
+      expect(result.current.formStatus.valid).toBe(false);
+      expect(result.current.formState.errors.get((path) => path.name)).toBe('Name is not allowed');
+    });
+
+    it('should resolve to valid on mount for an allowed value', async () => {
+      const asyncSchema = buildAsyncSchema(new Set(['Mike', 'John']));
+
+      const { result } = renderHook(() =>
+        useFormState(asyncSchema, {
+          initialData: { name: 'Mike' },
+          validateOnMount: true,
+        })
+      );
+
+      expect(result.current.formStatus.validating).toBe(true);
+
+      await waitFor(() => {
+        expect(result.current.formStatus.validating).toBe(false);
+      });
+
+      expect(result.current.formStatus.valid).toBe(true);
+      expect(result.current.formState.errors.getAll()).toStrictEqual([]);
+    });
+
+    it('should not run async validation on mount when validateOnMount is false', () => {
+      const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+      const { result } = renderHook(() =>
+        useFormState(asyncSchema, { initialData: { name: 'Xavier' } })
+      );
+
+      expect(result.current.formStatus.validating).toBe(false);
+      expect(result.current.formStatus.valid).toBe(null);
+    });
+
+    it('should re-run async validation after a change action', async () => {
+      const asyncSchema = buildAsyncSchema(new Set(['Mike', 'John']));
+
+      const { result } = renderHook(() =>
+        useFormState(asyncSchema, {
+          initialData: { name: 'Xavier' },
+          validateOnMount: true,
+        })
+      );
+
+      await waitFor(() => {
+        expect(result.current.formStatus.validating).toBe(false);
+      });
+      expect(result.current.formStatus.valid).toBe(false);
+
+      act(() => {
+        result.current.formActions.change('name', 'Mike');
+      });
+
+      expect(result.current.formStatus.validating).toBe(true);
+      expect(result.current.formStatus.valid).toBe(null);
+
+      await waitFor(() => {
+        expect(result.current.formStatus.validating).toBe(false);
+      });
+
+      expect(result.current.formStatus.valid).toBe(true);
+      expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+    });
+
+    it('should surface an async predicate rejection as a root error and unfreeze validating', async () => {
+      // The sync probe (safeSyncParse) invokes the predicate to detect async-ness
+      // and abandons the returned Promise after Zod throws $ZodAsyncError. If the
+      // predicate's Promise then rejects, the rejection is unhandled. Swallow the
+      // expected 'Network down' so the test runner doesn't flag it.
+      process.on('unhandledRejection', swallowNetworkDown);
+      try {
+        const rejectingSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validateAsync(
+              () =>
+                new Promise<boolean>((_resolve, reject) => {
+                  setTimeout(() => {
+                    reject(new Error('Network down'));
+                  }, 0);
+                }),
+              'unused'
+            )
+          ),
+        });
+
+        const { result } = renderHook(() =>
+          useFormState(rejectingSchema, {
+            initialData: { name: 'Mike' },
+            validateOnMount: true,
+          })
+        );
+
+        expect(result.current.formStatus.validating).toBe(true);
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        // Form is no longer frozen; rejection is surfaced as a root error.
+        expect(result.current.formStatus.valid).toBe(false);
+        expect(result.current.formState.errors.getAll()).toContain('Network down');
+      } finally {
+        process.off('unhandledRejection', swallowNetworkDown);
+      }
+    });
+
+    it('should discard stale async results when superseded by a newer change', async () => {
+      // 'Slow' is disallowed and resolves late; 'Fast' is allowed and resolves early.
+      // If the stale Slow result lands after the Fast result, it would inject a
+      // bogus "Name is not allowed" error into a form that should be valid.
+      const delays = new Map<string, number>([
+        ['Slow', 60],
+        ['Fast', 5],
+      ]);
+      const allowed = new Set(['Fast']);
+      const asyncSchema = z.object({
+        name: z.formString({ required: true, error: 'Name is required' }).check(
+          z.validateAsync(
+            (name) =>
+              new Promise<boolean>((resolve) => {
+                setTimeout(
+                  () => {
+                    resolve(allowed.has(name));
+                  },
+                  delays.get(name) ?? 0
+                );
+              }),
+            'Name is not allowed'
+          )
+        ),
+      });
+
+      const { result } = renderHook(() =>
+        useFormState(asyncSchema, {
+          initialData: { name: 'Slow' },
+          validateOnMount: true,
+        })
+      );
+
+      // Switch to 'Fast' before the in-flight 'Slow' pass settles.
+      act(() => {
+        result.current.formActions.change('name', 'Fast');
+      });
+
+      await waitFor(() => {
+        expect(result.current.formStatus.validating).toBe(false);
+      });
+
+      expect(result.current.formStatus.valid).toBe(true);
+      expect(result.current.formState.data.name).toBe('Fast');
+      expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+
+      // Wait past the Slow delay (60ms) so the stale promise resolves. If the
+      // stale result weren't discarded, it would inject the "not allowed" error
+      // into a form that should remain valid.
+      await act(async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 100);
+        });
+      });
+
+      expect(result.current.formStatus.valid).toBe(true);
+      expect(result.current.formState.data.name).toBe('Fast');
+      expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+    });
   });
 
   describe('form actions', () => {

@@ -62,6 +62,19 @@ type FormMutableState<T extends object> = {
   replaced: boolean;
   validated: boolean;
   manualErrors: Record<string, string>;
+  /**
+   * Errors collected from the most recently resolved async validation pass.
+   * Merged into `errors` on the next render. Cleared whenever `data` changes.
+   */
+  asyncErrors: Record<keyof T | '', string | undefined>;
+  /**
+   * Monotonically increasing id used to discard stale async validation results.
+   */
+  asyncRequestId: number;
+  /**
+   * Whether an async validation pass is currently pending for the latest data.
+   */
+  asyncValidating: boolean;
 };
 type FormTypeOptions = {
   required: boolean;
@@ -574,6 +587,12 @@ type FormStatus = {
    * The value is `null` if the form has not been validated.
    */
   readonly validSchema: boolean | null;
+  /**
+   * Whether an async validation pass is currently in flight for the latest data.
+   *
+   * Always `false` for schemas that do not contain async checks.
+   */
+  readonly validating: boolean;
   /**
    * Whether the form submit action is pending.
    *
@@ -1502,7 +1521,7 @@ type ParseAsObjectResult<T extends z.ZodMiniObject> = {
   success: boolean;
 };
 declare namespace form_schema_d_exports {
-  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, everyItem, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, someItem, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim, uniqueItems, validate };
+  export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, everyItem, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, someItem, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim, uniqueItems, validate, validateAsync };
 }
 /**
  * Infers form state type from the schema.
@@ -1890,6 +1909,32 @@ declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, params?: 
  * @returns The object schema.
  */
 declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, error: string): z.core.$ZodCheck<T>;
+/**
+ * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
+ *
+ * @param predicate - A function that accepts a schema object instance and returns a `Promise<boolean>` indicating
+ *                    whether the schema object passes the rule.
+ * @param params.condition - An optional function that accepts the schema's errors. It returns a `bool` value
+ *                           indicating whether the validation should run for the current state of the errors.
+ *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
+ * @param params.path - An optional `errors` object key to store the error message with.
+ * @param params.error - An optional custom error message.
+ * @returns The object schema.
+ */
+declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boolean>, params?: {
+  condition?: (errors: ZodValidationError[]) => boolean;
+  path?: PropertyKey[] | PropertyKey;
+  error?: string;
+}): z.core.$ZodCheck<T>;
+/**
+ * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
+ *
+ * @param predicate - A function that accepts a schema object instance and returns a `Promise<boolean>` indicating
+ *                    whether the schema object passes the rule.
+ * @param error - A custom error message.
+ * @returns The object schema.
+ */
+declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boolean>, error: string): z.core.$ZodCheck<T>;
 /**
  * Determines whether the specified callback function returns true for any element of an array.
  * Use with `.check()` on an array schema.

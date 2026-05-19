@@ -12,6 +12,7 @@ import {
   diffedState,
   getState,
   parseState,
+  safeSyncParse,
   updateState,
 } from './state-manager';
 import { getSchemaType } from './schema-visitor';
@@ -36,6 +37,7 @@ import { FormResetBlocker } from './form-reset-blocker';
 import { mergeRefs } from './ref-merge';
 import { generateUniqueId } from './random-id-generator';
 import { useDeepMemo } from './use-deep-memo';
+import { useFormStateReducer } from './use-form-state-reducer';
 
 const mockUseFormStatus = vi.hoisted(() => vi.fn(() => ({ pending: false })));
 
@@ -408,6 +410,42 @@ describe('helpers', () => {
         n: '2',
         v: 1,
       });
+    });
+  });
+
+  describe('safeSyncParse', () => {
+    it('returns the sync parse result when the schema has no async checks', () => {
+      const syncSchema = z.object({ name: z.formString({ required: true }) });
+
+      const { result, asyncPending } = safeSyncParse(syncSchema, { name: 'Mike' });
+
+      expect(asyncPending).toBe(false);
+      expect(result?.success).toBe(true);
+      expect(result?.data).toStrictEqual({ name: 'Mike' });
+    });
+
+    it('returns asyncPending: true instead of throwing for an async schema', () => {
+      const asyncSchema = z.object({
+        name: z
+          .formString({ required: true })
+          .check(z.validateAsync(() => Promise.resolve(true), 'nope')),
+      });
+
+      const { result, asyncPending } = safeSyncParse(asyncSchema, { name: 'Mike' });
+
+      expect(asyncPending).toBe(true);
+      expect(result).toBe(null);
+    });
+
+    it('rethrows non-async errors raised during parsing', () => {
+      const explosiveSchema = {
+        safeParse: () => {
+          throw new RangeError('boom');
+        },
+      } as unknown as Parameters<typeof safeSyncParse>[0];
+
+      expect(() => safeSyncParse(explosiveSchema, {})).toThrow(RangeError);
+      expect(() => safeSyncParse(explosiveSchema, {})).toThrow('boom');
     });
   });
 
@@ -1572,6 +1610,86 @@ describe('helpers', () => {
 
       expect(factory).toHaveBeenCalledTimes(2);
       expect(result.current).not.toBe(first);
+    });
+  });
+
+  describe('useFormStateReducer', () => {
+    const schema = z.object({ name: z.formString({ required: true }) });
+    type State = z.infer<typeof schema>;
+
+    const buildInitialState = (
+      overrides: Partial<FormMutableState<State>> = {}
+    ): FormMutableState<State> => ({
+      initialData: { name: '' },
+      data: { name: '' },
+      submittedData: null,
+      initialErrors: {} as Record<keyof State | '', string | undefined>,
+      errors: {} as Record<keyof State | '', string | undefined>,
+      mode: 'editable',
+      dirty: { name: false },
+      touched: { name: false },
+      required: { name: true },
+      ranges: {} as FormMutableState<State>['ranges'],
+      patterns: {} as Record<keyof State, string | undefined>,
+      descriptions: {} as Record<keyof State | '', string | undefined>,
+      submitCount: 0,
+      changed: false,
+      replaced: false,
+      validated: false,
+      manualErrors: {},
+      asyncErrors: {} as Record<keyof State | '', string | undefined>,
+      asyncRequestId: 5,
+      asyncValidating: true,
+      ...overrides,
+    });
+
+    it('discards an asyncErrors action with a stale request id', () => {
+      const initial = buildInitialState();
+
+      const { result } = renderHook(() => useFormStateReducer(schema, initial, true, false, '|'));
+
+      const [stateBefore, dispatch] = result.current;
+
+      act(() => {
+        dispatch({
+          type: 'asyncErrors',
+          requestId: stateBefore.asyncRequestId - 1, // stale
+          errors: { name: 'Stale error should be discarded' } as Record<
+            keyof State | '',
+            string | undefined
+          >,
+        });
+      });
+
+      const [stateAfter] = result.current;
+
+      // Reducer must return the same state reference and leave validating/errors untouched.
+      expect(stateAfter).toBe(stateBefore);
+      expect(stateAfter.asyncValidating).toBe(true);
+      expect(stateAfter.errors.name).toBeUndefined();
+      expect(stateAfter.asyncErrors.name).toBeUndefined();
+    });
+
+    it('applies an asyncErrors action whose request id matches the current one', () => {
+      const initial = buildInitialState();
+
+      const { result } = renderHook(() => useFormStateReducer(schema, initial, true, false, '|'));
+
+      const [stateBefore, dispatch] = result.current;
+
+      act(() => {
+        dispatch({
+          type: 'asyncErrors',
+          requestId: stateBefore.asyncRequestId, // current
+          errors: { name: 'Async failure' } as Record<keyof State | '', string | undefined>,
+        });
+      });
+
+      const [stateAfter] = result.current;
+
+      expect(stateAfter.asyncValidating).toBe(false);
+      expect(stateAfter.errors.name).toBe('Async failure');
+      expect(stateAfter.asyncErrors.name).toBe('Async failure');
     });
   });
 });

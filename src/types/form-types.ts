@@ -159,6 +159,11 @@ export type FormAction<T extends object> =
       options: { predicate?: ((key: string) => boolean) | undefined; validate: boolean };
     }
   | { type: 'validate' }
+  | {
+      type: 'asyncErrors';
+      requestId: number;
+      errors: Record<keyof T | '', string | undefined>;
+    }
   | { type: 'setMode'; mode: FormMode };
 
 export type FormMutableState<T extends object> = {
@@ -179,6 +184,19 @@ export type FormMutableState<T extends object> = {
   replaced: boolean;
   validated: boolean;
   manualErrors: Record<string, string>;
+  /**
+   * Errors collected from the most recently resolved async validation pass.
+   * Merged into `errors` on the next render. Cleared whenever `data` changes.
+   */
+  asyncErrors: Record<keyof T | '', string | undefined>;
+  /**
+   * Monotonically increasing id used to discard stale async validation results.
+   */
+  asyncRequestId: number;
+  /**
+   * Whether an async validation pass is currently pending for the latest data.
+   */
+  asyncValidating: boolean;
 };
 
 export type StateCallback<T extends object> = (state: FormState<T>, status: FormStatus) => void;
@@ -774,6 +792,12 @@ export type FormStatus = {
    * The value is `null` if the form has not been validated.
    */
   readonly validSchema: boolean | null;
+  /**
+   * Whether an async validation pass is currently in flight for the latest data.
+   *
+   * Always `false` for schemas that do not contain async checks.
+   */
+  readonly validating: boolean;
   /**
    * Whether the form submit action is pending.
    *
