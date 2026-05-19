@@ -1,6 +1,6 @@
 import { createRef } from 'react';
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 
 import type { FormMutableState, Immutable } from '../types/form-types';
@@ -35,6 +35,7 @@ import { createUseWatch } from './use-watch-builder';
 import { FormResetBlocker } from './form-reset-blocker';
 import { mergeRefs } from './ref-merge';
 import { generateUniqueId } from './random-id-generator';
+import { useDeepMemo } from './use-deep-memo';
 
 const mockUseFormStatus = vi.hoisted(() => vi.fn(() => ({ pending: false })));
 
@@ -1035,6 +1036,37 @@ describe('helpers', () => {
         );
       });
 
+      it('should return the same reference when setting a primitive to its current value', () => {
+        const obj = { a: { b: 1 } };
+        const result = dotPathSet(obj, 'a.b', 1);
+
+        expect(result).toBe(obj);
+      });
+
+      it('should return the same reference when setting an object slot to the same reference', () => {
+        const inner = { c: 1 };
+        const obj = { a: { b: inner } };
+        const result = dotPathSet(obj, 'a.b', inner);
+
+        expect(result).toBe(obj);
+        expect((result as { a: { b: unknown } }).a).toBe(obj.a);
+      });
+
+      it('should return the same reference when an updater returns the existing leaf value', () => {
+        const obj = { a: { b: 1 } };
+        const result = dotPathSet(obj, 'a.b', (current: unknown) => current);
+
+        expect(result).toBe(obj);
+      });
+
+      it('should return the same array reference when setting an index to its current value', () => {
+        const obj = { items: [10, 20, 30] };
+        const result = dotPathSet(obj, 'items.1', 20);
+
+        expect(result).toBe(obj);
+        expect((result as { items: number[] }).items).toBe(obj.items);
+      });
+
       it('should handle escaped dots in path', () => {
         const obj = { 'a.b': { c: 1 } };
         const result = dotPathSet(obj, String.raw`a\.b.c`, 2);
@@ -1446,6 +1478,100 @@ describe('helpers', () => {
           )
         ).not.toThrow();
       });
+    });
+  });
+
+  describe('useDeepMemo', () => {
+    it('runs the factory on first render and caches the result', () => {
+      const factory = vi.fn(() => ({ produced: true }));
+      const { result } = renderHook(({ deps }) => useDeepMemo(factory, deps), {
+        initialProps: { deps: [1, 2, 3] as unknown[] },
+      });
+
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(result.current).toEqual({ produced: true });
+    });
+
+    it('reuses the cached value when the deps array reference is identical (a === b)', () => {
+      const factory = vi.fn(() => ({}));
+      const stableDeps: unknown[] = [{ a: 1 }];
+
+      const { result, rerender } = renderHook(({ deps }) => useDeepMemo(factory, deps), {
+        initialProps: { deps: stableDeps },
+      });
+
+      const first = result.current;
+      rerender({ deps: stableDeps });
+
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(result.current).toBe(first);
+    });
+
+    it('recomputes when the deps array length changes', () => {
+      const factory = vi.fn(() => ({}));
+      const { result, rerender } = renderHook(({ deps }) => useDeepMemo(factory, deps), {
+        initialProps: { deps: [1, 2] as unknown[] },
+      });
+
+      const first = result.current;
+      rerender({ deps: [1, 2, 3] });
+
+      expect(factory).toHaveBeenCalledTimes(2);
+      expect(result.current).not.toBe(first);
+    });
+
+    it('reuses the cached value when each dep is referentially equal (Object.is fast-path)', () => {
+      const factory = vi.fn(() => ({}));
+      const sharedObj = { nested: 1 };
+
+      const { result, rerender } = renderHook(({ deps }) => useDeepMemo(factory, deps), {
+        initialProps: { deps: [1, 'a', sharedObj] as unknown[] },
+      });
+
+      const first = result.current;
+      rerender({ deps: [1, 'a', sharedObj] });
+
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(result.current).toBe(first);
+    });
+
+    it('treats NaN deps as equal via Object.is', () => {
+      const factory = vi.fn(() => ({}));
+      const { result, rerender } = renderHook(({ deps }) => useDeepMemo(factory, deps), {
+        initialProps: { deps: [Number.NaN] as unknown[] },
+      });
+
+      const first = result.current;
+      rerender({ deps: [Number.NaN] });
+
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(result.current).toBe(first);
+    });
+
+    it('reuses the cached value when deps are different references but deeply equal', () => {
+      const factory = vi.fn(() => ({}));
+      const { result, rerender } = renderHook(({ deps }) => useDeepMemo(factory, deps), {
+        initialProps: { deps: [{ a: { b: [1, 2] } }] as unknown[] },
+      });
+
+      const first = result.current;
+      rerender({ deps: [{ a: { b: [1, 2] } }] });
+
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(result.current).toBe(first);
+    });
+
+    it('recomputes when a dep differs both referentially and by deep equality', () => {
+      const factory = vi.fn(() => ({}));
+      const { result, rerender } = renderHook(({ deps }) => useDeepMemo(factory, deps), {
+        initialProps: { deps: [{ a: 1 }] as unknown[] },
+      });
+
+      const first = result.current;
+      rerender({ deps: [{ a: 2 }] });
+
+      expect(factory).toHaveBeenCalledTimes(2);
+      expect(result.current).not.toBe(first);
     });
   });
 });

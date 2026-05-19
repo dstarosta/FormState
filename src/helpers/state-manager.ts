@@ -73,15 +73,16 @@ export const cleanEmpty = <T>(
   field: string = '',
   parentKey: string = ''
 ): DeepPartial<T> | DeepPartial<T>[] => {
-  const path = parentKey ? `${parentKey}.${field}` : field;
+  let path: string | undefined;
+  const getFieldPath = () => (path ??= parentKey ? `${parentKey}.${field}` : field);
 
   if (Array.isArray(obj)) {
-    return obj.map((item) => cleanEmpty(schema, item, '0', path)) as DeepPartial<T>[];
+    return obj.map((item) => cleanEmpty(schema, item, '0', getFieldPath())) as DeepPartial<T>[];
   }
 
   if (isNotRecordObject(obj)) {
     if (obj instanceof Date) {
-      return formatDate(obj, getDateFormat(schema, path)) as DeepPartial<T>;
+      return formatDate(obj, getDateFormat(schema, getFieldPath())) as DeepPartial<T>;
     }
 
     return obj as DeepPartial<T>;
@@ -92,15 +93,28 @@ export const cleanEmpty = <T>(
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = (obj as UnknownObject)[key];
-      const valuePath = path ? `${path}.${key}` : key;
 
       if (typeof value === 'function' || value instanceof Promise) {
         continue;
       }
 
+      let valuePath: string | undefined;
+
+      const getValuePath = () => {
+        if (valuePath !== undefined) {
+          return valuePath;
+        }
+
+        const parent = getFieldPath();
+
+        valuePath = parent ? `${parent}.${key}` : key;
+
+        return valuePath;
+      };
+
       if (isNotRecordObject(value) && typeof value !== 'symbol' && typeof value !== 'string') {
         if (value instanceof Date) {
-          innerObj[key] = formatDate(value, getDateFormat(schema, valuePath));
+          innerObj[key] = formatDate(value, getDateFormat(schema, getValuePath()));
         } else if (value !== undefined) {
           innerObj[key] = value;
         }
@@ -108,7 +122,7 @@ export const cleanEmpty = <T>(
         continue;
       }
 
-      const cleanedValue = cleanEmpty(schema, value, key, path);
+      const cleanedValue = cleanEmpty(schema, value, key, getFieldPath());
 
       if (
         isRecordObject(cleanedValue) &&
@@ -121,7 +135,8 @@ export const cleanEmpty = <T>(
 
       const isEmptyString = typeof cleanedValue === 'string' && cleanedValue === '';
       const hasEmptyStringSchema =
-        getSchemaType(schema, valuePath) === 'string' && allowEmptyString(schema, valuePath);
+        getSchemaType(schema, getValuePath()) === 'string' &&
+        allowEmptyString(schema, getValuePath());
 
       if (typeof cleanedValue !== 'symbol' && (!isEmptyString || hasEmptyStringSchema)) {
         innerObj[key] = cleanedValue;

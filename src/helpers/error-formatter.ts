@@ -1,10 +1,26 @@
 import * as z from 'zod/mini';
+import { deepEqual } from 'fast-equals';
 
 // Private functions
 
 const isGenericMessage = (message: string) => message === 'Invalid input';
 
 // Internal functions
+
+export const isSchemaValid = (
+  validated: boolean,
+  errors: Record<string, string | undefined>,
+  manualErrors: Record<string, string>
+): boolean | null => {
+  if (!validated) {
+    return null;
+  }
+
+  const manualEntries = Object.entries(manualErrors);
+  const errorEntries = Object.entries(errors);
+
+  return errorEntries.every((error) => manualEntries.some((manual) => deepEqual(manual, error)));
+};
 
 export const normalizeManualError = (error: string | null | undefined): string | null =>
   error == null ? null : error.trim() || 'Error';

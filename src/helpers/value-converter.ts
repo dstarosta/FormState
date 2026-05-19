@@ -3,10 +3,12 @@ import { isValidDate, formatDate, parseDate } from './date-formatter';
 
 const EMPTY_STRING = '';
 
+const ALPHA_RE = /[a-z]/i;
+
 // Private functions
 
 const isValidNumberString = (value: string): boolean => {
-  return value.length > 0 && !/[a-z]/i.test(value);
+  return value.length > 0 && !ALPHA_RE.test(value);
 };
 
 // Public functions

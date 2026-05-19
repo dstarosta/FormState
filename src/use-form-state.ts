@@ -71,7 +71,7 @@ import {
   mutateArrayState,
 } from './helpers/state-manager';
 import { classNames } from './helpers/class-helper';
-import { formatErrors, normalizeManualError } from './helpers/error-formatter';
+import { formatErrors, isSchemaValid, normalizeManualError } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
 import { createFormStore } from './helpers/form-store';
@@ -299,52 +299,36 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.errors, formState.validated]
   );
 
-  // Determines whether the schema is valid (manual errors ignored).
-  const isSchemaValid = useCallback(() => {
-    if (!formState.validated) {
-      return null;
-    }
-
-    const manualErrors = Object.entries(formState.manualErrors);
-    const allErrors = Object.entries(formState.errors);
-
-    const allErrorsAreManual = allErrors.every((error) =>
-      manualErrors.some((manual) => deepEqual(manual, error))
-    );
-
-    return allErrorsAreManual;
-  }, [formState.errors, formState.manualErrors, formState.validated]);
-
-  // The memoized "formStatus" object.
-  const formStatus = useMemo<FormStatus>(() => {
-    let _validSchema: boolean | null = null;
-
-    return {
-      mode: formState.mode,
-      readOnly: formState.mode === 'readOnly',
-      disabled: formState.mode === 'disabled',
-      dirty: formDirty,
-      touched: formTouched,
-      submitting: isSubmitting,
-      submitted: formState.submitCount > 0,
-      valid: formValid,
-      get validSchema() {
-        // Expensive, computed only when accessed.
-        if (_validSchema === null) {
-          _validSchema = isSchemaValid();
-        }
-        return _validSchema;
-      },
-    } as const;
-  }, [
-    formState.mode,
-    formState.submitCount,
-    formDirty,
-    formTouched,
-    isSubmitting,
-    formValid,
-    isSchemaValid,
-  ]);
+  // The memoized "formStatus" object. The `validSchema` getter delegates to
+  // `isSchemaValid` and computes lazily on access.
+  const formStatus = useMemo<FormStatus>(
+    () =>
+      ({
+        mode: formState.mode,
+        readOnly: formState.mode === 'readOnly',
+        disabled: formState.mode === 'disabled',
+        dirty: formDirty,
+        touched: formTouched,
+        submitting: isSubmitting,
+        submitted: formState.submitCount > 0,
+        valid: formValid,
+        get validSchema() {
+          // Expensive, computed only when accessed.
+          return isSchemaValid(formState.validated, formState.errors, formState.manualErrors);
+        },
+      }) as const,
+    [
+      formState.mode,
+      formState.submitCount,
+      formState.validated,
+      formState.errors,
+      formState.manualErrors,
+      formDirty,
+      formTouched,
+      isSubmitting,
+      formValid,
+    ]
+  );
 
   // The memoized form state data.
   const formData = useMemo(() => createImmutableData(formState.data), [formState.data]);
@@ -519,7 +503,8 @@ export function useFormState<T extends z.ZodMiniObject>(
   // Generates CSS form classes based on the form state.
   const formClasses = useCallback(
     (nameOrPath: FormPath<T>, classesOrOptions?: string | FormClassCallback | FormClassOptions) => {
-      const path = typeof nameOrPath === 'function' ? getPath(formState.data, nameOrPath) : null;
+      const path =
+        typeof nameOrPath === 'function' ? getPath(formStateRef.current.data, nameOrPath) : null;
       const pathNotation = path ? path.join('.') : (nameOrPath as string);
       const requiredPathNotation = path ? getPathNotation(path) : (nameOrPath as string);
 
@@ -577,7 +562,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       return classes.trim();
     },
     [
-      formState.data,
       formState.mode,
       formState.required,
       formState.touched,

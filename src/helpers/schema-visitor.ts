@@ -7,6 +7,8 @@ import { toUTC } from './date-formatter';
 // twice with room to spare while preventing an infinite loop on a pathological circular schema.
 const MAX_UNWRAP_DEPTH = 20;
 
+const DIGIT_RE = /^\d+$/;
+
 const requiredTypes: Readonly<Set<string>> = new Set([
   'object',
   'array',
@@ -155,7 +157,7 @@ const getSchema = (schema: z.ZodMiniType, path: string, extractEnum: boolean) =>
   for (const part of parts) {
     if (current instanceof z.ZodMiniObject) {
       current = current.shape[part] ? getBaseType(current.shape[part]) : z.undefined();
-    } else if (current instanceof z.ZodMiniArray && /^\d+$/.test(part)) {
+    } else if (current instanceof z.ZodMiniArray && DIGIT_RE.test(part)) {
       current = getBaseType(current.def.element);
     }
 
@@ -476,7 +478,7 @@ export const getPathAsString = <T extends object>(
 export const getPathNotation = <T extends z.ZodMiniObject>(path: FormStatePath<z.infer<T>>) => {
   return path
     .map((pathPart) => {
-      if (/^\d+$/.test(pathPart)) {
+      if (DIGIT_RE.test(pathPart)) {
         // array index is stored as 0
         return '0';
       }

@@ -2,33 +2,31 @@ import type { FormClassValue } from '../types/form-types';
 
 // Internal functions
 
-const resolveClassNames = (value: FormClassValue) => {
+const collectClassNames = (value: FormClassValue, out: string[]) => {
   if (!value) {
-    return '';
+    return;
   }
 
   if (typeof value === 'string') {
-    return value;
+    out.push(value);
+    return;
   }
 
   if (Array.isArray(value)) {
-    return classNames(...(value as FormClassValue[]));
+    for (const item of value as FormClassValue[]) {
+      collectClassNames(item, out);
+    }
+    return;
   }
 
   if (typeof value === 'object') {
     const obj = value as Record<string, unknown>;
-    let result = '';
-
     for (const key in obj) {
       if (obj[key]) {
-        result += result ? ` ${key}` : key;
+        out.push(key);
       }
     }
-
-    return result;
   }
-
-  return '';
 };
 
 // Public functions
@@ -43,15 +41,11 @@ const resolveClassNames = (value: FormClassValue) => {
  * @returns A `string` of space-separated class names, or an empty string if nothing resolved.
  */
 export const classNames = (...values: FormClassValue[]) => {
-  let result = '';
+  const parts: string[] = [];
 
   for (const value of values) {
-    const part = resolveClassNames(value);
-
-    if (part) {
-      result += result ? ` ${part}` : part;
-    }
+    collectClassNames(value, parts);
   }
 
-  return result;
+  return parts.join(' ');
 };

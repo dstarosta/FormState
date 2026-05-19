@@ -123,11 +123,15 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             isFieldDirty = value !== initialValue;
           }
 
-          const dirty = { ...prevState.dirty, [field]: isFieldDirty };
+          const dirty =
+            prevState.dirty[field] === isFieldDirty
+              ? prevState.dirty
+              : { ...prevState.dirty, [field]: isFieldDirty };
 
-          const touched = touch
-            ? { ...prevState.touched, [pathNotation]: true }
-            : { ...prevState.touched };
+          const touched =
+            touch && prevState.touched[pathNotation] !== true
+              ? { ...prevState.touched, [pathNotation]: true }
+              : prevState.touched;
 
           return diffedState(
             {

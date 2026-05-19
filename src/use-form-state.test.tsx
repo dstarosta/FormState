@@ -4213,7 +4213,7 @@ describe('useFormState', () => {
     });
 
     it('should watch the changes', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
 
       render(<FormComponent initialValue="Tom" watch />);
 

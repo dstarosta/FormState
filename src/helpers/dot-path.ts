@@ -1,25 +1,31 @@
 // This logic is based on the "dot-prop-immutable" package using strict TypeScript.
 
+const ESCAPED_DOT_RE = /(?:^|[^\\])\\$/;
+const ARRAY_INDEX_RE = /^\+?\d+$/;
+
 /**
  * Convert a dot-separated string into an array of property names.
  * Handles escaped dots (e.g., "a\\.b.c" becomes ["a.b", "c"])
  */
 function propToArray(prop: string) {
-  // eslint-disable-next-line unicorn/no-array-reduce
-  return prop.split('.').reduce<string[]>((ret, el, index, list) => {
-    const last = index > 0 && list[index - 1];
+  const segments = prop.split('.');
+  const result: string[] = [];
 
-    if (last && /(?:^|[^\\])\\$/.test(last)) {
-      const prev = ret.pop();
+  for (let i = 0; i < segments.length; i++) {
+    const el = segments[i] as string;
+    const last = i > 0 ? segments[i - 1] : undefined;
+
+    if (last && ESCAPED_DOT_RE.test(last)) {
+      const prev = result.pop();
       if (prev) {
-        ret.push(prev.slice(0, -1) + '.' + el);
+        result.push(prev.slice(0, -1) + '.' + el);
       }
     } else {
-      ret.push(el);
+      result.push(el);
     }
+  }
 
-    return ret;
-  }, []);
+  return result;
 }
 
 /**
@@ -31,7 +37,7 @@ function getArrayIndex(head: string, obj: unknown[]) {
     return Math.max(obj.length - 1, 0);
   }
 
-  if (!/^\+?\d+$/.test(head)) {
+  if (!ARRAY_INDEX_RE.test(head)) {
     throw new Error(`Array index '${head}' must be a non-negative integer.`);
   }
 
@@ -96,25 +102,26 @@ export function dotPathSet(obj: object, prop: string | number | string[], value:
   const setPropImmutableRec = (current: unknown, paths: string[], val: unknown, i: number) => {
     if (i < paths.length && paths[i] !== undefined) {
       const head = paths[i];
-      let clone: unknown;
       let actualHead: string | number = head;
+      const isArr = Array.isArray(current);
 
-      if (Array.isArray(current)) {
-        actualHead = getArrayIndex(head, current);
-        clone = [...(current as unknown[])];
-      } else {
-        clone = Object.assign({}, current as object);
+      if (isArr) {
+        actualHead = getArrayIndex(head, current as unknown[]);
       }
 
       const currentValue = (current as Record<string | number, unknown>)[actualHead];
       const nextValue = currentValue === undefined ? {} : currentValue;
+      const newValue = setPropImmutableRec(nextValue, paths, val, i + 1);
 
-      (clone as Record<string | number, unknown>)[actualHead] = setPropImmutableRec(
-        nextValue,
-        paths,
-        val,
-        i + 1
-      );
+      if (newValue === currentValue) {
+        return current;
+      }
+
+      const clone: unknown = isArr
+        ? [...(current as unknown[])]
+        : Object.assign({}, current as object);
+
+      (clone as Record<string | number, unknown>)[actualHead] = newValue;
 
       return clone;
     }
