@@ -231,6 +231,23 @@ export default defineConfig([
               <tr>
                 <td>
                   <a
+                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/no-inline-schema.md"
+                    target="_blank"
+                    ><code>no-inline-schema</code></a
+                  >
+                </td>
+                <td>
+                  Disallows constructing a schema inline as the first argument to
+                  <code>useFormState()</code> or <code>useFormStateContext()</code>. An inline
+                  schema is rebuilt on every render and invalidates the hook's internal caches and
+                  subscriptions — hoist the schema to module scope or memoize it.
+                </td>
+                <td>error</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <a
                     href="https://github.com/dstarosta/FormState/blob/master/docs/rules/no-watch-dependency.md"
                     target="_blank"
                     ><code>no-watch-dependency</code></a
