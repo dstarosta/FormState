@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
 import { formatErrors } from './helpers/error-formatter';
@@ -776,6 +776,79 @@ describe('form schema', () => {
 
     const result = await testSchema.safeParseAsync({ users: [{ name: 'Mike' }] });
     expect(result.success).toBe(true);
+  });
+
+  it('debounced validateAsync collapses rapid invocations to one predicate call', async () => {
+    vi.useFakeTimers();
+    try {
+      const predicate = vi.fn((obj: { name: string }) => Promise.resolve(obj.name === 'Mike'));
+
+      const testSchema = z.object({ name: z.formString() }).check(
+        z.validateAsync(predicate, {
+          path: 'name',
+          error: 'Name is not allowed',
+          debounceMs: 100,
+        })
+      );
+
+      const p1 = testSchema.safeParseAsync({ name: 'A' });
+      const p2 = testSchema.safeParseAsync({ name: 'B' });
+      const p3 = testSchema.safeParseAsync({ name: 'Mike' });
+
+      await vi.advanceTimersByTimeAsync(100);
+
+      const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
+
+      // Only the last call actually ran the predicate.
+      expect(predicate).toHaveBeenCalledTimes(1);
+      expect(predicate).toHaveBeenCalledWith({ name: 'Mike' });
+
+      // Cancelled calls resolve to the fallback (true = "valid"), so they don't
+      // surface a stale "Name is not allowed" error during typing.
+      expect(r1.success).toBe(true);
+      expect(r2.success).toBe(true);
+      expect(r3.success).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('debounced validateAsync surfaces the real result after the debounce window', async () => {
+    vi.useFakeTimers();
+    try {
+      const predicate = vi.fn((obj: { name: string }) => Promise.resolve(obj.name === 'Mike'));
+
+      const testSchema = z.object({ name: z.formString() }).check(
+        z.validateAsync(predicate, {
+          path: 'name',
+          error: 'Name is not allowed',
+          debounceMs: 100,
+        })
+      );
+
+      const pending = testSchema.safeParseAsync({ name: 'Xavier' });
+      await vi.advanceTimersByTimeAsync(100);
+      const result = await pending;
+
+      expect(predicate).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('non-debounced validateAsync runs the predicate every call', async () => {
+    const predicate = vi.fn(() => Promise.resolve(true));
+
+    const testSchema = z
+      .object({ name: z.formString() })
+      .check(z.validateAsync(predicate, { path: 'name', error: 'x' }));
+
+    await testSchema.safeParseAsync({ name: 'A' });
+    await testSchema.safeParseAsync({ name: 'B' });
+    await testSchema.safeParseAsync({ name: 'C' });
+
+    expect(predicate).toHaveBeenCalledTimes(3);
   });
 
   it('should validate some items in a ZodArray', () => {

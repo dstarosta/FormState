@@ -11,6 +11,7 @@ import type {
 } from './types/form-types';
 
 import { isValidDate, parseDate } from './helpers/date-formatter';
+import { debounceAsync } from './helpers/debouncer';
 import { cleanEmpty } from './helpers/state-manager';
 
 const EMPTY_STRING = '' as const;
@@ -916,6 +917,12 @@ export function validate<T>(
  *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
  * @param params.path - An optional `errors` object key to store the error message with.
  * @param params.error - An optional custom error message.
+ * @param params.debounceMs - An optional debounce interval in milliseconds. When set, rapid successive
+ *                            invocations collapse: a pending timer is cancelled on each new call and a new
+ *                            one is scheduled; the cancelled call resolves to the previously known result so
+ *                            the surrounding `safeParseAsync` can complete. NOTE: debounce state lives in the
+ *                            check's closure, so reusing the same `validateAsync` result across multiple
+ *                            concurrently-mounted forms will cause them to share the timer.
  * @returns The object schema.
  */
 export function validateAsync<T>(
@@ -924,6 +931,7 @@ export function validateAsync<T>(
     condition?: (errors: ZodValidationError[]) => boolean;
     path?: PropertyKey[] | PropertyKey;
     error?: string;
+    debounceMs?: number;
   }
 ): z.core.$ZodCheck<T>;
 
@@ -947,6 +955,7 @@ export function validateAsync<T>(
         condition?: (errors: ZodValidationError[]) => boolean;
         path?: PropertyKey[] | PropertyKey;
         error?: string;
+        debounceMs?: number;
       }
     | string
 ) {
@@ -954,8 +963,12 @@ export function validateAsync<T>(
   const condition = paramsIsError ? ALWAYS_VALIDATE : (params?.condition ?? ALWAYS_VALIDATE);
   const path = paramsIsError ? undefined : params?.path;
   const error = paramsIsError ? params : params?.error;
+  const debounceMs = paramsIsError ? 0 : (params?.debounceMs ?? 0);
 
-  return z.refine<T>(async (obj) => predicate(obj), {
+  const runPredicate =
+    debounceMs > 0 ? debounceAsync<[T], boolean>(predicate, debounceMs, true) : predicate;
+
+  return z.refine<T>(async (obj) => runPredicate(obj), {
     when: (payload) =>
       condition(
         payload.issues.map((issue) => ({

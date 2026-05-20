@@ -239,8 +239,8 @@ export default defineConfig([
                 <td>
                   Disallows constructing a schema inline as the first argument to
                   <code>useFormState()</code> or <code>useFormStateContext()</code>. An inline
-                  schema is rebuilt on every render and invalidates the hook's internal caches and
-                  subscriptions — hoist the schema to module scope or memoize it.
+                  schema is rebuilt on every render and invalidates the hook's subscriptions —
+                  hoist the schema to module scope or memoize it.
                 </td>
                 <td>error</td>
                 <td></td>
@@ -936,7 +936,7 @@ function App() {
           <p>
             Produced by <code>schema.toObject(data)</code> or
             <code>parseState(schema, obj, true).data</code>
-            — internal fields stripped, optional empties removed, <code>Date</code> values
+            — <code>symbol</code> fields stripped, empty strings removed, <code>Date</code> values
             serialized to strings via each field's configured <code>format</code>.
           </p>
           <div class="code-block">
@@ -2325,12 +2325,11 @@ const schema = z
             exactly.
           </p>
           <p>
-            <code>useFormState</code> automatically detects schemas containing async checks and
-            switches to <code>schema.safeParseAsync</code> for that pass. While an async validation
-            is in flight, <code>formStatus.validating</code> is <code>true</code> and
-            <code>formStatus.valid</code> is <code>null</code>. Stale results from superseded passes
-            are discarded via an internal request id, so rapid keystrokes do not produce
-            out-of-order errors.
+            <code>useFormState</code> detects async checks in the schema and runs them
+            automatically. While an async pass is in flight,
+            <code>formStatus.validating</code> is <code>true</code> and
+            <code>formStatus.valid</code> is <code>null</code>. Rapid keystrokes do not produce
+            out-of-order errors — only the latest pass surfaces.
           </p>
           <table class="prop-table">
             <thead>
@@ -2372,6 +2371,15 @@ const schema = z
                 <td>—</td>
                 <td class="prop-desc">Custom error message.</td>
               </tr>
+              <tr>
+                <td><code>debounceMs</code></td>
+                <td><code>number</code></td>
+                <td><code>0</code> (disabled)</td>
+                <td class="prop-desc">
+                  When greater than <code>0</code>, the predicate is debounced by this many
+                  milliseconds so it runs only once per quiet window, after the last call.
+                </td>
+              </tr>
             </tbody>
           </table>
           <div class="code-block">
@@ -2411,15 +2419,34 @@ const orderSchema = z
         error: 'Not enough stock for the selected quantity',
       }
     )
-  );</code></pre>
+  );
+
+// Debounced async check — collapses keystroke bursts to a single network call
+const usernameSchema = z.object({
+  username: z
+    .formString({ required: true })
+    .check(
+      z.validateAsync(
+        async (name) =&gt; {
+          const res = await fetch(`/api/usernames/${encodeURIComponent(name)}`);
+          const { available } = await res.json();
+          return available;
+        },
+        {
+          path: 'username',
+          error: 'Username is already taken',
+          // Wait 400ms of inactivity before hitting the server.
+          debounceMs: 400,
+        }
+      )
+    ),
+});</code></pre>
           </div>
           <div class="callout callout-info">
             <div class="callout-label">Tip</div>
             <p>
               Use <code>formStatus.validating</code> to render a spinner next to the submit button
-              or disable it while async checks are pending. <code>handleSubmit</code> also awaits
-              <code>safeParseAsync</code> internally, so async errors gate the submit pipeline
-              automatically.
+              or disable it while async checks are pending.
             </p>
           </div>
           <div class="callout callout-warn">
@@ -2903,7 +2930,7 @@ formState.patterns.get((path) =&gt; path.birthDate)    // 'yyyy-MM-dd'
           </div>
           <h3>Preparing data for an API</h3>
           <p>
-            <code>schema.toObject(data)</code> strips internal-only fields (like
+            <code>schema.toObject(data)</code> strips symbol fields (like
             <code>z.symbol()</code>) and removes optional fields whose value is an empty string,
             producing a clean object to send to your backend.
           </p>
@@ -3684,8 +3711,7 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
               <tr>
                 <td class="prop-desc">Reset handling</td>
                 <td class="prop-desc">
-                  Automatic — dispatches a <code>reset</code> action and re-syncs uncontrolled
-                  inputs
+                  Automatic — fields revert to their initial state on form reset
                 </td>
                 <td class="prop-desc">
                   Must wire <code>onReset={formHandlers.handleReset}</code> manually
@@ -3729,10 +3755,7 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
               </tr>
               <tr>
                 <td class="prop-desc"><code>useWatch</code> support</td>
-                <td class="prop-desc">
-                  Listens to <code>input</code>/<code>change</code> events to feed the internal
-                  watch store
-                </td>
+                <td class="prop-desc">Automatic — <code>useWatch</code> subscribers stay in sync</td>
                 <td class="prop-desc"><code>formHooks.useWatch</code> will not receive updates</td>
               </tr>
               <tr>
@@ -3757,12 +3780,9 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
           </table>
           <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
             <li>
-              Certain versions of React and Next.js reset uncontrolled form controls after a server
-              action completes. Because FormState manages all field values internally, this reset is
-              never desirable — the fields would momentarily revert to their HTML defaults before
-              FormState can restore them.
-              <code>&lt;FormResetBlocker&gt;</code> intercepts and cancels that reset at the DOM
-              level.
+              React 19 resets form fields after the submit, which is undesirable when the form is
+              driven by client-side state. <code>&lt;FormResetBlocker&gt;</code> intercepts and
+              cancels that reset.
             </li>
           </ol>
           <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
@@ -7293,7 +7313,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             </li>
             <li>
               <strong>Replace-style updates for async data.</strong>
-              <code>formActions.replace(data)</code> dispatches new data while preserving schema
+              <code>formActions.replace(data)</code> swaps in new data while preserving schema
               invariants — dirty tracking, validation, and derived state continue to work correctly
               across the swap.
             </li>

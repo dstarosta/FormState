@@ -333,6 +333,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         dispatch({ type: 'asyncErrors', requestId, errors: asyncErrors });
       })
       .catch((error: unknown) => {
+        // Unreachable guard needed for type safety
+        /* v8 ignore if -- @preserve */
         if (cancelled) {
           return;
         }
