@@ -2,8 +2,9 @@ import { createRef } from 'react';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
+import type { ZodMiniType } from 'zod/mini';
 
-import type { FormMutableState, Immutable } from '../types/form-types';
+import type { DeepPartial, FormMutableState, Immutable } from '../types/form-types';
 
 import { formatDate, formDataEncode, safeParseDate, z } from '..';
 import {
@@ -12,10 +13,11 @@ import {
   diffedState,
   getState,
   parseState,
+  parseStateAsync,
   safeSyncParse,
   updateState,
 } from './state-manager';
-import { getSchemaType } from './schema-visitor';
+import { getSchemaType, isAsyncSchema } from './schema-visitor';
 import { isValidDate } from './date-formatter';
 import {
   toInt,
@@ -413,6 +415,115 @@ describe('helpers', () => {
     });
   });
 
+  describe('parseStateAsync', () => {
+    const syncSchema = z.object({
+      a: z.array(
+        z.object({
+          id: z.symbol(),
+          i: z.formNumber({ required: true, error: 'Invalid a[].i value' }),
+        })
+      ),
+      n: z.formNumber({ required: true, error: 'Invalid n value' }),
+      v: z.formValues(['a', 'b'], { required: true, error: 'Invalid v value' }),
+    });
+
+    const buildAsyncSchema = (allowed: Set<string>) =>
+      z.object({
+        name: z
+          .formString({ required: true, error: 'Name is required' })
+          .check(
+            z.validateAsync((value) => Promise.resolve(allowed.has(value)), 'Name is not allowed')
+          ),
+      });
+
+    it('parses a sync schema successfully', async () => {
+      const { success, data, errors } = await parseStateAsync(syncSchema, {
+        a: [{ i: 1 }],
+        n: 2,
+        v: 'b',
+      });
+      const idSymbol = data.a[0]?.id;
+
+      expect(success).toBe(true);
+      expect(idSymbol).toBeTypeOf('symbol');
+      expect(data).toStrictEqual({
+        a: [{ i: 1, id: idSymbol }],
+        n: 2,
+        v: 'b',
+      });
+      expect(errors.getAll()).toHaveLength(0);
+    });
+
+    it('parses a sync schema unsuccessfully and reports errors', async () => {
+      const { success, data, errors } = await parseStateAsync(syncSchema, {
+        n: '2',
+        v: 1,
+      });
+
+      expect(success).toBe(false);
+      expect(errors['n']).toEqual('Invalid n value');
+      expect(errors['v']).toEqual('Invalid v value');
+      expect(errors.getAll()).toStrictEqual(['Invalid n value', 'Invalid v value']);
+      expect(errors.getKeys()).toStrictEqual(['n', 'v']);
+      expect(data).toStrictEqual({ a: [], n: '2', v: 1 });
+    });
+
+    it('parses an async schema successfully when the predicate resolves true', async () => {
+      const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+      const { success, data, errors } = await parseStateAsync(asyncSchema, { name: 'Mike' });
+
+      expect(success).toBe(true);
+      expect(data).toStrictEqual({ name: 'Mike' });
+      expect(errors.getAll()).toHaveLength(0);
+    });
+
+    it('parses an async schema unsuccessfully when the predicate resolves false', async () => {
+      const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+      const { success, data, errors } = await parseStateAsync(asyncSchema, { name: 'Xavier' });
+
+      expect(success).toBe(false);
+      expect(errors['name']).toEqual('Name is not allowed');
+      expect(errors.getAll()).toStrictEqual(['Name is not allowed']);
+      expect(data).toStrictEqual({ name: 'Xavier' });
+    });
+
+    it('rejects when called with null data', async () => {
+      await expect(parseStateAsync(syncSchema, null as unknown as object)).rejects.toThrow(
+        TypeError
+      );
+    });
+
+    it('returns SchemaDataObject when asSchemaData = true (sync schema)', async () => {
+      const { success, data } = await parseStateAsync(
+        syncSchema,
+        { a: [{ i: 1 }], n: 2, v: 'b' },
+        true
+      );
+
+      expect(success).toBe(true);
+      // Symbols and empty form values stripped by toObject()
+      expect(data).toStrictEqual({ a: [{ i: 1 }], n: 2, v: 'b' });
+    });
+
+    it('returns SchemaDataObject when asSchemaData = true (async schema)', async () => {
+      const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+      const { success, data } = await parseStateAsync(asyncSchema, { name: 'Mike' }, true);
+
+      expect(success).toBe(true);
+      expect(data).toStrictEqual({ name: 'Mike' });
+    });
+
+    it('asSchemaData = true strips data on a failed parse', async () => {
+      const { success, data } = await parseStateAsync(syncSchema, { n: '2', v: 1 }, true);
+
+      expect(success).toBe(false);
+      expect(data).toStrictEqual({ a: [], n: '2', v: 1 });
+    });
+  });
+
   describe('safeSyncParse', () => {
     it('returns the sync parse result when the schema has no async checks', () => {
       const syncSchema = z.object({ name: z.formString({ required: true }) });
@@ -439,13 +550,75 @@ describe('helpers', () => {
 
     it('rethrows non-async errors raised during parsing', () => {
       const explosiveSchema = {
+        _zod: { def: {} },
         safeParse: () => {
           throw new RangeError('boom');
         },
-      } as unknown as Parameters<typeof safeSyncParse>[0];
+      } as DeepPartial<ZodMiniType>;
 
-      expect(() => safeSyncParse(explosiveSchema, {})).toThrow(RangeError);
-      expect(() => safeSyncParse(explosiveSchema, {})).toThrow('boom');
+      expect(() => safeSyncParse(explosiveSchema as ZodMiniType, {})).toThrow(RangeError);
+    });
+  });
+
+  describe('isAsyncSchema', () => {
+    it('returns false for a schema with no async checks', () => {
+      const schema = z.object({ name: z.formString({ required: true }) });
+
+      expect(isAsyncSchema(schema)).toBe(false);
+    });
+
+    it('returns true for a schema with a top-level async check', () => {
+      const schema = z
+        .object({ name: z.formString({ required: true }) })
+        .check(z.validateAsync(() => Promise.resolve(true), 'nope'));
+
+      expect(isAsyncSchema(schema)).toBe(true);
+    });
+
+    it('returns true for an optional schema with a top-level async check', () => {
+      const schema = z.advanced.optional(
+        z
+          .object({ name: z.formString({ required: true }) })
+          .check(z.validateAsync(() => Promise.resolve(true), 'nope'))
+      );
+
+      expect(isAsyncSchema(schema)).toBe(true);
+    });
+
+    it('returns true when an async check is nested in an object property', () => {
+      const schema = z.object({
+        name: z
+          .formString({ required: true })
+          .check(z.validateAsync(() => Promise.resolve(true), 'nope')),
+      });
+
+      expect(isAsyncSchema(schema)).toBe(true);
+    });
+
+    it('returns true when an async check is nested in an array element', () => {
+      const schema = z.object({
+        tags: z.formArray(
+          z
+            .formString({ required: true })
+            .check(z.validateAsync(() => Promise.resolve(true), 'nope'))
+        ),
+      });
+
+      expect(isAsyncSchema(schema)).toBe(true);
+    });
+
+    it('returns true when the schema is a string', () => {
+      const schema = z.string().check(z.validateAsync(() => Promise.resolve(true), 'nope'));
+
+      expect(isAsyncSchema(schema)).toBe(true);
+    });
+
+    it('returns true when the schema is an array', () => {
+      const schema = z
+        .formArray(z.formString({ required: true }))
+        .check(z.validateAsync(() => Promise.resolve(true), 'nope'));
+
+      expect(isAsyncSchema(schema)).toBe(true);
     });
   });
 

@@ -24,6 +24,8 @@ const requiredTypes: Readonly<Set<string>> = new Set([
   'string',
 ]);
 
+const asyncSchemaCache = new WeakMap<z.ZodMiniType, boolean>();
+
 // Private functions
 
 const getSchemaLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
@@ -172,6 +174,50 @@ const getSchema = (schema: z.ZodMiniType, path: string, extractEnum: boolean) =>
   }
 
   return current;
+};
+
+const hasAsyncChecksOnSchema = (schema: z.ZodMiniType): boolean => {
+  const checks = (schema._zod.def as { checks?: { _zod: { def: { fn?: unknown } } }[] }).checks;
+
+  if (Array.isArray(checks)) {
+    for (const check of checks) {
+      const fn = check._zod.def.fn;
+      if (typeof fn === 'function' && fn.constructor.name === 'AsyncFunction') {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
+const hasAsyncChecks = (schema: z.ZodMiniType): boolean => {
+  if (hasAsyncChecksOnSchema(schema)) {
+    return true;
+  }
+
+  const baseSchema = getBaseType(schema);
+
+  if (baseSchema !== schema && hasAsyncChecksOnSchema(baseSchema)) {
+    return true;
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray) {
+    if (isAsyncSchema(baseSchema.def.element as z.ZodMiniType)) {
+      return true;
+    }
+  } else if (baseSchema instanceof z.ZodMiniObject) {
+    for (const prop in baseSchema.shape) {
+      if (
+        Object.prototype.hasOwnProperty.call(baseSchema.shape, prop) &&
+        isAsyncSchema(baseSchema.shape[prop] as z.ZodMiniType)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 };
 
 // Internal functions
@@ -398,6 +444,17 @@ export const collectPatterns = <T extends z.ZodMiniType>(
   recursiveCollect(baseSchema, patterns, key, collectPatterns);
 
   return patterns as Record<keyof z.infer<T>, string | undefined>;
+};
+
+export const isAsyncSchema = (schema: z.ZodMiniType): boolean => {
+  let cached = asyncSchemaCache.get(schema);
+
+  if (cached === undefined) {
+    cached = hasAsyncChecks(schema);
+    asyncSchemaCache.set(schema, cached);
+  }
+
+  return cached;
 };
 
 export const collectDescriptions = <T extends z.ZodMiniType>(

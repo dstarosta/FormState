@@ -239,8 +239,8 @@ export default defineConfig([
                 <td>
                   Disallows constructing a schema inline as the first argument to
                   <code>useFormState()</code> or <code>useFormStateContext()</code>. An inline
-                  schema is rebuilt on every render and invalidates the hook's subscriptions —
-                  hoist the schema to module scope or memoize it.
+                  schema is rebuilt on every render and invalidates the hook's subscriptions — hoist
+                  the schema to module scope or memoize it.
                 </td>
                 <td>error</td>
                 <td></td>
@@ -2250,9 +2250,14 @@ z.formArray(z.formNumber(), { required: false })</code></pre>
             <tbody>
               <tr>
                 <td><code>predicate</code></td>
-                <td><code>(item: T) =&gt; boolean</code></td>
+                <td><code>(item, prevItem?, prevResult?) =&gt; boolean</code></td>
                 <td>—</td>
-                <td class="prop-desc">Returns <code>true</code> when the value is valid.</td>
+                <td class="prop-desc">
+                  Returns <code>true</code> when the value is valid. <code>prevItem</code> and
+                  <code>prevResult</code> hold the input and result from the previous call (both
+                  <code>undefined</code> on first call); return <code>prevResult</code> to skip
+                  recomputation when relevant fields haven't changed.
+                </td>
               </tr>
               <tr>
                 <td><code>condition</code></td>
@@ -2312,6 +2317,38 @@ const schema = z
       (data) =&gt; !data.endDate || !data.startDate || data.endDate &gt; data.startDate,
       { path: 'endDate', error: 'End date must be after start date' }
     )
+  );
+
+// Skip a complex validation when no relevant fields were changed.
+const schema = z
+  .strictObject({
+    id: z.formString(),
+    firstName: z.formString(),
+    lastName: z.formString(),
+  })
+  .check(
+    z.validate(
+      (data, prevData, prevResult) =&gt; {
+        if (
+          prevResult !== undefined &amp;&amp;
+          data.firstName === prevData?.firstName &amp;&amp;
+          data.lastName === prevData.lastName
+        ) {
+          return prevResult;
+        }
+
+        // an intentionally over-complicated validation here
+        let count = 0;
+        for (const char of data.lastName) {
+          count++;
+        }
+        for (const char of data.lastName) {
+          count++;
+        }
+        return count &lt;= 30;
+      },
+      { path: 'lastName', error: 'Full name must be 30 characters or less.' }
+    )
   );</code></pre>
           </div>
 
@@ -2326,10 +2363,9 @@ const schema = z
           </p>
           <p>
             <code>useFormState</code> detects async checks in the schema and runs them
-            automatically. While an async pass is in flight,
-            <code>formStatus.validating</code> is <code>true</code> and
-            <code>formStatus.valid</code> is <code>null</code>. Rapid keystrokes do not produce
-            out-of-order errors — only the latest pass surfaces.
+            automatically. While an async pass is in flight, <code>formStatus.validating</code> is
+            <code>true</code> and <code>formStatus.valid</code> is <code>null</code>. Rapid
+            keystrokes do not produce out-of-order errors — only the latest pass surfaces.
           </p>
           <table class="prop-table">
             <thead>
@@ -2343,9 +2379,14 @@ const schema = z
             <tbody>
               <tr>
                 <td><code>predicate</code></td>
-                <td><code>(item: T) =&gt; Promise&lt;boolean&gt;</code></td>
+                <td><code>(item, prevItem?, prevResult?) =&gt; Promise&lt;boolean&gt;</code></td>
                 <td>—</td>
-                <td class="prop-desc">Resolves to <code>true</code> when the value is valid.</td>
+                <td class="prop-desc">
+                  Resolves to <code>true</code> when the value is valid. <code>prevItem</code> and
+                  <code>prevResult</code> hold the input and result from the previous call (both
+                  <code>undefined</code> on first call); return <code>prevResult</code> to skip
+                  expensive recomputation (e.g. network calls) when relevant fields haven't changed.
+                </td>
               </tr>
               <tr>
                 <td><code>condition</code></td>
@@ -2384,13 +2425,17 @@ const schema = z
           </table>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">// Field-level async check — verify the username is not already taken
+            <pre><code class="language-tsx">// Field-level async check — verify the username is not already taken.
+// Skip the network call when `name` hasn't changed since the last pass.
 const schema = z.object({
   username: z
     .formString({ required: true, error: 'Username is required' })
     .check(
       z.validateAsync(
-        async (name) =&gt; {
+        async (name, prevName, prevResult) =&gt; {
+          if (prevResult !== undefined &amp;&amp; name === prevName) {
+            return prevResult;
+          }
           const res = await fetch(`/api/usernames/${encodeURIComponent(name)}`);
           const { available } = await res.json();
           return available;
@@ -2930,9 +2975,9 @@ formState.patterns.get((path) =&gt; path.birthDate)    // 'yyyy-MM-dd'
           </div>
           <h3>Preparing data for an API</h3>
           <p>
-            <code>schema.toObject(data)</code> strips symbol fields (like
-            <code>z.symbol()</code>) and removes optional fields whose value is an empty string,
-            producing a clean object to send to your backend.
+            <code>schema.toObject(data)</code> strips symbol fields (like <code>z.symbol()</code>)
+            and removes optional fields whose value is an empty string, producing a clean object to
+            send to your backend.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -3592,6 +3637,30 @@ formActions.validate(
               as the user submits the form or runs full form validation.
             </p>
           </div>
+          <h3>Validating async schemas with <code>validateAsync</code></h3>
+          <p>
+            If your schema contains async checks (for example,
+            <code>z.validateAsync</code> for server-side uniqueness), use
+            <code>formActions.validateAsync</code> instead of <code>validate</code>. It resolves to
+            <code>true</code> when the form is valid and <code>false</code>
+            otherwise.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">const isValid = await formActions.validateAsync();
+
+if (!isValid) {
+  // Branch on isValid — formState.errors and formStatus.valid in this
+  // closure are from the previous render and may not reflect the result.
+  return;
+}</code></pre>
+          </div>
+          <p>
+            <code>validateAsync</code> also works on sync schemas, so it's safe to use whenever you
+            want to await a boolean result. For full form submission with an async schema, use
+            <code>formHandlers.handleSubmit</code> — it already awaits validation before submitting
+            the form.
+          </p>
           <h3>Touching fields to reveal errors</h3>
           <p>
             Errors are computed on every change, but you typically only show them after the user has
@@ -3755,7 +3824,9 @@ formActions.focus('email', { errorKey: 'email' });</code></pre>
               </tr>
               <tr>
                 <td class="prop-desc"><code>useWatch</code> support</td>
-                <td class="prop-desc">Automatic — <code>useWatch</code> subscribers stay in sync</td>
+                <td class="prop-desc">
+                  Automatic — <code>useWatch</code> subscribers stay in sync
+                </td>
                 <td class="prop-desc"><code>formHooks.useWatch</code> will not receive updates</td>
               </tr>
               <tr>
@@ -5211,6 +5282,20 @@ if (result.success) {
   // Still use the coerced data if errors are non-critical
   formActions.replace(result.data);
 }</code></pre>
+          </div>
+          <div class="callout callout-warning">
+            <div class="callout-label">Async schemas</div>
+            <p>
+              If your schema contains async checks (such as <code>z.validateAsync</code>),
+              <code>parseState</code> will throw — Zod's synchronous parse can't resolve a promise.
+              Use <code>parseStateAsync</code> instead — same API, returns a promise.
+            </p>
+            <div class="code-block">
+              <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+              <pre><code class="language-tsx">import { parseStateAsync } from 'form-state';
+
+const result = await parseStateAsync(formSchema, apiResponse);</code></pre>
+            </div>
           </div>
         </section>
         <section class="section" id="nextjs">

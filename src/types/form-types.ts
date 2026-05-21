@@ -124,6 +124,7 @@ export type FormAction<T extends object> =
         touch: boolean;
         validate: boolean;
       };
+      fromDebounce?: boolean;
     }
   | {
       type: 'replace';
@@ -162,6 +163,10 @@ export type FormAction<T extends object> =
   | {
       type: 'asyncErrors';
       requestId: number;
+      errors: Record<keyof T | '', string | undefined>;
+    }
+  | {
+      type: 'asyncValidate';
       errors: Record<keyof T | '', string | undefined>;
     }
   | { type: 'setMode'; mode: FormMode };
@@ -1289,6 +1294,24 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
        */
       (options?: FormValidateOptions<T>): void;
     };
+    /**
+     * Async counterpart to `validate` for schemas with async checks
+     * (e.g. `z.validateAsync`). Use for programmatic validation only — for
+     * form submission with async schemas, use `handleSubmit` which already
+     * awaits async parsing.
+     *
+     * Resolves to `true` when the form state is valid (no errors, including
+     * manual errors), `false` otherwise. After the promise resolves,
+     * `formState` and `formStatus` also reflect the validation result.
+     *
+     * @example
+     * const isValid = await formActions.validateAsync();
+     *
+     * if (!isValid) {
+     *   // react immediately without reading from a possibly stale closure
+     * }
+     */
+    validateAsync: () => Promise<boolean>;
     /**
      * Marks the form as dirty with an arbitrary `string` key.
      *

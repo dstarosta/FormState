@@ -1108,11 +1108,8 @@ describe('useFormState', () => {
     });
 
     it('should surface an async predicate rejection as a root error and unfreeze validating', async () => {
-      // The sync probe (safeSyncParse) invokes the predicate to detect async-ness
-      // and abandons the returned Promise after Zod throws $ZodAsyncError. If the
-      // predicate's Promise then rejects, the rejection is unhandled. Swallow the
-      // expected 'Network down' so the test runner doesn't flag it.
       process.on('unhandledRejection', swallowNetworkDown);
+
       try {
         const rejectingSchema = z.object({
           name: z.formString({ required: true }).check(
@@ -1150,13 +1147,11 @@ describe('useFormState', () => {
     });
 
     it('should discard stale async results when superseded by a newer change', async () => {
-      // 'Slow' is disallowed and resolves late; 'Fast' is allowed and resolves early.
-      // If the stale Slow result lands after the Fast result, it would inject a
-      // bogus "Name is not allowed" error into a form that should be valid.
       const delays = new Map<string, number>([
         ['Slow', 60],
         ['Fast', 5],
       ]);
+
       const allowed = new Set(['Fast']);
       const asyncSchema = z.object({
         name: z.formString({ required: true, error: 'Name is required' }).check(
@@ -1182,7 +1177,6 @@ describe('useFormState', () => {
         })
       );
 
-      // Switch to 'Fast' before the in-flight 'Slow' pass settles.
       act(() => {
         result.current.formActions.change('name', 'Fast');
       });
@@ -1195,9 +1189,6 @@ describe('useFormState', () => {
       expect(result.current.formState.data.name).toBe('Fast');
       expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
 
-      // Wait past the Slow delay (60ms) so the stale promise resolves. If the
-      // stale result weren't discarded, it would inject the "not allowed" error
-      // into a form that should remain valid.
       await act(async () => {
         await new Promise((resolve) => {
           setTimeout(resolve, 100);
@@ -1207,6 +1198,358 @@ describe('useFormState', () => {
       expect(result.current.formStatus.valid).toBe(true);
       expect(result.current.formState.data.name).toBe('Fast');
       expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+    });
+
+    describe('manual errors with async schemas', () => {
+      it('should not flip validating when setError is called on an async schema', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Mike' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        act(() => {
+          result.current.formActions.setError('serverError', 'Server failure');
+        });
+
+        expect(result.current.formStatus.validating).toBe(false);
+        expect(result.current.formState.errors.getManual('serverError')).toBe('Server failure');
+      });
+
+      it('should not flip validating when setError is called with validate:true on an async schema', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Mike' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        act(() => {
+          result.current.formActions.setError('serverError', 'Server failure', { validate: true });
+        });
+
+        expect(result.current.formStatus.validating).toBe(false);
+        expect(result.current.formState.errors.getManual('serverError')).toBe('Server failure');
+      });
+
+      it('should not flip validating when clearManualErrors is called on an async schema', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Mike' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        act(() => {
+          result.current.formActions.setError('serverError', 'Server failure');
+        });
+
+        expect(result.current.formStatus.validating).toBe(false);
+
+        act(() => {
+          result.current.formActions.clearManualErrors({ validate: true });
+        });
+
+        expect(result.current.formStatus.validating).toBe(false);
+        expect(result.current.formState.errors.getManual('serverError')).toBeUndefined();
+      });
+
+      it('should preserve existing sync errors when setError is called on an async schema', async () => {
+        const asyncSchema = z.object({
+          name: z
+            .formString(
+              { required: true, error: 'Name is required' },
+              z.maxLength(5, 'Name too long')
+            )
+            .check(
+              z.validateAsync((name) => Promise.resolve(name === 'Mike'), 'Name is not allowed')
+            ),
+        });
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Christopher' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name too long|Name is not allowed'
+        );
+
+        act(() => {
+          result.current.formActions.setError('serverError', 'Server failure', { validate: true });
+        });
+
+        expect(result.current.formStatus.validating).toBe(false);
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name too long|Name is not allowed'
+        );
+        expect(result.current.formState.errors.getManual('serverError')).toBe('Server failure');
+      });
+
+      it('should preserve existing sync errors when clearManualErrors is called on an async schema', async () => {
+        const asyncSchema = z.object({
+          name: z
+            .formString(
+              { required: true, error: 'Name is required' },
+              z.maxLength(5, 'Name too long')
+            )
+            .check(
+              z.validateAsync((name) => Promise.resolve(name === 'Mike'), 'Name is not allowed')
+            ),
+        });
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Christopher' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        act(() => {
+          result.current.formActions.setError('serverError', 'Server failure');
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name too long|Name is not allowed'
+        );
+
+        act(() => {
+          result.current.formActions.clearManualErrors({ validate: true });
+        });
+
+        expect(result.current.formStatus.validating).toBe(false);
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name too long|Name is not allowed'
+        );
+        expect(result.current.formState.errors.getManual('serverError')).toBeUndefined();
+      });
+
+      it('should preserve existing async errors when setError is called', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Xavier' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+
+        act(() => {
+          result.current.formActions.setError('serverError', 'Server failure');
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+        expect(result.current.formState.errors.getManual('serverError')).toBe('Server failure');
+      });
+
+      it('should preserve existing async errors when clearManualErrors is called', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Xavier' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        act(() => {
+          result.current.formActions.setError('serverError', 'Server failure');
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+
+        act(() => {
+          result.current.formActions.clearManualErrors({ validate: true });
+        });
+
+        expect(result.current.formStatus.validating).toBe(false);
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+        expect(result.current.formState.errors.getManual('serverError')).toBeUndefined();
+      });
+    });
+
+    describe('validateAsync', () => {
+      it('should resolve true on a passing async schema', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, { initialData: { name: 'Mike' } })
+        );
+
+        let isValid: boolean | undefined;
+
+        await act(async () => {
+          isValid = await result.current.formActions.validateAsync();
+        });
+
+        expect(isValid).toBe(true);
+        expect(result.current.formStatus.valid).toBe(true);
+        expect(result.current.formState.errors.getAll()).toStrictEqual([]);
+      });
+
+      it('should resolve false on a failing async schema', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, { initialData: { name: 'Xavier' } })
+        );
+
+        let isValid: boolean | undefined;
+
+        await act(async () => {
+          isValid = await result.current.formActions.validateAsync();
+        });
+
+        expect(isValid).toBe(false);
+        expect(result.current.formStatus.valid).toBe(false);
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+      });
+
+      it('should work on a sync schema too', async () => {
+        const syncSchema = z.object({
+          name: z.formString({ required: true, error: 'Name is required' }),
+        });
+
+        const { result } = renderHook(() =>
+          useFormState(syncSchema, { initialData: { name: '' } })
+        );
+
+        let isValid: boolean | undefined;
+
+        await act(async () => {
+          isValid = await result.current.formActions.validateAsync();
+        });
+
+        expect(isValid).toBe(false);
+        expect(result.current.formStatus.valid).toBe(false);
+        expect(result.current.formState.errors.get((path) => path.name)).toBe('Name is required');
+      });
+
+      it('should reflect updated data after a change', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, { initialData: { name: 'Xavier' } })
+        );
+
+        let firstResult: boolean | undefined;
+        await act(async () => {
+          firstResult = await result.current.formActions.validateAsync();
+        });
+        expect(firstResult).toBe(false);
+        expect(result.current.formStatus.valid).toBe(false);
+
+        act(() => {
+          result.current.formActions.change('name', 'Mike');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        let secondResult: boolean | undefined;
+
+        await act(async () => {
+          secondResult = await result.current.formActions.validateAsync();
+        });
+        expect(secondResult).toBe(true);
+        expect(result.current.formStatus.valid).toBe(true);
+      });
+
+      it('should resolve false when a manual error is present even if async parse passes', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, { initialData: { name: 'Mike' } })
+        );
+
+        act(() => {
+          result.current.formActions.setError('name', 'Manual block');
+        });
+
+        let isValid: boolean | undefined;
+
+        await act(async () => {
+          isValid = await result.current.formActions.validateAsync();
+        });
+
+        expect(isValid).toBe(false);
+        expect(result.current.formStatus.valid).toBe(false);
+        expect(result.current.formState.errors.get((path) => path.name)).toBe('Manual block');
+      });
+
+      it('should not touch fields for errors that do not map to schema data (e.g. root errors)', async () => {
+        const rootErrorSchema = z
+          .object({
+            name: z.formString({ required: true, error: 'Name is required' }),
+          })
+          .check(z.validateAsync(() => Promise.resolve(false), 'Root rule failed'));
+
+        const { result } = renderHook(() =>
+          useFormState(rootErrorSchema, { initialData: { name: 'Mike' } })
+        );
+
+        let isValid: boolean | undefined;
+
+        await act(async () => {
+          isValid = await result.current.formActions.validateAsync();
+        });
+
+        expect(isValid).toBe(false);
+        expect(result.current.formStatus.valid).toBe(false);
+        expect(result.current.formState.errors.getAll()).toContain('Root rule failed');
+        expect(Object.keys(result.current.formState.touched)).not.toContain('');
+        expect(result.current.formState.touched['name' as never]).toBeFalsy();
+      });
     });
   });
 

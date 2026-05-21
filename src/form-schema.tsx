@@ -834,8 +834,10 @@ export function formArray<T extends z.ZodMiniType>(
 /**
  * Creates a full schema validation check.
  *
- * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
- *                    whether the schema object passes the rule.
+ * @param predicate - A function that accepts the current schema object instance and, on subsequent invocations,
+ *                    the previous instance and the previous result. Returns a `bool` value indicating whether
+ *                    the schema object passes the rule. To skip recomputation when relevant fields haven't
+ *                    changed, return `prevResult` directly.
  * @param params.condition - An optional function that returns a `boolean` value indicating whether to perform
  *                           the validation based on the existing schema validation errors.
  *
@@ -845,7 +847,11 @@ export function formArray<T extends z.ZodMiniType>(
  * @returns The object schema.
  */
 export function validate<T>(
-  predicate: (item: NoInfer<T>) => boolean,
+  predicate: (
+    item: NoInfer<T>,
+    prevItem: NoInfer<T> | undefined,
+    prevResult: boolean | undefined
+  ) => boolean,
   params?: {
     condition?: (errors: ZodValidationError[]) => boolean;
     path?: PropertyKey[] | PropertyKey;
@@ -856,18 +862,27 @@ export function validate<T>(
 /**
  * Creates a full schema validation check.
  *
- * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
- *                    whether the schema object passes the rule.
+ * @param predicate - A function that accepts the current schema object instance and, on subsequent invocations,
+ *                    the previous instance and the previous result. Returns a `bool` value indicating whether
+ *                    the schema object passes the rule.
  * @param error - A custom error message.
  * @returns The object schema.
  */
 export function validate<T>(
-  predicate: (item: NoInfer<T>) => boolean,
+  predicate: (
+    item: NoInfer<T>,
+    prevItem: NoInfer<T> | undefined,
+    prevResult: boolean | undefined
+  ) => boolean,
   error: string
 ): z.core.$ZodCheck<T>;
 
 export function validate<T>(
-  predicate: (item: NoInfer<T>) => boolean,
+  predicate: (
+    item: NoInfer<T>,
+    prevItem: NoInfer<T> | undefined,
+    prevResult: boolean | undefined
+  ) => boolean,
   params?:
     | {
         condition?: (errors: ZodValidationError[]) => boolean;
@@ -881,37 +896,50 @@ export function validate<T>(
   const path = paramsIsError ? undefined : params?.path;
   const error = paramsIsError ? params : params?.error;
 
-  return z.refine<T>((obj) => predicate(obj), {
-    when: (payload) =>
-      condition(
-        payload.issues.map((issue) => ({
-          ...issue,
-          message:
-            issue.message ||
-            (typeof issue.params === 'object' &&
-            issue.params !== null &&
-            'message' in issue.params &&
-            typeof issue.params.message === 'string'
-              ? issue.params['message']
-              : 'Invalid input'),
-          pathNotation:
-            issue.path
-              ?.filter((part) => typeof part !== 'symbol')
-              .map((part) => part.toString())
-              .join('.') ?? '',
-        }))
-      ),
-    path: Array.isArray(path) || path === undefined ? path : [path],
-    params: error ? { message: error } : undefined,
-    error,
-  });
+  let prevItem: T | undefined;
+  let prevResult: boolean | undefined;
+
+  return z.refine<T>(
+    (obj) => {
+      const result = predicate(obj, prevItem, prevResult);
+      prevItem = obj;
+      prevResult = result;
+      return result;
+    },
+    {
+      when: (payload) =>
+        condition(
+          payload.issues.map((issue) => ({
+            ...issue,
+            message:
+              issue.message ||
+              (typeof issue.params === 'object' &&
+              issue.params !== null &&
+              'message' in issue.params &&
+              typeof issue.params.message === 'string'
+                ? issue.params['message']
+                : 'Invalid input'),
+            pathNotation:
+              issue.path
+                ?.filter((part) => typeof part !== 'symbol')
+                .map((part) => part.toString())
+                .join('.') ?? '',
+          }))
+        ),
+      path: Array.isArray(path) || path === undefined ? path : [path],
+      params: error ? { message: error } : undefined,
+      error,
+    }
+  );
 }
 
 /**
  * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
  *
- * @param predicate - A function that accepts a schema object instance and returns a `Promise<boolean>` indicating
- *                    whether the schema object passes the rule.
+ * @param predicate - A function that accepts the current schema object instance and, on subsequent invocations,
+ *                    the previous instance and the previous result. Returns a `Promise<boolean>` indicating
+ *                    whether the schema object passes the rule. To skip recomputation when relevant fields
+ *                    haven't changed, return `prevResult` directly.
  * @param params.condition - An optional function that accepts the schema's errors. It returns a `bool` value
  *                           indicating whether the validation should run for the current state of the errors.
  *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
@@ -926,7 +954,11 @@ export function validate<T>(
  * @returns The object schema.
  */
 export function validateAsync<T>(
-  predicate: (item: NoInfer<T>) => Promise<boolean>,
+  predicate: (
+    item: NoInfer<T>,
+    prevItem: NoInfer<T> | undefined,
+    prevResult: boolean | undefined
+  ) => Promise<boolean>,
   params?: {
     condition?: (errors: ZodValidationError[]) => boolean;
     path?: PropertyKey[] | PropertyKey;
@@ -938,18 +970,27 @@ export function validateAsync<T>(
 /**
  * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
  *
- * @param predicate - A function that accepts a schema object instance and returns a `Promise<boolean>` indicating
+ * @param predicate - A function that accepts the current schema object instance and, on subsequent invocations,
+ *                    the previous instance and the previous result. Returns a `Promise<boolean>` indicating
  *                    whether the schema object passes the rule.
  * @param error - A custom error message.
  * @returns The object schema.
  */
 export function validateAsync<T>(
-  predicate: (item: NoInfer<T>) => Promise<boolean>,
+  predicate: (
+    item: NoInfer<T>,
+    prevItem: NoInfer<T> | undefined,
+    prevResult: boolean | undefined
+  ) => Promise<boolean>,
   error: string
 ): z.core.$ZodCheck<T>;
 
 export function validateAsync<T>(
-  predicate: (item: NoInfer<T>) => Promise<boolean>,
+  predicate: (
+    item: NoInfer<T>,
+    prevItem: NoInfer<T> | undefined,
+    prevResult: boolean | undefined
+  ) => Promise<boolean>,
   params?:
     | {
         condition?: (errors: ZodValidationError[]) => boolean;
@@ -965,8 +1006,30 @@ export function validateAsync<T>(
   const error = paramsIsError ? params : params?.error;
   const debounceMs = paramsIsError ? 0 : (params?.debounceMs ?? 0);
 
+  const createTrackingPredicate = () => {
+    const state = {
+      prevItem: undefined as T | undefined,
+      prevResult: undefined as boolean | undefined,
+    };
+
+    return async (obj: T): Promise<boolean> => {
+      const result = await predicate(obj, state.prevItem, state.prevResult);
+
+      Object.assign(state, {
+        prevItem: obj,
+        prevResult: result,
+      });
+
+      return result;
+    };
+  };
+
+  const trackingPredicate = createTrackingPredicate();
+
   const runPredicate =
-    debounceMs > 0 ? debounceAsync<[T], boolean>(predicate, debounceMs, true) : predicate;
+    debounceMs > 0
+      ? debounceAsync<[T], boolean>(trackingPredicate, debounceMs, true)
+      : trackingPredicate;
 
   return z.refine<T>(async (obj) => runPredicate(obj), {
     when: (payload) =>

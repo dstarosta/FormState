@@ -39,6 +39,7 @@ export {
   createState,
   getState,
   parseState,
+  parseStateAsync,
   updateState,
   createSymbol,
 } from './helpers/state-manager';

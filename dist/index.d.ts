@@ -1041,6 +1041,24 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
       (options?: FormValidateOptions<T>): void;
     };
     /**
+     * Async counterpart to `validate` for schemas with async checks
+     * (e.g. `z.validateAsync`). Use for programmatic validation only — for
+     * form submission with async schemas, use `handleSubmit` which already
+     * awaits async parsing.
+     *
+     * Resolves to `true` when the form state is valid (no errors, including
+     * manual errors), `false` otherwise. After the promise resolves,
+     * `formState` and `formStatus` also reflect the validation result.
+     *
+     * @example
+     * const isValid = await formActions.validateAsync();
+     *
+     * if (!isValid) {
+     *   // react immediately without reading from a possibly stale closure
+     * }
+     */
+    validateAsync: () => Promise<boolean>;
+    /**
      * Marks the form as dirty with an arbitrary `string` key.
      *
      * @param key - Arbitrary `string` independent of the managed form state. It must start with the `#` sign to avoid collisions.
@@ -1885,8 +1903,10 @@ declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.Z
 /**
  * Creates a full schema validation check.
  *
- * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
- *                    whether the schema object passes the rule.
+ * @param predicate - A function that accepts the current schema object instance and, on subsequent invocations,
+ *                    the previous instance and the previous result. Returns a `bool` value indicating whether
+ *                    the schema object passes the rule. To skip recomputation when relevant fields haven't
+ *                    changed, return `prevResult` directly.
  * @param params.condition - An optional function that returns a `boolean` value indicating whether to perform
  *                           the validation based on the existing schema validation errors.
  *
@@ -1895,7 +1915,7 @@ declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.Z
  * @param params.error - An optional custom error message.
  * @returns The object schema.
  */
-declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, params?: {
+declare function validate<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> | undefined, prevResult: boolean | undefined) => boolean, params?: {
   condition?: (errors: ZodValidationError[]) => boolean;
   path?: PropertyKey[] | PropertyKey;
   error?: string;
@@ -1903,17 +1923,20 @@ declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, params?: 
 /**
  * Creates a full schema validation check.
  *
- * @param predicate - A function that accepts a schema object instance. It returns a `bool` value indicating
- *                    whether the schema object passes the rule.
+ * @param predicate - A function that accepts the current schema object instance and, on subsequent invocations,
+ *                    the previous instance and the previous result. Returns a `bool` value indicating whether
+ *                    the schema object passes the rule.
  * @param error - A custom error message.
  * @returns The object schema.
  */
-declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, error: string): z.core.$ZodCheck<T>;
+declare function validate<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> | undefined, prevResult: boolean | undefined) => boolean, error: string): z.core.$ZodCheck<T>;
 /**
  * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
  *
- * @param predicate - A function that accepts a schema object instance and returns a `Promise<boolean>` indicating
- *                    whether the schema object passes the rule.
+ * @param predicate - A function that accepts the current schema object instance and, on subsequent invocations,
+ *                    the previous instance and the previous result. Returns a `Promise<boolean>` indicating
+ *                    whether the schema object passes the rule. To skip recomputation when relevant fields
+ *                    haven't changed, return `prevResult` directly.
  * @param params.condition - An optional function that accepts the schema's errors. It returns a `bool` value
  *                           indicating whether the validation should run for the current state of the errors.
  *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
@@ -1927,7 +1950,7 @@ declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, error: st
  *                            concurrently-mounted forms will cause them to share the timer.
  * @returns The object schema.
  */
-declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boolean>, params?: {
+declare function validateAsync<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> | undefined, prevResult: boolean | undefined) => Promise<boolean>, params?: {
   condition?: (errors: ZodValidationError[]) => boolean;
   path?: PropertyKey[] | PropertyKey;
   error?: string;
@@ -1936,12 +1959,13 @@ declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boole
 /**
  * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
  *
- * @param predicate - A function that accepts a schema object instance and returns a `Promise<boolean>` indicating
+ * @param predicate - A function that accepts the current schema object instance and, on subsequent invocations,
+ *                    the previous instance and the previous result. Returns a `Promise<boolean>` indicating
  *                    whether the schema object passes the rule.
  * @param error - A custom error message.
  * @returns The object schema.
  */
-declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boolean>, error: string): z.core.$ZodCheck<T>;
+declare function validateAsync<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> | undefined, prevResult: boolean | undefined) => Promise<boolean>, error: string): z.core.$ZodCheck<T>;
 /**
  * Determines whether the specified callback function returns true for any element of an array.
  * Use with `.check()` on an array schema.
@@ -2162,6 +2186,38 @@ declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, a
  * @returns `ParseResult` with form state `data` and `errors` on failure.
  */
 declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData?: false, errorMessageSeparator?: string): ParseResult<T>;
+/**
+ * Parses an arbitrary object into the form state, returning `data` as a `SchemaDataObject`
+ * on success — internal-only fields (like `z.symbol()`) and empty form values stripped,
+ * ready for API use. Use this variant when the schema contains async checks
+ * (e.g. `z.validateAsync`).
+ *
+ * @example
+ * const { success, data } = await parseStateAsync(schema, obj, true)
+ *
+ * @param schema - The form schema.
+ * @param obj - Data object to parse.
+ * @param asSchemaData - Must be `true`.
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
+ * @returns A promise resolving to `ParseAsObjectResult` with `data` as `SchemaDataObject` and `errors` on failure.
+ */
+declare function parseStateAsync<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData: true, errorMessageSeparator?: string): Promise<ParseAsObjectResult<T>>;
+/**
+ * Parses an arbitrary object into the form state. Use this variant when the schema
+ * contains async checks (e.g. `z.validateAsync`).
+ *
+ * @example
+ * const { success, data, errors } = await parseStateAsync(schema, obj)
+ *
+ * @param schema - The form schema.
+ * @param obj - Data object to parse.
+ * @param asSchemaData - Must be `false` or omitted (default: `false`).
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
+ * @returns A promise resolving to `ParseResult` with form state `data` and `errors` on failure.
+ */
+declare function parseStateAsync<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData?: false, errorMessageSeparator?: string): Promise<ParseResult<T>>;
 /**
  * Creates strongly typed initial state for a schema.
  *
@@ -2625,5 +2681,5 @@ declare function asDateString(value: Date | string, dateFormat: FormDateFormat):
  */
 declare function asDateString(value: Date | string, dateFormat?: string): string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, classNames, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, classNames, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, parseStateAsync, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

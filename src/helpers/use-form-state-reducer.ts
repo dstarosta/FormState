@@ -118,6 +118,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const {
             name,
             value,
+            fromDebounce,
             options: { validate, touch },
           } = action;
 
@@ -136,7 +137,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             const cached = parseAndCache(mergedData);
             changedData = cached.parsedData;
             errors = cached.errors;
-            asyncPending = cached.asyncPending;
+            asyncPending = fromDebounce ? false : cached.asyncPending;
           } else {
             changedData = mergedData;
             errors = prevState.errors;
@@ -398,6 +399,35 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             ...reduceAsyncState(asyncPending),
           } satisfies FormMutableState<State>;
         }
+        // form async validate event
+        case 'asyncValidate': {
+          const mergedErrors = { ...action.errors, ...prevManualErrors };
+
+          const touched = { ...prevState.touched };
+
+          for (const key of Object.keys(mergedErrors)) {
+            const topSegment = key.split('.', 1)[0];
+
+            if (!topSegment || !(topSegment in prevState.data)) {
+              continue;
+            }
+
+            touched[key as keyof State] = true;
+          }
+
+          return diffedState(
+            {
+              ...prevState,
+              validated: true,
+              errors: mergedErrors,
+              asyncErrors: action.errors,
+              asyncValidating: false,
+              asyncRequestId: prevState.asyncRequestId + 1,
+              touched,
+            },
+            prevState
+          );
+        }
         // set manual error event
         case 'setManualError': {
           const {
@@ -411,12 +441,10 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name).trim();
 
           let baseErrors: Record<keyof State | '', string | undefined>;
-          let asyncPending = false;
 
           if (shouldValidate) {
             const cached = parseAndCache(prevState.data);
             baseErrors = cached.errors;
-            asyncPending = cached.asyncPending;
           } else {
             baseErrors = { ...prevState.errors };
           }
@@ -437,7 +465,6 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             errors: { ...errors, ...manualErrors },
             validated: prevState.validated || shouldValidate,
             manualErrors,
-            ...reduceAsyncState(asyncPending),
           } satisfies FormMutableState<State>;
         }
         // clear manual errors event
@@ -450,12 +477,10 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const hasPredicate = typeof predicate === 'function';
 
           let baseErrors: Record<keyof State | '', string | undefined>;
-          let asyncPending = false;
 
           if (shouldValidate) {
             const cached = parseAndCache(prevState.data);
             baseErrors = cached.errors;
-            asyncPending = cached.asyncPending;
           } else {
             baseErrors = { ...prevState.errors };
           }
@@ -473,7 +498,6 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             errors: hasPredicate ? { ...errors, ...manualErrors } : errors,
             validated: prevState.validated || shouldValidate,
             manualErrors,
-            ...reduceAsyncState(asyncPending),
           } satisfies FormMutableState<State>;
         }
         // async validation result event

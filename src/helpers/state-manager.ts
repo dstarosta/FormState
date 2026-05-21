@@ -26,6 +26,7 @@ import {
   getPath,
   getPathNotation,
   getSchemaType,
+  isAsyncSchema,
 } from './schema-visitor';
 import { IS_DEVELOPMENT } from './development-helper';
 import { formatErrors } from './error-formatter';
@@ -64,6 +65,46 @@ const isNotRecordObject = (value: unknown) => {
 
 const isRecordObject = (value: unknown): value is Record<string, unknown> =>
   !isNotRecordObject(value) && !Array.isArray(value);
+
+function buildParseResult<T extends z.ZodMiniObject>(
+  schema: T,
+  parsedData: z.infer<T>,
+  resultError: z.core.$ZodError<object> | undefined,
+  asSchemaData: boolean,
+  errorMessageSeparator: string
+): ParseResult<T> | ParseAsObjectResult<T> {
+  const zodErrors = formatErrors<z.infer<T>>(resultError, errorMessageSeparator);
+
+  const errors = {
+    ...zodErrors,
+    get: (expression: (data: z.infer<T>) => unknown) =>
+      zodErrors[getPath(parsedData, expression).join('.')],
+    getAll: () =>
+      Object.values(zodErrors)
+        .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
+        .flatMap((error) => error.split(errorMessageSeparator)),
+    getKeys: () =>
+      Object.entries(zodErrors)
+        .filter((entry) => Boolean(entry[1]))
+        .map((entry) => entry[0]),
+  };
+
+  const success = Object.keys(zodErrors).length === 0;
+
+  if (asSchemaData) {
+    return {
+      data: schema.toObject(parsedData),
+      success,
+      errors,
+    } satisfies ParseAsObjectResult<T>;
+  }
+
+  return {
+    data: parsedData,
+    success,
+    errors,
+  } satisfies ParseResult<T>;
+}
 
 // Internal functions
 
@@ -378,12 +419,18 @@ export function safeSyncParse<T extends z.ZodMiniType>(
   schema: T,
   data: unknown
 ): { result: ReturnType<T['safeParse']> | null; asyncPending: boolean } {
+  if (isAsyncSchema(schema)) {
+    return { result: null, asyncPending: true };
+  }
+
   try {
     return {
       result: schema.safeParse(data) as ReturnType<T['safeParse']>,
       asyncPending: false,
     };
   } catch (error) {
+    // A defensive check.
+    /* v8 ignore if -- @preserve */
     if (error instanceof z.core.$ZodAsyncError) {
       return { result: null, asyncPending: true };
     }
@@ -481,37 +528,67 @@ export function parseState<T extends z.ZodMiniObject>(
   const parsedData = createState(schema, obj as DeepPartial<z.infer<T>>);
   const result = schema.safeParse(parsedData);
 
-  const zodErrors = formatErrors<z.infer<T>>(result.error, errorMessageSeparator);
+  return buildParseResult(schema, parsedData, result.error, asSchemaData, errorMessageSeparator);
+}
 
-  const errors = {
-    ...zodErrors,
-    get: (expression: (data: z.infer<T>) => unknown) =>
-      zodErrors[getPath(parsedData, expression).join('.')],
-    getAll: () =>
-      Object.values(zodErrors)
-        .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
-        .flatMap((error) => error.split(errorMessageSeparator)),
-    getKeys: () =>
-      Object.entries(zodErrors)
-        .filter((entry) => Boolean(entry[1]))
-        .map((entry) => entry[0]),
-  };
+/**
+ * Parses an arbitrary object into the form state, returning `data` as a `SchemaDataObject`
+ * on success — internal-only fields (like `z.symbol()`) and empty form values stripped,
+ * ready for API use. Use this variant when the schema contains async checks
+ * (e.g. `z.validateAsync`).
+ *
+ * @example
+ * const { success, data } = await parseStateAsync(schema, obj, true)
+ *
+ * @param schema - The form schema.
+ * @param obj - Data object to parse.
+ * @param asSchemaData - Must be `true`.
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
+ * @returns A promise resolving to `ParseAsObjectResult` with `data` as `SchemaDataObject` and `errors` on failure.
+ */
+export function parseStateAsync<T extends z.ZodMiniObject>(
+  schema: T,
+  obj: object,
+  asSchemaData: true,
+  errorMessageSeparator?: string
+): Promise<ParseAsObjectResult<T>>;
 
-  const success = Object.keys(zodErrors).length === 0;
+/**
+ * Parses an arbitrary object into the form state. Use this variant when the schema
+ * contains async checks (e.g. `z.validateAsync`).
+ *
+ * @example
+ * const { success, data, errors } = await parseStateAsync(schema, obj)
+ *
+ * @param schema - The form schema.
+ * @param obj - Data object to parse.
+ * @param asSchemaData - Must be `false` or omitted (default: `false`).
+ * @param errorMessageSeparator - Sets the default error message separator when multiple errors occur
+ *                                for the same state property (default: "|").
+ * @returns A promise resolving to `ParseResult` with form state `data` and `errors` on failure.
+ */
+export function parseStateAsync<T extends z.ZodMiniObject>(
+  schema: T,
+  obj: object,
+  asSchemaData?: false,
+  errorMessageSeparator?: string
+): Promise<ParseResult<T>>;
 
-  if (asSchemaData) {
-    return {
-      data: schema.toObject(parsedData),
-      success,
-      errors,
-    } satisfies ParseAsObjectResult<T>;
+export async function parseStateAsync<T extends z.ZodMiniObject>(
+  schema: T,
+  obj: object,
+  asSchemaData: boolean = false,
+  errorMessageSeparator: string = '|'
+): Promise<ParseResult<T> | ParseAsObjectResult<T>> {
+  if (isNullish(obj)) {
+    throw new TypeError('The "data" argument cannot be null or undefined.');
   }
 
-  return {
-    data: parsedData,
-    success,
-    errors,
-  } satisfies ParseResult<T>;
+  const parsedData = createState(schema, obj as DeepPartial<z.infer<T>>);
+  const result = await schema.safeParseAsync(parsedData);
+
+  return buildParseResult(schema, parsedData, result.error, asSchemaData, errorMessageSeparator);
 }
 
 /**

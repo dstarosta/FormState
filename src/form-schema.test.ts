@@ -622,7 +622,7 @@ describe('form schema', () => {
       new Promise<boolean>((resolve) => {
         setTimeout(() => {
           resolve(allowedNames.has(name));
-        }, 0);
+        }, 2);
       });
 
     const testSchema = z.object({
@@ -667,7 +667,7 @@ describe('form schema', () => {
             new Promise<boolean>((resolve) => {
               setTimeout(() => {
                 resolve(obj.users.length >= 2);
-              }, 0);
+              }, 2);
             }),
           { path: 'users', error: 'Need at least 2 users' }
         )
@@ -699,7 +699,7 @@ describe('form schema', () => {
             new Promise<boolean>((resolve) => {
               setTimeout(() => {
                 resolve(obj.users.filter((u) => u.name.startsWith('M')).length === 2);
-              }, 0);
+              }, 2);
             }),
           {
             path: 'users',
@@ -736,7 +736,7 @@ describe('form schema', () => {
             new Promise<boolean>((resolve) => {
               setTimeout(() => {
                 resolve(obj.users.filter((u) => u.name.startsWith('M')).length === 2);
-              }, 0);
+              }, 2);
             }),
           {
             path: 'users',
@@ -768,7 +768,7 @@ describe('form schema', () => {
             new Promise<boolean>((resolve) => {
               setTimeout(() => {
                 resolve(obj.users.length > 0);
-              }, 0);
+              }, 2);
             }),
           { path: 'users', error: 'Need at least one user' }
         )
@@ -799,9 +799,10 @@ describe('form schema', () => {
 
       const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
 
-      // Only the last call actually ran the predicate.
+      // Only the last call actually ran the predicate. First invocation has no
+      // prior input/result, so both are `undefined`.
       expect(predicate).toHaveBeenCalledTimes(1);
-      expect(predicate).toHaveBeenCalledWith({ name: 'Mike' });
+      expect(predicate).toHaveBeenCalledWith({ name: 'Mike' }, undefined, undefined);
 
       // Cancelled calls resolve to the fallback (true = "valid"), so they don't
       // surface a stale "Name is not allowed" error during typing.
@@ -838,7 +839,14 @@ describe('form schema', () => {
   });
 
   it('non-debounced validateAsync runs the predicate every call', async () => {
-    const predicate = vi.fn(() => Promise.resolve(true));
+    const predicate = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          setTimeout(() => {
+            resolve(true);
+          }, 2);
+        })
+    );
 
     const testSchema = z
       .object({ name: z.formString() })
@@ -849,6 +857,117 @@ describe('form schema', () => {
     await testSchema.safeParseAsync({ name: 'C' });
 
     expect(predicate).toHaveBeenCalledTimes(3);
+  });
+
+  it('validateAsync passes prevItem and prevResult on subsequent calls', async () => {
+    const calls: Array<{
+      item: { name: string };
+      prevItem: { name: string } | undefined;
+      prevResult: boolean | undefined;
+    }> = [];
+
+    const testSchema = z.object({ name: z.formString() }).check(
+      z.validateAsync(
+        (item, prevItem, prevResult) => {
+          calls.push({ item, prevItem, prevResult });
+
+          return Promise.resolve(item.name === 'Mike');
+        },
+        { path: 'name', error: 'x' }
+      )
+    );
+
+    await testSchema.safeParseAsync({ name: 'A' });
+    await testSchema.safeParseAsync({ name: 'Mike' });
+    await testSchema.safeParseAsync({ name: 'B' });
+
+    expect(calls).toStrictEqual([
+      { item: { name: 'A' }, prevItem: undefined, prevResult: undefined },
+      { item: { name: 'Mike' }, prevItem: { name: 'A' }, prevResult: false },
+      { item: { name: 'B' }, prevItem: { name: 'Mike' }, prevResult: true },
+    ]);
+  });
+
+  it('validate passes prevItem and prevResult on subsequent calls', () => {
+    const calls: Array<{
+      item: { name: string };
+      prevItem: { name: string } | undefined;
+      prevResult: boolean | undefined;
+    }> = [];
+
+    const testSchema = z.object({ name: z.formString() }).check(
+      z.validate(
+        (item, prevItem, prevResult) => {
+          calls.push({ item, prevItem, prevResult });
+          return item.name === 'Mike';
+        },
+        { path: 'name', error: 'x' }
+      )
+    );
+
+    testSchema.safeParse({ name: 'A' });
+    testSchema.safeParse({ name: 'Mike' });
+    testSchema.safeParse({ name: 'B' });
+
+    expect(calls).toStrictEqual([
+      { item: { name: 'A' }, prevItem: undefined, prevResult: undefined },
+      { item: { name: 'Mike' }, prevItem: { name: 'A' }, prevResult: false },
+      { item: { name: 'B' }, prevItem: { name: 'Mike' }, prevResult: true },
+    ]);
+  });
+
+  it('validate lets the predicate skip work by returning prevResult', () => {
+    let heavyWorkCount = 0;
+
+    const testSchema = z.object({ name: z.formString(), other: z.formString() }).check(
+      z.validate(
+        (item, prevItem, prevResult) => {
+          if (prevResult !== undefined && item.name === prevItem?.name) {
+            return prevResult;
+          }
+
+          heavyWorkCount++;
+          return item.name === 'Mike';
+        },
+        { path: 'name', error: 'x' }
+      )
+    );
+
+    const r1 = testSchema.safeParse({ name: 'Mike', other: '1' });
+    const r2 = testSchema.safeParse({ name: 'Mike', other: '2' });
+    const r3 = testSchema.safeParse({ name: 'Mike', other: '3' });
+
+    expect(heavyWorkCount).toBe(1);
+    expect(r1.success).toBe(true);
+    expect(r2.success).toBe(true);
+    expect(r3.success).toBe(true);
+  });
+
+  it('validateAsync lets the predicate skip work by returning prevResult', async () => {
+    let heavyWorkCount = 0;
+
+    const testSchema = z.object({ name: z.formString(), other: z.formString() }).check(
+      z.validateAsync(
+        (item, prevItem, prevResult) => {
+          if (prevResult !== undefined && item.name === prevItem?.name) {
+            return Promise.resolve(prevResult);
+          }
+
+          heavyWorkCount++;
+          return Promise.resolve(item.name === 'Mike');
+        },
+        { path: 'name', error: 'x' }
+      )
+    );
+
+    const r1 = await testSchema.safeParseAsync({ name: 'Mike', other: '1' });
+    const r2 = await testSchema.safeParseAsync({ name: 'Mike', other: '2' });
+    const r3 = await testSchema.safeParseAsync({ name: 'Mike', other: '3' });
+
+    expect(heavyWorkCount).toBe(1);
+    expect(r1.success).toBe(true);
+    expect(r2.success).toBe(true);
+    expect(r3.success).toBe(true);
   });
 
   it('should validate some items in a ZodArray', () => {

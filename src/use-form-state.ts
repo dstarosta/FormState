@@ -731,6 +731,7 @@ export function useFormState<T extends z.ZodMiniObject>(
                     touch: oldEntry.touch,
                     validate: oldEntry.validate,
                   },
+                  fromDebounce: true,
                 });
               }
 
@@ -755,6 +756,7 @@ export function useFormState<T extends z.ZodMiniObject>(
                     touch: currentEntry.touch,
                     validate: currentEntry.validate,
                   },
+                  fromDebounce: true,
                 });
 
                 debounceCache.current.delete(pathNotation);
@@ -1075,6 +1077,19 @@ export function useFormState<T extends z.ZodMiniObject>(
     },
     [schema, errorMessageSeparator, dispatch]
   );
+
+  // The memoized "validateAsync" function.
+  const validateAsync = useCallback(async (): Promise<boolean> => {
+    const result = await schema.safeParseAsync(formStateRef.current.data);
+    const asyncErrors = formatErrors<State>(result.error, errorMessageSeparator);
+
+    dispatch({ type: 'asyncValidate', errors: asyncErrors });
+
+    return (
+      Object.keys(asyncErrors).length === 0 &&
+      Object.keys(formStateRef.current.manualErrors).length === 0
+    );
+  }, [schema, errorMessageSeparator, dispatch]);
 
   // The memoized "handleReset" function.
   const handleReset = useCallback(
@@ -1485,6 +1500,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       replace,
       touch,
       validate,
+      validateAsync,
       reset,
       setDirty,
       setMode,
@@ -1509,6 +1525,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       replace,
       touch,
       validate,
+      validateAsync,
       reset,
       setDirty,
       setMode,
