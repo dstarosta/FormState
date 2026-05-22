@@ -25,6 +25,7 @@ const requiredTypes: Readonly<Set<string>> = new Set([
 ]);
 
 const asyncSchemaCache = new WeakMap<z.ZodMiniType, boolean>();
+const asyncCheckPathsCache = new WeakMap<z.ZodMiniType, readonly string[]>();
 
 // Private functions
 
@@ -444,6 +445,83 @@ export const collectPatterns = <T extends z.ZodMiniType>(
   recursiveCollect(baseSchema, patterns, key, collectPatterns);
 
   return patterns as Record<keyof z.infer<T>, string | undefined>;
+};
+
+const collectAsyncCheckPathsInternal = (
+  schema: z.ZodMiniType,
+  parentKey: string,
+  out: string[]
+) => {
+  const checks = (
+    schema._zod.def as {
+      checks?: {
+        _zod: { def: { fn?: unknown; path?: PropertyKey[] } };
+      }[];
+    }
+  ).checks;
+
+  if (Array.isArray(checks)) {
+    for (const check of checks) {
+      const fn = check._zod.def.fn;
+
+      if (typeof fn !== 'function' || fn.constructor.name !== 'AsyncFunction') {
+        continue;
+      }
+
+      const checkPath = check._zod.def.path;
+      const suffix =
+        Array.isArray(checkPath) && checkPath.length > 0
+          ? checkPath
+              .filter((part) => typeof part !== 'symbol')
+              .map(String)
+              .join('.')
+          : '';
+
+      const fullPath = parentKey && suffix ? `${parentKey}.${suffix}` : parentKey || suffix;
+
+      out.push(fullPath);
+    }
+  }
+
+  const baseSchema = getBaseType(schema);
+
+  if (baseSchema !== schema) {
+    collectAsyncCheckPathsInternal(baseSchema, parentKey, out);
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray) {
+    collectAsyncCheckPathsInternal(
+      baseSchema.def.element as z.ZodMiniType,
+      parentKey ? `${parentKey}.0` : '0',
+      out
+    );
+  } else if (baseSchema instanceof z.ZodMiniObject) {
+    for (const prop in baseSchema.shape) {
+      if (Object.prototype.hasOwnProperty.call(baseSchema.shape, prop)) {
+        collectAsyncCheckPathsInternal(
+          baseSchema.shape[prop] as z.ZodMiniType,
+          parentKey ? `${parentKey}.${prop}` : prop,
+          out
+        );
+      }
+    }
+  }
+};
+
+export const collectAsyncCheckPaths = (schema: z.ZodMiniType): readonly string[] => {
+  const cached = asyncCheckPathsCache.get(schema);
+
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const paths: string[] = [];
+  collectAsyncCheckPathsInternal(schema, '', paths);
+
+  const frozen = Object.freeze(paths);
+  asyncCheckPathsCache.set(schema, frozen);
+
+  return frozen;
 };
 
 export const isAsyncSchema = (schema: z.ZodMiniType): boolean => {

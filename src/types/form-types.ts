@@ -202,6 +202,11 @@ export type FormMutableState<T extends object> = {
    * Whether an async validation pass is currently pending for the latest data.
    */
   asyncValidating: boolean;
+  /**
+   * Dot-notation path of the field whose change triggered the current async pass.
+   * `undefined` when the pass is not associated with a `change` action.
+   */
+  asyncTrigger: string | undefined;
 };
 
 export type StateCallback<T extends object> = (state: FormState<T>, status: FormStatus) => void;
@@ -292,7 +297,7 @@ export type ZodValidationError = z.core.$ZodRawIssue & {
 /**
  * Form event type for change listener callback functions.
  */
-export type FormEventType = 'change' | 'submit';
+export type FormEventType = 'change' | 'submit' | 'asyncValidating' | 'asyncValidated';
 
 /**
  * Submitted form data.
@@ -340,6 +345,21 @@ export type StateChangeEvent<T extends object> = {
    * `false` if the form has any errors; otherwise, `true`.
    */
   valid: boolean;
+  /**
+   * The dot-notation path of the field whose change triggered the current async validation pass.
+   * `undefined` when the pass was not triggered by a `change` action (e.g. `replace`, `validate`,
+   * `resetFields`, or programmatic `validateAsync()`).
+   *
+   * Only set on `asyncValidating` / `asyncValidated` events.
+   */
+  triggerField?: string | undefined;
+  /**
+   * The dot-notation paths of the async refinements declared on the schema. Computed once per
+   * schema instance and reused across validation passes.
+   *
+   * Only set on `asyncValidating` / `asyncValidated` events.
+   */
+  schemaPaths?: readonly string[] | undefined;
 };
 
 /**

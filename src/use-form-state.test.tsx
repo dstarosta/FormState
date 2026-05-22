@@ -1551,6 +1551,359 @@ describe('useFormState', () => {
         expect(result.current.formState.touched['name' as never]).toBeFalsy();
       });
     });
+
+    describe('asyncValidating / asyncValidated listener events', () => {
+      type AsyncSchemaData = { name: string };
+      type AsyncEvent = StateChangeEvent<AsyncSchemaData>;
+
+      // Shared harness used by every test in this block to avoid duplicate
+      // function bodies (sonarjs/no-identical-functions).
+      const renderListenerHarness = (
+        listenerSchema: ReturnType<typeof buildAsyncSchema>,
+        listener: StateChangeListener<AsyncSchemaData>,
+        initOptions: { initialData: AsyncSchemaData; validateOnMount?: boolean }
+      ) =>
+        renderHook(() => {
+          const {
+            formStatus,
+            formActions: { change, validateAsync },
+            formHooks: { useListener },
+          } = useFormState(listenerSchema, initOptions);
+          useListener(listener);
+          return { formStatus, change, validateAsync };
+        });
+
+      it('fires asyncValidating before and asyncValidated after a change-triggered async pass', async () => {
+        const events: AsyncEvent[] = [];
+        const listener = vi.fn((event: AsyncEvent) => {
+          events.push(event);
+        });
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderListenerHarness(asyncSchema, listener, {
+          initialData: { name: 'Xavier' },
+          validateOnMount: true,
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+        events.length = 0;
+
+        act(() => {
+          result.current.change('name', 'Mike');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
+        expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+          'asyncValidating',
+          'asyncValidated',
+        ]);
+        expect(asyncEvents[0]?.triggerField).toBe('name');
+        expect(asyncEvents[1]?.triggerField).toBe('name');
+      });
+
+      it('exposes schemaPaths with the dot-path of the async check', async () => {
+        const events: AsyncEvent[] = [];
+        const listener = vi.fn((event: AsyncEvent) => {
+          events.push(event);
+        });
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderListenerHarness(asyncSchema, listener, {
+          initialData: { name: 'Mike' },
+        });
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        const validating = events.find((evt) => evt.type === 'asyncValidating');
+        expect(validating?.schemaPaths).toStrictEqual(['name']);
+      });
+
+      it('uses an empty string in schemaPaths for a top-level async check without a path', async () => {
+        type RootSchemaData = { name: string };
+        const events: StateChangeEvent<RootSchemaData>[] = [];
+        const listener = vi.fn((event: StateChangeEvent<RootSchemaData>) => {
+          events.push(event);
+        });
+
+        const rootAsyncSchema = z
+          .object({ name: z.formString({ required: true }) })
+          .check(z.validateAsync(() => Promise.resolve(true), 'fails'));
+
+        const Component = () => {
+          const {
+            formActions: { validateAsync },
+            formHooks: { useListener },
+          } = useFormState(rootAsyncSchema, { initialData: { name: 'Mike' } });
+          useListener(listener);
+          return { validateAsync };
+        };
+        const { result } = renderHook(() => Component());
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        const validating = events.find((evt) => evt.type === 'asyncValidating');
+        expect(validating?.schemaPaths).toStrictEqual(['']);
+      });
+
+      it('still fires asyncValidating/asyncValidated for programmatic validateAsync() on a sync-only schema with an empty schemaPaths', async () => {
+        const events: AsyncEvent[] = [];
+        const listener = vi.fn((event: AsyncEvent) => {
+          events.push(event);
+        });
+        const syncSchema = z.object({
+          name: z.formString({ required: true, error: 'Name is required' }),
+        });
+
+        const Component = () => {
+          const {
+            formActions: { validateAsync },
+            formHooks: { useListener },
+          } = useFormState(syncSchema, { initialData: { name: 'Mike' } });
+          useListener(listener);
+          return { validateAsync };
+        };
+        const { result } = renderHook(() => Component());
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
+        expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+          'asyncValidating',
+          'asyncValidated',
+        ]);
+        expect(asyncEvents[0]?.schemaPaths).toStrictEqual([]);
+      });
+
+      it('coalesces overlapping passes into a single asyncValidating / asyncValidated pair', async () => {
+        const events: AsyncEvent[] = [];
+        const listener = vi.fn((event: AsyncEvent) => {
+          events.push(event);
+        });
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']), 20);
+
+        const { result } = renderListenerHarness(asyncSchema, listener, {
+          initialData: { name: 'Mike' },
+        });
+
+        act(() => {
+          result.current.change('name', 'A');
+        });
+        act(() => {
+          result.current.change('name', 'B');
+        });
+        act(() => {
+          result.current.change('name', 'Mike');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
+        expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+          'asyncValidating',
+          'asyncValidated',
+        ]);
+      });
+
+      it('suppresses asyncValidated for stale (superseded) passes', async () => {
+        const events: AsyncEvent[] = [];
+        const listener = vi.fn((event: AsyncEvent) => {
+          events.push(event);
+        });
+
+        const delays = new Map<string, number>([
+          ['Slow', 50],
+          ['Fast', 5],
+        ]);
+        const allowed = new Set(['Fast']);
+        const asyncSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validateAsync(
+              (name) =>
+                new Promise<boolean>((resolve) => {
+                  setTimeout(
+                    () => {
+                      resolve(allowed.has(name));
+                    },
+                    delays.get(name) ?? 0
+                  );
+                }),
+              'Name is not allowed'
+            )
+          ),
+        });
+
+        const { result } = renderListenerHarness(asyncSchema, listener, {
+          initialData: { name: 'Mike' },
+        });
+
+        act(() => {
+          result.current.change('name', 'Slow');
+        });
+        act(() => {
+          result.current.change('name', 'Fast');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
+        expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+          'asyncValidating',
+          'asyncValidated',
+        ]);
+      });
+
+      it('sets triggerField to undefined for programmatic validateAsync()', async () => {
+        const events: AsyncEvent[] = [];
+        const listener = vi.fn((event: AsyncEvent) => {
+          events.push(event);
+        });
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderListenerHarness(asyncSchema, listener, {
+          initialData: { name: 'Mike' },
+        });
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
+        expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+          'asyncValidating',
+          'asyncValidated',
+        ]);
+        expect(asyncEvents[0]?.triggerField).toBeUndefined();
+        expect(asyncEvents[1]?.triggerField).toBeUndefined();
+      });
+
+      it('fires asyncValidated after a rejected predicate (failure path)', async () => {
+        process.on('unhandledRejection', swallowNetworkDown);
+
+        try {
+          type RejectingData = { name: string };
+          const events: StateChangeEvent<RejectingData>[] = [];
+          const listener = vi.fn((event: StateChangeEvent<RejectingData>) => {
+            events.push(event);
+          });
+
+          const rejectingSchema = z.object({
+            name: z.formString({ required: true }).check(
+              z.validateAsync(
+                () =>
+                  new Promise<boolean>((_resolve, reject) => {
+                    setTimeout(() => {
+                      reject(new Error('Network down'));
+                    }, 0);
+                  }),
+                'unused'
+              )
+            ),
+          });
+
+          const Component = () => {
+            const {
+              formStatus,
+              formActions: { change },
+              formHooks: { useListener },
+            } = useFormState(rejectingSchema, { initialData: { name: 'Mike' } });
+            useListener(listener);
+            return { formStatus, change };
+          };
+          const { result } = renderHook(() => Component());
+
+          act(() => {
+            result.current.change('name', 'Anyone');
+          });
+
+          await waitFor(() => {
+            expect(result.current.formStatus.validating).toBe(false);
+          });
+
+          const asyncEvents = events.filter(
+            (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+          );
+          expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+            'asyncValidating',
+            'asyncValidated',
+          ]);
+        } finally {
+          process.off('unhandledRejection', swallowNetworkDown);
+        }
+      });
+
+      it('does not increase the render count when async listener events are emitted', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+        const listener = vi.fn();
+
+        let withListenerRenders = 0;
+        const WithListener = () => {
+          withListenerRenders += 1;
+          const {
+            formStatus,
+            formActions: { change },
+            formHooks: { useListener },
+          } = useFormState(asyncSchema, { initialData: { name: 'Mike' } });
+          useListener(listener);
+          return { formStatus, change };
+        };
+        const { result: withResult } = renderHook(() => WithListener());
+
+        let withoutListenerRenders = 0;
+        const WithoutListener = () => {
+          withoutListenerRenders += 1;
+          const {
+            formStatus,
+            formActions: { change },
+          } = useFormState(asyncSchema, { initialData: { name: 'Mike' } });
+          return { formStatus, change };
+        };
+        const { result: withoutResult } = renderHook(() => WithoutListener());
+
+        const baselineWith = withListenerRenders;
+        const baselineWithout = withoutListenerRenders;
+
+        act(() => {
+          withResult.current.change('name', 'John');
+        });
+        act(() => {
+          withoutResult.current.change('name', 'John');
+        });
+
+        await waitFor(() => {
+          expect(withResult.current.formStatus.validating).toBe(false);
+          expect(withoutResult.current.formStatus.validating).toBe(false);
+        });
+
+        // Firing listener events must not provoke additional renders.
+        expect(withListenerRenders - baselineWith).toBe(withoutListenerRenders - baselineWithout);
+      });
+    });
   });
 
   describe('form actions', () => {

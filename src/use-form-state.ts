@@ -46,6 +46,7 @@ import type {
 } from './types/form-types';
 import { useSelector } from './helpers/use-form-selector';
 import {
+  collectAsyncCheckPaths,
   collectDescriptions,
   collectLengths,
   collectPatterns,
@@ -226,6 +227,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       asyncErrors: {} as Record<keyof State | '', string | undefined>,
       asyncRequestId: initialAsyncPending ? 1 : 0,
       asyncValidating: initialAsyncPending && validateOnMount,
+      asyncTrigger: undefined,
     } satisfies FormMutableState<State>;
   }, [
     schema,
@@ -313,15 +315,78 @@ export function useFormState<T extends z.ZodMiniObject>(
     return Object.keys(formState.errors).length === 0;
   }, [formState.errors, formState.validated, formState.asyncValidating]);
 
-  // Async validation: when the reducer flagged asyncValidating, run safeParseAsync
-  // and dispatch the resolved errors. The request id discards stale results.
+  // Generates asynchronous listener state.
+  const snapshotAsyncListenerState = useCallback(() => {
+    const current = formStateRef.current;
+    return {
+      data: createImmutableData(current.data),
+      errors: createImmutableErrors(current.errors, current.data, errorMessageSeparator),
+      submitCount: current.submitCount,
+      valid: Object.keys(current.errors).length === 0,
+    };
+  }, [errorMessageSeparator]);
+
+  // Tracks whether an `asyncValidating` event has been fired for the current burst.
+  const asyncBurstActiveRef = useRef(false);
+
+  // Dispatches async events.
   useEffect(() => {
     if (!formState.asyncValidating) {
       return;
     }
 
     const requestId = formState.asyncRequestId;
+    const triggerField = formStateRef.current.asyncTrigger ?? '';
+    const schemaPaths = collectAsyncCheckPaths(schema);
     let cancelled = false;
+
+    if (!asyncBurstActiveRef.current) {
+      asyncBurstActiveRef.current = true;
+
+      if (changeListeners.size > 0) {
+        const { data, errors, submitCount, valid } = snapshotAsyncListenerState();
+
+        for (const listener of changeListeners) {
+          listener({
+            type: 'asyncValidating',
+            data,
+            errors,
+            submitCount,
+            valid,
+            triggerField,
+            schemaPaths,
+          });
+        }
+      }
+    }
+
+    const finishBurst = (resolvedTrigger: string | undefined) => {
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (requestId !== formStateRef.current.asyncRequestId) {
+        return;
+      }
+
+      asyncBurstActiveRef.current = false;
+
+      if (changeListeners.size === 0) {
+        return;
+      }
+
+      const { data, errors, submitCount, valid } = snapshotAsyncListenerState();
+
+      for (const listener of changeListeners) {
+        listener({
+          type: 'asyncValidated',
+          data,
+          errors,
+          submitCount,
+          valid,
+          triggerField: resolvedTrigger,
+          schemaPaths,
+        });
+      }
+    };
 
     schema
       .safeParseAsync(formState.data)
@@ -329,24 +394,32 @@ export function useFormState<T extends z.ZodMiniObject>(
         if (cancelled) {
           return;
         }
+
         const asyncErrors = formatErrors<State>(result.error, errorMessageSeparator);
         dispatch({ type: 'asyncErrors', requestId, errors: asyncErrors });
+
+        requestAnimationFrame(() => {
+          finishBurst(triggerField);
+        });
       })
       .catch((error: unknown) => {
-        // Unreachable guard needed for type safety
+        // Unreachable guard
         /* v8 ignore if -- @preserve */
         if (cancelled) {
           return;
         }
-        // The async validator itself rejected (network failure, predicate bug).
-        // Surface it as a root-level error so the form unfreezes and the user
-        // sees something actionable instead of a stuck `validating: true`.
+
         const message =
           error instanceof Error && error.message ? error.message : 'Async validation failed.';
+
         dispatch({
           type: 'asyncErrors',
           requestId,
           errors: { '': message } as Record<keyof State | '', string | undefined>,
+        });
+
+        requestAnimationFrame(() => {
+          finishBurst(triggerField);
         });
       });
 
@@ -360,6 +433,8 @@ export function useFormState<T extends z.ZodMiniObject>(
     formState.asyncRequestId,
     errorMessageSeparator,
     dispatch,
+    changeListeners,
+    snapshotAsyncListenerState,
   ]);
 
   // The memoized "formStatus" object. The `validSchema` getter delegates to
@@ -1080,16 +1155,51 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The memoized "validateAsync" function.
   const validateAsync = useCallback(async (): Promise<boolean> => {
+    const schemaPaths = collectAsyncCheckPaths(schema);
+
+    const fireValidatingEvent = (type: 'asyncValidating' | 'asyncValidated') => {
+      if (changeListeners.size === 0) {
+        return;
+      }
+      const { data, errors, submitCount, valid } = snapshotAsyncListenerState();
+      for (const listener of changeListeners) {
+        listener({
+          type,
+          data,
+          errors,
+          submitCount,
+          valid,
+          triggerField: undefined,
+          schemaPaths,
+        });
+      }
+    };
+
+    // Only fire `asyncValidating` if there isn't already an in-flight burst from
+    // the effect-driven path; otherwise that path will fire it. Capture and
+    // mutate the ref synchronously before awaiting to avoid a race.
+    const ownsBurst = !asyncBurstActiveRef.current;
+    if (ownsBurst) {
+      asyncBurstActiveRef.current = true;
+      fireValidatingEvent('asyncValidating');
+    }
+
     const result = await schema.safeParseAsync(formStateRef.current.data);
     const asyncErrors = formatErrors<State>(result.error, errorMessageSeparator);
 
     dispatch({ type: 'asyncValidate', errors: asyncErrors });
 
+    if (ownsBurst) {
+      // eslint-disable-next-line require-atomic-updates -- `ownsBurst` was captured before the await; only this call site flips the ref back to false in this path.
+      asyncBurstActiveRef.current = false;
+      fireValidatingEvent('asyncValidated');
+    }
+
     return (
       Object.keys(asyncErrors).length === 0 &&
       Object.keys(formStateRef.current.manualErrors).length === 0
     );
-  }, [schema, errorMessageSeparator, dispatch]);
+  }, [schema, errorMessageSeparator, dispatch, changeListeners, snapshotAsyncListenerState]);
 
   // The memoized "handleReset" function.
   const handleReset = useCallback(

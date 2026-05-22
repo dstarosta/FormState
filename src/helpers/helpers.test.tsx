@@ -17,7 +17,7 @@ import {
   safeSyncParse,
   updateState,
 } from './state-manager';
-import { getSchemaType, isAsyncSchema } from './schema-visitor';
+import { collectAsyncCheckPaths, getSchemaType, isAsyncSchema } from './schema-visitor';
 import { isValidDate } from './date-formatter';
 import {
   toInt,
@@ -619,6 +619,97 @@ describe('helpers', () => {
         .check(z.validateAsync(() => Promise.resolve(true), 'nope'));
 
       expect(isAsyncSchema(schema)).toBe(true);
+    });
+  });
+
+  describe('collectAsyncCheckPaths', () => {
+    it('returns an empty array for a schema with no async checks', () => {
+      const schema = z.object({ name: z.formString({ required: true }) });
+
+      expect(collectAsyncCheckPaths(schema)).toStrictEqual([]);
+    });
+
+    it('returns the field path for an async check nested in an object property', () => {
+      const schema = z.object({
+        name: z
+          .formString({ required: true })
+          .check(z.validateAsync(() => Promise.resolve(true), 'nope')),
+      });
+
+      expect(collectAsyncCheckPaths(schema)).toStrictEqual(['name']);
+    });
+
+    it('returns an empty string for a top-level async check', () => {
+      const schema = z
+        .object({ name: z.formString({ required: true }) })
+        .check(z.validateAsync(() => Promise.resolve(true), 'nope'));
+
+      expect(collectAsyncCheckPaths(schema)).toStrictEqual(['']);
+    });
+
+    it('includes an array-element async path with a .0 segment', () => {
+      const schema = z.object({
+        tags: z.formArray(
+          z
+            .formString({ required: true })
+            .check(z.validateAsync(() => Promise.resolve(true), 'nope'))
+        ),
+      });
+
+      expect(collectAsyncCheckPaths(schema)).toStrictEqual(['tags.0']);
+    });
+
+    it('honors an explicit path override on the async check', () => {
+      const schema = z
+        .object({ name: z.formString({ required: true }) })
+        .check(z.validateAsync(() => Promise.resolve(true), { path: 'name', error: 'nope' }));
+
+      expect(collectAsyncCheckPaths(schema)).toStrictEqual(['name']);
+    });
+
+    it('filters out symbol parts from the schema path', () => {
+      // Async refinement carrying a symbol in its path (zod stores path as PropertyKey[]).
+      const sym = Symbol('hidden');
+      const schema = z.object({ name: z.formString({ required: true }) }).check(
+        z.validateAsync(() => Promise.resolve(true), {
+          path: [sym, 'name'] as unknown as string[],
+          error: 'nope',
+        })
+      );
+
+      // The symbol is filtered; only the string segment remains.
+      expect(collectAsyncCheckPaths(schema)).toStrictEqual(['name']);
+    });
+
+    it('collects multiple async checks across nested fields', () => {
+      const schema = z.object({
+        name: z
+          .formString({ required: true })
+          .check(z.validateAsync(() => Promise.resolve(true), 'nope')),
+        info: z.object({
+          email: z
+            .formString({ required: true })
+            .check(z.validateAsync(() => Promise.resolve(true), 'nope')),
+        }),
+      });
+
+      const paths = collectAsyncCheckPaths(schema);
+      expect(paths).toContain('name');
+      expect(paths).toContain('info.email');
+      expect(paths).toHaveLength(2);
+    });
+
+    it('caches the result per schema instance', () => {
+      const schema = z.object({
+        name: z
+          .formString({ required: true })
+          .check(z.validateAsync(() => Promise.resolve(true), 'nope')),
+      });
+
+      const first = collectAsyncCheckPaths(schema);
+      const second = collectAsyncCheckPaths(schema);
+
+      expect(second).toBe(first);
     });
   });
 
@@ -1899,6 +1990,7 @@ describe('helpers', () => {
       asyncErrors: {} as Record<keyof State | '', string | undefined>,
       asyncRequestId: 5,
       asyncValidating: true,
+      asyncTrigger: undefined,
       ...overrides,
     });
 

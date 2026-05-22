@@ -75,6 +75,11 @@ type FormMutableState<T extends object> = {
    * Whether an async validation pass is currently pending for the latest data.
    */
   asyncValidating: boolean;
+  /**
+   * Dot-notation path of the field whose change triggered the current async pass.
+   * `undefined` when the pass is not associated with a `change` action.
+   */
+  asyncTrigger: string | undefined;
 };
 type FormTypeOptions = {
   required: boolean;
@@ -151,7 +156,7 @@ type ZodValidationError = z.core.$ZodRawIssue & {
 /**
  * Form event type for change listener callback functions.
  */
-type FormEventType = 'change' | 'submit';
+type FormEventType = 'change' | 'submit' | 'asyncValidating' | 'asyncValidated';
 /**
  * Submitted form data.
  *
@@ -197,6 +202,21 @@ type StateChangeEvent<T extends object> = {
    * `false` if the form has any errors; otherwise, `true`.
    */
   valid: boolean;
+  /**
+   * The dot-notation path of the field whose change triggered the current async validation pass.
+   * `undefined` when the pass was not triggered by a `change` action (e.g. `replace`, `validate`,
+   * `resetFields`, or programmatic `validateAsync()`).
+   *
+   * Only set on `asyncValidating` / `asyncValidated` events.
+   */
+  triggerField?: string | undefined;
+  /**
+   * The dot-notation paths of the async refinements declared on the schema. Computed once per
+   * schema instance and reused across validation passes.
+   *
+   * Only set on `asyncValidating` / `asyncValidated` events.
+   */
+  schemaPaths?: readonly string[] | undefined;
 };
 /**
  * Form change event listener type.
@@ -1915,7 +1935,7 @@ declare function formArray<T extends z.ZodMiniType>(elementSchema: T extends z.Z
  * @param params.error - An optional custom error message.
  * @returns The object schema.
  */
-declare function validate<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> | undefined, prevResult: boolean | undefined) => boolean, params?: {
+declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, params?: {
   condition?: (errors: ZodValidationError[]) => boolean;
   path?: PropertyKey[] | PropertyKey;
   error?: string;
@@ -1929,7 +1949,7 @@ declare function validate<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> 
  * @param error - A custom error message.
  * @returns The object schema.
  */
-declare function validate<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> | undefined, prevResult: boolean | undefined) => boolean, error: string): z.core.$ZodCheck<T>;
+declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, error: string): z.core.$ZodCheck<T>;
 /**
  * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
  *
@@ -1940,6 +1960,10 @@ declare function validate<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> 
  * @param params.condition - An optional function that accepts the schema's errors. It returns a `bool` value
  *                           indicating whether the validation should run for the current state of the errors.
  *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
+ * @param params.skipWhen - An optional synchronous function that returns `true` when the predicate would
+ *                          shortcut. Receives `(item, prevItem, prevResult)`. When all async checks on the
+ *                          schema would skip, the form suppresses `asyncValidating` (and the corresponding
+ *                          listener events) for that pass and preserves the previously resolved async errors.
  * @param params.path - An optional `errors` object key to store the error message with.
  * @param params.error - An optional custom error message.
  * @param params.debounceMs - An optional debounce interval in milliseconds. When set, rapid successive
@@ -1950,8 +1974,9 @@ declare function validate<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> 
  *                            concurrently-mounted forms will cause them to share the timer.
  * @returns The object schema.
  */
-declare function validateAsync<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> | undefined, prevResult: boolean | undefined) => Promise<boolean>, params?: {
+declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boolean>, params?: {
   condition?: (errors: ZodValidationError[]) => boolean;
+  skipWhen?: (item: T, prevItem: T | undefined) => boolean;
   path?: PropertyKey[] | PropertyKey;
   error?: string;
   debounceMs?: number;
@@ -1965,7 +1990,7 @@ declare function validateAsync<T>(predicate: (item: NoInfer<T>, prevItem: NoInfe
  * @param error - A custom error message.
  * @returns The object schema.
  */
-declare function validateAsync<T>(predicate: (item: NoInfer<T>, prevItem: NoInfer<T> | undefined, prevResult: boolean | undefined) => Promise<boolean>, error: string): z.core.$ZodCheck<T>;
+declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boolean>, error: string): z.core.$ZodCheck<T>;
 /**
  * Determines whether the specified callback function returns true for any element of an array.
  * Use with `.check()` on an array schema.

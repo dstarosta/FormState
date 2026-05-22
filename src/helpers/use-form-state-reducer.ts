@@ -70,17 +70,19 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         return { parsedData, errors, asyncPending: false };
       };
 
-      const reduceAsyncState = (asyncPending: boolean) =>
+      const reduceAsyncState = (asyncPending: boolean, asyncTrigger?: string) =>
         asyncPending
           ? {
               asyncRequestId: prevState.asyncRequestId + 1,
               asyncValidating: true,
               asyncErrors: {} as Record<keyof State | '', string | undefined>,
+              asyncTrigger,
             }
           : {
               asyncRequestId: prevState.asyncRequestId,
               asyncValidating: false,
               asyncErrors: prevState.asyncErrors,
+              asyncTrigger: prevState.asyncTrigger,
             };
 
       switch (action.type) {
@@ -177,7 +179,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               validated: shouldValidate,
               dirty,
               touched,
-              ...reduceAsyncState(asyncPending),
+              ...reduceAsyncState(asyncPending, pathNotation),
             },
             prevState
           );
@@ -194,6 +196,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const replacedData = createState(schema, data);
 
           const { result, asyncPending } = safeSyncParse(schema, replacedData);
+
           const dataErrors = asyncPending
             ? ({} as Record<keyof State | '', string | undefined>)
             : formatErrors<State>(
@@ -313,6 +316,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           }
 
           const { result, asyncPending } = safeSyncParse(schema, mergedData);
+
           const errors = asyncPending
             ? { ...prevState.errors }
             : formatErrors<State>(
@@ -372,6 +376,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             asyncErrors: {} as Record<keyof State | '', string | undefined>,
             asyncRequestId: prevState.asyncRequestId + 1,
             asyncValidating: false,
+            asyncTrigger: undefined,
           } satisfies FormMutableState<State>;
         }
         // form validate event
@@ -423,6 +428,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               asyncErrors: action.errors,
               asyncValidating: false,
               asyncRequestId: prevState.asyncRequestId + 1,
+              asyncTrigger: undefined,
               touched,
             },
             prevState
@@ -515,6 +521,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               errors: merged,
               asyncErrors: action.errors,
               asyncValidating: false,
+              asyncTrigger: undefined,
             },
             prevState
           );

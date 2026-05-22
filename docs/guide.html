@@ -2491,7 +2491,10 @@ const usernameSchema = z.object({
             <div class="callout-label">Tip</div>
             <p>
               Use <code>formStatus.validating</code> to render a spinner next to the submit button
-              or disable it while async checks are pending.
+              or disable it while async checks are pending. For per-field indicators, subscribe to
+              the <a href="#listener">async listener events</a> (<code>asyncValidating</code> /
+              <code>asyncValidated</code>) — they carry the <code>triggerField</code> path and are
+              coalesced across overlapping passes so indicators don't flicker.
             </p>
           </div>
           <div class="callout callout-warn">
@@ -5019,8 +5022,13 @@ function AppForm() {
             <tbody>
               <tr>
                 <td><code>type</code></td>
-                <td><code>'change' | 'submit'</code></td>
-                <td class="prop-desc">What triggered the event.</td>
+                <td>
+                  <code>'change' | 'submit' | 'asyncValidating' | 'asyncValidated'</code>
+                </td>
+                <td class="prop-desc">
+                  What triggered the event. The async pair fires once around each async validation
+                  pass.
+                </td>
               </tr>
               <tr>
                 <td><code>data</code></td>
@@ -5042,8 +5050,64 @@ function AppForm() {
                 <td><code>Record&lt;string, string&gt;</code></td>
                 <td class="prop-desc">Current error map.</td>
               </tr>
+              <tr>
+                <td><code>triggerField</code></td>
+                <td><code>string | undefined</code></td>
+                <td class="prop-desc">
+                  Async events only. Dot-notation path of the field whose change started the pass
+                  (e.g. <code>'name'</code>, <code>'users.0.email'</code>).
+                  <code>undefined</code> for programmatic <code>validateAsync()</code> and other
+                  non-change triggers.
+                </td>
+              </tr>
+              <tr>
+                <td><code>schemaPaths</code></td>
+                <td><code>readonly string[] | undefined</code></td>
+                <td class="prop-desc">
+                  Async events only. Dot-notation paths of the async refinements declared on the
+                  schema. Top-level checks (no <code>path</code> override) appear as an empty string
+                  <code>''</code>.
+                </td>
+              </tr>
             </tbody>
           </table>
+          <p>
+            Use the async events to drive a loading indicator next to a field while a server-side
+            check is in flight — for example, a username uniqueness lookup that hits an API. The
+            event pair is debounced for you: only one <code>asyncValidating</code> fires per burst
+            of overlapping passes, so the indicator doesn't flicker while the user keeps typing.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { useState } from 'react';
+import { type StateChangeListener } from 'form-state';
+
+function UsernameForm() {
+  const [validatingField, setValidatingField] = useState&lt;string | null&gt;(null);
+
+  const listener: StateChangeListener&lt;FormSchema&gt; = (event) =&gt; {
+    if (event.type === 'asyncValidating') {
+      setValidatingField(event.triggerField ?? null);
+    } else if (event.type === 'asyncValidated') {
+      setValidatingField(null);
+    }
+  };
+
+  const { formHooks, formActions } = useFormState(schema);
+  formHooks.useListener(listener);
+
+  return (
+    &lt;label&gt;
+      Username
+      &lt;input
+        name={formActions.inferName('username')}
+        onChange={(e) =&gt; formActions.change('username', e.target.value)}
+      /&gt;
+      {validatingField === 'username' &amp;&amp; &lt;span&gt;Checking availability…&lt;/span&gt;}
+    &lt;/label&gt;
+  );
+}</code></pre>
+          </div>
         </section>
         <section class="section" id="watch">
           <div class="section-eyebrow">Advanced</div>
@@ -6983,7 +7047,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <tbody>
               <tr>
                 <td>Bundle size (gzipped)</td>
-                <td>~18 KB <sup>1</sup></td>
+                <td>~19 KB <sup>1</sup></td>
                 <td>~13 KB</td>
                 <td>~10 KB</td>
                 <td>~15 KB</td>
