@@ -2,6 +2,8 @@ import * as z from 'zod/mini';
 import { deepEqual } from 'fast-equals';
 
 import type {
+  AsyncCheck,
+  AsyncCheckMeta,
   FormDateFormat,
   FormDateOptions,
   FormStringOptions,
@@ -12,6 +14,11 @@ import type {
 
 import { isValidDate, parseDate } from './helpers/date-formatter';
 import { debounceAsync } from './helpers/debouncer';
+import {
+  combinePath,
+  getAsyncCheckMetaForCurrentMap,
+  registerAsyncCheckFactory,
+} from './helpers/schema-visitor';
 import { cleanEmpty } from './helpers/state-manager';
 
 const EMPTY_STRING = '' as const;
@@ -897,11 +904,7 @@ export function validate<T>(
             typeof issue.params.message === 'string'
               ? issue.params['message']
               : 'Invalid input'),
-          pathNotation:
-            issue.path
-              ?.filter((part) => typeof part !== 'symbol')
-              .map((part) => part.toString())
-              .join('.') ?? '',
+          pathNotation: combinePath(issue.path),
         }))
       ),
     path: Array.isArray(path) || path === undefined ? path : [path],
@@ -921,17 +924,17 @@ export function validate<T>(
  *                           indicating whether the validation should run for the current state of the errors.
  *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
  * @param params.skipWhen - An optional synchronous function that returns `true` when the predicate would
- *                          shortcut. Receives `(item, prevItem, prevResult)`. When all async checks on the
- *                          schema would skip, the form suppresses `asyncValidating` (and the corresponding
+ *                          shortcut. Receives `(item, prevItem)`. When all async checks on the schema
+ *                          would skip, the form suppresses `asyncValidating` (and the corresponding
  *                          listener events) for that pass and preserves the previously resolved async errors.
  * @param params.path - An optional `errors` object key to store the error message with.
  * @param params.error - An optional custom error message.
  * @param params.debounceMs - An optional debounce interval in milliseconds. When set, rapid successive
  *                            invocations collapse: a pending timer is cancelled on each new call and a new
  *                            one is scheduled; the cancelled call resolves to the previously known result so
- *                            the surrounding `safeParseAsync` can complete. NOTE: debounce state lives in the
- *                            check's closure, so reusing the same `validateAsync` result across multiple
- *                            concurrently-mounted forms will cause them to share the timer.
+ *                            the surrounding `safeParseAsync` can complete.
+ * @param params.submitOnly - `true` if the validation only needs to run when the form is getting submitted.
+ *                            `false` means the validation runs on every change and submission (default: `false`).
  * @returns The object schema.
  */
 export function validateAsync<T>(
@@ -942,6 +945,7 @@ export function validateAsync<T>(
     path?: PropertyKey[] | PropertyKey;
     error?: string;
     debounceMs?: number;
+    submitOnly?: boolean;
   }
 ): z.core.$ZodCheck<T>;
 
@@ -968,36 +972,43 @@ export function validateAsync<T>(
         path?: PropertyKey[] | PropertyKey;
         error?: string;
         debounceMs?: number;
+        submitOnly?: boolean;
       }
     | string
 ) {
   const paramsIsError = typeof params === 'string';
   const condition = paramsIsError ? ALWAYS_VALIDATE : (params?.condition ?? ALWAYS_VALIDATE);
-  const skipWhen = paramsIsError ? undefined : params?.skipWhen;
-  const path = paramsIsError ? undefined : params?.path;
+  const skipWhen = (paramsIsError ? undefined : params?.skipWhen) ?? deepEqual;
   const error = paramsIsError ? params : params?.error;
   const debounceMs = paramsIsError ? 0 : (params?.debounceMs ?? 0);
+  const path = paramsIsError ? undefined : params?.path;
+  const submitOnly = paramsIsError ? false : (params?.submitOnly ?? false);
+  const pathKey = combinePath(path);
 
-  let prevItem: T | undefined;
+  const factory = (): AsyncCheckMeta => {
+    const prevValues = new Map<string, T>();
+    const prevByLocation = new Map<string, T>();
+    let phase: 'change' | 'submit' = 'change';
 
-  const trackingPredicate = async (obj: T): Promise<boolean> => {
-    prevItem = obj;
-    return await predicate(obj);
-  };
+    const runPredicate =
+      debounceMs > 0 ? debounceAsync<[T], boolean>(predicate, debounceMs, true) : predicate;
 
-  const runPredicate =
-    debounceMs > 0
-      ? debounceAsync<[T], boolean>(trackingPredicate, debounceMs, true)
-      : trackingPredicate;
+    const whenGate = (payload: { value: unknown; issues: unknown[] }) => {
+      if (submitOnly && phase !== 'submit') {
+        return false;
+      }
 
-  return z.refine<T>(async (obj) => runPredicate(obj), {
-    when: (payload) => {
-      if (skipWhen && skipWhen(payload.value as T, prevItem)) {
+      const currentValue = payload.value as T;
+      const prevItem = prevValues.get(pathKey);
+
+      prevValues.set(pathKey, currentValue);
+
+      if (skipWhen(currentValue, prevItem)) {
         return false;
       }
 
       return condition(
-        payload.issues.map((issue) => ({
+        (payload.issues as ZodValidationError[]).map((issue) => ({
           ...issue,
           message:
             issue.message ||
@@ -1007,18 +1018,61 @@ export function validateAsync<T>(
             typeof issue.params.message === 'string'
               ? issue.params['message']
               : 'Invalid input'),
-          pathNotation:
-            issue.path
-              ?.filter((part) => typeof part !== 'symbol')
-              .map((part) => part.toString())
-              .join('.') ?? '',
+          pathNotation: combinePath(issue.path),
         }))
       );
+    };
+
+    return {
+      skipWhen: skipWhen as ((item: unknown, prevItem: unknown) => boolean) | undefined,
+      getPrevAt: (location) => prevByLocation.get(location),
+      commitAt: (location, value) => {
+        prevByLocation.set(location, value as T);
+      },
+      submitOnly,
+      setPhase: (next) => {
+        phase = next;
+      },
+      whenGate,
+      runPredicate: (value) => runPredicate(value as T),
+    };
+  };
+
+  const pendingMetas: (AsyncCheckMeta | undefined)[] = [];
+
+  const check = z.refine<T>(
+    async (obj) => {
+      const meta = pendingMetas.shift();
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (!meta) {
+        return predicate(obj);
+      }
+      return meta.runPredicate(obj);
     },
-    path: Array.isArray(path) || path === undefined ? path : [path],
-    params: error ? { message: error } : undefined,
-    error,
-  });
+    {
+      when: (payload) => {
+        const meta = getAsyncCheckMetaForCurrentMap(check as unknown as AsyncCheck);
+        // Unreachable guard
+        /* v8 ignore if -- @preserve */
+        if (!meta) {
+          return true;
+        }
+        const shouldRun = meta.whenGate(payload);
+        if (shouldRun) {
+          pendingMetas.push(meta);
+        }
+        return shouldRun;
+      },
+      path: Array.isArray(path) || path === undefined ? path : [path],
+      params: error ? { message: error } : undefined,
+      error,
+    }
+  );
+
+  registerAsyncCheckFactory(check as unknown as AsyncCheck, factory);
+
+  return check;
 }
 
 // Array validations

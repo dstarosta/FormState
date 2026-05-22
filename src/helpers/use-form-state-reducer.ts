@@ -6,6 +6,7 @@ import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 import { formatErrors, normalizeManualError } from './error-formatter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { deepEqual } from 'fast-equals';
+import { coerceFormData, collectActiveAsyncCheckPaths } from './schema-visitor';
 import { createState, diffedState, difference, safeSyncParse } from './state-manager';
 
 export function useFormStateReducer<T extends z.ZodMiniObject>(
@@ -52,10 +53,14 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         const { result, asyncPending } = safeSyncParse(schema, data);
 
         if (asyncPending) {
-          // Sync portion of the schema couldn't be evaluated because an async
-          // refinement is present. Keep prior errors visible until safeParseAsync
-          // (scheduled by useFormState) dispatches `asyncErrors`.
-          return { parsedData: data, errors: prevState.errors, asyncPending: true };
+          const coercedData = coerceFormData(schema, data);
+          const activePaths = collectActiveAsyncCheckPaths(schema, coercedData);
+
+          if (activePaths.length === 0) {
+            return { parsedData: coercedData, errors: prevState.errors, asyncPending: false };
+          }
+
+          return { parsedData: coercedData, errors: prevState.errors, asyncPending: true };
         }
 
         const safeData = result as {
@@ -96,19 +101,23 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             ),
           };
 
+          let changedData: State;
           let errors: Record<keyof State | '', string | undefined>;
           let asyncPending = false;
+
           if (validateOnMount || Object.keys(prevState.errors).length > 0) {
             const parsed = parseAndCache(mergedData);
+            changedData = parsed.parsedData;
             errors = parsed.errors;
             asyncPending = parsed.asyncPending;
           } else {
+            changedData = coerceFormData(schema, mergedData);
             errors = { ...prevState.errors };
           }
 
           return {
             ...prevState,
-            data: mergedData,
+            data: changedData,
             initialData: stateRef.current.data,
             initialErrors: stateRef.current.errors,
             errors: { ...errors, ...prevManualErrors },
@@ -141,7 +150,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             errors = cached.errors;
             asyncPending = fromDebounce ? false : cached.asyncPending;
           } else {
-            changedData = mergedData;
+            changedData = coerceFormData(schema, mergedData);
             errors = prevState.errors;
           }
 
@@ -197,6 +206,10 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const { result, asyncPending } = safeSyncParse(schema, replacedData);
 
+          const coercedData = asyncPending
+            ? coerceFormData(schema, replacedData)
+            : ((result as { data?: State }).data ?? replacedData);
+
           const dataErrors = asyncPending
             ? ({} as Record<keyof State | '', string | undefined>)
             : formatErrors<State>(
@@ -211,8 +224,8 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           return {
             ...prevState,
-            initialData: replacedData,
-            data: replacedData,
+            initialData: coercedData,
+            data: coercedData,
             initialErrors: dataErrors,
             errors: { ...errors, ...prevManualErrors },
             replaced: true,
@@ -280,6 +293,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             validated: true,
             submitCount: prevState.submitCount + 1,
             submittedData,
+            asyncRequestId: prevState.asyncRequestId + 1,
           } satisfies FormMutableState<State>;
         }
         // field reset event
@@ -317,6 +331,10 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const { result, asyncPending } = safeSyncParse(schema, mergedData);
 
+          const coercedData = asyncPending
+            ? coerceFormData(schema, mergedData)
+            : ((result as { data?: State }).data ?? mergedData);
+
           const errors = asyncPending
             ? { ...prevState.errors }
             : formatErrors<State>(
@@ -333,7 +351,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           return diffedState(
             {
               ...prevState,
-              data: mergedData,
+              data: coercedData,
               errors: { ...errors, ...manualErrors },
               changed: true,
               dirty,

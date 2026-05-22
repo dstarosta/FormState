@@ -2379,13 +2379,11 @@ const schema = z
             <tbody>
               <tr>
                 <td><code>predicate</code></td>
-                <td><code>(item, prevItem?, prevResult?) =&gt; Promise&lt;boolean&gt;</code></td>
+                <td><code>(item) =&gt; Promise&lt;boolean&gt;</code></td>
                 <td>—</td>
                 <td class="prop-desc">
-                  Resolves to <code>true</code> when the value is valid. <code>prevItem</code> and
-                  <code>prevResult</code> hold the input and result from the previous call (both
-                  <code>undefined</code> on first call); return <code>prevResult</code> to skip
-                  expensive recomputation (e.g. network calls) when relevant fields haven't changed.
+                  Resolves to <code>true</code> when the value is valid. To skip re-running the
+                  predicate when the input hasn't changed, use the <code>skipWhen</code> option below.
                 </td>
               </tr>
               <tr>
@@ -2395,6 +2393,30 @@ const schema = z
                 <td class="prop-desc">
                   Called with the current validation errors before running the predicate. Return
                   <code>false</code> to skip this check entirely.
+                </td>
+              </tr>
+              <tr>
+                <td><code>skipWhen</code></td>
+                <td><code>(item, prevItem) =&gt; boolean</code></td>
+                <td>deep equality</td>
+                <td class="prop-desc">
+                  Skip the network call when the value hasn't meaningfully changed since the last
+                  pass. By default the predicate is skipped when the inputs are deeply equal —
+                  override when the check is attached to a larger object but only depends on a few
+                  fields, e.g.
+                  <code>(a, b) =&gt; a.sku === b?.sku &amp;&amp; a.quantity === b?.quantity</code>
+                  on an order schema where only <code>sku</code> and <code>quantity</code> affect
+                  the stock lookup.
+                </td>
+              </tr>
+              <tr>
+                <td><code>submitOnly</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td class="prop-desc">
+                  Run the check only on submit (or when you call
+                  <code>formActions.validateAsync()</code>). Useful for expensive verifications like
+                  payment authorization that don't need to fire on every keystroke.
                 </td>
               </tr>
               <tr>
@@ -2426,30 +2448,28 @@ const schema = z
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// Field-level async check — verify the username is not already taken.
-// Skip the network call when `name` hasn't changed since the last pass.
+// The default `skipWhen` (deep equality) automatically suppresses the
+// network call when the input hasn't changed since the last committed pass.
 const schema = z.object({
   username: z
     .formString({ required: true, error: 'Username is required' })
     .check(
-      z.validateAsync(
-        async (name, prevName, prevResult) =&gt; {
-          if (prevResult !== undefined &amp;&amp; name === prevName) {
-            return prevResult;
-          }
-          const res = await fetch(`/api/usernames/${encodeURIComponent(name)}`);
-          const { available } = await res.json();
-          return available;
-        },
-        'Username is already taken'
-      )
+      z.validateAsync(async (name) =&gt; {
+        const res = await fetch(`/api/usernames/${encodeURIComponent(name)}`);
+        const { available } = await res.json();
+        return available;
+      }, 'Username is already taken')
     ),
 });
 
-// Object-level async check with a condition gate
+// Object-level async check with a condition gate and a custom skipWhen.
+// Only the `sku` and `quantity` fields matter for the stock lookup, so the
+// custom comparator ignores any other root-level changes.
 const orderSchema = z
   .strictObject({
     sku: z.formString({ required: true }),
     quantity: z.formNumber({ required: true }),
+    notes: z.formString(),
   })
   .check(
     z.validateAsync(
@@ -2460,6 +2480,8 @@ const orderSchema = z
       {
         // Skip the network call until both fields parse cleanly.
         condition: (errors) =&gt; errors.length === 0,
+        skipWhen: (a, b) =&gt;
+          b !== undefined &amp;&amp; a.sku === b.sku &amp;&amp; a.quantity === b.quantity,
         path: 'quantity',
         error: 'Not enough stock for the selected quantity',
       }
@@ -2482,6 +2504,27 @@ const usernameSchema = z.object({
           error: 'Username is already taken',
           // Wait 400ms of inactivity before hitting the server.
           debounceMs: 400,
+        }
+      )
+    ),
+});
+
+// Submit-only async check — the payment-method authorization is expensive
+// and only meaningful right before submission. It is skipped on every
+// change-driven validation and runs once when `formActions.validateAsync()`
+// (or the submit flow) fires.
+const paymentSchema = z.object({
+  cardToken: z
+    .formString({ required: true })
+    .check(
+      z.validateAsync(
+        async (token) =&gt; {
+          const res = await fetch(`/api/payments/authorize?token=${token}`);
+          return res.ok;
+        },
+        {
+          error: 'Card could not be authorized',
+          submitOnly: true,
         }
       )
     ),
@@ -5026,14 +5069,21 @@ function AppForm() {
                   <code>'change' | 'submit' | 'asyncValidating' | 'asyncValidated'</code>
                 </td>
                 <td class="prop-desc">
-                  What triggered the event. The async pair fires once around each async validation
-                  pass.
+                  What triggered the event. The async pair fires once per active async refinement
+                  around each validation pass — one <code>asyncValidating</code> and one
+                  <code>asyncValidated</code> per check.
                 </td>
               </tr>
               <tr>
                 <td><code>data</code></td>
                 <td><code>T</code></td>
-                <td class="prop-desc">Current form data snapshot.</td>
+                <td class="prop-desc">
+                  Form data snapshot. For change-driven async events:
+                  <code>asyncValidating</code> carries the <strong>pre-change</strong> state (so
+                  listeners can read the value being replaced), and <code>asyncValidated</code>
+                  carries the <strong>post-change</strong> state with the freshly resolved async
+                  errors applied.
+                </td>
               </tr>
               <tr>
                 <td><code>formData</code></td>
@@ -5061,12 +5111,16 @@ function AppForm() {
                 </td>
               </tr>
               <tr>
-                <td><code>schemaPaths</code></td>
-                <td><code>readonly string[] | undefined</code></td>
+                <td><code>schemaPath</code></td>
+                <td><code>string</code></td>
                 <td class="prop-desc">
-                  Async events only. Dot-notation paths of the async refinements declared on the
-                  schema. Top-level checks (no <code>path</code> override) appear as an empty string
-                  <code>''</code>.
+                  Async events only. Dot-notation path of the async refinement that fired this
+                  event. Property-level checks report the field path
+                  (e.g. <code>'username'</code>, <code>'users.0.email'</code>); top-level checks
+                  attached to the root object report an empty string <code>''</code>. When a schema
+                  declares multiple async checks, each active check produces its own
+                  <code>asyncValidating</code> / <code>asyncValidated</code> pair with the matching
+                  <code>schemaPath</code>.
                 </td>
               </tr>
             </tbody>
@@ -5076,6 +5130,8 @@ function AppForm() {
             check is in flight — for example, a username uniqueness lookup that hits an API. The
             event pair is debounced for you: only one <code>asyncValidating</code> fires per burst
             of overlapping passes, so the indicator doesn't flicker while the user keeps typing.
+            Checks gated by <code>skipWhen</code> or <code>submitOnly</code> are filtered out of
+            this fanout, so listeners only see events for the refinements that actually ran.
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
@@ -5086,9 +5142,11 @@ function UsernameForm() {
   const [validatingField, setValidatingField] = useState&lt;string | null&gt;(null);
 
   const listener: StateChangeListener&lt;FormSchema&gt; = (event) =&gt; {
-    if (event.type === 'asyncValidating') {
-      setValidatingField(event.triggerField ?? null);
-    } else if (event.type === 'asyncValidated') {
+    // `schemaPath` identifies which async refinement fired — match by the
+    // refinement's attachment path so multiple async checks don't interfere.
+    if (event.type === 'asyncValidating' &amp;&amp; event.schemaPath === 'username') {
+      setValidatingField('username');
+    } else if (event.type === 'asyncValidated' &amp;&amp; event.schemaPath === 'username') {
       setValidatingField(null);
     }
   };
@@ -7047,7 +7105,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             <tbody>
               <tr>
                 <td>Bundle size (gzipped)</td>
-                <td>~19 KB <sup>1</sup></td>
+                <td>~20 KB <sup>1</sup></td>
                 <td>~13 KB</td>
                 <td>~10 KB</td>
                 <td>~15 KB</td>

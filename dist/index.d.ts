@@ -211,12 +211,14 @@ type StateChangeEvent<T extends object> = {
    */
   triggerField?: string | undefined;
   /**
-   * The dot-notation paths of the async refinements declared on the schema. Computed once per
-   * schema instance and reused across validation passes.
+   * The dot-notation path of the specific async refinement this event corresponds to. One
+   * `asyncValidating` / `asyncValidated` event pair is fired per non-skipped async check, so
+   * listeners can react to individual checks rather than the burst as a whole. For an async
+   * check attached to the root schema (no `path`), this is the empty string.
    *
    * Only set on `asyncValidating` / `asyncValidated` events.
    */
-  schemaPaths?: readonly string[] | undefined;
+  schemaPath?: string | undefined;
 };
 /**
  * Form change event listener type.
@@ -1961,17 +1963,17 @@ declare function validate<T>(predicate: (item: NoInfer<T>) => boolean, error: st
  *                           indicating whether the validation should run for the current state of the errors.
  *                           Validations always run by default, unlike the `refine`/`superRefine` methods.
  * @param params.skipWhen - An optional synchronous function that returns `true` when the predicate would
- *                          shortcut. Receives `(item, prevItem, prevResult)`. When all async checks on the
- *                          schema would skip, the form suppresses `asyncValidating` (and the corresponding
+ *                          shortcut. Receives `(item, prevItem)`. When all async checks on the schema
+ *                          would skip, the form suppresses `asyncValidating` (and the corresponding
  *                          listener events) for that pass and preserves the previously resolved async errors.
  * @param params.path - An optional `errors` object key to store the error message with.
  * @param params.error - An optional custom error message.
  * @param params.debounceMs - An optional debounce interval in milliseconds. When set, rapid successive
  *                            invocations collapse: a pending timer is cancelled on each new call and a new
  *                            one is scheduled; the cancelled call resolves to the previously known result so
- *                            the surrounding `safeParseAsync` can complete. NOTE: debounce state lives in the
- *                            check's closure, so reusing the same `validateAsync` result across multiple
- *                            concurrently-mounted forms will cause them to share the timer.
+ *                            the surrounding `safeParseAsync` can complete.
+ * @param params.submitOnly - `true` if the validation only needs to run when the form is getting submitted.
+ *                            `false` means the validation runs on every change and submission (default: `false`).
  * @returns The object schema.
  */
 declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boolean>, params?: {
@@ -1980,6 +1982,7 @@ declare function validateAsync<T>(predicate: (item: NoInfer<T>) => Promise<boole
   path?: PropertyKey[] | PropertyKey;
   error?: string;
   debounceMs?: number;
+  submitOnly?: boolean;
 }): z.core.$ZodCheck<T>;
 /**
  * Creates an asynchronous full schema validation check. Must be used with `safeParseAsync` / `parseAsync`.
@@ -2627,7 +2630,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *

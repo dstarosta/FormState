@@ -1,10 +1,16 @@
 import * as z from 'zod/mini';
 
-import type { FieldRange, FormDateFormat, FormStatePath } from '../types/form-types';
-import { toUTC } from './date-formatter';
+import type {
+  AsyncCheck,
+  AsyncCheckMeta,
+  AsyncCheckMetaMap,
+  FieldRange,
+  FormDateFormat,
+  FormStatePath,
+} from '../types/form-types';
+import { safeParseDate, toUTC } from './date-formatter';
+import { dotPathGet } from './dot-path';
 
-// There are 9 distinct wrapper types unwrapped by getBaseType; 20 allows each to appear
-// twice with room to spare while preventing an infinite loop on a pathological circular schema.
 const MAX_UNWRAP_DEPTH = 20;
 
 const DIGIT_RE = /^\d+$/;
@@ -27,7 +33,48 @@ const requiredTypes: Readonly<Set<string>> = new Set([
 const asyncSchemaCache = new WeakMap<z.ZodMiniType, boolean>();
 const asyncCheckPathsCache = new WeakMap<z.ZodMiniType, readonly string[]>();
 
+// Factory registered by `validateAsync` — called lazily to create a fresh
+// per-form state slot the first time a given metaMap needs one.
+const asyncCheckFactories = new WeakMap<AsyncCheck, () => AsyncCheckMeta>();
+
+// Fallback Map for stand-alone parses (e.g. `schema.safeParseAsync` called
+// outside any form, including direct test calls). Keyed weakly so it goes
+// away with the schema/check.
+const defaultMetaMapByCheck = new WeakMap<AsyncCheck, AsyncCheckMetaMap>();
+
+// Module-level pointer to the metaMap that should be used by the next Zod
+// `when` invocation. Set by `withMetaMap` for the duration of a parse so
+// concurrent forms don't share closure state.
+let currentMetaMap: AsyncCheckMetaMap | undefined;
+
 // Private functions
+
+const getOrCreateMetaIn = (
+  check: AsyncCheck,
+  map: AsyncCheckMetaMap
+): AsyncCheckMeta | undefined => {
+  let meta = map.get(check);
+  if (!meta) {
+    const factory = asyncCheckFactories.get(check);
+    // Unreachable guard
+    /* v8 ignore if -- @preserve */
+    if (!factory) {
+      return undefined;
+    }
+    meta = factory();
+    map.set(check, meta);
+  }
+  return meta;
+};
+
+const getDefaultMapFor = (check: AsyncCheck): AsyncCheckMetaMap => {
+  let map = defaultMetaMapByCheck.get(check);
+  if (!map) {
+    map = new Map();
+    defaultMetaMapByCheck.set(check, map);
+  }
+  return map;
+};
 
 const getSchemaLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
   const checks =
@@ -152,6 +199,53 @@ const recursiveCollect = <T>(
   }
 };
 
+const getFormDateFormat = (schema: z.ZodMiniType): FormDateFormat | undefined => {
+  if (!(schema instanceof z.ZodMiniPipe)) {
+    return undefined;
+  }
+
+  const out = schema.def.out as z.ZodMiniType | undefined;
+
+  if (!(out instanceof z.ZodMiniUnion)) {
+    return undefined;
+  }
+
+  for (const option of out.def.options) {
+    const inner = option as z.ZodMiniType;
+
+    if (inner instanceof z.ZodMiniDate) {
+      const format = z.globalRegistry.get(inner)?.['format'];
+
+      if (typeof format === 'string' && format.length > 0) {
+        return format as FormDateFormat;
+      }
+
+      return 'yyyy-MM-dd';
+    }
+  }
+
+  return undefined;
+};
+
+const coerceValue = (schema: z.ZodMiniType, value: unknown): unknown => {
+  const format = getFormDateFormat(schema);
+
+  if (format) {
+    if (value instanceof Date || !value) {
+      return value;
+    }
+
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    const parsed = safeParseDate(value, format);
+    return parsed.success ? parsed.date : value;
+  }
+
+  return value;
+};
+
 const getSchema = (schema: z.ZodMiniType, path: string, extractEnum: boolean) => {
   let current: z.ZodMiniType = getBaseType(schema);
 
@@ -219,6 +313,247 @@ const hasAsyncChecks = (schema: z.ZodMiniType): boolean => {
   }
 
   return false;
+};
+
+const collectActiveAsyncCheckPathsInternal = (
+  schema: z.ZodMiniType,
+  parentKey: string,
+  data: unknown,
+  out: string[],
+  phase: 'change' | 'submit',
+  metaMap: AsyncCheckMetaMap | undefined
+) => {
+  const checks = (
+    schema._zod.def as {
+      checks?: {
+        _zod: { def: { fn?: unknown; path?: PropertyKey[] } };
+      }[];
+    }
+  ).checks;
+
+  if (Array.isArray(checks)) {
+    for (const check of checks) {
+      const fn = check._zod.def.fn;
+
+      if (typeof fn !== 'function' || fn.constructor.name !== 'AsyncFunction') {
+        continue;
+      }
+
+      const meta = getAsyncCheckMeta(check, metaMap);
+
+      if (meta?.submitOnly && phase !== 'submit') {
+        continue;
+      }
+
+      if (meta?.skipWhen) {
+        const valueAtCheck = parentKey ? dotPathGet(data as object, parentKey) : data;
+        if (meta.skipWhen(valueAtCheck, meta.getPrevAt(parentKey))) {
+          continue;
+        }
+      }
+
+      const suffix = combinePath(check._zod.def.path);
+      const fullPath = parentKey && suffix ? `${parentKey}.${suffix}` : parentKey || suffix;
+
+      out.push(fullPath);
+    }
+  }
+
+  const baseSchema = getBaseType(schema);
+
+  if (baseSchema !== schema) {
+    collectActiveAsyncCheckPathsInternal(baseSchema, parentKey, data, out, phase, metaMap);
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray) {
+    const arr = parentKey ? dotPathGet(data as object, parentKey) : data;
+    if (Array.isArray(arr)) {
+      const element = baseSchema.def.element as z.ZodMiniType;
+      for (let i = 0; i < arr.length; i++) {
+        const indexKey = String(i);
+        collectActiveAsyncCheckPathsInternal(
+          element,
+          parentKey ? `${parentKey}.${indexKey}` : indexKey,
+          data,
+          out,
+          phase,
+          metaMap
+        );
+      }
+    }
+  } else if (baseSchema instanceof z.ZodMiniObject) {
+    for (const prop in baseSchema.shape) {
+      if (Object.prototype.hasOwnProperty.call(baseSchema.shape, prop)) {
+        collectActiveAsyncCheckPathsInternal(
+          baseSchema.shape[prop] as z.ZodMiniType,
+          parentKey ? `${parentKey}.${prop}` : prop,
+          data,
+          out,
+          phase,
+          metaMap
+        );
+      }
+    }
+  }
+};
+
+const commitActiveAsyncCheckPathsInternal = (
+  schema: z.ZodMiniType,
+  parentKey: string,
+  data: unknown,
+  metaMap: AsyncCheckMetaMap | undefined
+) => {
+  const checks = (
+    schema._zod.def as {
+      checks?: {
+        _zod: { def: { fn?: unknown; path?: PropertyKey[] } };
+      }[];
+    }
+  ).checks;
+
+  if (Array.isArray(checks)) {
+    for (const check of checks) {
+      const fn = check._zod.def.fn;
+
+      if (typeof fn !== 'function' || fn.constructor.name !== 'AsyncFunction') {
+        continue;
+      }
+
+      const meta = getAsyncCheckMeta(check, metaMap);
+
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (!meta) {
+        continue;
+      }
+
+      const valueAtCheck = parentKey ? dotPathGet(data as object, parentKey) : data;
+      meta.commitAt(parentKey, valueAtCheck);
+    }
+  }
+
+  const baseSchema = getBaseType(schema);
+
+  if (baseSchema !== schema) {
+    commitActiveAsyncCheckPathsInternal(baseSchema, parentKey, data, metaMap);
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray) {
+    const arr = parentKey ? dotPathGet(data as object, parentKey) : data;
+    if (Array.isArray(arr)) {
+      const element = baseSchema.def.element as z.ZodMiniType;
+      for (let i = 0; i < arr.length; i++) {
+        const indexKey = String(i);
+        commitActiveAsyncCheckPathsInternal(
+          element,
+          parentKey ? `${parentKey}.${indexKey}` : indexKey,
+          data,
+          metaMap
+        );
+      }
+    }
+  } else if (baseSchema instanceof z.ZodMiniObject) {
+    for (const prop in baseSchema.shape) {
+      if (Object.prototype.hasOwnProperty.call(baseSchema.shape, prop)) {
+        commitActiveAsyncCheckPathsInternal(
+          baseSchema.shape[prop] as z.ZodMiniType,
+          parentKey ? `${parentKey}.${prop}` : prop,
+          data,
+          metaMap
+        );
+      }
+    }
+  }
+};
+
+const collectAsyncNestedPaths = (schema: z.ZodMiniType, parentKey: string, out: string[]) => {
+  const checks = (
+    schema._zod.def as {
+      checks?: {
+        _zod: { def: { fn?: unknown; path?: PropertyKey[] } };
+      }[];
+    }
+  ).checks;
+
+  if (Array.isArray(checks)) {
+    for (const check of checks) {
+      const fn = check._zod.def.fn;
+
+      if (typeof fn !== 'function' || fn.constructor.name !== 'AsyncFunction') {
+        continue;
+      }
+
+      const suffix = combinePath(check._zod.def.path);
+      const fullPath = parentKey && suffix ? `${parentKey}.${suffix}` : parentKey || suffix;
+
+      out.push(fullPath);
+    }
+  }
+
+  const baseSchema = getBaseType(schema);
+
+  if (baseSchema !== schema) {
+    collectAsyncNestedPaths(baseSchema, parentKey, out);
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray) {
+    collectAsyncNestedPaths(
+      baseSchema.def.element as z.ZodMiniType,
+      parentKey ? `${parentKey}.0` : '0',
+      out
+    );
+  } else if (baseSchema instanceof z.ZodMiniObject) {
+    for (const prop in baseSchema.shape) {
+      if (Object.prototype.hasOwnProperty.call(baseSchema.shape, prop)) {
+        collectAsyncNestedPaths(
+          baseSchema.shape[prop] as z.ZodMiniType,
+          parentKey ? `${parentKey}.${prop}` : prop,
+          out
+        );
+      }
+    }
+  }
+};
+
+const setAsyncNestedPhase = (
+  schema: z.ZodMiniType,
+  phase: 'change' | 'submit',
+  metaMap: AsyncCheckMetaMap | undefined
+) => {
+  const checks = (
+    schema._zod.def as {
+      checks?: { _zod: { def: { fn?: unknown } } }[];
+    }
+  ).checks;
+
+  if (Array.isArray(checks)) {
+    for (const check of checks) {
+      const fn = check._zod.def.fn;
+
+      if (typeof fn !== 'function' || fn.constructor.name !== 'AsyncFunction') {
+        continue;
+      }
+
+      const meta = getAsyncCheckMeta(check, metaMap);
+      meta?.setPhase(phase);
+    }
+  }
+
+  const baseSchema = getBaseType(schema);
+
+  if (baseSchema !== schema) {
+    setAsyncNestedPhase(baseSchema, phase, metaMap);
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray) {
+    setAsyncNestedPhase(baseSchema.def.element as z.ZodMiniType, phase, metaMap);
+  } else if (baseSchema instanceof z.ZodMiniObject) {
+    for (const prop in baseSchema.shape) {
+      if (Object.prototype.hasOwnProperty.call(baseSchema.shape, prop)) {
+        setAsyncNestedPhase(baseSchema.shape[prop] as z.ZodMiniType, phase, metaMap);
+      }
+    }
+  }
 };
 
 // Internal functions
@@ -447,67 +782,6 @@ export const collectPatterns = <T extends z.ZodMiniType>(
   return patterns as Record<keyof z.infer<T>, string | undefined>;
 };
 
-const collectAsyncCheckPathsInternal = (
-  schema: z.ZodMiniType,
-  parentKey: string,
-  out: string[]
-) => {
-  const checks = (
-    schema._zod.def as {
-      checks?: {
-        _zod: { def: { fn?: unknown; path?: PropertyKey[] } };
-      }[];
-    }
-  ).checks;
-
-  if (Array.isArray(checks)) {
-    for (const check of checks) {
-      const fn = check._zod.def.fn;
-
-      if (typeof fn !== 'function' || fn.constructor.name !== 'AsyncFunction') {
-        continue;
-      }
-
-      const checkPath = check._zod.def.path;
-      const suffix =
-        Array.isArray(checkPath) && checkPath.length > 0
-          ? checkPath
-              .filter((part) => typeof part !== 'symbol')
-              .map(String)
-              .join('.')
-          : '';
-
-      const fullPath = parentKey && suffix ? `${parentKey}.${suffix}` : parentKey || suffix;
-
-      out.push(fullPath);
-    }
-  }
-
-  const baseSchema = getBaseType(schema);
-
-  if (baseSchema !== schema) {
-    collectAsyncCheckPathsInternal(baseSchema, parentKey, out);
-  }
-
-  if (baseSchema instanceof z.ZodMiniArray) {
-    collectAsyncCheckPathsInternal(
-      baseSchema.def.element as z.ZodMiniType,
-      parentKey ? `${parentKey}.0` : '0',
-      out
-    );
-  } else if (baseSchema instanceof z.ZodMiniObject) {
-    for (const prop in baseSchema.shape) {
-      if (Object.prototype.hasOwnProperty.call(baseSchema.shape, prop)) {
-        collectAsyncCheckPathsInternal(
-          baseSchema.shape[prop] as z.ZodMiniType,
-          parentKey ? `${parentKey}.${prop}` : prop,
-          out
-        );
-      }
-    }
-  }
-};
-
 export const collectAsyncCheckPaths = (schema: z.ZodMiniType): readonly string[] => {
   const cached = asyncCheckPathsCache.get(schema);
 
@@ -516,12 +790,127 @@ export const collectAsyncCheckPaths = (schema: z.ZodMiniType): readonly string[]
   }
 
   const paths: string[] = [];
-  collectAsyncCheckPathsInternal(schema, '', paths);
+  collectAsyncNestedPaths(schema, '', paths);
 
   const frozen = Object.freeze(paths);
   asyncCheckPathsCache.set(schema, frozen);
 
   return frozen;
+};
+
+export const coerceFormData = <T extends z.ZodMiniType>(
+  rootSchema: T,
+  data: z.infer<T>
+): z.infer<T> => {
+  const baseSchema = getBaseType(rootSchema);
+
+  if (baseSchema instanceof z.ZodMiniObject) {
+    let next: Record<string, unknown> | undefined;
+
+    for (const key in baseSchema.shape) {
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (!Object.prototype.hasOwnProperty.call(baseSchema.shape, key)) {
+        continue;
+      }
+
+      const fieldSchema = baseSchema.shape[key] as z.ZodMiniType;
+      const rawValue = (data as Record<string, unknown>)[key];
+      const fieldBase = getBaseType(fieldSchema);
+
+      const coercedValue =
+        (fieldBase instanceof z.ZodMiniObject || fieldBase instanceof z.ZodMiniArray) &&
+        rawValue !== null &&
+        typeof rawValue === 'object'
+          ? coerceFormData(fieldSchema, rawValue)
+          : coerceValue(fieldSchema, rawValue);
+
+      if (coercedValue !== rawValue) {
+        next ??= { ...(data as Record<string, unknown>) };
+        next[key] = coercedValue;
+      }
+    }
+    return (next ?? data) as z.infer<T>;
+  }
+
+  if (baseSchema instanceof z.ZodMiniArray && Array.isArray(data)) {
+    const arr = data as unknown[];
+    const element = baseSchema.def.element as z.ZodMiniType;
+    const elementBase = getBaseType(element);
+
+    let next: unknown[] | undefined;
+
+    for (let i = 0; i < arr.length; i++) {
+      const rawValue = arr[i];
+      const coercedValue =
+        (elementBase instanceof z.ZodMiniObject || elementBase instanceof z.ZodMiniArray) &&
+        rawValue !== null &&
+        typeof rawValue === 'object'
+          ? coerceFormData(element, rawValue)
+          : coerceValue(element, rawValue);
+
+      if (coercedValue !== rawValue) {
+        next ??= [...arr];
+        next[i] = coercedValue;
+      }
+    }
+    return (next ?? arr) as z.infer<T>;
+  }
+
+  return data;
+};
+
+export const commitActiveAsyncCheckPaths = (
+  schema: z.ZodMiniType,
+  data: unknown,
+  metaMap?: AsyncCheckMetaMap
+): void => {
+  commitActiveAsyncCheckPathsInternal(schema, '', data, metaMap);
+};
+
+export const collectActiveAsyncCheckPaths = (
+  schema: z.ZodMiniType,
+  data: unknown,
+  phase: 'change' | 'submit' = 'change',
+  metaMap?: AsyncCheckMetaMap
+): readonly string[] => {
+  const paths: string[] = [];
+  collectActiveAsyncCheckPathsInternal(schema, '', data, paths, phase, metaMap);
+  return paths;
+};
+
+export const setAsyncCheckPhase = (
+  schema: z.ZodMiniType,
+  phase: 'change' | 'submit',
+  metaMap?: AsyncCheckMetaMap
+): void => {
+  setAsyncNestedPhase(schema, phase, metaMap);
+};
+
+export const registerAsyncCheckFactory = (
+  check: AsyncCheck,
+  factory: () => AsyncCheckMeta
+): void => {
+  asyncCheckFactories.set(check, factory);
+};
+
+export const getAsyncCheckMeta = (
+  check: AsyncCheck,
+  metaMap: AsyncCheckMetaMap | undefined
+): AsyncCheckMeta | undefined => getOrCreateMetaIn(check, metaMap ?? getDefaultMapFor(check));
+
+export const getAsyncCheckMetaForCurrentMap = (check: AsyncCheck): AsyncCheckMeta | undefined =>
+  getOrCreateMetaIn(check, currentMetaMap ?? getDefaultMapFor(check));
+
+export const withMetaMap = async <T>(map: AsyncCheckMetaMap, fn: () => Promise<T>): Promise<T> => {
+  const prev = currentMetaMap;
+  currentMetaMap = map;
+  try {
+    return await fn();
+  } finally {
+    // eslint-disable-next-line require-atomic-updates -- restoring a captured local; intentional.
+    currentMetaMap = prev;
+  }
 };
 
 export const isAsyncSchema = (schema: z.ZodMiniType): boolean => {
@@ -619,5 +1008,16 @@ export const getPathNotation = <T extends z.ZodMiniObject>(path: FormStatePath<z
       }
       return pathPart;
     })
+    .join('.');
+};
+
+export const combinePath = (path: PropertyKey | PropertyKey[] | undefined) => {
+  if (!Array.isArray(path)) {
+    return String(path || '');
+  }
+
+  return path
+    .filter((part) => typeof part !== 'symbol')
+    .map((part) => part.toString())
     .join('.');
 };

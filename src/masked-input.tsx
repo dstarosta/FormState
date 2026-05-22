@@ -552,7 +552,7 @@ export function MaskedInput({
   const snapCaretToSlot = () => {
     const element = inputRef.current;
 
-    // Unreachable guard needed for type safety
+    // Unreachable guard
     /* v8 ignore if -- @preserve */
     if (!element) {
       return;

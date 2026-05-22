@@ -1556,8 +1556,6 @@ describe('useFormState', () => {
       type AsyncSchemaData = { name: string };
       type AsyncEvent = StateChangeEvent<AsyncSchemaData>;
 
-      // Shared harness used by every test in this block to avoid duplicate
-      // function bodies (sonarjs/no-identical-functions).
       const renderListenerHarness = (
         listenerSchema: ReturnType<typeof buildAsyncSchema>,
         listener: StateChangeListener<AsyncSchemaData>,
@@ -1609,7 +1607,7 @@ describe('useFormState', () => {
         expect(asyncEvents[1]?.triggerField).toBe('name');
       });
 
-      it('exposes schemaPaths with the dot-path of the async check', async () => {
+      it('exposes schemaPath with the dot-path of the async check', async () => {
         const events: AsyncEvent[] = [];
         const listener = vi.fn((event: AsyncEvent) => {
           events.push(event);
@@ -1625,10 +1623,10 @@ describe('useFormState', () => {
         });
 
         const validating = events.find((evt) => evt.type === 'asyncValidating');
-        expect(validating?.schemaPaths).toStrictEqual(['name']);
+        expect(validating?.schemaPath).toBe('name');
       });
 
-      it('uses an empty string in schemaPaths for a top-level async check without a path', async () => {
+      it('uses an empty string in schemaPath for a top-level async check without a path', async () => {
         type RootSchemaData = { name: string };
         const events: StateChangeEvent<RootSchemaData>[] = [];
         const listener = vi.fn((event: StateChangeEvent<RootSchemaData>) => {
@@ -1654,10 +1652,10 @@ describe('useFormState', () => {
         });
 
         const validating = events.find((evt) => evt.type === 'asyncValidating');
-        expect(validating?.schemaPaths).toStrictEqual(['']);
+        expect(validating?.schemaPath).toBe('');
       });
 
-      it('still fires asyncValidating/asyncValidated for programmatic validateAsync() on a sync-only schema with an empty schemaPaths', async () => {
+      it('fires no asyncValidating/asyncValidated events for programmatic validateAsync() on a sync-only schema', async () => {
         const events: AsyncEvent[] = [];
         const listener = vi.fn((event: AsyncEvent) => {
           events.push(event);
@@ -1683,11 +1681,601 @@ describe('useFormState', () => {
         const asyncEvents = events.filter(
           (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
         );
+        expect(asyncEvents).toStrictEqual([]);
+      });
+
+      it('isolates per-form async state when two forms share the same schema', async () => {
+        const predicate = vi.fn((value: string) => Promise.resolve(value.length > 0));
+
+        const sharedSchema = z.object({
+          name: z.formString({ required: true }).check(z.validateAsync(predicate, 'nope')),
+        });
+
+        const useFormA = () => useFormState(sharedSchema, { initialData: { name: 'Mike' } });
+        const useFormB = () => useFormState(sharedSchema, { initialData: { name: 'Mike' } });
+
+        const formA = renderHook(() => useFormA());
+        const formB = renderHook(() => useFormB());
+
+        act(() => {
+          formA.result.current.formActions.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(formA.result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(predicate).toHaveBeenCalledTimes(1);
+        expect(predicate).toHaveBeenLastCalledWith('Alice');
+
+        act(() => {
+          formB.result.current.formActions.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(formB.result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(predicate).toHaveBeenCalledTimes(2);
+        expect(predicate).toHaveBeenLastCalledWith('Alice');
+      });
+
+      it('fires no events and keeps formStatus.validating false when skipWhen returns true', async () => {
+        type SkipData = { name: string };
+        const events: StateChangeEvent<SkipData>[] = [];
+        const listener = vi.fn((event: StateChangeEvent<SkipData>) => {
+          events.push(event);
+        });
+
+        const skipSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validateAsync(() => Promise.resolve(true), {
+              error: 'nope',
+              skipWhen: () => true,
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formStatus,
+            formActions: { change, validateAsync },
+            formHooks: { useListener },
+          } = useFormState(skipSchema, { initialData: { name: 'Mike' } });
+          useListener(listener);
+          return { formStatus, change, validateAsync };
+        };
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
+        expect(asyncEvents).toStrictEqual([]);
+        expect(result.current.formStatus.validating).toBe(false);
+      });
+
+      it('fires asyncValidating with the pre-change state and asyncValidated with the post-change state across multiple bursts', async () => {
+        type PrevData = { name: string };
+        const events: StateChangeEvent<PrevData>[] = [];
+        const listener = vi.fn((event: StateChangeEvent<PrevData>) => {
+          events.push(event);
+        });
+
+        const asyncSchema = z.object({
+          name: z
+            .formString({ required: true })
+            .check(z.validateAsync(() => Promise.resolve(true), 'nope')),
+        });
+
+        const Component = () => {
+          const {
+            formActions: { change },
+            formHooks: { useListener },
+          } = useFormState(asyncSchema, { initialData: { name: 'Mike' } });
+          useListener(listener);
+          return { change };
+        };
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(events.filter((evt) => evt.type === 'asyncValidated').length).toBe(1);
+        });
+
+        // First burst: prev is the initial mount state ('Mike').
+        expect(events.find((evt) => evt.type === 'asyncValidating')?.data.name).toBe('Mike');
+        expect(events.find((evt) => evt.type === 'asyncValidated')?.data.name).toBe('Alice');
+
+        events.length = 0;
+
+        act(() => {
+          result.current.change('name', 'Bob');
+        });
+
+        await waitFor(() => {
+          expect(events.some((evt) => evt.type === 'asyncValidated')).toBe(true);
+        });
+
+        // Second burst: prev is the result of the first burst ('Alice').
+        expect(events.find((evt) => evt.type === 'asyncValidating')?.data.name).toBe('Alice');
+        expect(events.find((evt) => evt.type === 'asyncValidated')?.data.name).toBe('Bob');
+      });
+
+      it('does not run submitOnly checks or fire async events on change, but runs them on validateAsync()', async () => {
+        type SubmitOnlyData = { name: string };
+        const events: StateChangeEvent<SubmitOnlyData>[] = [];
+        const listener = vi.fn((event: StateChangeEvent<SubmitOnlyData>) => {
+          events.push(event);
+        });
+        const predicate = vi.fn((value: string) => Promise.resolve(value.length > 0));
+
+        const submitOnlySchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validateAsync(predicate, {
+              error: 'nope',
+              submitOnly: true,
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formStatus,
+            formActions: { change, validateAsync },
+            formHooks: { useListener },
+          } = useFormState(submitOnlySchema, { initialData: { name: 'Mike' } });
+          useListener(listener);
+          return { formStatus, change, validateAsync };
+        };
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(predicate).not.toHaveBeenCalled();
+        expect(
+          events.filter((evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated')
+        ).toStrictEqual([]);
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        expect(predicate).toHaveBeenCalledTimes(1);
+        expect(events.some((evt) => evt.type === 'asyncValidating')).toBe(true);
+        expect(events.some((evt) => evt.type === 'asyncValidated')).toBe(true);
+      });
+
+      it('does submit when sync validation has no errors', async () => {
+        const predicate = vi.fn((value: string) => value.length > 0);
+
+        const submitSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validate(predicate, {
+              error: 'Validation error',
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formStatus,
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, { initialData: { name: 'Jack' } });
+
+          return { formStatus, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true), {
+            onError() {
+              throw new Error('Not to be called');
+            },
+            onSuccess(state) {
+              expect(state.data.name).toBe('Alice');
+            },
+          })(new FormData());
+        });
+
+        expect(result.current.formStatus.submitted).toBe(true);
+      });
+
+      it('does not submit when sync validation has an error', async () => {
+        const predicate = vi.fn((value: string) => value.length < 0);
+
+        const submitSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validate(predicate, {
+              error: 'Validation error',
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formStatus,
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, { initialData: { name: 'Mitch' } });
+
+          return { formStatus, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true), {
+            onError(state) {
+              expect(state.errors.name).toBe('Validation error');
+            },
+            onSuccess() {
+              throw new Error('Not to be called');
+            },
+          })(new FormData());
+        });
+
+        expect(result.current.formStatus.submitted).toBe(false);
+      });
+
+      it('does submit when async validation has no errors', async () => {
+        const predicate = vi.fn((value: string) => Promise.resolve(value.length > 0));
+
+        const submitSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validateAsync(predicate, {
+              error: 'Validation error',
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formStatus,
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, { initialData: { name: 'Mike' } });
+
+          return { formStatus, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true), {
+            onError() {
+              throw new Error('Not to be called');
+            },
+            onSuccess(state) {
+              expect(state.data.name).toBe('Alice');
+            },
+          })(new FormData());
+        });
+
+        expect(result.current.formStatus.submitted).toBe(true);
+      });
+
+      it('does not submit when async validation has an error', async () => {
+        const predicate = vi.fn((value: string) => Promise.resolve(value.length < 0));
+
+        const submitSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validateAsync(predicate, {
+              error: 'Validation error',
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formStatus,
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, { initialData: { name: 'John' } });
+
+          return { formStatus, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true), {
+            onError(state) {
+              expect(state.errors.name).toBe('Validation error');
+            },
+            onSuccess() {
+              throw new Error('Not to be called');
+            },
+          })(new FormData());
+        });
+
+        expect(result.current.formStatus.submitted).toBe(false);
+      });
+
+      it.each([false, true])(
+        'does not validate/submit a sync schema',
+        async (shouldSubmit: boolean) => {
+          const predicate = vi.fn((value: string) => value.length < 0);
+
+          const submitSchema = z.object({
+            name: z.formString({ required: true }).check(
+              z.validate(predicate, {
+                error: 'Validation error',
+              })
+            ),
+          });
+
+          const Component = () => {
+            const {
+              formStatus,
+              formActions: { change, validate },
+            } = useFormState(submitSchema, { initialData: { name: 'Karl' } });
+
+            return { formStatus, change, validate };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          act(() => {
+            result.current.change('name', 'Alice');
+          });
+
+          await waitFor(() => {
+            expect(result.current.formStatus.validating).toBe(false);
+          });
+
+          act(() => {
+            result.current.validate({ submit: shouldSubmit });
+          });
+
+          expect(result.current.formStatus.valid).toBe(false);
+          expect(result.current.formStatus.submitted).toBe(false);
+        }
+      );
+
+      it.each([false, true])(
+        'throws from validate() on an async schema (submit=%s)',
+        (shouldSubmit: boolean) => {
+          const submitSchema = z.object({
+            name: z
+              .formString({ required: true })
+              .check(z.validateAsync(() => Promise.resolve(true), { error: 'Validation error' })),
+          });
+
+          const Component = () => {
+            const {
+              formActions: { validate },
+            } = useFormState(submitSchema, { initialData: { name: 'Bob' } });
+
+            return { validate };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          expect(() => {
+            result.current.validate({ submit: shouldSubmit });
+          }).toThrow(/validate\(\) cannot be used with a schema that has async checks/);
+        }
+      );
+
+      it('validateAsync() returns false when async validation has an error', async () => {
+        const predicate = vi.fn((value: string) => Promise.resolve(value.length < 0));
+
+        const asyncSchema = z.object({
+          name: z
+            .formString({ required: true })
+            .check(z.validateAsync(predicate, { error: 'Validation error' })),
+        });
+
+        const Component = () => {
+          const {
+            formStatus,
+            formActions: { change, validateAsync },
+          } = useFormState(asyncSchema, { initialData: { name: 'Bob' } });
+
+          return { formStatus, change, validateAsync };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        let isValid: boolean | undefined;
+        await act(async () => {
+          isValid = await result.current.validateAsync();
+        });
+
+        expect(isValid).toBe(false);
+        expect(result.current.formStatus.valid).toBe(false);
+      });
+
+      it('validateAsync() returns true when async validation passes', async () => {
+        const predicate = vi.fn((value: string) => Promise.resolve(value.length > 0));
+
+        const asyncSchema = z.object({
+          name: z
+            .formString({ required: true })
+            .check(z.validateAsync(predicate, { error: 'Validation error' })),
+        });
+
+        const Component = () => {
+          const {
+            formStatus,
+            formActions: { change, validateAsync },
+          } = useFormState(asyncSchema, { initialData: { name: 'Carol' } });
+
+          return { formStatus, change, validateAsync };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        let isValid: boolean | undefined;
+        await act(async () => {
+          isValid = await result.current.validateAsync();
+        });
+
+        expect(isValid).toBe(true);
+        expect(result.current.formStatus.valid).toBe(true);
+      });
+
+      it('fires one asyncValidating / asyncValidated pair per active async check', async () => {
+        type TwoCheckData = { name: string; email: string };
+        const events: StateChangeEvent<TwoCheckData>[] = [];
+        const listener = vi.fn((event: StateChangeEvent<TwoCheckData>) => {
+          events.push(event);
+        });
+
+        const twoCheckSchema = z.object({
+          name: z
+            .formString({ required: true })
+            .check(z.validateAsync(() => Promise.resolve(true), 'name failed')),
+          email: z
+            .formString({ required: true })
+            .check(z.validateAsync(() => Promise.resolve(true), 'email failed')),
+        });
+
+        const Component = () => {
+          const {
+            formActions: { validateAsync },
+            formHooks: { useListener },
+          } = useFormState(twoCheckSchema, {
+            initialData: { name: 'Mike', email: 'mike@x.com' },
+          });
+          useListener(listener);
+          return { validateAsync };
+        };
+        const { result } = renderHook(() => Component());
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
+        expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+          'asyncValidating',
+          'asyncValidating',
+          'asyncValidated',
+          'asyncValidated',
+        ]);
+        const validatingPaths = new Set(
+          asyncEvents.filter((evt) => evt.type === 'asyncValidating').map((evt) => evt.schemaPath)
+        );
+        const validatedPaths = new Set(
+          asyncEvents.filter((evt) => evt.type === 'asyncValidated').map((evt) => evt.schemaPath)
+        );
+        expect(validatingPaths).toStrictEqual(new Set(['email', 'name']));
+        expect(validatedPaths).toStrictEqual(new Set(['email', 'name']));
+      });
+
+      it('only fires events for the non-skipped check when one of two checks has skipWhen=true', async () => {
+        type MixedData = { name: string; email: string };
+        const events: StateChangeEvent<MixedData>[] = [];
+        const listener = vi.fn((event: StateChangeEvent<MixedData>) => {
+          events.push(event);
+        });
+
+        const mixedSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validateAsync(() => Promise.resolve(true), {
+              error: 'nope',
+              skipWhen: () => true,
+            })
+          ),
+          email: z
+            .formString({ required: true })
+            .check(z.validateAsync(() => Promise.resolve(true), 'email failed')),
+        });
+
+        const Component = () => {
+          const {
+            formActions: { validateAsync },
+            formHooks: { useListener },
+          } = useFormState(mixedSchema, {
+            initialData: { name: 'Mike', email: 'mike@x.com' },
+          });
+          useListener(listener);
+          return { validateAsync };
+        };
+        const { result } = renderHook(() => Component());
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
         expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
           'asyncValidating',
           'asyncValidated',
         ]);
-        expect(asyncEvents[0]?.schemaPaths).toStrictEqual([]);
+        expect(asyncEvents[0]?.schemaPath).toBe('email');
+        expect(asyncEvents[1]?.schemaPath).toBe('email');
       });
 
       it('coalesces overlapping passes into a single asyncValidating / asyncValidated pair', async () => {
@@ -1857,52 +2445,141 @@ describe('useFormState', () => {
         }
       });
 
-      it('does not increase the render count when async listener events are emitted', async () => {
-        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
-        const listener = vi.fn();
+      it.each([false, true])(
+        'does not increase the render count when async listener events are emitted (validateOnMount=%s)',
+        async (validateOnMount) => {
+          const asyncSchema = buildAsyncSchema(new Set(['Mike']));
 
-        let withListenerRenders = 0;
-        const WithListener = () => {
-          withListenerRenders += 1;
-          const {
-            formStatus,
-            formActions: { change },
-            formHooks: { useListener },
-          } = useFormState(asyncSchema, { initialData: { name: 'Mike' } });
-          useListener(listener);
-          return { formStatus, change };
-        };
-        const { result: withResult } = renderHook(() => WithListener());
+          const listener = vi.fn();
 
-        let withoutListenerRenders = 0;
-        const WithoutListener = () => {
-          withoutListenerRenders += 1;
-          const {
-            formStatus,
-            formActions: { change },
-          } = useFormState(asyncSchema, { initialData: { name: 'Mike' } });
-          return { formStatus, change };
-        };
-        const { result: withoutResult } = renderHook(() => WithoutListener());
+          let withListenerRenders = 0;
 
-        const baselineWith = withListenerRenders;
-        const baselineWithout = withoutListenerRenders;
+          const WithListener = () => {
+            withListenerRenders++;
 
-        act(() => {
-          withResult.current.change('name', 'John');
-        });
-        act(() => {
-          withoutResult.current.change('name', 'John');
-        });
+            const {
+              formStatus,
+              formActions: { change },
+              formHooks: { useListener },
+            } = useFormState(asyncSchema, {
+              initialData: { name: 'Mike' },
+              validateOnMount,
+            });
+            useListener(listener);
 
-        await waitFor(() => {
-          expect(withResult.current.formStatus.validating).toBe(false);
-          expect(withoutResult.current.formStatus.validating).toBe(false);
-        });
+            return { formStatus, change };
+          };
 
-        // Firing listener events must not provoke additional renders.
-        expect(withListenerRenders - baselineWith).toBe(withoutListenerRenders - baselineWithout);
-      });
+          const { result: withResult } = renderHook(() => WithListener());
+
+          let withoutListenerRenders = 0;
+
+          const WithoutListener = () => {
+            withoutListenerRenders++;
+
+            const {
+              formStatus,
+              formActions: { change },
+            } = useFormState(asyncSchema, {
+              initialData: { name: 'Mike' },
+              validateOnMount,
+            });
+
+            return { formStatus, change };
+          };
+
+          const { result: withoutResult } = renderHook(() => WithoutListener());
+
+          act(() => {
+            withResult.current.change('name', 'John');
+          });
+
+          act(() => {
+            withoutResult.current.change('name', 'John');
+          });
+
+          await waitFor(() => {
+            expect(withResult.current.formStatus.validating).toBe(false);
+            expect(withoutResult.current.formStatus.validating).toBe(false);
+          });
+
+          expect(listener).toHaveBeenCalledTimes(3);
+          expect(listener).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'asyncValidating' })
+          );
+          expect(listener).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'asyncValidated' })
+          );
+          expect(listener).toHaveBeenCalledWith(expect.objectContaining({ type: 'change' }));
+
+          expect(withListenerRenders).toBe(withoutListenerRenders);
+        }
+      );
+
+      it.each([false, true])(
+        'does not fire a change event for replace actions (validateOnMount=%s)',
+        async (validateOnMount) => {
+          const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+          const listener = vi.fn();
+
+          let withListenerRenders = 0;
+
+          const WithListener = () => {
+            withListenerRenders++;
+
+            const {
+              formStatus,
+              formActions: { replace },
+              formHooks: { useListener },
+            } = useFormState(asyncSchema, { initialData: { name: 'Mike' }, validateOnMount });
+            useListener(listener);
+
+            return { formStatus, replace };
+          };
+
+          const { result: withResult } = renderHook(() => WithListener());
+
+          let withoutListenerRenders = 0;
+
+          const WithoutListener = () => {
+            withoutListenerRenders++;
+
+            const {
+              formStatus,
+              formActions: { replace },
+            } = useFormState(asyncSchema, { initialData: { name: 'Mike' }, validateOnMount });
+
+            return { formStatus, replace };
+          };
+
+          const { result: withoutResult } = renderHook(() => WithoutListener());
+
+          act(() => {
+            withResult.current.replace({ name: 'John' });
+          });
+
+          act(() => {
+            withoutResult.current.replace({ name: 'John' });
+          });
+
+          await waitFor(() => {
+            expect(withResult.current.formStatus.validating).toBe(false);
+            expect(withoutResult.current.formStatus.validating).toBe(false);
+          });
+
+          expect(listener).toHaveBeenCalledTimes(2);
+          expect(listener).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'asyncValidating' })
+          );
+          expect(listener).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'asyncValidated' })
+          );
+          expect(listener).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'change' }));
+
+          expect(withListenerRenders).toBe(withoutListenerRenders);
+        }
+      );
     });
   });
 

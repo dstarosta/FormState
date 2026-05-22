@@ -78,6 +78,21 @@ type FormDataSelector<S> = {
 
 // Internal types
 
+export type AsyncCheck = { _zod: { def: { fn?: unknown } } };
+
+export type AsyncCheckMeta = {
+  skipWhen: ((item: unknown, prevItem: unknown) => boolean) | undefined;
+  getPrevAt: (location: string) => unknown;
+  commitAt: (location: string, value: unknown) => void;
+  submitOnly: boolean;
+  setPhase: (phase: 'change' | 'submit') => void;
+  /** Synchronous gate the Zod `when` closure delegates to. */
+  whenGate: (payload: { value: unknown; issues: unknown[] }) => boolean;
+  runPredicate: (value: unknown) => Promise<boolean>;
+};
+
+export type AsyncCheckMetaMap = Map<AsyncCheck, AsyncCheckMeta>;
+
 export type ImmutablePrimitive =
   | undefined
   | null
@@ -354,12 +369,14 @@ export type StateChangeEvent<T extends object> = {
    */
   triggerField?: string | undefined;
   /**
-   * The dot-notation paths of the async refinements declared on the schema. Computed once per
-   * schema instance and reused across validation passes.
+   * The dot-notation path of the specific async refinement this event corresponds to. One
+   * `asyncValidating` / `asyncValidated` event pair is fired per non-skipped async check, so
+   * listeners can react to individual checks rather than the burst as a whole. For an async
+   * check attached to the root schema (no `path`), this is the empty string.
    *
    * Only set on `asyncValidating` / `asyncValidated` events.
    */
-  schemaPaths?: readonly string[] | undefined;
+  schemaPath?: string | undefined;
 };
 
 /**
