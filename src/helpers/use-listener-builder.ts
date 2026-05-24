@@ -6,9 +6,13 @@ import type { StateChangeListener } from '../types/form-types';
  * Creates the "useListener" hook.
  *
  * @param listeners a set of form listeners.
+ * @param onListenerAdded optional callback fired immediately after a listener is added.
  * @returns The "useListener" hook.
  */
-export function createUseListener<T extends object>(listeners: Set<StateChangeListener<T>>) {
+export function createUseListener<T extends object>(
+  listeners: Set<StateChangeListener<T>>,
+  onListenerAdded?: (listener: StateChangeListener<T>) => void
+) {
   function useListener(listener?: StateChangeListener<T>) {
     useDebugValue('FormStateListener');
 
@@ -24,6 +28,7 @@ export function createUseListener<T extends object>(listeners: Set<StateChangeLi
       }
 
       listeners.add(eventListener);
+      onListenerAdded?.(eventListener);
 
       return () => {
         listeners.delete(eventListener);

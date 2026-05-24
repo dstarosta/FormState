@@ -80,7 +80,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           ? {
               asyncRequestId: prevState.asyncRequestId + 1,
               asyncValidating: true,
-              asyncErrors: {} as Record<keyof State | '', string | undefined>,
+              asyncErrors: prevState.asyncErrors,
               asyncTrigger,
             }
           : {
@@ -526,18 +526,36 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
         // async validation result event
         case 'asyncErrors': {
-          // Discard stale results from a superseded async parse.
           if (action.requestId !== prevState.asyncRequestId) {
             return prevState;
           }
 
-          const merged = { ...action.errors, ...prevManualErrors };
+          const preservedAsyncErrors: Record<string, string | undefined> = {};
+          const activePathSet = new Set<string>(action.activePaths);
+
+          for (const key in prevState.asyncErrors) {
+            if (
+              Object.prototype.hasOwnProperty.call(prevState.asyncErrors, key) &&
+              !activePathSet.has(key) &&
+              prevState.asyncErrors[key as keyof typeof prevState.asyncErrors]
+            ) {
+              preservedAsyncErrors[key] =
+                prevState.asyncErrors[key as keyof typeof prevState.asyncErrors];
+            }
+          }
+
+          const mergedAsyncErrors = {
+            ...preservedAsyncErrors,
+            ...action.errors,
+          } as Record<keyof State | '', string | undefined>;
+
+          const merged = { ...mergedAsyncErrors, ...prevManualErrors };
 
           return diffedState(
             {
               ...prevState,
               errors: merged,
-              asyncErrors: action.errors,
+              asyncErrors: mergedAsyncErrors,
               asyncValidating: false,
               asyncTrigger: undefined,
             },

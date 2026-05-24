@@ -2513,6 +2513,7 @@ describe('helpers', () => {
             keyof State | '',
             string | undefined
           >,
+          activePaths: ['name'],
         });
       });
 
@@ -2537,6 +2538,7 @@ describe('helpers', () => {
           type: 'asyncErrors',
           requestId: stateBefore.asyncRequestId, // current
           errors: { name: 'Async failure' } as Record<keyof State | '', string | undefined>,
+          activePaths: ['name'],
         });
       });
 

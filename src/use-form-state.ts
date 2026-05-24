@@ -257,7 +257,20 @@ export function useFormState<T extends z.ZodMiniObject>(
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
   const [changeListeners] = useState(() => new Set<StateChangeListener<State>>());
-  const [listenerHook] = useState(() => createUseListener(changeListeners));
+
+  // Holds a callback the `useListener` hook calls when a new listener registers.
+  const onListenerAddedRef = useRef<((listener: StateChangeListener<State>) => void) | null>(null);
+
+  // The closure reads `onListenerAddedRef.current` only when a listener is
+  // added inside a "useEffect", never during render.
+  // eslint-disable-next-line react-hooks/refs
+  const [listenerHook] = useState(() =>
+    createUseListener(changeListeners, (listener) => {
+      onListenerAddedRef.current?.(listener);
+    })
+  );
+
+  // The watch hook.
   const [watchHook] = useState(() => createUseWatch(store));
 
   // The debounce dispatch cache.
@@ -333,8 +346,16 @@ export function useFormState<T extends z.ZodMiniObject>(
     };
   }, [errorMessageSeparator]);
 
-  // Tracks whether an `asyncValidating` event has been fired for the current burst.
+  // Tracks whether a burst is currently in flight (between burst-start and finishBurst).
   const asyncBurstActiveRef = useRef(false);
+
+  // Pending validating event refs.
+  const pendingValidatingRef = useRef<{
+    prevSnapshot: ReturnType<typeof snapshotAsyncListenerState>;
+    activePaths: readonly string[];
+    triggerField: string;
+    deliveredTo: Set<StateChangeListener<State>>;
+  } | null>(null);
 
   // Snapshot of the form state from before the change that started the current async burst.
   const prevAsyncSnapshotRef = useRef<ReturnType<typeof snapshotAsyncListenerState> | null>(null);
@@ -348,6 +369,49 @@ export function useFormState<T extends z.ZodMiniObject>(
       prevAsyncSnapshotRef.current = snapshotAsyncListenerState();
     }
   }, []);
+
+  // Delivers the current burst's `asyncValidating` event to listeners that
+  // haven't yet received it.
+  const drainPendingValidating = useCallback(
+    (targetListener?: StateChangeListener<State>) => {
+      const pending = pendingValidatingRef.current;
+      if (!pending) {
+        return;
+      }
+
+      const candidates = targetListener ? [targetListener] : changeListeners;
+      const recipients: StateChangeListener<State>[] = [];
+
+      for (const listener of candidates) {
+        if (!pending.deliveredTo.has(listener)) {
+          recipients.push(listener);
+          pending.deliveredTo.add(listener);
+        }
+      }
+
+      if (recipients.length === 0) {
+        return;
+      }
+
+      const { prevSnapshot, activePaths, triggerField } = pending;
+      const { data, errors, submitCount, valid } = prevSnapshot;
+
+      for (const schemaPath of activePaths) {
+        for (const listener of recipients) {
+          listener({
+            type: 'asyncValidating',
+            data,
+            errors,
+            submitCount,
+            valid,
+            triggerField,
+            schemaPath,
+          });
+        }
+      }
+    },
+    [changeListeners]
+  );
 
   // Dispatches async events.
   useEffect(() => {
@@ -372,33 +436,15 @@ export function useFormState<T extends z.ZodMiniObject>(
 
       if (activePaths.length > 0) {
         const prevSnapshot = prevAsyncSnapshotRef.current ?? snapshotAsyncListenerState();
-        const fireAsyncValidating = () => {
-          if (changeListeners.size === 0) {
-            return;
-          }
-          const { data, errors, submitCount, valid } = prevSnapshot;
 
-          for (const schemaPath of activePaths) {
-            for (const listener of changeListeners) {
-              listener({
-                type: 'asyncValidating',
-                data,
-                errors,
-                submitCount,
-                valid,
-                triggerField,
-                schemaPath,
-              });
-            }
-          }
+        pendingValidatingRef.current = {
+          prevSnapshot,
+          activePaths,
+          triggerField,
+          deliveredTo: new Set(),
         };
 
-        if (changeListeners.size > 0) {
-          fireAsyncValidating();
-        } else {
-          // Defer so mount-time `useListener` registrations subscribe first.
-          queueMicrotask(fireAsyncValidating);
-        }
+        drainPendingValidating();
       }
     }
 
@@ -410,6 +456,10 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
 
       asyncBurstActiveRef.current = false;
+
+      drainPendingValidating();
+
+      pendingValidatingRef.current = null;
 
       const snapshot = snapshotAsyncListenerState();
       prevAsyncSnapshotRef.current = snapshot;
@@ -447,6 +497,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           type: 'asyncErrors',
           requestId,
           errors: asyncErrors,
+          activePaths,
         });
 
         requestAnimationFrame(() => {
@@ -467,6 +518,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           type: 'asyncErrors',
           requestId,
           errors: { '': message } as Record<keyof State | '', string | undefined>,
+          activePaths,
         });
 
         requestAnimationFrame(() => {
@@ -486,7 +538,14 @@ export function useFormState<T extends z.ZodMiniObject>(
     dispatch,
     changeListeners,
     snapshotAsyncListenerState,
+    drainPendingValidating,
   ]);
+
+  // Registers listener callbacks.
+  useEffect(() => {
+    onListenerAddedRef.current = drainPendingValidating;
+    drainPendingValidating();
+  });
 
   // The memoized "formStatus" object. The `validSchema` getter delegates to
   // `isSchemaValid` and computes lazily on access.

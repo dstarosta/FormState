@@ -179,6 +179,7 @@ export type FormAction<T extends object> =
       type: 'asyncErrors';
       requestId: number;
       errors: Record<keyof T | '', string | undefined>;
+      activePaths: readonly string[];
     }
   | {
       type: 'asyncValidate';
