@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { deepEqual } from 'fast-equals';
+import { deepEqual } from './deep-equal';
 
 // Private functions
 

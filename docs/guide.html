@@ -89,33 +89,50 @@
           <div class="section-eyebrow">Getting Started</div>
           <h1>FormState Guide</h1>
           <p>
-            FormState is a type-safe React form management library that pairs with
-            <strong>Zod Mini</strong> for schema validation. It gives you full control over field
-            state — values, errors, dirty flags, touched tracking, ranges, and more — without
-            forcing you to adopt a specific rendering pattern.
+            <strong
+              >Schema-derived form state for React 19. No registration, no wrappers, no magic — the
+              data lives in the schema, and your inputs are just inputs.</strong
+            >
+          </p>
+          <p>
+            FormState pairs with <strong>Zod Mini</strong> to make a single schema the source of
+            truth for field types, validation, constraints, metadata, and identity. State is a plain
+            object you read directly. Updates produce new references that flow through React's
+            normal render cycle, so <code>useEffect</code>, <code>useMemo</code>, and the React
+            Compiler work the way the syntax suggests. There is nothing to register and no wrapper
+            to render through.
           </p>
           <p>Key traits:</p>
           <ul>
             <li>
               <strong>Schema-first</strong> — one Zod schema drives types, validation, constraints,
-              and metadata.
+              and metadata. Form data is the schema instantiated, not a separate registry.
             </li>
             <li>
               <strong>Path expressions</strong> — address nested and array fields with typed lambda
-              paths: <code>(path) =&gt; path.info.address</code>.
+              paths: <code>(path) =&gt; path.info.address</code>. Refactor-safe, IDE-navigable, no
+              string keys.
             </li>
             <li>
               <strong>End-to-end type safety</strong> — generics flow from schema to every method
               signature, callback, and state accessor.
             </li>
             <li>
-              <strong>No magic re-renders</strong> — you call <code>change</code>, you read
-              <code>formState.data</code>, React re-renders normally.
+              <strong>Pure React, no magic</strong> — you call <code>change</code>, you read
+              <code>formState.data</code>, React re-renders normally. No
+              <code>register()</code> spreading hidden props, no ref-mediated value tracking, no
+              render props.
             </li>
             <li>
               <strong>React 19 ready</strong> — works with server actions,
-              <code>useFormStatus</code>, and the new <code>action</code> prop on
-              <code>&lt;form&gt;</code>.
+              <code>useFormStatus</code>, <code>useOptimistic</code>, Suspense, and the new
+              <code>action</code> prop on <code>&lt;form&gt;</code>.
+            </li>
+            <li>
+              <strong>Official ESLint plugin</strong> — schema-derived state has a narrow,
+              well-defined misuse surface, which makes static linting unusually effective. The
+              plugin catches footguns the runtime can't — like passing a
+              <code>useWatch</code> return value into a hook dependency array — at development time.
             </li>
             <li>
               <strong>Zero-config defaults</strong> — validation on change, errors after touch,
@@ -628,6 +645,24 @@ const updatedTags = updateState(data.tags, (draft) => {
 });
 
 formActions.change('tags', updatedTags);</code></pre>
+          </div>
+          <p>
+            The <code>createSymbol</code> method returns a fresh <code>Symbol.for(uniqueId)</code>.
+            Use it when manually constructing items for an array whose element schema declares a
+            <code>z.symbol()</code> identity field — for example, seeding initial array data outside
+            of <code>createState</code> or duplicating an existing item with a new identity.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { createSymbol } from 'form-state';
+
+// Duplicate an existing note with a fresh identity
+const duplicated = {
+  ...formState.data.notes[0],
+  uniqueId: createSymbol(),
+};
+
+formActions.array.append((path) =&gt; path.notes, duplicated);</code></pre>
           </div>
           <p>Also see <a href="#arrays">Array Fields</a></p>
           <h3 id="no-render-props">No render props</h3>
@@ -1668,12 +1703,6 @@ SOFTWARE.</code></pre>
               >Zod</a
             >, and
             <a
-              href="https://github.com/planttheidea/fast-equals/blob/master/LICENSE"
-              target="_blank"
-              rel="noopener"
-              >fast-equals</a
-            >.
-            <a
               href="https://github.com/jaredpalmer/formik/blob/main/LICENSE"
               target="_blank"
               rel="noopener"
@@ -2383,7 +2412,8 @@ const schema = z
                 <td>—</td>
                 <td class="prop-desc">
                   Resolves to <code>true</code> when the value is valid. To skip re-running the
-                  predicate when the input hasn't changed, use the <code>skipWhen</code> option below.
+                  predicate when the input hasn't changed, use the <code>skipWhen</code> option
+                  below.
                 </td>
               </tr>
               <tr>
@@ -3805,7 +3835,12 @@ return &lt;Form action={handleSubmit}&gt;...&lt;/Form&gt;;</code></pre>
 formActions.focus('email', { selectText: true });
 
 // Focus only if the field has an error
-formActions.focus('email', { errorKey: 'email' });</code></pre>
+formActions.focus('email', { errorKey: 'email' });
+
+// Blur the currently focused element — useful to dismiss
+// the on-screen keyboard on mobile after a successful submit,
+// or to move focus out of the form before opening a modal.
+formActions.blur();</code></pre>
           </div>
           <h3>Why use <code>&lt;Form&gt;</code> over a plain <code>&lt;form&gt;</code></h3>
           <p>
@@ -4146,6 +4181,30 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
   });
   return true;
 };</code></pre>
+          </div>
+          <h3>Last submitted data</h3>
+          <p>
+            <code>formState.submittedData</code> (or
+            <code>formActions.getSubmittedData()</code> from a callback) returns the
+            <code>{ data, formData }</code> snapshot from the most recent successful submit, or
+            <code>null</code> if none. Useful for multi-step wizards advancing on each step's
+            submit, and rollback flows that need the last-known-good payload.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const submission = formState.submittedData;
+
+// populate the wizard, undo some changes, etc.
+</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
+            <p>
+              <code>formData</code> is <code>null</code> when the submit was triggered
+              programmatically via <code>formActions.validate({ submit: true })</code> rather than
+              an HTML form action — the field is only populated for React-driven submits through
+              <code>&lt;form action&gt;</code>.
+            </p>
           </div>
         </section>
         <section class="section" id="manual-errors">
@@ -5080,9 +5139,9 @@ function AppForm() {
                 <td class="prop-desc">
                   Form data snapshot. For change-driven async events:
                   <code>asyncValidating</code> carries the <strong>pre-change</strong> state (so
-                  listeners can read the value being replaced), and <code>asyncValidated</code>
-                  carries the <strong>post-change</strong> state with the freshly resolved async
-                  errors applied.
+                  listeners can read the value being replaced), and
+                  <code>asyncValidated</code> carries the <strong>post-change</strong> state with
+                  the freshly resolved async errors applied.
                 </td>
               </tr>
               <tr>
@@ -5115,12 +5174,11 @@ function AppForm() {
                 <td><code>string</code></td>
                 <td class="prop-desc">
                   Async events only. Dot-notation path of the async refinement that fired this
-                  event. Property-level checks report the field path
-                  (e.g. <code>'username'</code>, <code>'users.0.email'</code>); top-level checks
-                  attached to the root object report an empty string <code>''</code>. When a schema
-                  declares multiple async checks, each active check produces its own
-                  <code>asyncValidating</code> / <code>asyncValidated</code> pair with the matching
-                  <code>schemaPath</code>.
+                  event. Property-level checks report the field path (e.g. <code>'username'</code>,
+                  <code>'users.0.email'</code>); top-level checks attached to the root object report
+                  an empty string <code>''</code>. When a schema declares multiple async checks,
+                  each active check produces its own <code>asyncValidating</code> /
+                  <code>asyncValidated</code> pair with the matching <code>schemaPath</code>.
                 </td>
               </tr>
             </tbody>
@@ -7104,14 +7162,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
             </thead>
             <tbody>
               <tr>
-                <td>Bundle size (gzipped)</td>
-                <td>~20 KB <sup>1</sup></td>
-                <td>~13 KB</td>
-                <td>~10 KB</td>
-                <td>~15 KB</td>
-                <td>~9 KB</td>
-              </tr>
-              <tr>
                 <td>First-class TypeScript</td>
                 <td>✅</td>
                 <td>✅</td>
@@ -7139,7 +7189,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
                 <td>No field wrappers required</td>
                 <td>✅</td>
                 <td>🛑</td>
-                <td>🛑 <sup>2</sup></td>
+                <td>🛑 <sup>1</sup></td>
                 <td>🛑</td>
                 <td>🛑</td>
               </tr>
@@ -7153,7 +7203,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
               <tr>
                 <td>Granular field-level re-renders</td>
-                <td>❓ <sup>3</sup></td>
+                <td>❓ <sup>2</sup></td>
                 <td>✅</td>
                 <td>✅</td>
                 <td>🛑</td>
@@ -7170,7 +7220,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               <tr>
                 <td>React 19 form actions</td>
                 <td>✅</td>
-                <td>❓ <sup>4</sup></td>
+                <td>❓ <sup>3</sup></td>
                 <td>🛑</td>
                 <td>🛑</td>
                 <td>🛑</td>
@@ -7230,6 +7280,14 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
                 <td>✅</td>
                 <td>✅</td>
                 <td>✅</td>
+              </tr>
+              <tr>
+                <td>Server validation integration</td>
+                <td>✅ <sup>4</sup></td>
+                <td>❓</td>
+                <td>❓</td>
+                <td>❓</td>
+                <td>❓</td>
               </tr>
               <tr>
                 <td>Array fields</td>
@@ -7305,16 +7363,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               </tr>
             </tbody>
           </table>
-          <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
-            <li>
-              FormState requires <strong>Zod Mini</strong> (~8-14 KB gzipped) and
-              <strong>fast-equals</strong> (~2 KB gzipped). Other libraries are often coupled with
-              schema libraries: TanStack Form and React Hook Form support Zod, Yup, Valibot, and
-              others via adapters; Formik pairs primarily with Yup; Final Form has no built-in
-              schema adapter but is more limited in validation capabilities.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
+          <ol class="prop-desc" start="1" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               RHF's <code>register</code> API avoids wrappers for uncontrolled inputs, but
               controlled inputs require <code>&lt;Controller&gt;</code>. The
@@ -7322,7 +7371,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               unintuitive to reason about and debug.
             </li>
           </ol>
-          <ol class="prop-desc" start="3" style="margin-top: 0; padding-left: 1.25rem">
+          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               FormState re-renders the component that called <code>useFormState</code> on every
               state change. Isolate keystroke re-renders with
@@ -7330,11 +7379,23 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               >, or use uncontrolled inputs for fields where even that is undesirable.
             </li>
           </ol>
-          <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
+          <ol class="prop-desc" start="3" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               TanStack Form supports server actions invoked from <code>form.handleSubmit</code>, but
               submission still routes through an <code>onSubmit</code> handler — it does not
               natively integrate with React 19's <code>&lt;form action={fn}&gt;</code> prop.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Server-returned field errors (e.g. a 422 response with
+              <code>{ email: 'Already taken' }</code>) flow through the same
+              <code>setManualError</code> / <code>asyncErrors</code> pipeline as client-side async
+              validation. Errors persist across re-renders, clear when the user edits the offending
+              field, and integrate with <code>touched</code> and <code>formStatus.valid</code> the
+              same way schema errors do. Other libraries support manual error setting but the
+              persistence semantics across submits, edits, and resets vary — verify against your
+              expected UX.
             </li>
           </ol>
           <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
@@ -7562,6 +7623,61 @@ formHooks.useListener((state) =&gt; {
             Other form libraries treat cross-store integration as application-developer plumbing.
             FormState treats it as a first-class surface — the form isn't an island, it's a
             participating member of your state ecosystem.
+          </p>
+          <h3>When FormState is the wrong choice</h3>
+          <p>
+            FormState's design assumptions don't suit every project. The fit is best when these are
+            true; if one or more isn't, another library is likely the better tool.
+          </p>
+          <ul>
+            <li>
+              <strong>You aren't already using Zod.</strong> The schema isn't an optional resolver
+              here — it's the contract that drives data shape, derived constraints, typed paths, and
+              the async-validation pipeline. Adding Zod purely to use FormState pays Zod's bundle
+              cost without recouping it elsewhere; React Hook Form with a lightweight validator (or
+              none at all) will be smaller and simpler.
+            </li>
+            <li>
+              <strong>You need a validator other than Zod.</strong> Yup, Valibot, Joi, ArkType, and
+              hand-rolled validators don't plug in. React Hook Form and TanStack Form are
+              schema-agnostic and will integrate with what you already use.
+            </li>
+            <li>
+              <strong>Your forms are mostly trivial.</strong> A login form, a search box, a
+              three-field settings panel — the abstraction cost of a schema, a hook, and a typed
+              state object outweighs the benefit. <code>useState</code> with a submit handler is
+              fine. FormState's wins compound with form complexity (many fields, async validation,
+              cross-field rules, server errors, draft persistence); below that threshold, simpler
+              tools win.
+            </li>
+            <li>
+              <strong>You need minimum-bundle granular re-renders by default.</strong> FormState
+              re-renders the calling component on every state change unless you opt in to
+              <a href="#watch"><code>useWatch</code></a> or uncontrolled inputs. For a 100-field
+              data-entry form where every keystroke matters, React Hook Form's
+              <code>register</code>-by-default model requires less thinking to get there.
+            </li>
+            <li>
+              <strong>You expect form state and application state to be the same thing.</strong>
+              FormState owns form-editing state — masked strings, empty-vs-undefined, dirty/touched,
+              validation status — using its own internal store. Like React Query owning server-cache
+              state alongside Zustand, FormState coexists with Redux, MobX, Zustand, or any external
+              store: a one-line <a href="#listener"><code>useListener</code></a> mirrors every valid
+              change into the external store via <code>schema.toObject()</code>, which converts the
+              form representation (empty strings, raw mask values, form-string dates) into the
+              API/business representation (<code>undefined</code>, unmasked values,
+              <code>Date</code>
+              objects). The form holds the editing shape; the external store holds the canonical
+              shape; the schema is the bridge. If instead you want a single store to hold both
+              representations and drive the form directly without a bridge, FormState's
+              schema-derived model isn't the right fit.
+            </li>
+          </ul>
+          <p>
+            None of the above is a flaw to apologize for — they're consequences of the bets the
+            library makes. Forms that fit those bets get a meaningfully better developer experience
+            than the generic libraries can provide. Forms that don't fit them are better served by
+            picking a library whose bets line up with the constraints.
           </p>
         </section>
       </main>

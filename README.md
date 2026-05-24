@@ -23,7 +23,6 @@ A type-safe, schema-driven form management library for React 19, built on [Zod](
 | `react`         | >= 19.2.0        |
 | `react-dom`     | >= 19.2.0        |
 | `zod`           | >= 4.3.0 < 5.0.0 |
-| `fast-equals`   | >= 6.0.0         |
 
 ## Installation
 

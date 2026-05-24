@@ -8,7 +8,7 @@ import {
   useState,
   type SyntheticEvent,
 } from 'react';
-import { deepEqual } from 'fast-equals';
+import { deepEqual } from './helpers/deep-equal';
 import * as z from 'zod/mini';
 
 import { dotPathGet } from './helpers/dot-path';
@@ -50,6 +50,7 @@ import {
   coerceFormData,
   collectActiveAsyncCheckPaths,
   commitActiveAsyncCheckPaths,
+  runSubmitPhaseParse,
   collectDescriptions,
   collectLengths,
   collectPatterns,
@@ -75,6 +76,7 @@ import {
   createImmutableTouched,
   createState,
   freezeObject,
+  mergeAsyncErrors,
   mutateArrayState,
   safeSyncParse,
 } from './helpers/state-manager';
@@ -427,7 +429,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
     const activePaths = collectActiveAsyncCheckPaths(schema, formState.data, 'change', metaMap);
 
-    commitActiveAsyncCheckPaths(schema, formState.data, metaMap);
+    commitActiveAsyncCheckPaths(schema, formState.data, 'change', metaMap);
 
     let cancelled = false;
 
@@ -1255,6 +1257,8 @@ export function useFormState<T extends z.ZodMiniObject>(
               data: createImmutableData(formStateRef.current.data),
               formData: null,
             },
+            asyncErrors: formStateRef.current.asyncErrors,
+            freshErrors: errors,
             options: {
               resetDirty: validationOptions.resetDirty !== false,
               resetTouched: validationOptions.resetTouched !== false,
@@ -1274,23 +1278,18 @@ export function useFormState<T extends z.ZodMiniObject>(
     const metaMap = asyncMetaMapRef.current;
     const requestId = formStateRef.current.asyncRequestId;
 
-    setAsyncCheckPhase(schema, 'submit', metaMap);
+    // Only fire `asyncValidating` if there isn't already an in-flight burst.
+    const ownsBurst = !asyncBurstActiveRef.current;
 
-    const activePaths = collectActiveAsyncCheckPaths(
-      schema,
-      formStateRef.current.data,
-      'submit',
-      metaMap
-    );
-
-    commitActiveAsyncCheckPaths(schema, formStateRef.current.data, metaMap);
-
-    const fireValidatingEvent = (type: 'asyncValidating' | 'asyncValidated') => {
-      if (changeListeners.size === 0 || activePaths.length === 0) {
+    const fireValidatingEvent = (
+      type: 'asyncValidating' | 'asyncValidated',
+      paths: readonly string[]
+    ) => {
+      if (changeListeners.size === 0 || paths.length === 0) {
         return;
       }
       const { data, errors, submitCount, valid } = snapshotAsyncListenerState();
-      for (const schemaPath of activePaths) {
+      for (const schemaPath of paths) {
         for (const listener of changeListeners) {
           listener({
             type,
@@ -1305,34 +1304,33 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     };
 
-    // Only fire `asyncValidating` if there isn't already an in-flight burst.
-    const ownsBurst = !asyncBurstActiveRef.current;
-
-    if (ownsBurst) {
-      asyncBurstActiveRef.current = true;
-      fireValidatingEvent('asyncValidating');
-    }
-
-    const resultPromise = withMetaMap(metaMap, () =>
-      schema.safeParseAsync(formStateRef.current.data)
+    const { activePaths, result } = await runSubmitPhaseParse(
+      schema,
+      formStateRef.current.data,
+      metaMap,
+      (collected) => {
+        if (ownsBurst) {
+          asyncBurstActiveRef.current = true;
+          fireValidatingEvent('asyncValidating', collected);
+        }
+      }
     );
-    const result = await resultPromise;
-
-    setAsyncCheckPhase(schema, 'change', metaMap);
 
     const superseded = requestId !== formStateRef.current.asyncRequestId;
 
     const freshAsyncErrors = formatErrors<State>(result.error, errorMessageSeparator);
 
-    const asyncErrors = {
-      ...formStateRef.current.asyncErrors,
-      ...freshAsyncErrors,
-    };
+    const asyncErrors = mergeAsyncErrors(
+      formStateRef.current.asyncErrors,
+      freshAsyncErrors,
+      activePaths
+    );
 
     if (!superseded) {
       dispatch({
         type: 'asyncValidate',
         errors: asyncErrors,
+        freshErrors: freshAsyncErrors,
       });
     }
 
@@ -1341,13 +1339,15 @@ export function useFormState<T extends z.ZodMiniObject>(
       asyncBurstActiveRef.current = false;
 
       if (!superseded) {
-        fireValidatingEvent('asyncValidated');
+        fireValidatingEvent('asyncValidated', activePaths);
       }
     }
 
+    const mergedErrors = { ...freshAsyncErrors, ...asyncErrors };
+
     return (
       !superseded &&
-      Object.keys(asyncErrors).length === 0 &&
+      Object.keys(mergedErrors).length === 0 &&
       Object.keys(formStateRef.current.manualErrors).length === 0
     );
   }, [schema, errorMessageSeparator, dispatch, changeListeners, snapshotAsyncListenerState]);
@@ -1396,23 +1396,27 @@ export function useFormState<T extends z.ZodMiniObject>(
           const metaMap = asyncMetaMapRef.current;
           const requestId = currentState.asyncRequestId;
 
-          setAsyncCheckPhase(schema, 'submit', metaMap);
-
-          const safeDataPromise = withMetaMap(metaMap, () =>
-            schema.safeParseAsync(currentState.data)
+          const { activePaths, result: safeData } = await runSubmitPhaseParse(
+            schema,
+            currentState.data,
+            metaMap
           );
-          const safeData = await safeDataPromise;
-
-          setAsyncCheckPhase(schema, 'change', metaMap);
 
           if (requestId !== formStateRef.current.asyncRequestId) {
             return;
           }
 
           const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
+
+          const mergedAsyncErrors = mergeAsyncErrors(
+            formStateRef.current.asyncErrors,
+            errors,
+            activePaths
+          );
+
           const submittedErrors = {
-            ...formStateRef.current.asyncErrors,
             ...errors,
+            ...mergedAsyncErrors,
             ...formStateRef.current.manualErrors,
           };
           const hasErrors = Object.keys(submittedErrors).length > 0;
@@ -1441,8 +1445,6 @@ export function useFormState<T extends z.ZodMiniObject>(
             return;
           }
 
-          formStateRef.current.errors = submittedErrors;
-
           if (
             hasErrors ||
             (submissionErrors !== true && Object.keys(submissionErrors).length > 0)
@@ -1451,24 +1453,26 @@ export function useFormState<T extends z.ZodMiniObject>(
               changeCallbackRefs.current.push(options.onError);
             }
 
+            const manualErrors: Record<string, string> = {};
+
             if (typeof submissionErrors === 'object') {
               for (const errorName in submissionErrors) {
                 if (Object.hasOwn(submissionErrors, errorName)) {
                   const error = submissionErrors[errorName];
 
                   if (error) {
-                    dispatch({
-                      type: 'setManualError',
-                      name: errorName,
-                      options: { validate: true },
-                      error,
-                    });
+                    manualErrors[errorName] = error;
                   }
                 }
               }
             }
 
-            dispatch({ type: 'validate' });
+            dispatch({
+              type: 'submitValidate',
+              asyncErrors: mergedAsyncErrors,
+              manualErrors: manualErrors,
+              freshErrors: errors,
+            });
             return;
           }
 
@@ -1489,6 +1493,8 @@ export function useFormState<T extends z.ZodMiniObject>(
               data: createImmutableData(currentState.data),
               formData: submittedFormData,
             },
+            asyncErrors: mergedAsyncErrors,
+            freshErrors: errors,
             options: {
               resetDirty: options?.resetDirty !== false,
               resetTouched: options?.resetTouched !== false,

@@ -855,7 +855,7 @@ describe('helpers', () => {
         });
 
         collectActiveAsyncCheckPaths(schema, { name: 'Mike' });
-        commitActiveAsyncCheckPaths(schema, { name: 'Mike' });
+        commitActiveAsyncCheckPaths(schema, { name: 'Mike' }, 'change');
         skipCalls.length = 0;
 
         collectActiveAsyncCheckPaths(schema, { name: 'Alice' });
@@ -881,7 +881,7 @@ describe('helpers', () => {
         });
 
         collectActiveAsyncCheckPaths(schema, { addr: { city: 'NYC' } });
-        commitActiveAsyncCheckPaths(schema, { addr: { city: 'NYC' } });
+        commitActiveAsyncCheckPaths(schema, { addr: { city: 'NYC' } }, 'change');
         skipCalls.length = 0;
 
         collectActiveAsyncCheckPaths(schema, { addr: { city: 'LA' } });
@@ -907,7 +907,7 @@ describe('helpers', () => {
         });
 
         collectActiveAsyncCheckPaths(schema, { tags: ['a', 'b', 'c'] });
-        commitActiveAsyncCheckPaths(schema, { tags: ['a', 'b', 'c'] });
+        commitActiveAsyncCheckPaths(schema, { tags: ['a', 'b', 'c'] }, 'change');
         skipCalls.length = 0;
 
         // Change only tags[1]. The walker visits each index and passes the per-
@@ -936,7 +936,7 @@ describe('helpers', () => {
 
         const initial = { name: 'Mike' };
         collectActiveAsyncCheckPaths(schema, initial);
-        commitActiveAsyncCheckPaths(schema, initial);
+        commitActiveAsyncCheckPaths(schema, initial, 'change');
         skipCalls.length = 0;
 
         collectActiveAsyncCheckPaths(schema, { name: 'Alice' });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { setFormData } from './helpers/form-builder';
 import { mergeRefs } from './helpers/ref-merge';
+import { createSyntheticChangeEvent } from './helpers/synthetic-event';
 import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 
 interface SecureInputProps extends Omit<
@@ -137,18 +138,7 @@ export function SecureInput({
 
       const nextMasked = MASK_CHAR.repeat(nextReal.length);
 
-      callbacksRef.current.onChange?.({
-        target: { value: nextMasked, name } as EventTarget & HTMLInputElement,
-        currentTarget: { value: nextMasked, name } as EventTarget & HTMLInputElement,
-        nativeEvent: new Event('change'),
-        type: 'change',
-        bubbles: true,
-        preventDefault: () => {},
-        stopPropagation: () => {},
-        persist: () => {},
-        isDefaultPrevented: () => false,
-        isPropagationStopped: () => false,
-      } as React.ChangeEvent<HTMLInputElement>);
+      callbacksRef.current.onChange?.(createSyntheticChangeEvent(nextMasked, name));
       callbacksRef.current.onSecureChange?.(nextReal);
     },
     [isControlled, name]
@@ -175,25 +165,22 @@ export function SecureInput({
         case 'insertText':
         case 'insertCompositionText':
         case 'insertFromDrop': {
-          commit(
-            existingValue.slice(0, start) + data + existingValue.slice(end),
-            start + data.length
-          );
+          commit(spliceValue(existingValue, start, end, data), start + data.length);
           break;
         }
         case 'deleteContentBackward': {
           if (start !== end) {
-            commit(existingValue.slice(0, start) + existingValue.slice(end), start);
+            commit(spliceValue(existingValue, start, end), start);
           } else if (start > 0) {
-            commit(existingValue.slice(0, start - 1) + existingValue.slice(start), start - 1);
+            commit(spliceValue(existingValue, start - 1, start), start - 1);
           }
           break;
         }
         case 'deleteContentForward': {
           if (start !== end) {
-            commit(existingValue.slice(0, start) + existingValue.slice(end), start);
+            commit(spliceValue(existingValue, start, end), start);
           } else if (start < existingValue.length) {
-            commit(existingValue.slice(0, start) + existingValue.slice(start + 1), start);
+            commit(spliceValue(existingValue, start, start + 1), start);
           }
           break;
         }
@@ -203,7 +190,7 @@ export function SecureInput({
           if (start === end) {
             commit(existingValue.slice(end), 0);
           } else {
-            commit(existingValue.slice(0, start) + existingValue.slice(end), start);
+            commit(spliceValue(existingValue, start, end), start);
           }
           break;
         }
@@ -213,7 +200,7 @@ export function SecureInput({
           if (start === end) {
             commit(existingValue.slice(0, start), start);
           } else {
-            commit(existingValue.slice(0, start) + existingValue.slice(end), start);
+            commit(spliceValue(existingValue, start, end), start);
           }
           break;
         }

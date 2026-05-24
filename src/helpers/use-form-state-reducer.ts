@@ -5,9 +5,18 @@ import type { FormAction, FormMutableState } from '../types/form-types';
 import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 import { formatErrors, normalizeManualError } from './error-formatter';
 import { dotPathGet, dotPathSet } from './dot-path';
-import { deepEqual } from 'fast-equals';
+import { deepEqual } from './deep-equal';
 import { coerceFormData, collectActiveAsyncCheckPaths } from './schema-visitor';
-import { createState, diffedState, difference, safeSyncParse } from './state-manager';
+import {
+  composeErrors,
+  createState,
+  diffedState,
+  difference,
+  mergeAsyncErrors,
+  pruneAsyncErrors,
+  safeSyncParse,
+  touchErroredFields,
+} from './state-manager';
 
 export function useFormStateReducer<T extends z.ZodMiniObject>(
   schema: T,
@@ -56,11 +65,28 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const coercedData = coerceFormData(schema, data);
           const activePaths = collectActiveAsyncCheckPaths(schema, coercedData);
 
-          if (activePaths.length === 0) {
-            return { parsedData: coercedData, errors: prevState.errors, asyncPending: false };
-          }
+          // Async schemas can't be sync-parsed here. The pipeline callers
+          // (submit/submitValidate/asyncValidate/asyncErrors) use
+          // `composeWithFreshErrors` and never reach this branch. For other
+          // callers, the right fallback depends on whether the data shape
+          // changed:
+          //   - Data unchanged (touch / setManualError / clearManualErrors /
+          //     validate) → prior parse-slice on state is still valid for
+          //     this data; reuse it (sans manual overlay).
+          //   - Data changed (change / replace / resetFields /
+          //     changeInitialData) → prior errors are about a different data
+          //     shape; return `{}` and let the in-flight async burst populate
+          //     fresh errors on completion.
+          const dataUnchanged = data === prevState.data;
+          const fallbackErrors = dataUnchanged
+            ? difference(prevState.errors, prevManualErrors)
+            : ({} as Record<keyof State | '', string | undefined>);
 
-          return { parsedData: coercedData, errors: prevState.errors, asyncPending: true };
+          return {
+            parsedData: coercedData,
+            errors: fallbackErrors,
+            asyncPending: activePaths.length > 0,
+          };
         }
 
         const safeData = result as {
@@ -90,6 +116,28 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               asyncTrigger: prevState.asyncTrigger,
             };
 
+      const composeForData = (
+        data: State,
+        asyncErrors: Record<keyof State | '', string | undefined>,
+        manualErrors: Record<string, string>
+      ) => composeErrors(parseAndCache(data).errors, asyncErrors, manualErrors);
+
+      /**
+       * Pipeline variant: seeds the parse cache with the externally-computed
+       * `freshErrors` (the four async dispatch sites already ran a full parse)
+       * so the parse-slice in `composeErrors` reads back as the fresh value.
+       * Required for async schemas, which can't be sync-parsed inline.
+       */
+      const composeWithFreshErrors = (
+        data: State,
+        asyncErrors: Record<keyof State | '', string | undefined>,
+        manualErrors: Record<string, string>,
+        freshErrors: Record<keyof State | '', string | undefined>
+      ) => {
+        validationCacheRef.current = { schema, data, parsedData: data, errors: freshErrors };
+        return composeErrors(freshErrors, asyncErrors, manualErrors);
+      };
+
       switch (action.type) {
         // initial data change event
         case 'changeInitialData': {
@@ -102,26 +150,30 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           };
 
           let changedData: State;
-          let errors: Record<keyof State | '', string | undefined>;
           let asyncPending = false;
 
           if (validateOnMount || Object.keys(prevState.errors).length > 0) {
             const parsed = parseAndCache(mergedData);
             changedData = parsed.parsedData;
-            errors = parsed.errors;
             asyncPending = parsed.asyncPending;
           } else {
             changedData = coerceFormData(schema, mergedData);
-            errors = { ...prevState.errors };
           }
+
+          // Drop stale async-slice entries for fields whose value just changed
+          // (the non-dirty ones picked up from the new initial data).
+          const asyncErrors = asyncPending
+            ? pruneAsyncErrors(prevState.asyncErrors, (key) => !prevState.dirty[key as keyof State])
+            : prevState.asyncErrors;
 
           return {
             ...prevState,
             data: changedData,
             initialData: stateRef.current.data,
             initialErrors: stateRef.current.errors,
-            errors: { ...errors, ...prevManualErrors },
+            errors: composeForData(changedData, asyncErrors, prevManualErrors),
             ...reduceAsyncState(asyncPending),
+            asyncErrors,
           } satisfies FormMutableState<State>;
         }
         // state change event
@@ -141,17 +193,14 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const mergedData = dotPathSet(prevState.data, pathNotation, value) as State;
 
           let changedData: State;
-          let errors: Record<keyof State | '', string | undefined>;
           let asyncPending = false;
 
           if (shouldValidate) {
             const cached = parseAndCache(mergedData);
             changedData = cached.parsedData;
-            errors = cached.errors;
             asyncPending = fromDebounce ? false : cached.asyncPending;
           } else {
             changedData = coerceFormData(schema, mergedData);
-            errors = prevState.errors;
           }
 
           const initialValue = dotPathGet(prevState.initialData, pathNotation) as State;
@@ -179,16 +228,32 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               ? { ...prevState.touched, [pathNotation]: true }
               : prevState.touched;
 
+          // When the data shape changes and an async burst is pending, the
+          // prior async-slice entry for the changed path is stale until the
+          // burst settles — drop it so the user doesn't see a stale error
+          // during the interim.
+          const asyncErrors = asyncPending
+            ? pruneAsyncErrors(
+                prevState.asyncErrors,
+                (key) => key === pathNotation || key.startsWith(`${pathNotation}.`)
+              )
+            : prevState.asyncErrors;
+
+          const errors = shouldValidate
+            ? composeForData(changedData, asyncErrors, prevManualErrors)
+            : prevState.errors;
+
           return diffedState(
             {
               ...prevState,
               data: changedData,
-              errors: { ...errors, ...prevManualErrors },
+              errors,
               changed: true,
               validated: shouldValidate,
               dirty,
               touched,
               ...reduceAsyncState(asyncPending, pathNotation),
+              asyncErrors,
             },
             prevState
           );
@@ -210,27 +275,32 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             ? coerceFormData(schema, replacedData)
             : ((result as { data?: State }).data ?? replacedData);
 
-          const dataErrors = asyncPending
+          const initialErrors = asyncPending
             ? ({} as Record<keyof State | '', string | undefined>)
             : formatErrors<State>(
                 (result as { error?: Parameters<typeof formatErrors<State>>[0] }).error,
                 errorMessageSeparator
               );
 
+          // Replace clears the persisted async slice — the data shape is new, prior
+          // async results no longer apply.
+          const asyncErrors = {} as Record<keyof State | '', string | undefined>;
+
           const errors =
             shouldValidate || Object.keys(prevState.errors).length > 0
-              ? dataErrors
-              : { ...prevState.errors };
+              ? composeForData(coercedData, asyncErrors, prevManualErrors)
+              : prevState.errors;
 
           return {
             ...prevState,
             initialData: coercedData,
             data: coercedData,
-            initialErrors: dataErrors,
-            errors: { ...errors, ...prevManualErrors },
+            initialErrors,
+            errors,
             replaced: true,
             validated: prevState.validated || shouldValidate,
             ...reduceAsyncState(asyncPending),
+            asyncErrors,
           } satisfies FormMutableState<State>;
         }
         // field touch event
@@ -242,23 +312,23 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
 
-          let errors: Record<keyof State | '', string | undefined>;
           let asyncPending = false;
+
           if (shouldValidate) {
-            const cached = parseAndCache(prevState.data);
-            errors = cached.errors;
-            asyncPending = cached.asyncPending;
-          } else {
-            errors = { ...prevState.errors };
+            asyncPending = parseAndCache(prevState.data).asyncPending;
           }
 
           const pathNotation = Array.isArray(name) ? name.join('.') : name;
           const touched = { ...prevState.touched, [pathNotation]: true };
 
+          const errors = shouldValidate
+            ? composeForData(prevState.data, prevState.asyncErrors, prevManualErrors)
+            : prevState.errors;
+
           return diffedState(
             {
               ...prevState,
-              errors: { ...errors, ...prevManualErrors },
+              errors,
               validated: prevState.validated || shouldValidate,
               touched,
               ...reduceAsyncState(asyncPending),
@@ -282,6 +352,8 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         case 'submit': {
           const {
             submittedData,
+            asyncErrors,
+            freshErrors,
             options: { resetDirty, resetTouched, updateInitialData },
           } = action;
 
@@ -293,6 +365,13 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             validated: true,
             submitCount: prevState.submitCount + 1,
             submittedData,
+            errors: composeWithFreshErrors(
+              prevState.data,
+              asyncErrors,
+              prevManualErrors,
+              freshErrors
+            ),
+            asyncErrors,
             asyncRequestId: prevState.asyncRequestId + 1,
           } satisfies FormMutableState<State>;
         }
@@ -329,18 +408,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             }
           }
 
-          const { result, asyncPending } = safeSyncParse(schema, mergedData);
-
-          const coercedData = asyncPending
-            ? coerceFormData(schema, mergedData)
-            : ((result as { data?: State }).data ?? mergedData);
-
-          const errors = asyncPending
-            ? { ...prevState.errors }
-            : formatErrors<State>(
-                (result as { error?: Parameters<typeof formatErrors<State>>[0] }).error,
-                errorMessageSeparator
-              );
+          const { parsedData: coercedData, asyncPending } = parseAndCache(mergedData);
 
           const manualErrors = Object.fromEntries(
             Object.entries(prevManualErrors).filter(
@@ -348,16 +416,26 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             )
           );
 
+          // Drop stale async-slice entries for the reset paths so the user
+          // doesn't see a stale error during the in-flight burst.
+          const asyncErrors = asyncPending
+            ? pruneAsyncErrors(
+                prevState.asyncErrors,
+                (key) => names.includes(key) || prefixes.some((prefix) => key.startsWith(prefix))
+              )
+            : prevState.asyncErrors;
+
           return diffedState(
             {
               ...prevState,
               data: coercedData,
-              errors: { ...errors, ...manualErrors },
+              errors: composeForData(coercedData, asyncErrors, manualErrors),
               changed: true,
               dirty,
               touched,
               manualErrors,
               ...reduceAsyncState(asyncPending),
+              asyncErrors,
             },
             prevState
           );
@@ -399,20 +477,14 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
         // form validate event
         case 'validate': {
-          const { errors, asyncPending } = parseAndCache(prevState.data);
-          const mergedErrors = { ...errors, ...prevManualErrors };
+          const { asyncPending } = parseAndCache(prevState.data);
+          const mergedErrors = composeForData(
+            prevState.data,
+            prevState.asyncErrors,
+            prevManualErrors
+          );
 
-          const touched = { ...prevState.touched };
-
-          for (const key of Object.keys(mergedErrors)) {
-            const topSegment = key.split('.', 1)[0];
-
-            if (!topSegment || !(topSegment in prevState.data)) {
-              continue;
-            }
-
-            touched[key as keyof State] = true;
-          }
+          const touched = touchErroredFields(prevState.touched, mergedErrors, prevState.data);
 
           return {
             ...prevState,
@@ -424,19 +496,14 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
         // form async validate event
         case 'asyncValidate': {
-          const mergedErrors = { ...action.errors, ...prevManualErrors };
+          const mergedErrors = composeWithFreshErrors(
+            prevState.data,
+            action.errors,
+            prevManualErrors,
+            action.freshErrors
+          );
 
-          const touched = { ...prevState.touched };
-
-          for (const key of Object.keys(mergedErrors)) {
-            const topSegment = key.split('.', 1)[0];
-
-            if (!topSegment || !(topSegment in prevState.data)) {
-              continue;
-            }
-
-            touched[key as keyof State] = true;
-          }
+          const touched = touchErroredFields(prevState.touched, mergedErrors, prevState.data);
 
           return diffedState(
             {
@@ -452,6 +519,52 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             prevState
           );
         }
+        // submit-time validate event — merges sync + async + manual errors in one pass.
+        case 'submitValidate': {
+          // handleSubmit filters out falsy values before building `action.manualErrors`,
+          // so every entry normalizes to a non-null string.
+          const mergedManualErrors = { ...prevManualErrors };
+
+          for (const key in action.manualErrors) {
+            /* v8 ignore next 3 -- @preserve defensive against prototype pollution */
+            if (!Object.prototype.hasOwnProperty.call(action.manualErrors, key)) {
+              continue;
+            }
+
+            const normalized = normalizeManualError(action.manualErrors[key]);
+
+            /* v8 ignore next 3 -- @preserve handleSubmit filters falsies before dispatch */
+            if (normalized === null) {
+              continue;
+            }
+
+            mergedManualErrors[key] = normalized;
+          }
+
+          const mergedErrors = composeWithFreshErrors(
+            prevState.data,
+            action.asyncErrors,
+            mergedManualErrors,
+            action.freshErrors
+          );
+
+          const touched = touchErroredFields(prevState.touched, mergedErrors, prevState.data);
+
+          return diffedState(
+            {
+              ...prevState,
+              validated: true,
+              errors: mergedErrors,
+              asyncErrors: action.asyncErrors,
+              asyncValidating: false,
+              asyncRequestId: prevState.asyncRequestId + 1,
+              asyncTrigger: undefined,
+              manualErrors: mergedManualErrors,
+              touched,
+            },
+            prevState
+          );
+        }
         // set manual error event
         case 'setManualError': {
           const {
@@ -461,19 +574,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           } = action;
 
           const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
-
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name).trim();
-
-          let baseErrors: Record<keyof State | '', string | undefined>;
-
-          if (shouldValidate) {
-            const cached = parseAndCache(prevState.data);
-            baseErrors = cached.errors;
-          } else {
-            baseErrors = { ...prevState.errors };
-          }
-
-          const errors = difference(baseErrors, prevManualErrors);
 
           const manualErrors = { ...prevManualErrors };
           const normalizedError = normalizeManualError(error);
@@ -486,7 +587,9 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           return {
             ...prevState,
-            errors: { ...errors, ...manualErrors },
+            errors: shouldValidate
+              ? composeForData(prevState.data, prevState.asyncErrors, manualErrors)
+              : { ...difference(prevState.errors, prevManualErrors), ...manualErrors },
             validated: prevState.validated || shouldValidate,
             manualErrors,
           } satisfies FormMutableState<State>;
@@ -500,17 +603,6 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
           const hasPredicate = typeof predicate === 'function';
 
-          let baseErrors: Record<keyof State | '', string | undefined>;
-
-          if (shouldValidate) {
-            const cached = parseAndCache(prevState.data);
-            baseErrors = cached.errors;
-          } else {
-            baseErrors = { ...prevState.errors };
-          }
-
-          const errors = difference(baseErrors, prevManualErrors);
-
           const manualErrors = hasPredicate
             ? Object.fromEntries(
                 Object.entries(prevManualErrors).filter(([key]) => !predicate(key))
@@ -519,7 +611,9 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           return {
             ...prevState,
-            errors: hasPredicate ? { ...errors, ...manualErrors } : errors,
+            errors: shouldValidate
+              ? composeForData(prevState.data, prevState.asyncErrors, manualErrors)
+              : { ...difference(prevState.errors, prevManualErrors), ...manualErrors },
             validated: prevState.validated || shouldValidate,
             manualErrors,
           } satisfies FormMutableState<State>;
@@ -530,26 +624,21 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             return prevState;
           }
 
-          const preservedAsyncErrors: Record<string, string | undefined> = {};
-          const activePathSet = new Set<string>(action.activePaths);
+          const mergedAsyncErrors = mergeAsyncErrors(
+            prevState.asyncErrors,
+            action.errors,
+            action.activePaths
+          );
 
-          for (const key in prevState.asyncErrors) {
-            if (
-              Object.prototype.hasOwnProperty.call(prevState.asyncErrors, key) &&
-              !activePathSet.has(key) &&
-              prevState.asyncErrors[key as keyof typeof prevState.asyncErrors]
-            ) {
-              preservedAsyncErrors[key] =
-                prevState.asyncErrors[key as keyof typeof prevState.asyncErrors];
-            }
-          }
-
-          const mergedAsyncErrors = {
-            ...preservedAsyncErrors,
-            ...action.errors,
-          } as Record<keyof State | '', string | undefined>;
-
-          const merged = { ...mergedAsyncErrors, ...prevManualErrors };
+          // `action.errors` is the full parse (sync + async). Seeding it as the
+          // parse-slice and overlaying `mergedAsyncErrors` preserves non-active
+          // async entries from prior bursts that aren't in the current parse.
+          const merged = composeWithFreshErrors(
+            prevState.data,
+            mergedAsyncErrors,
+            prevManualErrors,
+            action.errors
+          );
 
           return diffedState(
             {

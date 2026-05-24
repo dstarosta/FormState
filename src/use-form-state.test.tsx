@@ -1413,6 +1413,199 @@ describe('useFormState', () => {
         );
         expect(result.current.formState.errors.getManual('serverError')).toBeUndefined();
       });
+
+      it('should not show stale parse errors during the burst after replace on an async schema', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Xavier' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+
+        act(() => {
+          result.current.formActions.replace({ name: 'Mike' }, { validate: true });
+        });
+
+        // During the in-flight async burst the stale parse-slice must be gone.
+        expect(result.current.formStatus.validating).toBe(true);
+        expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+      });
+
+      it('prunes async-slice entries on nested paths when their parent is reset', async () => {
+        const nestedAsyncSchema = z.object({
+          info: z.object({
+            handle: z
+              .formString({ required: true, error: 'Handle is required' })
+              .check(
+                z.validateAsync(
+                  (value: string) => Promise.resolve(value === 'mike'),
+                  'Handle is not allowed'
+                )
+              ),
+          }),
+        });
+
+        const { result } = renderHook(() =>
+          useFormState(nestedAsyncSchema, {
+            initialData: { info: { handle: 'mike' } },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        act(() => {
+          result.current.formActions.change((data) => data.info.handle, 'taken');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.info.handle)).toBe(
+          'Handle is not allowed'
+        );
+
+        // Reset the parent field. resetFields builds prefixes=['info.'] and the
+        // prune predicate hits the `prefixes.some(...)` branch to drop the
+        // nested 'info.handle' async entry.
+        act(() => {
+          result.current.formActions.reset({ names: ['info'] });
+        });
+
+        expect(result.current.formStatus.validating).toBe(true);
+        expect(result.current.formState.errors.get((path) => path.info.handle)).toBeUndefined();
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.info.handle)).toBeUndefined();
+        expect(result.current.formState.data.info.handle).toBe('mike');
+      });
+
+      it('should not show stale parse errors during the burst after resetFields on an async schema', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Mike' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        act(() => {
+          result.current.formActions.change('name', 'Xavier');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+
+        act(() => {
+          result.current.formActions.reset({ names: ['name'] });
+        });
+
+        expect(result.current.formStatus.validating).toBe(true);
+        expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+      });
+
+      it('should not show stale parse errors during the burst after change on an async schema', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        const { result } = renderHook(() =>
+          useFormState(asyncSchema, {
+            initialData: { name: 'Xavier' },
+            validateOnMount: true,
+          })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+
+        act(() => {
+          result.current.formActions.change('name', 'Mike');
+        });
+
+        expect(result.current.formStatus.validating).toBe(true);
+        expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+      });
+
+      it('should drop stale async-slice entries for non-dirty fields when initialData changes', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+        let initialData = { name: 'Xavier' };
+
+        const { result, rerender } = renderHook(() =>
+          useFormState(asyncSchema, { initialData, validateOnMount: true })
+        );
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+
+        // The 'name' field is non-dirty (no user change), so the new initial
+        // data flows in and the stale async-slice entry should be pruned.
+        initialData = { name: 'Mike' };
+        rerender();
+
+        expect(result.current.formStatus.validating).toBe(true);
+        expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBeUndefined();
+        expect(result.current.formState.data.name).toBe('Mike');
+      });
     });
 
     describe('validateAsync', () => {
@@ -2056,10 +2249,6 @@ describe('useFormState', () => {
           result.current.change('name', 'Alice');
         });
 
-        await waitFor(() => {
-          expect(result.current.formStatus.validating).toBe(false);
-        });
-
         await act(async () => {
           await result.current.handleSubmit(() => Promise.resolve(true), {
             onError() {
@@ -2099,10 +2288,6 @@ describe('useFormState', () => {
 
         act(() => {
           result.current.change('name', 'Alice');
-        });
-
-        await waitFor(() => {
-          expect(result.current.formStatus.validating).toBe(false);
         });
 
         await act(async () => {
@@ -2165,7 +2350,7 @@ describe('useFormState', () => {
       });
 
       it.each([true, false])(
-        'does not submit when async validation has an error (submitOnly: %s)',
+        'does not submit when async validation has an error (submitOnly=%s)',
         async (submitOnly) => {
           const predicate = vi.fn((value: string) => Promise.resolve(value.length < 0));
 
@@ -2212,6 +2397,483 @@ describe('useFormState', () => {
           expect(result.current.formStatus.submitted).toBe(false);
         }
       );
+
+      it('clears post submit errors when sync validation has an error', async () => {
+        const predicate = vi.fn((value: string) => value.length > 0);
+
+        const submitSchema = z.object({
+          name: z.formString().check(
+            z.validate(predicate, {
+              error: 'Validation error',
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formState: { errors },
+            formStatus,
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema);
+
+          return { errors, formStatus, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', '');
+        });
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true), {
+            onError(state) {
+              expect(state.errors.name).toBe('Validation error');
+            },
+            onSuccess() {
+              throw new Error('Not to be called');
+            },
+          })(new FormData());
+        });
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true), {
+            onError() {
+              throw new Error('Not to be called');
+            },
+            onSuccess(state) {
+              expect(state.data.name).toBe('Alice');
+            },
+          })(new FormData());
+        });
+
+        expect(result.current.errors.name).toBeUndefined();
+        expect(result.current.formStatus.valid).toBe(true);
+      });
+
+      it('clears post submit errors when async validation has an error', async () => {
+        const predicate = vi.fn((value: string) => Promise.resolve(value.length > 0));
+
+        const submitSchema = z.object({
+          name: z.formString().check(
+            z.validateAsync(predicate, {
+              error: 'Validation error',
+              submitOnly: true,
+            })
+          ),
+        });
+
+        // eslint-disable-next-line sonarjs/no-identical-functions
+        const Component = () => {
+          const {
+            formState: { errors },
+            formStatus,
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema);
+
+          return { errors, formStatus, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', '');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true), {
+            onError(state) {
+              expect(state.errors.name).toBe('Validation error');
+            },
+            onSuccess() {
+              throw new Error('Not to be called');
+            },
+          })(new FormData());
+        });
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true), {
+            onError() {
+              throw new Error('Not to be called');
+            },
+            onSuccess(state) {
+              expect(state.data.name).toBe('Alice');
+            },
+          })(new FormData());
+        });
+
+        expect(result.current.errors.name).toBeUndefined();
+        expect(result.current.formStatus.valid).toBe(true);
+      });
+
+      it('keeps the submitOnly async error across repeated submits with unchanged failing data', async () => {
+        const submitSchema = z.object({
+          name: z.formString().check(
+            z.validateAsync((value: string) => Promise.resolve(value === 'allowed'), {
+              error: 'Validation error',
+              submitOnly: true,
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formState: { errors },
+            formStatus,
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, { initialData: { name: 'rejected' } });
+
+          return { errors, formStatus, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        const onError = vi.fn();
+        const onSuccess = vi.fn();
+        const submit = result.current.handleSubmit(() => Promise.resolve(true), {
+          onError,
+          onSuccess,
+        });
+
+        await act(async () => {
+          await submit(new FormData());
+        });
+
+        await waitFor(() => {
+          expect(onError).toHaveBeenCalledTimes(1);
+        });
+
+        expect(result.current.errors.name).toBe('Validation error');
+
+        // Submit again WITHOUT changing data. The submitOnly async error must persist.
+        await act(async () => {
+          await submit(new FormData());
+        });
+
+        await waitFor(() => {
+          expect(onError).toHaveBeenCalledTimes(2);
+        });
+
+        expect(onSuccess).not.toHaveBeenCalled();
+        expect(result.current.errors.name).toBe('Validation error');
+        expect(result.current.formStatus.valid).toBe(false);
+      });
+
+      it('preserves a submitOnly async error across 2x submits when a prior change ran the async pipeline', async () => {
+        // Regression: when a schema mixes a non-submitOnly async check with a
+        // submitOnly check, the change-async pipeline used to commit the
+        // submitOnly check's prev value during change phase. On the next
+        // submit, the submitOnly skipWhen saw current === prev and skipped
+        // the predicate — clearing the error on subsequent submits even
+        // though the data still failed.
+        const submitSchema = z
+          .object({
+            name: z
+              .formString({ required: true })
+              .check(
+                z.validateAsync((value: string) => Promise.resolve(value !== ''), 'name async')
+              ),
+          })
+          .check(
+            z.validateAsync(
+              (data: { name: string }) =>
+                Promise.resolve(Boolean(data.name && data.name !== 'bad')),
+              {
+                error: 'submitOnly error',
+                submitOnly: true,
+              }
+            )
+          );
+
+        const Component = () => {
+          const {
+            formState: { errors },
+            formStatus,
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, { initialData: { name: 'initial' } });
+
+          return { errors, formStatus, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'bad');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        // Submit twice with unchanged failing data — the submitOnly error
+        // must persist on both submits.
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+        });
+        expect(result.current.errors['']).toBe('submitOnly error');
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+        });
+        expect(result.current.errors['']).toBe('submitOnly error');
+      });
+
+      it('keeps the submitOnly async error across repeated <Form action> submits with unchanged failing data', async () => {
+        const submitSchema = z.object({
+          name: z.formString().check(
+            z.validateAsync((value: string) => Promise.resolve(value === 'allowed'), {
+              error: 'Validation error',
+              submitOnly: true,
+            })
+          ),
+        });
+
+        const onError = vi.fn();
+        const onSuccess = vi.fn();
+
+        const SubmitForm = () => {
+          const {
+            formState: { errors },
+            formStatus,
+            formHandlers: { handleSubmit },
+            Form,
+          } = useFormState(submitSchema, { initialData: { name: 'rejected' } });
+
+          // Mirror the app pattern: onSubmit returns {} on invalid (instead of true).
+          return (
+            <Form
+              action={handleSubmit(
+                (state) => (state.valid ? Promise.resolve(true) : Promise.resolve({})),
+                {
+                  onError,
+                  onSuccess,
+                }
+              )}
+            >
+              <p data-testid="name-error">{errors.name ?? 'no-error'}</p>
+              <p data-testid="valid">{String(formStatus.valid)}</p>
+              <button>Submit</button>
+            </Form>
+          );
+        };
+
+        render(
+          <StrictMode>
+            <SubmitForm />
+          </StrictMode>
+        );
+
+        fireEvent.click(screen.getByText('Submit'));
+
+        await waitFor(() => {
+          expect(onError).toHaveBeenCalledTimes(1);
+        });
+
+        await waitFor(() => {
+          expect(screen.getByTestId('name-error')).toHaveTextContent('Validation error');
+        });
+
+        // Click submit again WITHOUT changing data. The submitOnly async error must persist.
+        fireEvent.click(screen.getByText('Submit'));
+
+        await waitFor(() => {
+          expect(onError).toHaveBeenCalledTimes(2);
+        });
+
+        expect(onSuccess).not.toHaveBeenCalled();
+        expect(screen.getByTestId('name-error')).toHaveTextContent('Validation error');
+        expect(screen.getByTestId('valid')).toHaveTextContent('false');
+      });
+
+      it.each([
+        {
+          label: 'sync',
+          buildSchema: () =>
+            z.object({
+              name: z
+                .formString()
+                .check(
+                  z.validate((value: string) => value.length > 0, { error: 'Validation error' })
+                ),
+            }),
+        },
+        {
+          label: 'async',
+          buildSchema: () =>
+            z.object({
+              name: z.formString().check(
+                z.validateAsync((value: string) => Promise.resolve(value.length > 0), {
+                  error: 'Validation error',
+                  submitOnly: true,
+                })
+              ),
+            }),
+        },
+      ])(
+        'calls onError on every failed $label submit and keeps the error',
+        async ({ buildSchema }) => {
+          const submitSchema = buildSchema();
+
+          const Component = () => {
+            const {
+              formState: { errors },
+              formActions: { change },
+              formHandlers: { handleSubmit },
+            } = useFormState(submitSchema);
+
+            return { errors, change, handleSubmit };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          act(() => {
+            result.current.change('name', '');
+          });
+
+          const onSubmit = vi.fn(() => Promise.resolve(true as const));
+          const onError = vi.fn();
+          const onSuccess = vi.fn();
+          const submit = result.current.handleSubmit(onSubmit, { onError, onSuccess });
+
+          await act(async () => {
+            await submit(new FormData());
+          });
+
+          await waitFor(() => {
+            expect(onError).toHaveBeenCalledTimes(1);
+          });
+
+          expect(result.current.errors.name).toBe('Validation error');
+
+          await act(async () => {
+            await submit(new FormData());
+          });
+
+          await waitFor(() => {
+            expect(onError).toHaveBeenCalledTimes(2);
+          });
+
+          expect(onSuccess).not.toHaveBeenCalled();
+          expect(result.current.errors.name).toBe('Validation error');
+          const firstErrorState = onError.mock.calls[0]?.[0] as { errors: { name?: string } };
+          const secondErrorState = onError.mock.calls[1]?.[0] as { errors: { name?: string } };
+          expect(firstErrorState.errors.name).toBe('Validation error');
+          expect(secondErrorState.errors.name).toBe('Validation error');
+        }
+      );
+
+      it.each([true, false])(
+        'clears post validation errors when sync validation has an error (submit=%s)',
+        (submit) => {
+          const predicate = vi.fn((value: string) => value.length > 0);
+
+          const submitSchema = z.object({
+            name: z.formString().check(
+              z.validate(predicate, {
+                error: 'Validation error',
+              })
+            ),
+          });
+
+          const Component = () => {
+            const {
+              formState: { errors },
+              formStatus,
+              formActions: { change, validate },
+            } = useFormState(submitSchema);
+
+            return { errors, formStatus, change, validate };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          act(() => {
+            result.current.change('name', '');
+          });
+
+          result.current.validate({ submit });
+
+          act(() => {
+            result.current.change('name', 'Alice');
+          });
+
+          result.current.validate({ submit });
+
+          expect(result.current.errors.name).toBeUndefined();
+          expect(result.current.formStatus.valid).toBe(true);
+        }
+      );
+
+      it('clears post validation errors when async validation has an error', async () => {
+        const predicate = vi.fn((value: string) => Promise.resolve(value.length > 0));
+
+        const submitSchema = z.object({
+          name: z.formString().check(
+            z.validateAsync(predicate, {
+              error: 'Validation error',
+              submitOnly: true,
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formState: { errors },
+            formStatus,
+            formActions: { change, validateAsync },
+          } = useFormState(submitSchema);
+
+          return { errors, formStatus, change, validateAsync };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', '');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        act(() => {
+          result.current.change('name', 'Alice');
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        await act(async () => {
+          await result.current.validateAsync();
+        });
+
+        expect(result.current.errors.name).toBeUndefined();
+        expect(result.current.formStatus.valid).toBe(true);
+      });
 
       it('discards a submit when the asyncRequestId changes during the schema parse', async () => {
         let releaseParse: (() => void) | undefined;
@@ -4959,6 +5621,34 @@ describe('useFormState', () => {
       const { formStatus } = result.current;
 
       expect(formStatus.valid).toBe(false);
+    });
+
+    it('preserves prior parse errors when setError is called with validate:false', () => {
+      const initialData: InitialSchema = {
+        info: { age: 30 },
+      };
+      const { result } = renderHook(() => useFormState(schema, { initialData }));
+
+      // Prime the form to populate state.errors with a parse-slice error.
+      act(() => {
+        result.current.formActions.validate();
+      });
+
+      expect(result.current.formState.errors.get((path) => path.name)).toBeDefined();
+
+      // Add a manual error without re-validating — the !shouldValidate branch
+      // composes the next errors via `difference(prevState.errors, prevManualErrors)`,
+      // exercising the survivor path inside `difference`.
+      act(() => {
+        result.current.formActions.setError('serverError', 'Backend failure', {
+          validate: false,
+        });
+      });
+
+      const { formState } = result.current;
+
+      expect(formState.errors.get((path) => path.name)).toBeDefined();
+      expect(formState.errors.getManual('serverError')).toBe('Backend failure');
     });
 
     it('should clear manual errors and do not validate schema', () => {

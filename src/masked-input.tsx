@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { mergeRefs } from './helpers/ref-merge';
+import { createSyntheticChangeEvent } from './helpers/synthetic-event';
 import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 
 const TOKEN_PATTERNS: Record<string, RegExp> = {
@@ -409,20 +410,11 @@ export function MaskedInput({
       const unmaskedValue = nextSlots.filter((ch): ch is string => ch !== null).join('');
       const complete = slotsAreComplete(nextSlots, info);
 
-      const event = {
-        type: 'change',
-        target: { value: nextValue, name } as EventTarget & HTMLInputElement,
-        currentTarget: { value: nextValue, name } as EventTarget & HTMLInputElement,
-        nativeEvent: new Event('change'),
+      const event: MaskedChangeEvent = {
+        ...createSyntheticChangeEvent(nextValue, name),
         complete,
         unmaskedValue,
-        bubbles: true,
-        preventDefault: () => {},
-        stopPropagation: () => {},
-        persist: () => {},
-        isDefaultPrevented: () => false,
-        isPropagationStopped: () => false,
-      } as MaskedChangeEvent;
+      };
 
       callbacksRef.current.onChange?.(event);
     },

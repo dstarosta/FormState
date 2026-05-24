@@ -160,6 +160,8 @@ export type FormAction<T extends object> =
   | {
       type: 'submit';
       submittedData: SubmittedData<T>;
+      asyncErrors: Record<keyof T | '', string | undefined>;
+      freshErrors: Record<keyof T | '', string | undefined>;
       options: { resetDirty: boolean; resetTouched: boolean; updateInitialData: boolean };
     }
   | { type: 'changeInitialData' }
@@ -184,6 +186,13 @@ export type FormAction<T extends object> =
   | {
       type: 'asyncValidate';
       errors: Record<keyof T | '', string | undefined>;
+      freshErrors: Record<keyof T | '', string | undefined>;
+    }
+  | {
+      type: 'submitValidate';
+      asyncErrors: Record<keyof T | '', string | undefined>;
+      manualErrors: Record<string, string>;
+      freshErrors: Record<keyof T | '', string | undefined>;
     }
   | { type: 'setMode'; mode: FormMode };
 

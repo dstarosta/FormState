@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { deepEqual } from 'fast-equals';
+import { deepEqual } from './deep-equal';
 
 import type {
   DeepPartial,
@@ -79,14 +79,8 @@ function buildParseResult<T extends z.ZodMiniObject>(
     ...zodErrors,
     get: (expression: (data: z.infer<T>) => unknown) =>
       zodErrors[getPath(parsedData, expression).join('.')],
-    getAll: () =>
-      Object.values(zodErrors)
-        .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
-        .flatMap((error) => error.split(errorMessageSeparator)),
-    getKeys: () =>
-      Object.entries(zodErrors)
-        .filter((entry) => Boolean(entry[1]))
-        .map((entry) => entry[0]),
+    getAll: () => allErrors(zodErrors, errorMessageSeparator),
+    getKeys: () => truthyKeys(zodErrors),
   };
 
   const success = Object.keys(zodErrors).length === 0;
@@ -232,6 +226,19 @@ const deepFreeze = <T>(value: T): T => {
   return Object.freeze(value);
 };
 
+const truthyKeys = (obj: Record<string, unknown>): string[] =>
+  Object.entries(obj)
+    .filter((entry) => Boolean(entry[1]))
+    .map((entry) => entry[0]);
+
+const allErrors = (
+  errors: Record<string, string | undefined>,
+  errorMessageSeparator: string
+): string[] =>
+  Object.values(errors)
+    .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
+    .flatMap((error) => error.split(errorMessageSeparator));
+
 export const freezeObject = <T extends object>(obj: T) => {
   return IS_DEVELOPMENT ? (deepFreeze(obj) as Immutable<T>) : (obj as Immutable<T>);
 };
@@ -250,14 +257,8 @@ export const createImmutableErrors = <T extends z.ZodMiniObject>(
     ...errors,
     get: (expression: (data: z.infer<T>) => unknown) => errors[getPath(data, expression).join('.')],
     getManual: (key: string) => errors[key],
-    getAll: () =>
-      Object.values(errors)
-        .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
-        .flatMap((error) => error.split(errorMessageSeparator)),
-    getKeys: () =>
-      Object.entries(errors)
-        .filter((entry) => Boolean(entry[1]))
-        .map((entry) => entry[0]),
+    getAll: () => allErrors(errors, errorMessageSeparator),
+    getKeys: () => truthyKeys(errors),
   });
 
 export const createImmutableDirty = <T extends z.ZodMiniObject>(
@@ -266,10 +267,7 @@ export const createImmutableDirty = <T extends z.ZodMiniObject>(
   freezeObject({
     ...dirty,
     get: (key: `#${string}`) => Boolean(dirty[key]),
-    getKeys: () =>
-      Object.entries(dirty)
-        .filter((entry) => entry[1])
-        .map((entry) => entry[0]),
+    getKeys: () => truthyKeys(dirty),
   });
 
 export const createImmutableTouched = <T extends z.ZodMiniObject>(
@@ -280,10 +278,7 @@ export const createImmutableTouched = <T extends z.ZodMiniObject>(
     ...touched,
     get: (expression: (data: z.infer<T>) => unknown) =>
       Boolean(touched[getPath(data, expression).join('.')]),
-    getKeys: () =>
-      Object.entries(touched)
-        .filter((entry) => entry[1])
-        .map((entry) => entry[0]),
+    getKeys: () => truthyKeys(touched),
   });
 
 export const createImmutableRanges = <T extends z.ZodMiniObject>(
@@ -334,10 +329,7 @@ export const createImmutableRanges = <T extends z.ZodMiniObject>(
 
       return range.max;
     },
-    getKeys: () =>
-      Object.entries(ranges)
-        .filter((entry) => Boolean(entry[1]))
-        .map((entry) => entry[0]),
+    getKeys: () => truthyKeys(ranges),
   });
 
 export const createImmutablePatterns = <T extends z.ZodMiniObject>(
@@ -348,10 +340,7 @@ export const createImmutablePatterns = <T extends z.ZodMiniObject>(
     ...patterns,
     get: (expression: (data: z.infer<T>) => unknown) =>
       patterns[getPathNotation(getPath(data, expression))] ?? '',
-    getKeys: () =>
-      Object.entries(patterns)
-        .filter((entry) => Boolean(entry[1]))
-        .map((entry) => entry[0]),
+    getKeys: () => truthyKeys(patterns),
   });
 
 export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
@@ -362,10 +351,7 @@ export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
     ...descriptions,
     get: (expression: (data: z.infer<T>) => unknown) =>
       descriptions[getPathNotation(getPath(data, expression))] ?? '',
-    getKeys: () =>
-      Object.entries(descriptions)
-        .filter((entry) => Boolean(entry[1]))
-        .map((entry) => entry[0]),
+    getKeys: () => truthyKeys(descriptions),
   });
 
 export const createImmutableRequired = <T extends z.ZodMiniObject>(
@@ -376,11 +362,108 @@ export const createImmutableRequired = <T extends z.ZodMiniObject>(
     ...required,
     get: (expression: (data: z.infer<T>) => unknown) =>
       Boolean(required[getPath(data, expression).join('.')]),
-    getKeys: () =>
-      Object.entries(required)
-        .filter((entry) => entry[1])
-        .map((entry) => entry[0]),
+    getKeys: () => truthyKeys(required),
   });
+
+/**
+ * Returns a touched-map with `true` set for every error key whose top-level
+ * segment maps to a real data field. Errors that don't correspond to a data
+ * field (e.g. root-level errors with `key === ''`) are skipped so they don't
+ * pollute `touched`.
+ */
+export const touchErroredFields = <T extends Record<string, unknown>, K extends keyof T>(
+  touched: Record<K, boolean>,
+  errors: Record<string, string | undefined>,
+  data: T
+): Record<K, boolean> => {
+  const next = { ...touched } as Record<string, boolean>;
+
+  for (const key of Object.keys(errors)) {
+    const topSegment = key.split('.', 1)[0];
+
+    if (!topSegment || !(topSegment in data)) {
+      continue;
+    }
+
+    next[key] = true;
+  }
+
+  return next as Record<K, boolean>;
+};
+
+/**
+ * Computes the new `asyncErrors` slice from a prior `asyncErrors` slice and the
+ * full parse result of a fresh `safeParseAsync`. Only error paths that were
+ * actively checked this run (`activePaths`) participate — sync errors that may
+ * also be present in `freshErrors` are filtered out so they never contaminate
+ * the async-only slice.
+ *
+ * For non-active async-check paths (skipped this run via `submitOnly`,
+ * `skipWhen`, or `condition`), the prior entry is preserved so previously
+ * reported async errors don't vanish just because their check didn't re-run.
+ */
+export const mergeAsyncErrors = <T extends Record<string, string | undefined>>(
+  prevAsyncErrors: T,
+  freshErrors: Record<string, string | undefined>,
+  activePaths: readonly string[]
+): T => {
+  const activePathSet = new Set<string>(activePaths);
+  const result: Record<string, string | undefined> = {};
+
+  for (const key in prevAsyncErrors) {
+    if (
+      Object.prototype.hasOwnProperty.call(prevAsyncErrors, key) &&
+      !activePathSet.has(key) &&
+      prevAsyncErrors[key]
+    ) {
+      result[key] = prevAsyncErrors[key];
+    }
+  }
+
+  for (const key of activePathSet) {
+    const error = freshErrors[key];
+
+    if (error) {
+      result[key] = error;
+    }
+  }
+
+  return result as T;
+};
+
+/**
+ * Single canonical merge for `state.errors`. Composes the three slices —
+ * parse errors against `data`, the persisted `asyncErrors` slice, and
+ * `manualErrors` — with manual winning over async winning over parse.
+ */
+export const composeErrors = <T extends Record<string, string | undefined>>(
+  parseErrors: T,
+  asyncErrors: T,
+  manualErrors: Record<string, string>
+): T => ({ ...parseErrors, ...asyncErrors, ...manualErrors });
+
+/**
+ * Drops async-slice entries the caller marks as stale (e.g. paths whose
+ * value just changed). Returns the same reference when nothing matched, so
+ * callers don't churn the slice for no reason.
+ */
+export const pruneAsyncErrors = <T extends Record<string, string | undefined>>(
+  prevAsyncErrors: T,
+  isStale: (key: string) => boolean
+): T => {
+  let next: Record<string, string | undefined> | null = null;
+
+  for (const key in prevAsyncErrors) {
+    if (Object.prototype.hasOwnProperty.call(prevAsyncErrors, key) && isStale(key)) {
+      if (next === null) {
+        next = { ...prevAsyncErrors };
+      }
+      delete next[key];
+    }
+  }
+
+  return (next ?? prevAsyncErrors) as T;
+};
 
 export const difference = <T extends object>(obj1: T, obj2: Record<string, unknown>) => {
   const result: Partial<T> = {};

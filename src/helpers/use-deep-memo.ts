@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/refs -- ref-cache pattern (same shape as useMemo's internals) */
 import { useRef, type DependencyList } from 'react';
-import { deepEqual } from 'fast-equals';
+import { deepEqual } from './deep-equal';
 
 const sameDeps = (dependenciesA: DependencyList, dependenciesB: DependencyList) => {
   if (dependenciesA === dependenciesB) {
@@ -25,8 +25,8 @@ const sameDeps = (dependenciesA: DependencyList, dependenciesB: DependencyList) 
 };
 
 /**
- * Like {@link useMemo} but compares dependencies via deep equality (fast-equals)
- * instead of Object.is. Use sparingly — deep comparison costs scale with dep size.
+ * Like {@link useMemo} but compares dependencies via deep equality instead of
+ * `Object.is`. Use sparingly — deep comparison costs scale with dep size.
  * Prefer `useMemo` for primitive or stable-reference deps.
  */
 export function useDeepMemo<T>(factory: () => T, deps: React.DependencyList) {

@@ -1,10 +1,9 @@
 import * as z from 'zod/mini';
-import { deepEqual } from 'fast-equals';
+import { deepEqual } from './helpers/deep-equal';
 
 import type {
   AsyncCheck,
   AsyncCheckMeta,
-  FormDateFormat,
   FormDateOptions,
   FormStringOptions,
   FormTypeOptions,
@@ -25,6 +24,59 @@ const EMPTY_STRING = '' as const;
 const Z_EMPTY_STRING = z.literal(EMPTY_STRING);
 
 const ALWAYS_VALIDATE = () => true;
+
+// Private functions
+
+/**
+ * Splits the variadic argument list of a `form*` schema factory into its
+ * `options` object and `checks` tuple. The factory may be called as
+ * `formX()`, `formX(check, ...)`, or `formX(options, check, ...)` — this
+ * helper discriminates between an options-object and a check by looking for
+ * any of `optionKeys` on the first argument.
+ */
+function parseFormArgs<O, C>(
+  first: O | C | undefined,
+  rest: readonly C[],
+  optionKeys: readonly (keyof O)[]
+): { options: O; checks: readonly C[] } {
+  if (first === undefined) {
+    return { options: {} as O, checks: [] };
+  }
+
+  if (typeof first === 'object' && optionKeys.some((key) => key in (first as object))) {
+    return { options: first as O, checks: rest };
+  }
+
+  return { options: {} as O, checks: [first as C, ...rest] };
+}
+
+/**
+ * Pushes the "required field is empty" issue onto the Zod parse context.
+ * Returns `true` if the issue was pushed so the caller can short-circuit.
+ */
+function pushRequiredIssue(
+  ctx: { issues: z.core.$ZodRawIssue[] },
+  options: { required?: boolean; error?: string },
+  expected: 'boolean' | 'date' | 'number' | 'string',
+  value: unknown,
+  receivedString = true
+): boolean {
+  if (!options.required || !options.error || (value !== undefined && value !== EMPTY_STRING)) {
+    return false;
+  }
+
+  ctx.issues.push({
+    code: 'invalid_type',
+    expected,
+    ...(receivedString ? { received: 'string' } : {}),
+    message: options.error,
+    input: value,
+  });
+
+  return true;
+}
+
+// Internal functions
 
 /**
  * Converts an inferred schema instance into an object without empty literal unions.
@@ -294,15 +346,7 @@ export function formBoolean(options?: FormTypeOptions) {
       if (typeof value === 'boolean') {
         return value;
       }
-      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
-        ctx.issues.push({
-          code: 'invalid_type',
-          expected: 'boolean',
-          received: 'string',
-          message: options.error,
-          input: value,
-        });
-      }
+      pushRequiredIssue(ctx, options ?? {}, 'boolean', value);
       if (!value) {
         return EMPTY_STRING;
       }
@@ -370,26 +414,10 @@ export function formDate(
   first?: FormDateOptions | z.core.CheckFn<Date> | z.core.$ZodCheck<Date>,
   ...rest: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[]
 ) {
-  let options: {
-    required?: boolean;
-    dateFormat?: FormDateFormat;
-    error?: string;
-    dateFormatError?: string;
-  };
-  let checks: readonly (z.core.CheckFn<Date> | z.core.$ZodCheck<Date>)[] = [];
-
-  if (first === undefined) {
-    options = {};
-  } else if (
-    typeof first === 'object' &&
-    ('required' in first || 'dateFormat' in first || 'error' in first || 'dateFormatError' in first)
-  ) {
-    options = first;
-    checks = rest;
-  } else {
-    options = {};
-    checks = [first, ...rest];
-  }
+  const { options, checks } = parseFormArgs<
+    FormDateOptions,
+    z.core.CheckFn<Date> | z.core.$ZodCheck<Date>
+  >(first, rest, ['required', 'dateFormat', 'error', 'dateFormatError']);
 
   let zodDate = options.error ? z.date({ error: options.error }) : z.date();
 
@@ -403,15 +431,7 @@ export function formDate(
 
   return z.pipe(
     z.transform((value: unknown, ctx) => {
-      if (options.required && options.error && (value === undefined || value === EMPTY_STRING)) {
-        ctx.issues.push({
-          code: 'invalid_type',
-          expected: 'date',
-          received: 'string',
-          message: options.error,
-          input: value,
-        });
-      }
+      pushRequiredIssue(ctx, options, 'date', value);
 
       if (!value) {
         return EMPTY_STRING;
@@ -499,18 +519,10 @@ export function formNumber(
   first?: FormTypeOptions | z.core.CheckFn<number> | z.core.$ZodCheck<number>,
   ...rest: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[]
 ) {
-  let options: { required?: boolean; error?: string };
-  let checks: readonly (z.core.CheckFn<number> | z.core.$ZodCheck<number>)[] = [];
-
-  if (first === undefined) {
-    options = {};
-  } else if (typeof first === 'object' && ('required' in first || 'error' in first)) {
-    options = first;
-    checks = rest;
-  } else {
-    options = {};
-    checks = [first, ...rest];
-  }
+  const { options, checks } = parseFormArgs<
+    FormTypeOptions,
+    z.core.CheckFn<number> | z.core.$ZodCheck<number>
+  >(first, rest, ['required', 'error']);
 
   let zodNumber = options.error ? z.number({ error: options.error }) : z.number();
 
@@ -523,15 +535,7 @@ export function formNumber(
       if (typeof value === 'number' && !Number.isNaN(value)) {
         return value;
       }
-      if (options.required && options.error && (value === undefined || value === EMPTY_STRING)) {
-        ctx.issues.push({
-          code: 'invalid_type',
-          expected: 'number',
-          received: 'string',
-          message: options.error,
-          input: value,
-        });
-      }
+      pushRequiredIssue(ctx, options, 'number', value);
       if (!value) {
         return EMPTY_STRING;
       }
@@ -605,26 +609,10 @@ export function formString(
   first?: FormStringOptions | z.core.CheckFn<string> | z.core.$ZodCheck<string>,
   ...rest: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[]
 ) {
-  let options: {
-    required?: boolean;
-    allowEmpty?: boolean;
-    error?: string;
-    normalize?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
-  };
-  let checks: readonly (z.core.CheckFn<string> | z.core.$ZodCheck<string>)[] = [];
-
-  if (first === undefined) {
-    options = {};
-  } else if (
-    typeof first === 'object' &&
-    ('required' in first || 'allowEmpty' in first || 'error' in first || 'normalize' in first)
-  ) {
-    options = first;
-    checks = rest;
-  } else {
-    options = {};
-    checks = [first, ...rest];
-  }
+  const { options, checks } = parseFormArgs<
+    FormStringOptions,
+    z.core.CheckFn<string> | z.core.$ZodCheck<string>
+  >(first, rest, ['required', 'allowEmpty', 'error', 'normalize']);
 
   let zodString = options.error ? z.string({ error: options.error }) : z.string();
 
@@ -634,14 +622,7 @@ export function formString(
 
   return z.pipe(
     z.transform((value: unknown, ctx) => {
-      if (options.required && options.error && (value === undefined || value === EMPTY_STRING)) {
-        ctx.issues.push({
-          code: 'invalid_type',
-          expected: 'string',
-          message: options.error,
-          input: value,
-        });
-      }
+      pushRequiredIssue(ctx, options, 'string', value, false);
       if (!value) {
         return EMPTY_STRING;
       }
@@ -729,14 +710,7 @@ export function formValues(
 
   return z.pipe(
     z.transform((value: unknown, ctx) => {
-      if (options?.required && options.error && (value === undefined || value === EMPTY_STRING)) {
-        ctx.issues.push({
-          code: 'invalid_type',
-          expected: 'string',
-          message: options.error,
-          input: value,
-        });
-      }
+      pushRequiredIssue(ctx, options ?? {}, 'string', value, false);
       if (!value) {
         return EMPTY_STRING;
       }
