@@ -13,12 +13,19 @@ export default defineConfig({
       extensions: ['.js', '.jsx', '.ts', '.tsx'],
     }),
   ],
-  entry: 'src/index.ts',
-  clean: true,
+  clean: false,
   dts: {
     enabled: false,
   },
-  minify: true,
+  entry: 'src/index.ts',
+  format: ['esm'],
+  minify: {
+    compress: true,
+    mangle: true,
+  },
+  platform: 'neutral',
+  publint: true,
   sourcemap: 'hidden',
+  target: 'es2022',
   treeshake: true,
 });

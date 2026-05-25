@@ -14,20 +14,20 @@
     "eslint",
     "!eslint/**/*.test.js"
   ],
-  "main": "dist/index.mjs",
+  "main": "dist/index.js",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./eslint": {
-      "import": "./eslint/index.js",
-      "types": "./eslint/index.d.ts"
+      "types": "./eslint/index.d.ts",
+      "import": "./eslint/index.js"
     }
   },
   "scripts": {
     "check-ts": "node -e \"const v=require('typescript').version; if(v<'5.9.0'){console.error('❌ TS version '+v+' is too low. Need >= 5.9.0');process.exit(1)}\"",
-    "build": "npm i && npm run check-ts && npm run prettier && npm run typecheck && npm run lint && npm run test && tsdown && tsdown --config tsdown.types.config.ts",
+    "build": "npm i && npm run check-ts && npm run prettier && npm run typecheck && npm run lint && npm run test && tsdown --config tsdown.types.config.ts && tsdown",
     "lint": "eslint .",
     "prettier": "prettier -c src/**",
     "typecheck": "tsc --noEmit",
@@ -49,26 +49,27 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^25.9.0",
-    "@types/react": "^19.2.14",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
-    "@vitest/coverage-v8": "^4.1.6",
+    "@vitest/coverage-v8": "^4.1.7",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^10.4.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-you-might-not-need-an-effect": "^0.10.1",
+    "eslint-plugin-react-you-might-not-need-an-effect": "^0.10.2",
     "eslint-plugin-sonarjs": "^4.0.3",
     "eslint-plugin-testing-library": "^7.16.2",
     "eslint-plugin-unicorn": "^64.0.0",
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
     "prettier": "^3.8.3",
+    "publint": "^0.3.21",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   },
   "overrides": {
     "eslint-plugin-react": {

@@ -2,7 +2,6 @@ import { createRef } from 'react';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
-import type { ZodMiniType } from 'zod/mini';
 
 import type { DeepPartial, FormMutableState, Immutable } from '../types/form-types';
 
@@ -562,9 +561,9 @@ describe('helpers', () => {
         safeParse: () => {
           throw new RangeError('boom');
         },
-      } as DeepPartial<ZodMiniType>;
+      } as DeepPartial<z.ZodMiniType>;
 
-      expect(() => safeSyncParse(explosiveSchema as ZodMiniType, {})).toThrow(RangeError);
+      expect(() => safeSyncParse(explosiveSchema as z.ZodMiniType, {})).toThrow(RangeError);
     });
   });
 

@@ -1563,6 +1563,7 @@ type ParseAsObjectResult<T extends z.ZodMiniObject> = {
 declare namespace form_schema_d_exports {
   export { advanced, array, boolean, _catch as catch, date, _default as default, describe, endsWith, everyItem, formArray, formBoolean, formDate, formNumber, formString, formValues, gt, gte, includes, infer, length, lt, lte, maxLength, maximum, minLength, minimum, negative, nonnegative, nonpositive, number, object, positive, prefault, refine, regex, regexes, someItem, startsWith, strictObject, string, superRefine, symbol, toLowerCase, toUpperCase, trim, uniqueItems, validate, validateAsync };
 }
+import * as import_zod_mini from "zod/mini";
 /**
  * Infers form state type from the schema.
  *

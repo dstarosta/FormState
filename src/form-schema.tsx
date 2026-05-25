@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+
 import { deepEqual } from './helpers/deep-equal';
 
 import type {
@@ -86,6 +87,11 @@ function pushRequiredIssue(
 >(this: T, data: z.infer<T>) {
   return cleanEmpty(this, data) as SchemaDataObject<z.infer<T>>;
 };
+
+/**
+ * Export types.
+ */
+export type * from 'zod/mini';
 
 /**
  * Infers form state type from the schema.
