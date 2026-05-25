@@ -1,0 +1,1 @@
+import{useEffect as e,useLayoutEffect as t}from"react";const n=typeof document>`u`?e:t;export{n as t};

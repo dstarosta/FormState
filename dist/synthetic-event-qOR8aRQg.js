@@ -1,0 +1,1 @@
+function e(e,t){return{type:`change`,target:{value:e,name:t},currentTarget:{value:e,name:t},nativeEvent:new Event(`change`),bubbles:!0,preventDefault:()=>{},stopPropagation:()=>{},persist:()=>{},isDefaultPrevented:()=>!1,isPropagationStopped:()=>!1}}export{e as t};

@@ -1,0 +1,1 @@
+const e=(...e)=>t=>{let n=[];for(let r of e)if(typeof r==`function`){let e=r(t);typeof e==`function`?n.push(e):n.push(()=>r(null))}else r&&(r.current=t,n.push(()=>{r.current=null}));return()=>{for(let e of n)e()}};export{e as t};

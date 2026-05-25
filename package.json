@@ -4,7 +4,9 @@
   },
   "license": "MIT",
   "name": "form-state",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/schema.js"
+  ],
   "type": "module",
   "types": "dist/index.d.ts",
   "version": "1.0.0",
@@ -23,7 +25,8 @@
     "./eslint": {
       "types": "./eslint/index.d.ts",
       "import": "./eslint/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "check-ts": "node -e \"const v=require('typescript').version; if(v<'5.9.0'){console.error('❌ TS version '+v+' is too low. Need >= 5.9.0');process.exit(1)}\"",
@@ -34,7 +37,6 @@
     "test": "vitest run --coverage"
   },
   "engines": {
-    "node": ">= 24",
     "tsc": ">= 5.9.0"
   },
   "peerDependencies": {
