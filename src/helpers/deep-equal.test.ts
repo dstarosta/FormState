@@ -129,6 +129,30 @@ describe('deepEqual', () => {
       expect(deepEqual(new Map([['k', { x: 1 }]]), new Map([['k', { x: 1 }]]))).toBe(true);
       expect(deepEqual(new Map([['k', { x: 1 }]]), new Map([['k', { x: 2 }]]))).toBe(false);
     });
+
+    it('does not match the same right-side entry twice when keys are structurally equal', () => {
+      const left = new Map<{ id: number }, string>([
+        [{ id: 1 }, 'a'],
+        [{ id: 1 }, 'b'],
+      ]);
+      const right = new Map<{ id: number }, string>([
+        [{ id: 1 }, 'a'],
+        [{ id: 1 }, 'c'],
+      ]);
+      expect(deepEqual(left, right)).toBe(false);
+    });
+
+    it('matches duplicate structurally-equal entries pairwise', () => {
+      const left = new Map<{ id: number }, string>([
+        [{ id: 1 }, 'a'],
+        [{ id: 1 }, 'a'],
+      ]);
+      const right = new Map<{ id: number }, string>([
+        [{ id: 1 }, 'a'],
+        [{ id: 1 }, 'a'],
+      ]);
+      expect(deepEqual(left, right)).toBe(true);
+    });
   });
 
   describe('Set', () => {
@@ -147,6 +171,18 @@ describe('deepEqual', () => {
     it('compares elements recursively', () => {
       expect(deepEqual(new Set([{ x: 1 }]), new Set([{ x: 1 }]))).toBe(true);
       expect(deepEqual(new Set([{ x: 1 }]), new Set([{ x: 2 }]))).toBe(false);
+    });
+
+    it('matches duplicate structurally-equal elements pairwise', () => {
+      const left = new Set<{ x: number }>([{ x: 1 }, { x: 1 }]);
+      const right = new Set<{ x: number }>([{ x: 1 }, { x: 1 }]);
+      expect(deepEqual(left, right)).toBe(true);
+    });
+
+    it('does not match the same right-side element twice', () => {
+      const left = new Set<{ x: number }>([{ x: 1 }, { x: 2 }]);
+      const right = new Set<{ x: number }>([{ x: 1 }, { x: 1 }]);
+      expect(deepEqual(left, right)).toBe(false);
     });
   });
 

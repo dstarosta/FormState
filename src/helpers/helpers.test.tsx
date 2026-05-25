@@ -1879,6 +1879,86 @@ describe('helpers', () => {
         expect(result).toEqual({ 'a.b': { c: 2 } });
       });
     });
+
+    describe('dot path forbidden segments', () => {
+      const pollutionKey = '__pp_poisoned__';
+
+      afterEach(() => {
+        delete (Object.prototype as Record<string, unknown>)[pollutionKey];
+      });
+
+      it('returns undefined for __proto__ in get', () => {
+        const obj = { a: 1 };
+
+        expect(dotPathGet(obj, '__proto__')).toBeUndefined();
+        expect(dotPathGet(obj, '__proto__.toString')).toBeUndefined();
+      });
+
+      it('returns undefined for constructor in get', () => {
+        const obj = { a: 1 };
+
+        expect(dotPathGet(obj, 'constructor')).toBeUndefined();
+        expect(dotPathGet(obj, 'constructor.prototype')).toBeUndefined();
+      });
+
+      it('returns undefined for prototype in get', () => {
+        const obj = { a: 1 };
+
+        expect(dotPathGet(obj, 'prototype')).toBeUndefined();
+      });
+
+      it('returns undefined when forbidden segment appears mid-path in get', () => {
+        const obj = { a: { b: 1 } };
+
+        expect(dotPathGet(obj, 'a.__proto__.b')).toBeUndefined();
+      });
+
+      it('rejects forbidden segments given via array form in get', () => {
+        const obj = { constructor: 'safe-value' };
+
+        expect(dotPathGet(obj, ['constructor'])).toBeUndefined();
+      });
+
+      it('throws for __proto__ in set', () => {
+        expect(() => dotPathSet({}, '__proto__.polluted', true)).toThrow(
+          "Path segment '__proto__' is not allowed."
+        );
+      });
+
+      it('throws for constructor in set', () => {
+        expect(() => dotPathSet({}, 'constructor.prototype.polluted', true)).toThrow(
+          "Path segment 'constructor' is not allowed."
+        );
+      });
+
+      it('throws for prototype in set', () => {
+        expect(() => dotPathSet({}, 'prototype.polluted', true)).toThrow(
+          "Path segment 'prototype' is not allowed."
+        );
+      });
+
+      it('throws when forbidden segment appears mid-path in set', () => {
+        expect(() => dotPathSet({ a: {} }, 'a.__proto__.polluted', true)).toThrow(
+          "Path segment '__proto__' is not allowed."
+        );
+      });
+
+      it('throws for forbidden segments given via array form in set', () => {
+        expect(() => dotPathSet({}, ['__proto__', 'polluted'], true)).toThrow(
+          "Path segment '__proto__' is not allowed."
+        );
+      });
+
+      it('does not pollute Object.prototype via __proto__', () => {
+        expect(() => dotPathSet({}, `__proto__.${pollutionKey}`, 'pwned')).toThrow();
+        expect(({} as Record<string, unknown>)[pollutionKey]).toBeUndefined();
+      });
+
+      it('does not pollute Object.prototype via constructor.prototype', () => {
+        expect(() => dotPathSet({}, `constructor.prototype.${pollutionKey}`, 'pwned')).toThrow();
+        expect(({} as Record<string, unknown>)[pollutionKey]).toBeUndefined();
+      });
+    });
   });
 
   describe('mergeRefs', () => {

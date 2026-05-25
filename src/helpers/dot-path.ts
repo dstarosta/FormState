@@ -2,6 +2,7 @@
 
 const ESCAPED_DOT_RE = /(?:^|[^\\])\\$/;
 const ARRAY_INDEX_RE = /^\+?\d+$/;
+const FORBIDDEN_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
  * Convert a dot-separated string into an array of property names.
@@ -67,6 +68,10 @@ export function dotPathGet(obj: object, prop: string | number | string[]) {
       return;
     }
 
+    if (FORBIDDEN_SEGMENTS.has(pathSegment)) {
+      return;
+    }
+
     let head: string | number = pathSegment;
 
     if (Array.isArray(current) && head === '$end') {
@@ -102,6 +107,11 @@ export function dotPathSet(obj: object, prop: string | number | string[], value:
   const setPropImmutableRec = (current: unknown, paths: string[], val: unknown, i: number) => {
     if (i < paths.length && paths[i] !== undefined) {
       const head = paths[i];
+
+      if (FORBIDDEN_SEGMENTS.has(head)) {
+        throw new Error(`Path segment '${head}' is not allowed.`);
+      }
+
       let actualHead: string | number = head;
       const isArr = Array.isArray(current);
 
