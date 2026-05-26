@@ -18,18 +18,10 @@ export default defineConfig({
     enabled: false,
   },
   entry: {
-    index: 'src/index.ts',
-    schema: 'src/form-schema.tsx',
-    'use-form-state': 'src/use-form-state.ts',
-    'form-provider': 'src/form-provider.tsx',
+    'form-state': 'src/index.ts',
+    'form-schema': 'src/form-schema.tsx',
     'masked-input': 'src/masked-input.tsx',
     'secure-input': 'src/secure-input.tsx',
-    'state-manager': 'src/helpers/state-manager.ts',
-    'date-formatter': 'src/helpers/date-formatter.ts',
-    'form-builder': 'src/helpers/form-builder.tsx',
-    'form-reset-blocker': 'src/helpers/form-reset-blocker.tsx',
-    'class-helper': 'src/helpers/class-helper.ts',
-    'value-converter': 'src/helpers/value-converter.ts',
   },
   format: ['esm'],
   minify: {
@@ -41,4 +33,10 @@ export default defineConfig({
   sourcemap: 'hidden',
   target: 'es2022',
   treeshake: true,
+  outputOptions: {
+    codeSplitting: {
+      minSize: 0,
+      groups: [{ name: 'element-values', test: /element-values/ }],
+    },
+  },
 });

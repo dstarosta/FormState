@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useRef } from 'react';
 
 import type { FormAction, FormProps, FormStore } from '../types/form-types';
+import { getFormData } from './element-values';
 import { FormResetBlocker } from './form-reset-blocker';
 import { mergeRefs } from './ref-merge';
-
-const elementValues = new WeakMap<HTMLInputElement, string>();
 
 // Private functions
 
@@ -47,10 +46,6 @@ const reformatName = (key: string, notation: 'bracket' | 'dot') => {
 };
 
 // Internal functions
-
-export function setFormData(element: HTMLInputElement, value: string) {
-  elementValues.set(element, value);
-}
 
 export const createFormComponent = <T extends object>(
   store: FormStore | null,
@@ -143,7 +138,7 @@ export const createFormComponent = <T extends object>(
         (el): el is HTMLInputElement =>
           el instanceof HTMLInputElement && Boolean(el.name) && event.formData.has(el.name)
       )) {
-        const value = elementValues.get(element);
+        const value = getFormData(element);
         if (value) {
           event.formData.set(element.name, value);
         }

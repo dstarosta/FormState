@@ -5,7 +5,7 @@ export default defineConfig({
   checks: {
     pluginTimings: false,
   },
-  clean: false,
+  clean: true,
   dts: {
     emitDtsOnly: true,
     sourcemap: true,

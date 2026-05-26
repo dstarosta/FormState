@@ -1,1 +1,0 @@
-const e=(t,n)=>{if(t){if(typeof t==`string`){n.push(t);return}if(Array.isArray(t)){for(let r of t)e(r,n);return}if(typeof t==`object`){let e=t;for(let t in e)e[t]&&n.push(t)}}},t=(...t)=>{let n=[];for(let r of t)e(r,n);return n.join(` `)};export{t as classNames};
