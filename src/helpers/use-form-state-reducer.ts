@@ -228,11 +228,13 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               ? { ...prevState.touched, [pathNotation]: true }
               : prevState.touched;
 
-          // When the data shape changes and an async burst is pending, the
-          // prior async-slice entry for the changed path is stale until the
-          // burst settles — drop it so the user doesn't see a stale error
-          // during the interim.
-          const asyncErrors = asyncPending
+          // Any async error stored at the changed path is now about old data
+          // and should be cleared. If a change-phase async burst is in flight
+          // it will refresh the slice for regular checks; submitOnly-check
+          // entries simply stay cleared until the next submit. Other paths'
+          // async errors are not touched — only the path the user just
+          // modified (and its descendants).
+          const asyncErrors = shouldValidate
             ? pruneAsyncErrors(
                 prevState.asyncErrors,
                 (key) => key === pathNotation || key.startsWith(`${pathNotation}.`)

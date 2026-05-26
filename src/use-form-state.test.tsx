@@ -2637,6 +2637,83 @@ describe('useFormState', () => {
         expect(result.current.errors['']).toBe('submitOnly error');
       });
 
+      it('clears a submitOnly async error when the user edits that same path', async () => {
+        const submitSchema = z.object({
+          name: z.formString({ required: true }).check(
+            z.validateAsync((value: string) => Promise.resolve(value === 'allowed'), {
+              error: 'submitOnly error',
+              submitOnly: true,
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formState: { errors },
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, { initialData: { name: 'rejected' } });
+
+          return { errors, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+        });
+
+        expect(result.current.errors.name).toBe('submitOnly error');
+
+        // User edits the same path → the stale submitOnly error should clear
+        // optimistically (it'll re-run on next submit).
+        act(() => {
+          result.current.change('name', 'editing');
+        });
+
+        expect(result.current.errors.name).toBeUndefined();
+      });
+
+      it('keeps a submitOnly async error when an unrelated path is changed', async () => {
+        const submitSchema = z.object({
+          name: z.formString({ required: true }),
+          email: z.formString({ required: true }).check(
+            z.validateAsync((value: string) => Promise.resolve(value === 'allowed@x'), {
+              error: 'submitOnly email error',
+              submitOnly: true,
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formState: { errors },
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, {
+            initialData: { name: 'Alice', email: 'rejected@x' },
+          });
+
+          return { errors, change, handleSubmit };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+        });
+
+        expect(result.current.errors.email).toBe('submitOnly email error');
+
+        // Editing an unrelated field must NOT clear the email's submitOnly
+        // error — it's still about the current email value.
+        act(() => {
+          result.current.change('name', 'Alicia');
+        });
+
+        expect(result.current.errors.email).toBe('submitOnly email error');
+      });
+
       it('keeps the submitOnly async error across repeated <Form action> submits with unchanged failing data', async () => {
         const submitSchema = z.object({
           name: z.formString().check(
