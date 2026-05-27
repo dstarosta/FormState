@@ -66,13 +66,13 @@ const isNotRecordObject = (value: unknown) => {
 const isRecordObject = (value: unknown): value is Record<string, unknown> =>
   !isNotRecordObject(value) && !Array.isArray(value);
 
-function buildParseResult<T extends z.ZodMiniObject>(
+const buildParseResult = <T extends z.ZodMiniObject>(
   schema: T,
   parsedData: z.infer<T>,
   resultError: z.core.$ZodError<object> | undefined,
   asSchemaData: boolean,
   errorMessageSeparator: string
-): ParseResult<T> | ParseAsObjectResult<T> {
+): ParseResult<T> | ParseAsObjectResult<T> => {
   const zodErrors = formatErrors<z.infer<T>>(resultError, errorMessageSeparator);
 
   const errors = {
@@ -98,7 +98,7 @@ function buildParseResult<T extends z.ZodMiniObject>(
     success,
     errors,
   } satisfies ParseResult<T>;
-}
+};
 
 // Internal functions
 
@@ -365,12 +365,6 @@ export const createImmutableRequired = <T extends z.ZodMiniObject>(
     getKeys: () => truthyKeys(required),
   });
 
-/**
- * Returns a touched-map with `true` set for every error key whose top-level
- * segment maps to a real data field. Errors that don't correspond to a data
- * field (e.g. root-level errors with `key === ''`) are skipped so they don't
- * pollute `touched`.
- */
 export const touchErroredFields = <T extends Record<string, unknown>, K extends keyof T>(
   touched: Record<K, boolean>,
   errors: Record<string, string | undefined>,
@@ -391,17 +385,6 @@ export const touchErroredFields = <T extends Record<string, unknown>, K extends 
   return next as Record<K, boolean>;
 };
 
-/**
- * Computes the new `asyncErrors` slice from a prior `asyncErrors` slice and the
- * full parse result of a fresh `safeParseAsync`. Only error paths that were
- * actively checked this run (`activePaths`) participate — sync errors that may
- * also be present in `freshErrors` are filtered out so they never contaminate
- * the async-only slice.
- *
- * For non-active async-check paths (skipped this run via `submitOnly`,
- * `skipWhen`, or `condition`), the prior entry is preserved so previously
- * reported async errors don't vanish just because their check didn't re-run.
- */
 export const mergeAsyncErrors = <T extends Record<string, string | undefined>>(
   prevAsyncErrors: T,
   freshErrors: Record<string, string | undefined>,
@@ -431,22 +414,12 @@ export const mergeAsyncErrors = <T extends Record<string, string | undefined>>(
   return result as T;
 };
 
-/**
- * Single canonical merge for `state.errors`. Composes the three slices —
- * parse errors against `data`, the persisted `asyncErrors` slice, and
- * `manualErrors` — with manual winning over async winning over parse.
- */
 export const composeErrors = <T extends Record<string, string | undefined>>(
   parseErrors: T,
   asyncErrors: T,
   manualErrors: Record<string, string>
 ): T => ({ ...parseErrors, ...asyncErrors, ...manualErrors });
 
-/**
- * Drops async-slice entries the caller marks as stale (e.g. paths whose
- * value just changed). Returns the same reference when nothing matched, so
- * callers don't churn the slice for no reason.
- */
 export const pruneAsyncErrors = <T extends Record<string, string | undefined>>(
   prevAsyncErrors: T,
   isStale: (key: string) => boolean

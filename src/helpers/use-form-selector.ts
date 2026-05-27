@@ -4,14 +4,6 @@ import { deepEqual } from './deep-equal';
 
 import type { Selector } from '../types/form-types';
 
-/**
- * A hook that creates a memoized selector over the form state data or derived data.
- * It is similar to the `createSelector` method in the "Reselect" library.
- *
- * @param inputSelectors - One or more selectors that extract values from the source state.
- * @param resultFn - The result function that computes the final value from the extracted inputs.
- * @returns Memoized selector function.
- */
 export function useSelector<S, R>(
   inputSelectors: Selector<S, unknown> | Selector<S, unknown>[],
   resultFn: (...args: unknown[]) => R

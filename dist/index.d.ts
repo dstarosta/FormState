@@ -303,10 +303,6 @@ type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   errorMessageSeparator?: string;
   /**
-   * Confirm browser navigation when the form status is dirty (default: `false`).
-   */
-  confirmDirtyStateNavigation?: boolean;
-  /**
    * Form-level defaults for the `formClasses` function.
    *
    * See: {@link FormClassOptions}
@@ -625,6 +621,30 @@ type FormStatus = {
    * Whether the form has been submitted (initially or after the last form reset).
    */
   readonly submitted: boolean;
+};
+/**
+ * The value returned by the `useBlocker` hook.
+ */
+type BlockerResponse = {
+  /**
+   * Whether a guarded navigation is currently being held (`"blocked"`) or not (`"unblocked"`).
+   */
+  blockerState: 'unblocked' | 'blocked';
+  /**
+   * Wraps an application navigation. When `shouldBlock` returns `true`, the navigation is
+   * held and `status` becomes `"blocked"`; otherwise it runs immediately.
+   *
+   * @param navigate - The navigation callback to run or hold.
+   */
+  guard: (navigate: () => void) => void;
+  /**
+   * Runs the held navigation and returns to the `"idle"` status.
+   */
+  proceed: () => void;
+  /**
+   * Discards the held navigation and returns to the `"idle"` status.
+   */
+  reset: () => void;
 };
 /**
  * A form path that can be a field name or a state path expression.
@@ -1367,6 +1387,28 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * @returns Memoized selector function.
      */
     useSelector: FormDataSelector<Immutable<z.infer<T>>>;
+    /**
+     * A hook that guards navigation while a condition over the form state holds.
+     *
+     * The `shouldBlock` function receives the current `formState` and `formStatus` and
+     * returns `true` to block. Blocking covers two channels: browser tab close / reload
+     * (via `beforeunload`), and application navigation wrapped in the returned `guard`.
+     *
+     * @example
+     * const { blockerState, guard, proceed, reset } = useBlocker(
+     *   (state, status) => status.dirty
+     * );
+     * <button onClick={() => guard(() => navigate('/next'))}>Next</button>
+     * {blockerState === 'blocked' && <Confirm onYes={proceed} onNo={reset} />}
+     *
+     * @param shouldBlock - Receives the current form `state` and `status`; returns `true` to block navigation.
+     * @param options.enableBeforeUnload - Indicates whether the blocker should block the browser's `beforeUnload`
+     *                                     event (default: `true`).
+     * @returns The blocker status and `guard` / `proceed` / `reset` controls.
+     */
+    useBlocker: (shouldBlock: (state: FormState<z.infer<T>>, status: FormStatus) => boolean, options?: {
+      enableBeforeUnload: boolean;
+    }) => BlockerResponse;
   };
   formClasses: {
     /**
@@ -2086,8 +2128,6 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                            same state property (default: "|").
- * @param formOptions.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty
- *                                                  (default: `false`).
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
 declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
@@ -2155,7 +2195,6 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  * @param options.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param options.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                        same state property (default: "|").
- * @param options.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty (default: `false`).
  * @param options.cssOptions - Form-level defaults for `formClasses`.
  *
  * @returns A curried function to wrap the component.
@@ -2710,5 +2749,5 @@ declare function asDateString(value: Date | string, dateFormat: FormDateFormat):
  */
 declare function asDateString(value: Date | string, dateFormat?: string): string;
 //#endregion
-export { type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, classNames, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, parseStateAsync, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type BlockerResponse, type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, classNames, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, parseStateAsync, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

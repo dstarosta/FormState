@@ -2,13 +2,6 @@ import { useDebugValue, useEffect, useEffectEvent } from 'react';
 
 import type { StateChangeListener } from '../types/form-types';
 
-/**
- * Creates the "useListener" hook.
- *
- * @param listeners a set of form listeners.
- * @param onListenerAdded optional callback fired immediately after a listener is added.
- * @returns The "useListener" hook.
- */
 export function createUseListener<T extends object>(
   listeners: Set<StateChangeListener<T>>,
   onListenerAdded?: (listener: StateChangeListener<T>) => void

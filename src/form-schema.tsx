@@ -28,18 +28,11 @@ const ALWAYS_VALIDATE = () => true;
 
 // Private functions
 
-/**
- * Splits the variadic argument list of a `form*` schema factory into its
- * `options` object and `checks` tuple. The factory may be called as
- * `formX()`, `formX(check, ...)`, or `formX(options, check, ...)` — this
- * helper discriminates between an options-object and a check by looking for
- * any of `optionKeys` on the first argument.
- */
-function parseFormArgs<O, C>(
+const parseFormArgs = <O, C>(
   first: O | C | undefined,
   rest: readonly C[],
   optionKeys: readonly (keyof O)[]
-): { options: O; checks: readonly C[] } {
+) => {
   if (first === undefined) {
     return { options: {} as O, checks: [] };
   }
@@ -49,19 +42,15 @@ function parseFormArgs<O, C>(
   }
 
   return { options: {} as O, checks: [first as C, ...rest] };
-}
+};
 
-/**
- * Pushes the "required field is empty" issue onto the Zod parse context.
- * Returns `true` if the issue was pushed so the caller can short-circuit.
- */
-function pushRequiredIssue(
+const pushRequiredIssue = (
   ctx: { issues: z.core.$ZodRawIssue[] },
   options: { required?: boolean; error?: string },
   expected: 'boolean' | 'date' | 'number' | 'string',
   value: unknown,
   receivedString = true
-): boolean {
+) => {
   if (!options.required || !options.error || (value !== undefined && value !== EMPTY_STRING)) {
     return false;
   }
@@ -75,7 +64,7 @@ function pushRequiredIssue(
   });
 
   return true;
-}
+};
 
 // Internal functions
 

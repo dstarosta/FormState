@@ -30,7 +30,10 @@ const requiredTypes: Readonly<Set<string>> = new Set([
   'string',
 ]);
 
+// Async schema cache.
 const asyncSchemaCache = new WeakMap<z.ZodMiniType, boolean>();
+
+// Async path cache.
 const asyncCheckPathsCache = new WeakMap<z.ZodMiniType, readonly string[]>();
 
 // Factory registered by `validateAsync` — called lazily to create a fresh
@@ -43,8 +46,7 @@ const asyncCheckFactories = new WeakMap<AsyncCheck, () => AsyncCheckMeta>();
 const defaultMetaMapByCheck = new WeakMap<AsyncCheck, AsyncCheckMetaMap>();
 
 // Module-level pointer to the metaMap that should be used by the next Zod
-// `when` invocation. Set by `withMetaMap` for the duration of a parse so
-// concurrent forms don't share closure state.
+// `when` invocation.
 let currentMetaMap: AsyncCheckMetaMap | undefined;
 
 // Private functions
@@ -317,18 +319,6 @@ const hasAsyncChecks = (schema: z.ZodMiniType): boolean => {
 
 type AsyncCheckNode = { _zod: { def: { fn?: unknown; path?: PropertyKey[] } } };
 
-/**
- * Walks a schema and invokes `visit` for each async refinement found on the
- * schema or anywhere within its nested array/object structure.
- *
- * When `data` is provided, array recursion iterates each actual element by
- * index (so the visitor sees `tags.0`, `tags.1`, …). Without `data`, arrays
- * are descended once with the placeholder index `'0'` — used by callers that
- * only need schema-shape paths and not per-element values.
- *
- * `visit` may return `false` to stop iteration over the current schema's own
- * checks (recursion still proceeds).
- */
 const walkAsyncChecks = (
   schema: z.ZodMiniType,
   parentKey: string,
@@ -387,7 +377,7 @@ const walkAsyncChecks = (
   }
 };
 
-const collectActiveAsyncCheckPathsInternal = (
+const collectNestedActiveAsyncCheckPaths = (
   schema: z.ZodMiniType,
   parentKey: string,
   data: unknown,
@@ -416,7 +406,7 @@ const collectActiveAsyncCheckPathsInternal = (
   });
 };
 
-const commitActiveAsyncCheckPathsInternal = (
+const commitNestedActiveAsyncCheckPaths = (
   schema: z.ZodMiniType,
   parentKey: string,
   data: unknown,
@@ -432,10 +422,6 @@ const commitActiveAsyncCheckPathsInternal = (
       return;
     }
 
-    // submitOnly checks must not commit during change phase. If they did,
-    // the next submit's skipWhen would compare current data against the
-    // change-phase value, see them as equal, and skip the predicate — even
-    // though it never actually ran.
     if (meta.submitOnly && phase !== 'submit') {
       return;
     }
@@ -775,7 +761,7 @@ export const commitActiveAsyncCheckPaths = (
   phase: 'change' | 'submit',
   metaMap?: AsyncCheckMetaMap
 ): void => {
-  commitActiveAsyncCheckPathsInternal(schema, '', data, phase, metaMap);
+  commitNestedActiveAsyncCheckPaths(schema, '', data, phase, metaMap);
 };
 
 export const collectActiveAsyncCheckPaths = (
@@ -785,7 +771,7 @@ export const collectActiveAsyncCheckPaths = (
   metaMap?: AsyncCheckMetaMap
 ): readonly string[] => {
   const paths: string[] = [];
-  collectActiveAsyncCheckPathsInternal(schema, '', data, paths, phase, metaMap);
+  collectNestedActiveAsyncCheckPaths(schema, '', data, paths, phase, metaMap);
   return paths;
 };
 
@@ -812,15 +798,6 @@ export const getAsyncCheckMeta = (
 export const getAsyncCheckMetaForCurrentMap = (check: AsyncCheck): AsyncCheckMeta | undefined =>
   getOrCreateMetaIn(check, currentMetaMap ?? getDefaultMapFor(check));
 
-/**
- * Brackets a submit-phase async schema parse with the required phase
- * transitions and meta-map plumbing. Collects active async paths, commits the
- * current values as the new baseline for `skipWhen` comparisons, runs an
- * optional `between` hook (e.g. to fire `asyncValidating`), then parses.
- *
- * Always restores `phase` to `'change'` — even if the parse throws — so the
- * schema is left in a clean state for change-driven validation.
- */
 export const runSubmitPhaseParse = async <S extends z.ZodMiniType>(
   schema: S,
   data: z.infer<S>,

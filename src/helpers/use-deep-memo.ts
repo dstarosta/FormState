@@ -24,11 +24,6 @@ const sameDeps = (dependenciesA: DependencyList, dependenciesB: DependencyList) 
   return true;
 };
 
-/**
- * Like {@link useMemo} but compares dependencies via deep equality instead of
- * `Object.is`. Use sparingly — deep comparison costs scale with dep size.
- * Prefer `useMemo` for primitive or stable-reference deps.
- */
 export function useDeepMemo<T>(factory: () => T, deps: React.DependencyList) {
   const ref = useRef<{ deps: React.DependencyList; value: T }>(null);
 

@@ -473,10 +473,6 @@ export type FormInitOptions<T extends z.ZodMiniObject> = {
    */
   errorMessageSeparator?: string;
   /**
-   * Confirm browser navigation when the form status is dirty (default: `false`).
-   */
-  confirmDirtyStateNavigation?: boolean;
-  /**
    * Form-level defaults for the `formClasses` function.
    *
    * See: {@link FormClassOptions}
@@ -860,6 +856,31 @@ export type FormStatus = {
    * Whether the form has been submitted (initially or after the last form reset).
    */
   readonly submitted: boolean;
+};
+
+/**
+ * The value returned by the `useBlocker` hook.
+ */
+export type BlockerResponse = {
+  /**
+   * Whether a guarded navigation is currently being held (`"blocked"`) or not (`"unblocked"`).
+   */
+  blockerState: 'unblocked' | 'blocked';
+  /**
+   * Wraps an application navigation. When `shouldBlock` returns `true`, the navigation is
+   * held and `status` becomes `"blocked"`; otherwise it runs immediately.
+   *
+   * @param navigate - The navigation callback to run or hold.
+   */
+  guard: (navigate: () => void) => void;
+  /**
+   * Runs the held navigation and returns to the `"idle"` status.
+   */
+  proceed: () => void;
+  /**
+   * Discards the held navigation and returns to the `"idle"` status.
+   */
+  reset: () => void;
 };
 
 /**
@@ -1681,6 +1702,31 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      * @returns Memoized selector function.
      */
     useSelector: FormDataSelector<Immutable<z.infer<T>>>;
+    /**
+     * A hook that guards navigation while a condition over the form state holds.
+     *
+     * The `shouldBlock` function receives the current `formState` and `formStatus` and
+     * returns `true` to block. Blocking covers two channels: browser tab close / reload
+     * (via `beforeunload`), and application navigation wrapped in the returned `guard`.
+     *
+     * @example
+     * const { blockerState, guard, proceed, reset } = useBlocker(
+     *   (state, status) => status.dirty
+     * );
+     * <button onClick={() => guard(() => navigate('/next'))}>Next</button>
+     * {blockerState === 'blocked' && <Confirm onYes={proceed} onNo={reset} />}
+     *
+     * @param shouldBlock - Receives the current form `state` and `status`; returns `true` to block navigation.
+     * @param options.enableBeforeUnload - Indicates whether the blocker should block the browser's `beforeUnload`
+     *                                     event (default: `true`).
+     * @returns The blocker status and `guard` / `proceed` / `reset` controls.
+     */
+    useBlocker: (
+      shouldBlock: (state: FormState<z.infer<T>>, status: FormStatus) => boolean,
+      options?: {
+        enableBeforeUnload: boolean;
+      }
+    ) => BlockerResponse;
   };
   formClasses: {
     /**

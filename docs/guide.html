@@ -71,6 +71,7 @@
           <a href="#debounce" class="nav-link">Debounced Changes</a>
           <a href="#listener" class="nav-link">State Listener</a>
           <a href="#watch" class="nav-link">useWatch</a>
+          <a href="#blocker" class="nav-link">useBlocker</a>
           <a href="#infer-name" class="nav-link">inferName</a>
           <a href="#helpers" class="nav-link">Value Helpers</a>
           <a href="#nextjs" class="nav-link">Next.js</a>
@@ -1315,11 +1316,6 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><code>confirmDirtyStateNavigation</code></td>
-                <td><code>false</code></td>
-                <td class="prop-desc">Confirm browser navigation when the form status is dirty.</td>
-              </tr>
               <tr>
                 <td><code>cssOptions</code></td>
                 <td><code>{ prefix: 'form-state' }</code></td>
@@ -4732,8 +4728,7 @@ function AppForm({ onSubmitted }: { onSubmitted: () =&gt; void }) {
 
 export default formConnect({
   schema: formSchema,
-  confirmDirtyStateNavigation: true,  // warn on unsaved navigation
-  watch: true,                        // enable useWatch
+  watch: true,  // enable useWatch
 })(AppForm);</code></pre>
           </div>
           <div class="callout callout-warning">
@@ -5355,6 +5350,119 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
   inferredNameFormat: 'dot', // all inferName calls default to dot notation
 });</code></pre>
           </div>
+        </section>
+        <section class="section" id="blocker">
+          <div class="section-eyebrow">Advanced</div>
+          <h2>useBlocker</h2>
+          <p>
+            A user fills out half a form, then clicks a link or hits the back button — and their
+            edits are gone. <code>formHooks.useBlocker</code> lets you catch that moment and ask
+            "are you sure?" before the navigation goes through.
+          </p>
+          <p>
+            The API is loosely based on React Router's
+            <a href="https://reactrouter.com/api/hooks/useBlocker" target="_blank"
+              ><code>useBlocker</code></a
+            >: it returns the same <code>proceed()</code> / <code>reset()</code> controls and a
+            blocked state you check before confirming. The difference is that FormState's version is
+            router-agnostic, so instead of receiving the route being navigated to, your function
+            receives the form's own <code>state</code> and <code>status</code> — making "block while
+            the form has unsaved changes" a one-liner:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const { blockerState, guard, proceed, reset } = formHooks.useBlocker(
+  (state, status) =&gt; status.dirty
+);</code></pre>
+          </div>
+          <p>This guards navigation in two places:</p>
+          <ul>
+            <li>
+              <strong>Leaving the page entirely</strong> (closing the tab or reloading) is handled
+              for you — the browser's native "leave site?" prompt appears automatically whenever
+              your function returns <code>true</code>. Nothing else to wire up.
+            </li>
+            <li>
+              <strong>Moving around inside your app</strong> is up to you, because FormState doesn't
+              know which router you use. Route your navigation through <code>guard</code> instead of
+              calling it directly. If it's safe to leave, the navigation happens immediately; if
+              not, it's held and <code>blockerState</code> flips to <code>'blocked'</code> so you
+              can show a confirmation. From there, <code>proceed()</code> lets the navigation
+              through and <code>reset()</code> cancels it.
+            </li>
+          </ul>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { useFormState } from 'form-state';
+import { navigate } from 'router'; // whichever React router you use
+
+const { formHooks } = useFormState(schema, { initialData });
+const { blockerState, guard, proceed, reset } = formHooks.useBlocker(
+  (state, status) =&gt; status.dirty
+);
+
+// Instead of navigating directly, go through the guard:
+&lt;button onClick={() =&gt; guard(() =&gt; navigate('/next'))}&gt;Next&lt;/button&gt;
+
+// When a navigation is held, show your own confirmation UI:
+{blockerState === 'blocked' &amp;&amp; (
+  &lt;div role="alertdialog"&gt;
+    &lt;p&gt;You have unsaved changes. Leave anyway?&lt;/p&gt;
+    &lt;button onClick={proceed}&gt;Leave&lt;/button&gt;
+    &lt;button onClick={reset}&gt;Stay&lt;/button&gt;
+  &lt;/div&gt;
+)}</code></pre>
+          </div>
+          <p>
+            Because <code>guard</code> accepts any <code>() =&gt; void</code> callback, it isn't
+            tied to a router at all — you can drive the browser
+            <a href="https://developer.mozilla.org/docs/Web/API/History_API" target="_blank"
+              >History API</a
+            >
+            directly. Route every <code>pushState</code> through the guard, and intercept the back /
+            forward buttons via <code>popstate</code>:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { useEffect } from 'react';
+import { useFormState } from 'form-state';
+
+const { formHooks } = useFormState(schema, { initialData });
+const { blockerState, guard, proceed, reset } = formHooks.useBlocker(
+  (state, status) =&gt; status.dirty
+);
+
+// Forward navigation: push through the guard instead of calling history directly.
+const go = (url: string) =&gt; guard(() =&gt; history.pushState({}, '', url));
+
+// Back / forward buttons: re-push the current URL, then guard the real move.
+useEffect(() =&gt; {
+  const onPopState = () =&gt; {
+    history.pushState({}, '', location.href); // undo the browser's move first
+    guard(() =&gt; history.back());              // then ask before actually leaving
+  };
+  window.addEventListener('popstate', onPopState);
+  return () =&gt; window.removeEventListener('popstate', onPopState);
+}, [guard]);
+
+&lt;button onClick={() =&gt; go('/next')}&gt;Next&lt;/button&gt;
+{blockerState === 'blocked' &amp;&amp; (
+  &lt;Confirm onYes={proceed} onNo={reset} /&gt;
+)}</code></pre>
+          </div>
+          <p>
+            The confirmation dialog is entirely yours — FormState only tells you when to show it,
+            never how. If you'd rather skip the browser's native prompt (which covers closing the
+            tab and reloading the page) and only guard in-app navigation, pass
+            <code>{ enableBeforeUnload: false }</code> as the second argument.
+          </p>
+          <p class="footnote">
+            <code>useBlocker</code> is router-agnostic by design — it never ties FormState to a
+            particular router, which is why your function receives the form's <code>state</code> and
+            <code>status</code> rather than the route being navigated to. To block a specific route,
+            do the check inside <code>shouldBlock</code> and send your router's navigation through
+            <code>guard</code>.
+          </p>
         </section>
         <section class="section" id="helpers">
           <div class="section-eyebrow">Advanced</div>
@@ -6150,11 +6258,10 @@ function ProfileForm({ userId }: { userId: string }) {
     },
   });
 
-  // 2. Seed the form — confirmDirtyStateNavigation prompts before unsaved navigation
+  // 2. Seed the form with the loaded server data
   const { Form, formState, formStatus, formActions, formHandlers } =
     useFormState(profileSchema, {
       initialData: data,
-      confirmDirtyStateNavigation: true,
     });
 
   // 3. Mutation for saving
@@ -7340,7 +7447,7 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
               <tr>
                 <td>Unsaved changes navigation prompt</td>
                 <td>✅ <sup>7</sup></td>
-                <td>🛑</td>
+                <td>🛑 <sup>7</sup></td>
                 <td>🛑</td>
                 <td>🛑</td>
                 <td>🛑</td>
@@ -7418,8 +7525,18 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
           </ol>
           <ol class="prop-desc" start="7" style="margin-top: 0; padding-left: 1.25rem">
             <li>
-              Opt-in via <code>confirmDirtyStateNavigation: true</code>. Prompts the user before
-              navigating away when the form has unsaved changes.
+              Provided by the <a href="#blocker"><code>useBlocker</code></a> hook
+              (<code>formHooks.useBlocker(shouldBlock)</code>). Guards both tab close / reload (via
+              <code>beforeunload</code>) and in-app navigation routed through its
+              <code>guard</code> resolver, blocking while the form is dirty (or any condition you
+              return). This mirrors
+              <a
+                href="https://tanstack.com/router/latest/docs/framework/react/api/router/useBlockerHook"
+                target="_blank"
+                >TanStack Router's</a
+              >
+              <code>useBlocker</code>, but is router-agnostic — <code>shouldBlock</code> receives
+              the form <code>state</code> and <code>status</code> instead of the target route.
             </li>
           </ol>
           <ol class="prop-desc" start="8" style="margin-top: 0; padding-left: 1.25rem">

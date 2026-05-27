@@ -87,6 +87,7 @@ import { useFormStateReducer } from './helpers/use-form-state-reducer';
 import { createFormStore } from './helpers/form-store';
 import { createUseListener } from './helpers/use-listener-builder';
 import { createUseWatch } from './helpers/use-watch-builder';
+import { createUseBlocker } from './helpers/use-blocker-builder';
 import { IS_DEVELOPMENT } from './helpers/development-helper';
 
 /**
@@ -130,8 +131,6 @@ import { IS_DEVELOPMENT } from './helpers/development-helper';
  * @param formOptions.inferredNameFormat - Sets the default format for the `inferName` function (default: "bracket").
  * @param formOptions.errorMessageSeparator - Sets the default error message separator when multiple errors occur for the
  *                                            same state property (default: "|").
- * @param formOptions.confirmDirtyStateNavigation - Confirm browser navigation when the form status is dirty
- *                                                  (default: `false`).
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
 export function useFormState<T extends z.ZodMiniObject>(
@@ -151,7 +150,6 @@ export function useFormState<T extends z.ZodMiniObject>(
     debounceCacheCapacity = 50,
     inferredNameFormat = 'bracket',
     errorMessageSeparator = '|',
-    confirmDirtyStateNavigation = false,
     initialData,
     initialTouched,
     watch,
@@ -713,25 +711,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       });
     }
   }, [formState.submitCount, generateListenerState, changeListeners]);
-
-  // Confirm browser navigation during a dirty state.
-  useEffect(() => {
-    if (!confirmDirtyStateNavigation) {
-      return;
-    }
-
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (formStatus.dirty) {
-        event.preventDefault();
-      }
-    };
-
-    globalThis.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      globalThis.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [confirmDirtyStateNavigation, formStatus.dirty]);
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -1783,6 +1762,23 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formData, formErrors, dirty, touched, required, ranges, patterns, descriptions]
   );
 
+  // Blocker state ref
+  const blockerStateRef = useRef({ formState: formStateResponse, formStatus });
+
+  // The blocker hook. Getters read the latest state and status through the ref above.
+  // eslint-disable-next-line react-hooks/refs
+  const [blockerHook] = useState(() =>
+    createUseBlocker<State>(
+      () => blockerStateRef.current.formState,
+      () => blockerStateRef.current.formStatus
+    )
+  );
+
+  // Keep the blocker getters' ref current with the latest state and status.
+  useIsomorphicLayoutEffect(() => {
+    blockerStateRef.current = { formState: formStateResponse, formStatus };
+  });
+
   const formActions = useMemo(
     () => ({
       change,
@@ -1837,8 +1833,13 @@ export function useFormState<T extends z.ZodMiniObject>(
   const formHandlers = useMemo(() => ({ handleSubmit, handleReset }), [handleSubmit, handleReset]);
 
   const formHooks = useMemo(
-    () => ({ useListener: listenerHook, useWatch: watchHook, useSelector }),
-    [listenerHook, watchHook]
+    () => ({
+      useListener: listenerHook,
+      useWatch: watchHook,
+      useSelector,
+      useBlocker: blockerHook,
+    }),
+    [listenerHook, watchHook, blockerHook]
   );
 
   const response = useMemo<FormStateResponse<T>>(

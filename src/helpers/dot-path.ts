@@ -8,7 +8,7 @@ const FORBIDDEN_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
  * Convert a dot-separated string into an array of property names.
  * Handles escaped dots (e.g., "a\\.b.c" becomes ["a.b", "c"])
  */
-function propToArray(prop: string) {
+const propToArray = (prop: string) => {
   const segments = prop.split('.');
   const result: string[] = [];
 
@@ -27,13 +27,13 @@ function propToArray(prop: string) {
   }
 
   return result;
-}
+};
 
 /**
  * Validate and return an array index.
  * Supports '$end' as an alias for the last index.
  */
-function getArrayIndex(head: string, obj: unknown[]) {
+const getArrayIndex = (head: string, obj: unknown[]) => {
   if (head === '$end') {
     return Math.max(obj.length - 1, 0);
   }
@@ -43,7 +43,7 @@ function getArrayIndex(head: string, obj: unknown[]) {
   }
 
   return Number.parseInt(head, 10);
-}
+};
 
 /**
  * Get a value by a dot path.
