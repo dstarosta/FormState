@@ -24,8 +24,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Record sizes before minify
+        run: stat -c '%s %n' ./docs/guide.html ./docs/guide.css > /tmp/sizes-before.txt
+
       - name: Minify
         uses: dra1ex/minify-action@v1.0.3
+
+      - name: Verify minify shrank files
+        run: |
+          echo "=== before ==="; cat /tmp/sizes-before.txt
+          echo "=== after  ==="; stat -c '%s %n' ./docs/guide.html ./docs/guide.css
 
       - name: Rename for Pages
         run: mv ./docs/guide.html ./docs/index.html
