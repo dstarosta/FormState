@@ -42,6 +42,7 @@
           <a href="#eslint" class="nav-link">ESLint</a>
           <a href="#philosophy" class="nav-link">Philosophy</a>
           <a href="#typescript" class="nav-link">TypeScript</a>
+          <a href="#comparison" class="nav-link">Comparison</a>
           <a href="#license" class="nav-link">License</a>
         </div>
         <div class="nav-section">
@@ -64,25 +65,27 @@
           <a href="#css-classes" class="nav-link">CSS Classes</a>
           <a href="#context" class="nav-link">Context &amp; Provider</a>
           <a href="#input-controls" class="nav-link">Input Controls</a>
-        </div>
-        <div class="nav-section">
-          <span class="nav-section-label">Advanced</span>
-          <a href="#selectors" class="nav-link">Selectors</a>
           <a href="#debounce" class="nav-link">Debounced Changes</a>
-          <a href="#listener" class="nav-link">State Listener</a>
-          <a href="#watch" class="nav-link">useWatch</a>
-          <a href="#blocker" class="nav-link">useBlocker</a>
           <a href="#infer-name" class="nav-link">inferName</a>
           <a href="#helpers" class="nav-link">Value Helpers</a>
+        </div>
+        <div class="nav-section">
+          <span class="nav-section-label">Hooks</span>
+          <a href="#selectors" class="nav-link">Memoized Selector</a>
+          <a href="#listener" class="nav-link">State Listener</a>
+          <a href="#watch" class="nav-link">Field Watch</a>
+          <a href="#blocker" class="nav-link">Navigation Blocker</a>
+        </div>
+        <div class="nav-section">
+          <span class="nav-section-label">Integration</span>
           <a href="#nextjs" class="nav-link">Next.js</a>
           <a href="#remix" class="nav-link">React Router 7</a>
           <a href="#tanstack-start" class="nav-link">TanStack Start</a>
           <a href="#tanstack-query" class="nav-link">TanStack Query</a>
-          <a href="#devtools" class="nav-link">DevTools</a>
         </div>
         <div class="nav-section">
-          <span class="nav-section-label">Reference</span>
-          <a href="#comparison" class="nav-link">Comparison</a>
+          <span class="nav-section-label">Tools</span>
+          <a href="#devtools" class="nav-link">DevTools</a>
         </div>
       </nav>
       <main>
@@ -1626,6 +1629,561 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               </tr>
             </tbody>
           </table>
+        </section>
+        <section class="section" id="comparison">
+          <div class="section-eyebrow">Getting Started</div>
+          <h2>Comparison</h2>
+          <p>
+            How FormState compares to other popular React form libraries across commonly evaluated
+            features. Analysis by <a href="https://claude.ai" target="_blank">Claude</a>.
+          </p>
+          <p>
+            Every form library is a compromise. What separates them is how openly they disclose
+            those compromises. FormState's costs are real and worth naming up front: a larger bundle
+            than the smallest alternatives, a hard dependency on Zod Mini, and an opinionated model
+            of where form state lives. The rows below try to be honest about those trade-offs —
+            FormState's included — rather than reading as a scoreboard.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>FormState</th>
+                <th>TanStack Form</th>
+                <th>React Hook Form</th>
+                <th>Formik</th>
+                <th>Final Form</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>First-class TypeScript</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>❓</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>Fully inferred TypeScript</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>❓</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Typed lambda path expressions</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>No field wrappers required</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑 <sup>1</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>No render props or abstractions</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Granular field-level re-renders</td>
+                <td>❓ <sup>2</sup></td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>Change and submit event subscriptions</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>❓</td>
+                <td>🛑</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>React 19 form actions</td>
+                <td>✅</td>
+                <td>❓ <sup>3</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>FormData support</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>React Compiler support</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>❓</td>
+                <td>❓</td>
+              </tr>
+              <tr>
+                <td>SSR integrations</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Built-in async validation debounce</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Schema-based validation</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Schema-derived field constraints</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Cross-field validation</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>Server validation integration</td>
+                <td>✅ <sup>4</sup></td>
+                <td>❓</td>
+                <td>❓</td>
+                <td>❓</td>
+                <td>❓</td>
+              </tr>
+              <tr>
+                <td>Array fields</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+              </tr>
+              <tr>
+                <td>Initial data reactivity</td>
+                <td>✅ <sup>5</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Separate form and API type representations</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Built-in readonly / disabled mode</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Built-in input masking</td>
+                <td>✅</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Password value not stored in DOM</td>
+                <td>✅ <sup>6</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>Unsaved changes navigation prompt</td>
+                <td>✅ <sup>7</sup></td>
+                <td>🛑 <sup>7</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>ESLint plugin</td>
+                <td>✅</td>
+                <td>❓ <sup>8</sup></td>
+                <td>❓ <sup>9</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
+                <td>First-party DevTools</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>❓</td>
+                <td>🛑</td>
+              </tr>
+            </tbody>
+          </table>
+          <ol class="prop-desc" start="1" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              RHF's <code>register</code> API avoids wrappers for uncontrolled inputs, but
+              controlled inputs require <code>&lt;Controller&gt;</code>. The
+              <code>register</code> abstraction spreads hidden props onto inputs, which can be
+              unintuitive to reason about and debug.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              FormState re-renders the component that called <code>useFormState</code> on every
+              state change. Isolate keystroke re-renders with
+              <a href="#watch"><code>useWatch</code></a
+              >, or use uncontrolled inputs for fields where even that is undesirable.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="3" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              TanStack Form supports server actions invoked from <code>form.handleSubmit</code>, but
+              submission still routes through an <code>onSubmit</code> handler — it does not
+              natively integrate with React 19's <code>&lt;form action={fn}&gt;</code> prop.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Server-returned field errors (e.g. a 422 response with
+              <code>{ email: 'Already taken' }</code>) flow through the same
+              <code>setManualError</code> / <code>asyncErrors</code> pipeline as client-side async
+              validation. Errors persist across re-renders, clear when the user edits the offending
+              field, and integrate with <code>touched</code> and <code>formStatus.valid</code> the
+              same way schema errors do. Other libraries support manual error setting but the
+              persistence semantics across submits, edits, and resets vary — verify against your
+              expected UX.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Non-dirty fields automatically reflect changes to <code>initialData</code> (e.g. when
+              server data loads asynchronously). Fields the user has already edited are never
+              overwritten. This does not affect the dirty state of any field.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="6" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Requires the <code>SecureInput</code> component instead of a plain
+              <code>&lt;input type="password"&gt;</code>. The value is kept out of the DOM and never
+              appears in <code>FormData</code> or browser autofill inspection.
+              <p style="margin-top: 0.5rem">
+                This feature keeps passwords safe from browser extensions that scan the DOM,
+                prevents accidental copy/cut/paste/undo/redo of sensitive data.
+              </p>
+            </li>
+          </ol>
+          <ol class="prop-desc" start="7" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              Provided by the <a href="#blocker"><code>useBlocker</code></a> hook
+              (<code>formHooks.useBlocker(shouldBlock)</code>). Guards both tab close / reload (via
+              <code>beforeunload</code>) and in-app navigation routed through its
+              <code>guard</code> resolver, blocking while the form is dirty (or any condition you
+              return). This mirrors
+              <a
+                href="https://tanstack.com/router/latest/docs/framework/react/api/router/useBlockerHook"
+                target="_blank"
+                >TanStack Router's</a
+              >
+              <code>useBlocker</code>, but is router-agnostic — <code>shouldBlock</code> receives
+              the form <code>state</code> and <code>status</code> instead of the target route.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="8" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              TanStack Query ships
+              <a
+                href="https://tanstack.com/query/v4/docs/eslint/eslint-plugin-query"
+                target="_blank"
+                >@tanstack/eslint-plugin-query</a
+              >. TanStack Form does not have a dedicated ESLint plugin.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="9" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
+              React Hook Form has a
+              <a href="https://github.com/andykao1213/eslint-plugin-react-hook-form" target="_blank"
+                >community-maintained ESLint plugin</a
+              >. It is not officially supported by the React Hook Form team.
+            </li>
+          </ol>
+          <h3>Schema-derived state, in plain terms</h3>
+          <p>
+            Most form libraries — TanStack Form, React Hook Form, Formik — let each field component
+            own its value. When a <code>&lt;Field&gt;</code> mounts, it registers with the form.
+            When it unmounts, it unregisters. The form's data at any given moment is whatever the
+            currently-mounted fields say it is. Whether that registry lives in DOM refs (React Hook
+            Form) or an external store (TanStack Form) is a detail — in both cases the data is a
+            side-effect of which components are currently rendered.
+          </p>
+          <p>
+            FormState works the opposite way. The schema declares the form's shape up front, so the
+            data exists before any field component renders. Fields are plain controlled inputs
+            reading from and writing to a shared state object. Nothing registers, nothing
+            unregisters. That single design choice rules out an entire class of mount-lifecycle bugs
+            — these aren't bugs FormState has patched, they're bug <em>classes</em> the architecture
+            rules out.
+          </p>
+          <h3>Component-Owned State: Concrete Bugs</h3>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Bug</th>
+                <th>FormState</th>
+                <th>TanStack Form</th>
+                <th>React Hook Form</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Field value lost when component unmounts</td>
+                <td>✅ state is schema-derived, not mount-dependent</td>
+                <td>🛑 field unregisters on unmount by default</td>
+                <td>🛑 configurable, but opt-out adds complexity</td>
+              </tr>
+              <tr>
+                <td>Field missing from submit if it mounts late</td>
+                <td>✅ all fields present in state from initialization</td>
+                <td>🛑 fields self-register; a late mount misses the submission</td>
+                <td>✅ uncontrolled inputs registered eagerly via <code>register()</code></td>
+              </tr>
+              <tr>
+                <td>Array field identity desyncs from state</td>
+                <td>
+                  ✅ immutable operations, no generated IDs — use a <code>Symbol</code> field if
+                  item identity is needed
+                </td>
+                <td>❓ safe if using built-in methods; direct mutation desyncs</td>
+                <td>
+                  🛑 <code>useFieldArray</code> tracks by generated ID; outside mutation desyncs
+                </td>
+              </tr>
+              <tr>
+                <td><code>ref</code> conflicts on custom inputs</td>
+                <td>✅ no <code>ref</code> used for tracking</td>
+                <td>✅ <code>form.Field</code> does not rely on DOM refs</td>
+                <td>🛑 <code>register()</code> owns the ref; manual merge required</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The same design choice has consequences that extend beyond the bug catalog:</p>
+          <ul>
+            <li>
+              <strong>State follows React's rules.</strong> <code>data.firstName</code> in a
+              <code>useEffect</code> dependency works the way the syntax suggests.
+              <strong>TanStack Form</strong> keeps state in TanStack Store, and
+              <strong>Final Form</strong> in its own external store — reads like
+              <code>form.state.values.x</code> look identical to React state but don't trigger
+              re-renders or invalidate dependency arrays. Silent footgun, especially for developers
+              still building their React mental model.
+            </li>
+            <li>
+              <strong>Validation is deterministic.</strong> <strong>TanStack Form</strong>'s
+              per-field validators register at mount and fire on their own event slots
+              (<code>onChange</code>, <code>onBlur</code>, <code>onSubmit</code>) — which is why an
+              empty submit can light up every error at once, and individual errors can flicker as
+              you type depending on which slot ran last. <strong>FormState</strong>
+              runs the whole schema once over the canonical state on every change, so the error list
+              is a pure function of the data — same input, same errors, every time.
+            </li>
+            <li>
+              <strong>Footguns are caught at lint time.</strong> <strong>FormState</strong> ships an
+              official ESLint plugin that flags misuse patterns the runtime can't catch — for
+              example, passing a <a href="#watch"><code>useWatch</code></a> return value into a hook
+              dependency array. No other form library ships an official equivalent:
+              <strong>React Hook Form</strong> has only a community-maintained plugin;
+              <strong>TanStack Form</strong> has none. The asymmetry isn't an accident — static
+              linting works best when the library has a narrow, well-defined misuse surface, which
+              schema-derived state happens to provide.
+            </li>
+          </ul>
+          <h3 id="state-slice">Form data as a state slice</h3>
+          <p>
+            Most form libraries treat the form as a self-contained island: data goes in via
+            <code>defaultValues</code>, comes out via <code>handleSubmit</code>, and is opaque to
+            the rest of the app in between. Reading the current value of a field elsewhere in the
+            tree — for a sidebar preview, a dependent query, or to persist to local storage — forces
+            lifting state up, drilling props, or reaching in with refs.
+          </p>
+          <p>
+            A consequence of component-owned state: the subscription APIs other libraries do expose
+            (<code>useWatch</code>, <code>form.subscribe</code>) only fire inside React's render
+            cycle. Wiring a non-React consumer — a Redux middleware, a service worker, a
+            <code>BroadcastChannel</code> across tabs — means writing your own bridge and keeping it
+            in sync as fields mount and unmount. FormState's state is a real store with a stable,
+            schema-defined shape and a typed event stream, which is exactly the contract every
+            "subscribe to changes" integration already expects.
+          </p>
+          <p>
+            FormState treats form data the way Redux treats application state: a typed, observable
+            slice with a defined shape, accessed anywhere via context, mutated by actions, and
+            subscribable by listeners. The schema is the slice's contract.
+          </p>
+          <ul>
+            <li>
+              <strong>Context-based access to data, not just the API.</strong> Other libraries'
+              context (<code>useFormContext</code>, <code>formContext</code>) exposes the form
+              instance; you still subscribe per-field with <code>watch</code> or
+              <code>&lt;Controller&gt;</code> to get reactive values. With FormState, wrap a tree
+              with <code>formConnect</code> and any descendant calls
+              <code>useFormStateContext</code>
+              to read the form's data, status, and actions directly as a typed, subscribed slice —
+              selector-style, so reads are reactive without forcing tree-wide re-renders.
+            </li>
+            <li>
+              <strong>Listeners sync to other stores.</strong>
+              <code>formHooks.useListener</code> is FormState's equivalent of
+              <code>store.subscribe</code>: mirror state into a Redux slice, push it into TanStack
+              Query, write to IndexedDB, broadcast across tabs — anything with a "set" API can stay
+              in lockstep with the form.
+            </li>
+            <li>
+              <strong>Lifecycle as a single tagged stream.</strong>
+              Listeners receive a tagged event — <code>'change'</code>, <code>'submit'</code>, and
+              so on — so the form's lifecycle becomes a substrate for features beyond validation:
+              multi-step wizards that advance on each step's submit, undo/redo by snapshotting state
+              on every change, draft persistence to sessionStorage that clears on successful submit.
+              Other libraries route change and submit through separate APIs; FormState routes both
+              through one ordered stream, so handling them stays in one place.
+            </li>
+            <li>
+              <strong>Replace-style updates for async data.</strong>
+              <code>formActions.replace(data)</code> swaps in new data while preserving schema
+              invariants — dirty tracking, validation, and derived state continue to work correctly
+              across the swap.
+            </li>
+            <li>
+              <strong>Survives lazy mounts and Suspense.</strong> Because state is schema-derived, a
+              <code>lazy()</code>-loaded or <code>&lt;Suspense&gt;</code>-wrapped field group can
+              arrive at any time — the data was there before the component, and stays there if it
+              unmounts.
+            </li>
+          </ul>
+          <p>Form state as data slice — examples:</p>
+          <pre><code class="language-tsx">// Mirror every valid form change into a Redux slice
+formHooks.useListener((state) =&gt; {
+  if (state.type === 'change' &amp;&amp; state.valid) {
+    dispatch(updateFormState(formSchema.toObject(state.data)));
+  }
+});
+
+// Hydrate the form from a fetch — form status and schema invariants preserved
+useFetchData((data) =&gt; {
+  formActions.replace(data);
+});
+
+// Draft persistence — restore on mount, save on change, clear on successful submit
+const savedData = sessionStorage.getItem('draft');
+
+const form = useFormState(schema, {
+  initialData: savedData ? JSON.parse(savedData) : undefined,
+});
+
+formHooks.useListener((state) =&gt; {
+  if (state.type === 'change') {
+    sessionStorage.setItem('draft', JSON.stringify(state.data));
+  } else if (state.type === 'submit') {
+    sessionStorage.removeItem('draft');
+  }
+});</code></pre>
+          <p>
+            Other form libraries treat cross-store integration as application-developer plumbing.
+            FormState treats it as a first-class surface — the form isn't an island, it's a
+            participating member of your state ecosystem.
+          </p>
+          <h3>When FormState is the wrong choice</h3>
+          <p>
+            FormState's design assumptions don't suit every project. The fit is best when these are
+            true; if one or more isn't, another library is likely the better tool.
+          </p>
+          <ul>
+            <li>
+              <strong>You aren't already using Zod.</strong> The schema isn't an optional resolver
+              here — it's the contract that drives data shape, derived constraints, typed paths, and
+              the async-validation pipeline. Adding Zod purely to use FormState pays Zod's bundle
+              cost without recouping it elsewhere; React Hook Form with a lightweight validator (or
+              none at all) will be smaller and simpler.
+            </li>
+            <li>
+              <strong>You need a validator other than Zod.</strong> Yup, Valibot, Joi, ArkType, and
+              hand-rolled validators don't plug in. React Hook Form and TanStack Form are
+              schema-agnostic and will integrate with what you already use.
+            </li>
+            <li>
+              <strong>Your forms are mostly trivial.</strong> A login form, a search box, a
+              three-field settings panel — the abstraction cost of a schema, a hook, and a typed
+              state object outweighs the benefit. <code>useState</code> with a submit handler is
+              fine. FormState's wins compound with form complexity (many fields, async validation,
+              cross-field rules, server errors, draft persistence); below that threshold, simpler
+              tools win.
+            </li>
+            <li>
+              <strong>You need minimum-bundle granular re-renders by default.</strong> FormState
+              re-renders the calling component on every state change unless you opt in to
+              <a href="#watch"><code>useWatch</code></a> or uncontrolled inputs. For a 100-field
+              data-entry form where every keystroke matters, React Hook Form's
+              <code>register</code>-by-default model requires less thinking to get there.
+            </li>
+            <li>
+              <strong>You expect form state and application state to be the same thing.</strong>
+              FormState owns form-editing state — masked strings, empty-vs-undefined, dirty/touched,
+              validation status — using its own internal store. Like React Query owning server-cache
+              state alongside Zustand, FormState coexists with Redux, MobX, Zustand, or any external
+              store: a one-line <a href="#listener"><code>useListener</code></a> mirrors every valid
+              change into the external store via <code>schema.toObject()</code>, which converts the
+              form representation (empty strings, raw mask values, form-string dates) into the
+              API/business representation (<code>undefined</code>, unmasked values,
+              <code>Date</code>
+              objects). The form holds the editing shape; the external store holds the canonical
+              shape; the schema is the bridge. If instead you want a single store to hold both
+              representations and drive the form directly without a bridge, FormState's
+              schema-derived model isn't the right fit.
+            </li>
+          </ul>
+          <p>
+            None of the above is a flaw to apologize for — they're consequences of the bets the
+            library makes. Forms that fit those bets get a meaningfully better developer experience
+            than the generic libraries can provide. Forms that don't fit them are better served by
+            picking a library whose bets line up with the constraints.
+          </p>
         </section>
         <section class="section" id="license">
           <div class="section-eyebrow">Getting Started</div>
@@ -4731,6 +5289,10 @@ export default formConnect({
   watch: true,  // enable useWatch
 })(AppForm);</code></pre>
           </div>
+          <p>
+            In React DevTools, the wrapped component is tagged <code>formConnected</code>. This
+            makes it easy to spot which component in the tree owns the form's provider.
+          </p>
           <div class="callout callout-warning">
             <div class="callout-label">Warning</div>
             <p>
@@ -4928,9 +5490,247 @@ export default formConnect({
             <li>Compatible with standard <code>onChange</code> for uncontrolled usage.</li>
           </ul>
         </section>
+        <section class="section" id="debounce">
+          <div class="section-eyebrow">Features</div>
+          <h2>Debounced Changes</h2>
+          <p>
+            Pass <code>debounceIntervalMs</code> to <code>change</code> to delay downstream effects
+            — useful for search inputs, async field validation, or expensive re-renders.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">formActions.change('search', inputValue, {
+  debounceIntervalMs: 400,
+  callback: (state, status) =&gt; {
+    // Fires 400ms after the last keystroke
+    performSearch(state.data.search);
+  },
+});
+
+// Arrow function path — nested field
+formActions.change((path) =&gt; path.notes[index].text, e.target.value, {
+  debounceIntervalMs: 500,
+  touch: true,
+  callback: (state: FormState&lt;FormSchema&gt;) =&gt; {
+    // Custom async check after user stops typing
+    if (state.data.notes[index].text === '666') {
+      formActions.setError((path) =&gt; path.notes[index].text, 'Not allowed');
+    } else {
+      formActions.setError((path) =&gt; path.notes[index].text);
+    }
+  },
+});</code></pre>
+          </div>
+          <p>
+            The callback always receives the latest <code>(state, status)</code> snapshot — even
+            when multiple rapid changes fired before the debounce elapsed.
+          </p>
+        </section>
+        <section class="section" id="infer-name">
+          <div class="section-eyebrow">Features</div>
+          <h2>inferName</h2>
+          <p>
+            <code>formActions.inferName</code> generates the correct HTML
+            <code>name</code> attribute value for a field, including nested paths. Use this when you
+            need the browser's native <code>FormData</code> to carry the right keys — and when
+            combining FormState with <code>useWatch</code>.
+          </p>
+          <h3>Two name formats</h3>
+          <p>
+            Nested paths can be serialised in two formats. The format you choose determines how the
+            key appears in <code>FormData</code> when the form is submitted.
+          </p>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Format</th>
+                <th>Path <code>info.age</code></th>
+                <th>Array item <code>items[0].title</code></th>
+                <th>Top-level <code>name</code></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>'bracket'</code> (default)</td>
+                <td><code>info["age"]</code></td>
+                <td><code>items[0]["title"]</code></td>
+                <td><code>name</code></td>
+              </tr>
+              <tr>
+                <td><code>'dot'</code></td>
+                <td><code>info.age</code></td>
+                <td><code>items.0.title</code></td>
+                <td><code>name</code></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            When you call <code>formData.get(key)</code> after submission, use the same format that
+            was used for the <code>name</code> attribute. If you mix formats across fields, read
+            each key with the matching notation.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// Bracket format (default) — infers: info["age"]
+formActions.inferName((path) =&gt; path.info.age)
+
+// Dot format — infers: info.age
+formActions.inferName((path) =&gt; path.info.age, 'dot')
+
+// Top-level string — always just the key itself
+formActions.inferName('name')
+
+// Uncontrolled input + useWatch combo
+&lt;input
+  name={formActions.inferName((path) =&gt; path.id)}
+  defaultValue={formState.data.id}
+  onChange={(e) =&gt; formActions.change((path) =&gt; path.id, e.target.value)}
+/&gt;
+
+// useWatch subscribes by the same name string
+const watched = formHooks.useWatch(formActions.inferName((path) =&gt; path.id));
+
+// Reading back from FormData on submit
+const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
+  // bracket key (default format)
+  formData.get('info["age"]');    // value of info.age
+  // dot key
+  formData.get('info.age');       // only if that field used 'dot' format
+};</code></pre>
+          </div>
+          <p>Change the default format for all fields globally:</p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const { Form, formActions } = useFormState(schema, {
+  inferredNameFormat: 'dot', // all inferName calls default to dot notation
+});</code></pre>
+          </div>
+        </section>
+        <section class="section" id="helpers">
+          <div class="section-eyebrow">Features</div>
+          <h2>Value Helpers</h2>
+          <p>
+            The <code>convert</code> export provides utilities for coercing raw form strings into
+            typed values when wiring native inputs that always return strings as well as converting
+            from optional to concrete types.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { convert } from 'form-state';
+
+// Optional number to number type conversion
+convert.asNumber(1);          // 1
+convert.asNumber('');         // 0
+convert.asNumber('', 100.0);  // 100.0
+
+// Safe numeric parsing — returns the number or '' if invalid
+convert.toInt('42')          // 42
+convert.toFloat('3.14')      // 3.14
+convert.toInt('abc')         // ''
+
+// Date to string type conversion
+convert.asDateString('')                                 // ''
+convert.asDateString('2022-01-01')                       // '2022-01-01'
+convert.asDateString(new Date(2022, 0, 1))               // '2022-01-01'
+convert.asDateString(new Date(2022, 0, 1), 'MM/dd/yyyy') // '01/01/2022'
+
+// Date parsing with format string
+convert.toDate('12/31/2024', { format: 'MM/dd/yyyy' })  // Date object
+
+// Optional boolean to boolean type conversion
+convert.asBoolean(true);      // true
+convert.asBoolean('', false); // false
+convert.asBoolean('', true);  // true
+
+// Boolean coercion
+convert.toBoolean('true')     // true
+convert.toBoolean('0')        // false
+
+// Validated literal — returns the value or '' if not in set
+convert.toLiteral('active', ['active', 'inactive'])  // 'active'
+convert.toLiteral('other',  ['active', 'inactive'])  // ''</code></pre>
+          </div>
+          <h3>Date formatting</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { formatDate } from 'form-state';
+
+const date = formState.data.birthDate; // Date | ''
+
+if (date instanceof Date) {
+  formatDate(date, 'MM/dd/yyyy')   // '12/31/2024'
+  formatDate(date, 'yyyy-MM-dd')   // '2024-12-31'
+}</code></pre>
+          </div>
+          <h3>Date parsing</h3>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { safeParseDate } from 'form-state';
+
+const { success: startDateSuccess, date: startDate } = safeParseDate('2020-12-01'); // yyyy-MM-dd
+// startDateSuccess: true
+// startDate: new Date(2020, 11, 1)
+
+const { date: endDate } = safeParseDate('12/31/2020', 'MM/dd/yyyy');
+
+const { success: finalDateSuccess, date: finalDate } = safeParseDate('abcd1234', 'MM/dd/yyyy');
+// finalDateSuccess: false
+// finalDate: null</code></pre>
+          </div>
+          <h3>Dirty flag for non-field state</h3>
+          <p>
+            Track external state (e.g. a file upload) alongside form state using
+            <code>formActions.setDirty</code>. Keys must start with <code>#</code>.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Mark a file as pending upload
+formActions.setDirty('#avatar', true);
+formState.dirty.get('#avatar')   // true
+formStatus.dirty                 // true (includes #avatar)
+
+// Clear after upload completes
+formActions.setDirty('#avatar', false);</code></pre>
+          </div>
+          <h3>Parsing external data</h3>
+          <p>
+            Use <code>parseState</code> to validate and coerce API responses before loading them
+            into the form — useful when server data might be partially invalid.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { parseState } from 'form-state';
+
+const result = parseState(formSchema, apiResponse);
+
+if (result.success) {
+  formActions.replace(result.data);
+} else {
+  // result.errors.getAll() — array of validation messages
+  // result.errors.getKeys() — failed field paths
+  console.warn('API data has validation issues:', result.errors.getAll().join(' | '));
+  // Still use the coerced data if errors are non-critical
+  formActions.replace(result.data);
+}</code></pre>
+          </div>
+          <div class="callout callout-warning">
+            <div class="callout-label">Async schemas</div>
+            <p>
+              If your schema contains async checks (such as <code>z.validateAsync</code>),
+              <code>parseState</code> will throw — Zod's synchronous parse can't resolve a promise.
+              Use <code>parseStateAsync</code> instead — same API, returns a promise.
+            </p>
+            <div class="code-block">
+              <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+              <pre><code class="language-tsx">import { parseStateAsync } from 'form-state';
+
+const result = await parseStateAsync(formSchema, apiResponse);</code></pre>
+            </div>
+          </div>
+        </section>
         <section class="section" id="selectors">
-          <div class="section-eyebrow">Advanced</div>
-          <h2>Selectors</h2>
+          <div class="section-eyebrow">Hooks</div>
+          <h2>Memoized Selector (useSelector)</h2>
           <p>
             <code>formHooks.useSelector</code> is a hook that derives a memoized value from form
             state. Pass an array of <em>input selectors</em> and a <em>result function</em> — the
@@ -5050,45 +5850,9 @@ const summary = selectOrderSummary(formState.data);
             — selectors written here can be swapped for reselect selectors and vice versa.
           </p>
         </section>
-        <section class="section" id="debounce">
-          <div class="section-eyebrow">Advanced</div>
-          <h2>Debounced Changes</h2>
-          <p>
-            Pass <code>debounceIntervalMs</code> to <code>change</code> to delay downstream effects
-            — useful for search inputs, async field validation, or expensive re-renders.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">formActions.change('search', inputValue, {
-  debounceIntervalMs: 400,
-  callback: (state, status) =&gt; {
-    // Fires 400ms after the last keystroke
-    performSearch(state.data.search);
-  },
-});
-
-// Arrow function path — nested field
-formActions.change((path) =&gt; path.notes[index].text, e.target.value, {
-  debounceIntervalMs: 500,
-  touch: true,
-  callback: (state: FormState&lt;FormSchema&gt;) =&gt; {
-    // Custom async check after user stops typing
-    if (state.data.notes[index].text === '666') {
-      formActions.setError((path) =&gt; path.notes[index].text, 'Not allowed');
-    } else {
-      formActions.setError((path) =&gt; path.notes[index].text);
-    }
-  },
-});</code></pre>
-          </div>
-          <p>
-            The callback always receives the latest <code>(state, status)</code> snapshot — even
-            when multiple rapid changes fired before the debounce elapsed.
-          </p>
-        </section>
         <section class="section" id="listener">
-          <div class="section-eyebrow">Advanced</div>
-          <h2>State Listener</h2>
+          <div class="section-eyebrow">Hooks</div>
+          <h2>State Listener (useListener)</h2>
           <p>
             Subscribe to form state changes from inside a component without triggering extra
             re-renders.
@@ -5221,8 +5985,8 @@ function UsernameForm() {
           </div>
         </section>
         <section class="section" id="watch">
-          <div class="section-eyebrow">Advanced</div>
-          <h2>useWatch</h2>
+          <div class="section-eyebrow">Hooks</div>
+          <h2>Field Watch (useWatch)</h2>
           <p>
             <code>formHooks.useWatch(name, compute?)</code> observes the raw DOM value of a named
             input as the user types — without needing a controlled <code>value</code> prop. It
@@ -5271,89 +6035,9 @@ const cleanId = formHooks.useWatch(
             </p>
           </div>
         </section>
-        <section class="section" id="infer-name">
-          <div class="section-eyebrow">Advanced</div>
-          <h2>inferName</h2>
-          <p>
-            <code>formActions.inferName</code> generates the correct HTML
-            <code>name</code> attribute value for a field, including nested paths. Use this when you
-            need the browser's native <code>FormData</code> to carry the right keys — and when
-            combining FormState with <code>useWatch</code>.
-          </p>
-          <h3>Two name formats</h3>
-          <p>
-            Nested paths can be serialised in two formats. The format you choose determines how the
-            key appears in <code>FormData</code> when the form is submitted.
-          </p>
-          <table class="prop-table">
-            <thead>
-              <tr>
-                <th>Format</th>
-                <th>Path <code>info.age</code></th>
-                <th>Array item <code>items[0].title</code></th>
-                <th>Top-level <code>name</code></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>'bracket'</code> (default)</td>
-                <td><code>info["age"]</code></td>
-                <td><code>items[0]["title"]</code></td>
-                <td><code>name</code></td>
-              </tr>
-              <tr>
-                <td><code>'dot'</code></td>
-                <td><code>info.age</code></td>
-                <td><code>items.0.title</code></td>
-                <td><code>name</code></td>
-              </tr>
-            </tbody>
-          </table>
-          <p>
-            When you call <code>formData.get(key)</code> after submission, use the same format that
-            was used for the <code>name</code> attribute. If you mix formats across fields, read
-            each key with the matching notation.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">// Bracket format (default) — infers: info["age"]
-formActions.inferName((path) =&gt; path.info.age)
-
-// Dot format — infers: info.age
-formActions.inferName((path) =&gt; path.info.age, 'dot')
-
-// Top-level string — always just the key itself
-formActions.inferName('name')
-
-// Uncontrolled input + useWatch combo
-&lt;input
-  name={formActions.inferName((path) =&gt; path.id)}
-  defaultValue={formState.data.id}
-  onChange={(e) =&gt; formActions.change((path) =&gt; path.id, e.target.value)}
-/&gt;
-
-// useWatch subscribes by the same name string
-const watched = formHooks.useWatch(formActions.inferName((path) =&gt; path.id));
-
-// Reading back from FormData on submit
-const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData) =&gt; {
-  // bracket key (default format)
-  formData.get('info["age"]');    // value of info.age
-  // dot key
-  formData.get('info.age');       // only if that field used 'dot' format
-};</code></pre>
-          </div>
-          <p>Change the default format for all fields globally:</p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">const { Form, formActions } = useFormState(schema, {
-  inferredNameFormat: 'dot', // all inferName calls default to dot notation
-});</code></pre>
-          </div>
-        </section>
         <section class="section" id="blocker">
-          <div class="section-eyebrow">Advanced</div>
-          <h2>useBlocker</h2>
+          <div class="section-eyebrow">Hooks</div>
+          <h2>Navigation Blocker (useBlocker)</h2>
           <p>
             A user fills out half a form, then clicks a link or hits the back button — and their
             edits are gone. <code>formHooks.useBlocker</code> lets you catch that moment and ask
@@ -5464,130 +6148,8 @@ useEffect(() =&gt; {
             <code>guard</code>.
           </p>
         </section>
-        <section class="section" id="helpers">
-          <div class="section-eyebrow">Advanced</div>
-          <h2>Value Helpers</h2>
-          <p>
-            The <code>convert</code> export provides utilities for coercing raw form strings into
-            typed values when wiring native inputs that always return strings as well as converting
-            from optional to concrete types.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { convert } from 'form-state';
-
-// Optional number to number type conversion
-convert.asNumber(1);          // 1
-convert.asNumber('');         // 0
-convert.asNumber('', 100.0);  // 100.0
-
-// Safe numeric parsing — returns the number or '' if invalid
-convert.toInt('42')          // 42
-convert.toFloat('3.14')      // 3.14
-convert.toInt('abc')         // ''
-
-// Date to string type conversion
-convert.asDateString('')                                 // ''
-convert.asDateString('2022-01-01')                       // '2022-01-01'
-convert.asDateString(new Date(2022, 0, 1))               // '2022-01-01'
-convert.asDateString(new Date(2022, 0, 1), 'MM/dd/yyyy') // '01/01/2022'
-
-// Date parsing with format string
-convert.toDate('12/31/2024', { format: 'MM/dd/yyyy' })  // Date object
-
-// Optional boolean to boolean type conversion
-convert.asBoolean(true);      // true
-convert.asBoolean('', false); // false
-convert.asBoolean('', true);  // true
-
-// Boolean coercion
-convert.toBoolean('true')     // true
-convert.toBoolean('0')        // false
-
-// Validated literal — returns the value or '' if not in set
-convert.toLiteral('active', ['active', 'inactive'])  // 'active'
-convert.toLiteral('other',  ['active', 'inactive'])  // ''</code></pre>
-          </div>
-          <h3>Date formatting</h3>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { formatDate } from 'form-state';
-
-const date = formState.data.birthDate; // Date | ''
-
-if (date instanceof Date) {
-  formatDate(date, 'MM/dd/yyyy')   // '12/31/2024'
-  formatDate(date, 'yyyy-MM-dd')   // '2024-12-31'
-}</code></pre>
-          </div>
-          <h3>Date parsing</h3>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { safeParseDate } from 'form-state';
-
-const { success: startDateSuccess, date: startDate } = safeParseDate('2020-12-01'); // yyyy-MM-dd
-// startDateSuccess: true
-// startDate: new Date(2020, 11, 1)
-
-const { date: endDate } = safeParseDate('12/31/2020', 'MM/dd/yyyy');
-
-const { success: finalDateSuccess, date: finalDate } = safeParseDate('abcd1234', 'MM/dd/yyyy');
-// finalDateSuccess: false
-// finalDate: null</code></pre>
-          </div>
-          <h3>Dirty flag for non-field state</h3>
-          <p>
-            Track external state (e.g. a file upload) alongside form state using
-            <code>formActions.setDirty</code>. Keys must start with <code>#</code>.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">// Mark a file as pending upload
-formActions.setDirty('#avatar', true);
-formState.dirty.get('#avatar')   // true
-formStatus.dirty                 // true (includes #avatar)
-
-// Clear after upload completes
-formActions.setDirty('#avatar', false);</code></pre>
-          </div>
-          <h3>Parsing external data</h3>
-          <p>
-            Use <code>parseState</code> to validate and coerce API responses before loading them
-            into the form — useful when server data might be partially invalid.
-          </p>
-          <div class="code-block">
-            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">import { parseState } from 'form-state';
-
-const result = parseState(formSchema, apiResponse);
-
-if (result.success) {
-  formActions.replace(result.data);
-} else {
-  // result.errors.getAll() — array of validation messages
-  // result.errors.getKeys() — failed field paths
-  console.warn('API data has validation issues:', result.errors.getAll().join(' | '));
-  // Still use the coerced data if errors are non-critical
-  formActions.replace(result.data);
-}</code></pre>
-          </div>
-          <div class="callout callout-warning">
-            <div class="callout-label">Async schemas</div>
-            <p>
-              If your schema contains async checks (such as <code>z.validateAsync</code>),
-              <code>parseState</code> will throw — Zod's synchronous parse can't resolve a promise.
-              Use <code>parseStateAsync</code> instead — same API, returns a promise.
-            </p>
-            <div class="code-block">
-              <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-              <pre><code class="language-tsx">import { parseStateAsync } from 'form-state';
-
-const result = await parseStateAsync(formSchema, apiResponse);</code></pre>
-            </div>
-          </div>
-        </section>
         <section class="section" id="nextjs">
-          <div class="section-eyebrow">Advanced</div>
+          <div class="section-eyebrow">Integration</div>
           <h2>Next.js</h2>
           <p>
             FormState works naturally with the Next.js App Router. Mark the form component
@@ -5776,7 +6338,7 @@ export default function ContactForm({
           </div>
         </section>
         <section class="section" id="remix">
-          <div class="section-eyebrow">Advanced</div>
+          <div class="section-eyebrow">Integration</div>
           <h2>React Router 7 (Remix)</h2>
           <p>
             FormState works naturally with React Router 7 (Remix). The form component runs entirely
@@ -5973,7 +6535,7 @@ export default function ContactForm({
           </div>
         </section>
         <section class="section" id="tanstack-start">
-          <div class="section-eyebrow">Advanced</div>
+          <div class="section-eyebrow">Integration</div>
           <h2>TanStack Start</h2>
           <p>
             FormState works naturally with TanStack Start. A single file route can colocate the page
@@ -6196,7 +6758,7 @@ export default function ContactForm({
           </div>
         </section>
         <section class="section" id="tanstack-query">
-          <div class="section-eyebrow">Advanced</div>
+          <div class="section-eyebrow">Integration</div>
           <h2>TanStack Query Integration</h2>
           <p>
             A common pattern is to fetch a record from the server, seed it into a form, let the user
@@ -6508,7 +7070,7 @@ return { email: 'This email is already registered.' };
           </div>
         </section>
         <section class="section" id="devtools">
-          <div class="section-eyebrow">Advanced</div>
+          <div class="section-eyebrow">Tools</div>
           <h2>DevTools</h2>
           <p>
             The <code>form-state-tools</code> package provides <strong>FormDock</strong> — a
@@ -7242,561 +7804,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
           </div>
         </section>
         <hr />
-        <section class="section" id="comparison">
-          <div class="section-eyebrow">Reference</div>
-          <h2>Comparison</h2>
-          <p>
-            How FormState compares to other popular React form libraries across commonly evaluated
-            features. Analysis by <a href="https://claude.ai" target="_blank">Claude</a>.
-          </p>
-          <p>
-            Every form library is a compromise. What separates them is how openly they disclose
-            those compromises. FormState's costs are real and worth naming up front: a larger bundle
-            than the smallest alternatives, a hard dependency on Zod Mini, and an opinionated model
-            of where form state lives. The rows below try to be honest about those trade-offs —
-            FormState's included — rather than reading as a scoreboard.
-          </p>
-          <table class="prop-table">
-            <thead>
-              <tr>
-                <th>Feature</th>
-                <th>FormState</th>
-                <th>TanStack Form</th>
-                <th>React Hook Form</th>
-                <th>Formik</th>
-                <th>Final Form</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>First-class TypeScript</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>❓</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Fully inferred TypeScript</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>❓</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Typed lambda path expressions</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>No field wrappers required</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑 <sup>1</sup></td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>No render props or abstractions</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Granular field-level re-renders</td>
-                <td>❓ <sup>2</sup></td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Change and submit event subscriptions</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>❓</td>
-                <td>🛑</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>React 19 form actions</td>
-                <td>✅</td>
-                <td>❓ <sup>3</sup></td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>FormData support</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>React Compiler support</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>❓</td>
-                <td>❓</td>
-              </tr>
-              <tr>
-                <td>SSR integrations</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Built-in async validation debounce</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Schema-based validation</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Schema-derived field constraints</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Cross-field validation</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Server validation integration</td>
-                <td>✅ <sup>4</sup></td>
-                <td>❓</td>
-                <td>❓</td>
-                <td>❓</td>
-                <td>❓</td>
-              </tr>
-              <tr>
-                <td>Array fields</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td>Initial data reactivity</td>
-                <td>✅ <sup>5</sup></td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Separate form and API type representations</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Built-in readonly / disabled mode</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Built-in input masking</td>
-                <td>✅</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Password value not stored in DOM</td>
-                <td>✅ <sup>6</sup></td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>Unsaved changes navigation prompt</td>
-                <td>✅ <sup>7</sup></td>
-                <td>🛑 <sup>7</sup></td>
-                <td>🛑</td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>ESLint plugin</td>
-                <td>✅</td>
-                <td>❓ <sup>8</sup></td>
-                <td>❓ <sup>9</sup></td>
-                <td>🛑</td>
-                <td>🛑</td>
-              </tr>
-              <tr>
-                <td>First-party DevTools</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>✅</td>
-                <td>❓</td>
-                <td>🛑</td>
-              </tr>
-            </tbody>
-          </table>
-          <ol class="prop-desc" start="1" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              RHF's <code>register</code> API avoids wrappers for uncontrolled inputs, but
-              controlled inputs require <code>&lt;Controller&gt;</code>. The
-              <code>register</code> abstraction spreads hidden props onto inputs, which can be
-              unintuitive to reason about and debug.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              FormState re-renders the component that called <code>useFormState</code> on every
-              state change. Isolate keystroke re-renders with
-              <a href="#watch"><code>useWatch</code></a
-              >, or use uncontrolled inputs for fields where even that is undesirable.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="3" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              TanStack Form supports server actions invoked from <code>form.handleSubmit</code>, but
-              submission still routes through an <code>onSubmit</code> handler — it does not
-              natively integrate with React 19's <code>&lt;form action={fn}&gt;</code> prop.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              Server-returned field errors (e.g. a 422 response with
-              <code>{ email: 'Already taken' }</code>) flow through the same
-              <code>setManualError</code> / <code>asyncErrors</code> pipeline as client-side async
-              validation. Errors persist across re-renders, clear when the user edits the offending
-              field, and integrate with <code>touched</code> and <code>formStatus.valid</code> the
-              same way schema errors do. Other libraries support manual error setting but the
-              persistence semantics across submits, edits, and resets vary — verify against your
-              expected UX.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              Non-dirty fields automatically reflect changes to <code>initialData</code> (e.g. when
-              server data loads asynchronously). Fields the user has already edited are never
-              overwritten. This does not affect the dirty state of any field.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="6" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              Requires the <code>SecureInput</code> component instead of a plain
-              <code>&lt;input type="password"&gt;</code>. The value is kept out of the DOM and never
-              appears in <code>FormData</code> or browser autofill inspection.
-              <p style="margin-top: 0.5rem">
-                This feature keeps passwords safe from browser extensions that scan the DOM,
-                prevents accidental copy/cut/paste/undo/redo of sensitive data.
-              </p>
-            </li>
-          </ol>
-          <ol class="prop-desc" start="7" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              Provided by the <a href="#blocker"><code>useBlocker</code></a> hook
-              (<code>formHooks.useBlocker(shouldBlock)</code>). Guards both tab close / reload (via
-              <code>beforeunload</code>) and in-app navigation routed through its
-              <code>guard</code> resolver, blocking while the form is dirty (or any condition you
-              return). This mirrors
-              <a
-                href="https://tanstack.com/router/latest/docs/framework/react/api/router/useBlockerHook"
-                target="_blank"
-                >TanStack Router's</a
-              >
-              <code>useBlocker</code>, but is router-agnostic — <code>shouldBlock</code> receives
-              the form <code>state</code> and <code>status</code> instead of the target route.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="8" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              TanStack Query ships
-              <a
-                href="https://tanstack.com/query/v4/docs/eslint/eslint-plugin-query"
-                target="_blank"
-                >@tanstack/eslint-plugin-query</a
-              >. TanStack Form does not have a dedicated ESLint plugin.
-            </li>
-          </ol>
-          <ol class="prop-desc" start="9" style="margin-top: 0; padding-left: 1.25rem">
-            <li>
-              React Hook Form has a
-              <a href="https://github.com/andykao1213/eslint-plugin-react-hook-form" target="_blank"
-                >community-maintained ESLint plugin</a
-              >. It is not officially supported by the React Hook Form team.
-            </li>
-          </ol>
-          <h3>Schema-derived state, in plain terms</h3>
-          <p>
-            Most form libraries — TanStack Form, React Hook Form, Formik — let each field component
-            own its value. When a <code>&lt;Field&gt;</code> mounts, it registers with the form.
-            When it unmounts, it unregisters. The form's data at any given moment is whatever the
-            currently-mounted fields say it is. Whether that registry lives in DOM refs (React Hook
-            Form) or an external store (TanStack Form) is a detail — in both cases the data is a
-            side-effect of which components are currently rendered.
-          </p>
-          <p>
-            FormState works the opposite way. The schema declares the form's shape up front, so the
-            data exists before any field component renders. Fields are plain controlled inputs
-            reading from and writing to a shared state object. Nothing registers, nothing
-            unregisters. That single design choice rules out an entire class of mount-lifecycle bugs
-            — these aren't bugs FormState has patched, they're bug <em>classes</em> the architecture
-            rules out.
-          </p>
-          <h3>Component-Owned State: Concrete Bugs</h3>
-          <table class="prop-table">
-            <thead>
-              <tr>
-                <th>Bug</th>
-                <th>FormState</th>
-                <th>TanStack Form</th>
-                <th>React Hook Form</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Field value lost when component unmounts</td>
-                <td>✅ state is schema-derived, not mount-dependent</td>
-                <td>🛑 field unregisters on unmount by default</td>
-                <td>🛑 configurable, but opt-out adds complexity</td>
-              </tr>
-              <tr>
-                <td>Field missing from submit if it mounts late</td>
-                <td>✅ all fields present in state from initialization</td>
-                <td>🛑 fields self-register; a late mount misses the submission</td>
-                <td>✅ uncontrolled inputs registered eagerly via <code>register()</code></td>
-              </tr>
-              <tr>
-                <td>Array field identity desyncs from state</td>
-                <td>
-                  ✅ immutable operations, no generated IDs — use a <code>Symbol</code> field if
-                  item identity is needed
-                </td>
-                <td>❓ safe if using built-in methods; direct mutation desyncs</td>
-                <td>
-                  🛑 <code>useFieldArray</code> tracks by generated ID; outside mutation desyncs
-                </td>
-              </tr>
-              <tr>
-                <td><code>ref</code> conflicts on custom inputs</td>
-                <td>✅ no <code>ref</code> used for tracking</td>
-                <td>✅ <code>form.Field</code> does not rely on DOM refs</td>
-                <td>🛑 <code>register()</code> owns the ref; manual merge required</td>
-              </tr>
-            </tbody>
-          </table>
-          <p>The same design choice has consequences that extend beyond the bug catalog:</p>
-          <ul>
-            <li>
-              <strong>State follows React's rules.</strong> <code>data.firstName</code> in a
-              <code>useEffect</code> dependency works the way the syntax suggests.
-              <strong>TanStack Form</strong> keeps state in TanStack Store, and
-              <strong>Final Form</strong> in its own external store — reads like
-              <code>form.state.values.x</code> look identical to React state but don't trigger
-              re-renders or invalidate dependency arrays. Silent footgun, especially for developers
-              still building their React mental model.
-            </li>
-            <li>
-              <strong>Validation is deterministic.</strong> <strong>TanStack Form</strong>'s
-              per-field validators register at mount and fire on their own event slots
-              (<code>onChange</code>, <code>onBlur</code>, <code>onSubmit</code>) — which is why an
-              empty submit can light up every error at once, and individual errors can flicker as
-              you type depending on which slot ran last. <strong>FormState</strong>
-              runs the whole schema once over the canonical state on every change, so the error list
-              is a pure function of the data — same input, same errors, every time.
-            </li>
-            <li>
-              <strong>Footguns are caught at lint time.</strong> <strong>FormState</strong> ships an
-              official ESLint plugin that flags misuse patterns the runtime can't catch — for
-              example, passing a <a href="#watch"><code>useWatch</code></a> return value into a hook
-              dependency array. No other form library ships an official equivalent:
-              <strong>React Hook Form</strong> has only a community-maintained plugin;
-              <strong>TanStack Form</strong> has none. The asymmetry isn't an accident — static
-              linting works best when the library has a narrow, well-defined misuse surface, which
-              schema-derived state happens to provide.
-            </li>
-          </ul>
-          <h3 id="state-slice">Form data as a state slice</h3>
-          <p>
-            Most form libraries treat the form as a self-contained island: data goes in via
-            <code>defaultValues</code>, comes out via <code>handleSubmit</code>, and is opaque to
-            the rest of the app in between. Reading the current value of a field elsewhere in the
-            tree — for a sidebar preview, a dependent query, or to persist to local storage — forces
-            lifting state up, drilling props, or reaching in with refs.
-          </p>
-          <p>
-            A consequence of component-owned state: the subscription APIs other libraries do expose
-            (<code>useWatch</code>, <code>form.subscribe</code>) only fire inside React's render
-            cycle. Wiring a non-React consumer — a Redux middleware, a service worker, a
-            <code>BroadcastChannel</code> across tabs — means writing your own bridge and keeping it
-            in sync as fields mount and unmount. FormState's state is a real store with a stable,
-            schema-defined shape and a typed event stream, which is exactly the contract every
-            "subscribe to changes" integration already expects.
-          </p>
-          <p>
-            FormState treats form data the way Redux treats application state: a typed, observable
-            slice with a defined shape, accessed anywhere via context, mutated by actions, and
-            subscribable by listeners. The schema is the slice's contract.
-          </p>
-          <ul>
-            <li>
-              <strong>Context-based access to data, not just the API.</strong> Other libraries'
-              context (<code>useFormContext</code>, <code>formContext</code>) exposes the form
-              instance; you still subscribe per-field with <code>watch</code> or
-              <code>&lt;Controller&gt;</code> to get reactive values. With FormState, wrap a tree
-              with <code>formConnect</code> and any descendant calls
-              <code>useFormStateContext</code>
-              to read the form's data, status, and actions directly as a typed, subscribed slice —
-              selector-style, so reads are reactive without forcing tree-wide re-renders.
-            </li>
-            <li>
-              <strong>Listeners sync to other stores.</strong>
-              <code>formHooks.useListener</code> is FormState's equivalent of
-              <code>store.subscribe</code>: mirror state into a Redux slice, push it into TanStack
-              Query, write to IndexedDB, broadcast across tabs — anything with a "set" API can stay
-              in lockstep with the form.
-            </li>
-            <li>
-              <strong>Lifecycle as a single tagged stream.</strong>
-              Listeners receive a tagged event — <code>'change'</code>, <code>'submit'</code>, and
-              so on — so the form's lifecycle becomes a substrate for features beyond validation:
-              multi-step wizards that advance on each step's submit, undo/redo by snapshotting state
-              on every change, draft persistence to sessionStorage that clears on successful submit.
-              Other libraries route change and submit through separate APIs; FormState routes both
-              through one ordered stream, so handling them stays in one place.
-            </li>
-            <li>
-              <strong>Replace-style updates for async data.</strong>
-              <code>formActions.replace(data)</code> swaps in new data while preserving schema
-              invariants — dirty tracking, validation, and derived state continue to work correctly
-              across the swap.
-            </li>
-            <li>
-              <strong>Survives lazy mounts and Suspense.</strong> Because state is schema-derived, a
-              <code>lazy()</code>-loaded or <code>&lt;Suspense&gt;</code>-wrapped field group can
-              arrive at any time — the data was there before the component, and stays there if it
-              unmounts.
-            </li>
-          </ul>
-          <p>Form state as data slice — examples:</p>
-          <pre><code class="language-tsx">// Mirror every valid form change into a Redux slice
-formHooks.useListener((state) =&gt; {
-  if (state.type === 'change' &amp;&amp; state.valid) {
-    dispatch(updateFormState(formSchema.toObject(state.data)));
-  }
-});
-
-// Hydrate the form from a fetch — form status and schema invariants preserved
-useFetchData((data) =&gt; {
-  formActions.replace(data);
-});
-
-// Draft persistence — restore on mount, save on change, clear on successful submit
-const savedData = sessionStorage.getItem('draft');
-
-const form = useFormState(schema, {
-  initialData: savedData ? JSON.parse(savedData) : undefined,
-});
-
-formHooks.useListener((state) =&gt; {
-  if (state.type === 'change') {
-    sessionStorage.setItem('draft', JSON.stringify(state.data));
-  } else if (state.type === 'submit') {
-    sessionStorage.removeItem('draft');
-  }
-});</code></pre>
-          <p>
-            Other form libraries treat cross-store integration as application-developer plumbing.
-            FormState treats it as a first-class surface — the form isn't an island, it's a
-            participating member of your state ecosystem.
-          </p>
-          <h3>When FormState is the wrong choice</h3>
-          <p>
-            FormState's design assumptions don't suit every project. The fit is best when these are
-            true; if one or more isn't, another library is likely the better tool.
-          </p>
-          <ul>
-            <li>
-              <strong>You aren't already using Zod.</strong> The schema isn't an optional resolver
-              here — it's the contract that drives data shape, derived constraints, typed paths, and
-              the async-validation pipeline. Adding Zod purely to use FormState pays Zod's bundle
-              cost without recouping it elsewhere; React Hook Form with a lightweight validator (or
-              none at all) will be smaller and simpler.
-            </li>
-            <li>
-              <strong>You need a validator other than Zod.</strong> Yup, Valibot, Joi, ArkType, and
-              hand-rolled validators don't plug in. React Hook Form and TanStack Form are
-              schema-agnostic and will integrate with what you already use.
-            </li>
-            <li>
-              <strong>Your forms are mostly trivial.</strong> A login form, a search box, a
-              three-field settings panel — the abstraction cost of a schema, a hook, and a typed
-              state object outweighs the benefit. <code>useState</code> with a submit handler is
-              fine. FormState's wins compound with form complexity (many fields, async validation,
-              cross-field rules, server errors, draft persistence); below that threshold, simpler
-              tools win.
-            </li>
-            <li>
-              <strong>You need minimum-bundle granular re-renders by default.</strong> FormState
-              re-renders the calling component on every state change unless you opt in to
-              <a href="#watch"><code>useWatch</code></a> or uncontrolled inputs. For a 100-field
-              data-entry form where every keystroke matters, React Hook Form's
-              <code>register</code>-by-default model requires less thinking to get there.
-            </li>
-            <li>
-              <strong>You expect form state and application state to be the same thing.</strong>
-              FormState owns form-editing state — masked strings, empty-vs-undefined, dirty/touched,
-              validation status — using its own internal store. Like React Query owning server-cache
-              state alongside Zustand, FormState coexists with Redux, MobX, Zustand, or any external
-              store: a one-line <a href="#listener"><code>useListener</code></a> mirrors every valid
-              change into the external store via <code>schema.toObject()</code>, which converts the
-              form representation (empty strings, raw mask values, form-string dates) into the
-              API/business representation (<code>undefined</code>, unmasked values,
-              <code>Date</code>
-              objects). The form holds the editing shape; the external store holds the canonical
-              shape; the schema is the bridge. If instead you want a single store to hold both
-              representations and drive the form directly without a bridge, FormState's
-              schema-derived model isn't the right fit.
-            </li>
-          </ul>
-          <p>
-            None of the above is a flaw to apologize for — they're consequences of the bets the
-            library makes. Forms that fit those bets get a meaningfully better developer experience
-            than the generic libraries can provide. Forms that don't fit them are better served by
-            picking a library whose bets line up with the constraints.
-          </p>
-        </section>
       </main>
     </div>
     <script>

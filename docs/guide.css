@@ -133,7 +133,7 @@ nav {
   height: calc(100vh - var(--header-height));
   overflow-y: auto;
   border-right: 1px solid var(--border);
-  padding: 28px 0 40px;
+  padding: 18px 0 40px;
 }
 nav::-webkit-scrollbar {
   width: 6px;
@@ -144,7 +144,10 @@ nav::-webkit-scrollbar-track {
 
 .nav-section {
   padding: 0 16px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
+}
+.nav-section + .nav-section {
+  margin-top: 14px;
 }
 
 .nav-section-label {
@@ -153,13 +156,13 @@ nav::-webkit-scrollbar-track {
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--text-dim);
-  padding: 10px 8px 6px;
+  padding: 6px 8px 4px;
   display: block;
 }
 
 .nav-link {
   display: block;
-  padding: 5px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
   color: var(--text-muted);
   text-decoration: none;
