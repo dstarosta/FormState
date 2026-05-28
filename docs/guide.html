@@ -7110,14 +7110,93 @@ function AppForm() {
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
-              For Vite projects — especially Remix with SSR — <code>NODE_ENV</code> may not be set
-              to <code>development</code> automatically. Without it, FormDock may render on the
-              server and break SSR. Pass <code>devMode={import.meta.env.DEV}</code> to be explicit:
+              For projects with SSR, such as Remix or TanStack Start, <code>NODE_ENV</code> may not
+              be set to <code>development</code> automatically. Without it, FormDock may render on
+              the server and break SSR. Pass your build's dev flag to <code>devMode</code> to be
+              explicit:
             </p>
             <div class="code-block">
               <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-              <pre><code class="language-tsx">&lt;FormDock form={form} devMode={import.meta.env.DEV} /&gt;</code></pre>
+              <pre><code class="language-tsx">&lt;FormDock form={form} devMode={isDev} /&gt;</code></pre>
             </div>
+            <p>
+              In Vite, <code>isDev</code> would be <code>import.meta.env.DEV</code>; in Webpack it
+              might be <code>process.env.NODE_ENV !== 'production'</code>.
+            </p>
+          </div>
+
+          <h3>Vite plugin (auto-inject)</h3>
+          <p>
+            If you use Vite, the <code>form-state-tools/vite</code> plugin can mount the dock for
+            you — no <code>&lt;FormDock&gt;</code> in your JSX. Add it to your Vite config and feed
+            it your form state with the <code>useFormDock</code> hook. The plugin auto-detects how
+            to inject the dock: it uses the HTML entry for plain Vite/React SPAs and the framework
+            client entry for SSR setups such as TanStack Start.
+          </p>
+          <div class="callout callout-warning">
+            <div class="callout-label">Vite only</div>
+            <p>
+              This plugin is a Vite plugin — it does nothing under other bundlers. On Next.js,
+              Create React App, or any non-Vite setup, skip the plugin and use the manual
+              <code>&lt;FormDock form={form} /&gt;</code> setup above, which works in any React app.
+            </p>
+          </div>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">ts</span></div>
+            <pre><code class="language-ts">// vite.config.ts
+import { defineConfig } from 'vite';
+import formStateTools from 'form-state-tools/vite';
+
+export default defineConfig({
+  plugins: [
+    formStateTools(),
+    // ...your other plugins
+  ],
+});</code></pre>
+          </div>
+          <p>
+            Then call <code>useFormDock</code> in your form, passing the same value you would pass
+            to the <code>form</code> prop. The dock the plugin injects subscribes to whatever you
+            report:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">import { useFormDock } from 'form-state-tools';
+
+function AppForm() {
+  const form = useFormState(schema);   // or useFormStateContext(schema)
+  const { Form, formHandlers } = form;
+
+  useFormDock(form);   // feeds the plugin-injected dock — no &lt;FormDock&gt; needed
+
+  return (
+    &lt;Form action={formHandlers.handleSubmit(onSubmit)}&gt;
+      {/* ... */}
+    &lt;/Form&gt;
+  );
+}</code></pre>
+          </div>
+          <div class="callout callout-info">
+            <div class="callout-label">The plugin is not part of your bundle</div>
+            <p>
+              <code>formStateTools()</code> only applies during <code>vite dev</code> (<code
+                >apply: 'serve'</code
+              >), so it — and the dock it injects — are never included in your production build. The
+              plugin code itself runs in Node at dev time, not in the browser, so it adds nothing to
+              your shipped JavaScript. In a production build, <code>useFormDock</code> is a no-op
+              that tree-shakes away.
+            </p>
+          </div>
+          <div class="callout callout-tip">
+            <div class="callout-label">Tip</div>
+            <p>
+              For an SSR framework whose client entry is not auto-detected, point the plugin at your
+              client-entry module with the <code>clientEntry</code> option — a substring matched
+              against module ids (e.g.
+              <code>formStateTools({ clientEntry: 'entry-client' })</code>). This must name a
+              JavaScript module, not an HTML file.
+            </p>
+            <p>You do not need it for SPAs or TanStack Start.</p>
           </div>
 
           <h3>What it looks like</h3>

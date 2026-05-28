@@ -53,6 +53,34 @@ const buildAsyncSchema = (allowed: Set<string>, delay = 0) => {
   });
 };
 
+const makeComboSchema = (spies?: {
+  asyncSpy?: (value: string) => void;
+  submitOnlySpy?: (data: { name: string; email: string }) => void;
+}) =>
+  z
+    .object({
+      name: z.formString({ required: true }, z.maxLength(3, 'Name too long')),
+      email: z.formString({ required: true }).check(
+        z.validateAsync((value: string) => {
+          spies?.asyncSpy?.(value);
+          return Promise.resolve(value === 'ok@x');
+        }, 'Email async error')
+      ),
+    })
+    .check(
+      z.validateAsync(
+        (data: { name: string; email: string }) => {
+          spies?.submitOnlySpy?.(data);
+          return Promise.resolve(data.name !== 'no');
+        },
+        {
+          path: ['name'],
+          error: 'submitOnly name error',
+          submitOnly: true,
+        }
+      )
+    );
+
 describe('useFormState', () => {
   const schema = z
     .strictObject({
@@ -2672,6 +2700,212 @@ describe('useFormState', () => {
         });
 
         expect(result.current.errors.name).toBeUndefined();
+      });
+
+      it('surfaces sync field errors on change even when a submitOnly async check exists', () => {
+        const submitSchema = z.object({
+          name: z.formString({ required: true }, z.maxLength(3, 'Too long')),
+          email: z.formString({ required: true }).check(
+            z.validateAsync((value: string) => Promise.resolve(value === 'allowed@x'), {
+              error: 'submitOnly email error',
+              submitOnly: true,
+            })
+          ),
+        });
+
+        const Component = () => {
+          const {
+            formState: { errors },
+            formActions: { change },
+          } = useFormState(submitSchema, {
+            initialData: { name: 'Al', email: 'rejected@x' },
+          });
+
+          return { errors, change };
+        };
+
+        const { result } = renderHook(() => Component());
+
+        act(() => {
+          result.current.change('name', 'TooLongName');
+        });
+
+        expect(result.current.errors.name).toBe('Too long');
+        expect(result.current.errors.email).toBeUndefined();
+      });
+
+      describe('sync + async + submitOnly async combinations', () => {
+        it('on change: surfaces the sync error, runs the regular async, skips submitOnly', async () => {
+          const asyncSpy = vi.fn();
+          const submitOnlySpy = vi.fn();
+          const comboSchema = makeComboSchema({ asyncSpy, submitOnlySpy });
+
+          const Component = () => {
+            const {
+              formState: { errors },
+              formStatus,
+              formActions: { change },
+            } = useFormState(comboSchema, { initialData: { name: 'ok', email: 'ok@x' } });
+
+            return { errors, formStatus, change };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          act(() => {
+            result.current.change('name', 'TooLong');
+          });
+
+          await waitFor(() => {
+            expect(result.current.formStatus.validating).toBe(false);
+          });
+
+          expect(result.current.errors.name).toBe('Name too long');
+          expect(asyncSpy).toHaveBeenCalled();
+          expect(submitOnlySpy).not.toHaveBeenCalled();
+        });
+
+        it('on change: regular async error surfaces while submitOnly stays dormant', async () => {
+          const submitOnlySpy = vi.fn();
+          const comboSchema = makeComboSchema({ submitOnlySpy });
+
+          const Component = () => {
+            const {
+              formState: { errors },
+              formStatus,
+              formActions: { change },
+            } = useFormState(comboSchema, { initialData: { name: 'yes', email: 'ok@x' } });
+
+            return { errors, formStatus, change };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          act(() => {
+            result.current.change('email', 'bad@x');
+          });
+
+          await waitFor(() => {
+            expect(result.current.formStatus.validating).toBe(false);
+          });
+
+          expect(result.current.errors.email).toBe('Email async error');
+          expect(result.current.errors.name).toBeUndefined();
+          expect(submitOnlySpy).not.toHaveBeenCalled();
+        });
+
+        it('on submit: a sync error blocks submission before any async check runs', async () => {
+          const asyncSpy = vi.fn();
+          const submitOnlySpy = vi.fn();
+          const comboSchema = makeComboSchema({ asyncSpy, submitOnlySpy });
+
+          const onSuccess = vi.fn();
+          const onError = vi.fn();
+
+          const Component = () => {
+            const {
+              formState: { errors },
+              formActions: { change },
+              formHandlers: { handleSubmit },
+            } = useFormState(comboSchema, { initialData: { name: 'ok', email: 'ok@x' } });
+
+            return { errors, change, handleSubmit };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          act(() => {
+            result.current.change('name', 'TooLong');
+          });
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true), {
+              onSuccess,
+              onError,
+            })(new FormData());
+          });
+
+          expect(result.current.errors.name).toBe('Name too long');
+          expect(onSuccess).not.toHaveBeenCalled();
+          expect(onError).toHaveBeenCalledTimes(1);
+        });
+
+        it('on submit: sync valid, runs both async checks and surfaces the submitOnly error', async () => {
+          const asyncSpy = vi.fn();
+          const submitOnlySpy = vi.fn();
+          const comboSchema = makeComboSchema({ asyncSpy, submitOnlySpy });
+
+          const onSuccess = vi.fn();
+          const onError = vi.fn();
+
+          const Component = () => {
+            const {
+              formState: { errors },
+              formStatus,
+              formActions: { change },
+              formHandlers: { handleSubmit },
+            } = useFormState(comboSchema, { initialData: { name: 'yes', email: 'ok@x' } });
+
+            return { errors, formStatus, change, handleSubmit };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          act(() => {
+            result.current.change('name', 'no');
+          });
+
+          await waitFor(() => {
+            expect(result.current.formStatus.validating).toBe(false);
+          });
+
+          // No sync error (within length), email async passes, submitOnly silent on change.
+          expect(result.current.errors.name).toBeUndefined();
+          expect(submitOnlySpy).not.toHaveBeenCalled();
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true), {
+              onSuccess,
+              onError,
+            })(new FormData());
+          });
+
+          // On submit, both async checks ran; the submitOnly error now appears.
+          expect(submitOnlySpy).toHaveBeenCalled();
+          expect(asyncSpy).toHaveBeenCalled();
+          expect(result.current.errors.name).toBe('submitOnly name error');
+          expect(onSuccess).not.toHaveBeenCalled();
+          expect(onError).toHaveBeenCalledTimes(1);
+        });
+
+        it('on submit: all checks pass and the form submits successfully', async () => {
+          const comboSchema = makeComboSchema();
+
+          const onSuccess = vi.fn();
+          const onError = vi.fn();
+
+          const Component = () => {
+            const {
+              formStatus,
+              formHandlers: { handleSubmit },
+            } = useFormState(comboSchema, { initialData: { name: 'ok', email: 'ok@x' } });
+
+            return { formStatus, handleSubmit };
+          };
+
+          const { result } = renderHook(() => Component());
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true), {
+              onSuccess,
+              onError,
+            })(new FormData());
+          });
+
+          expect(onError).not.toHaveBeenCalled();
+          expect(onSuccess).toHaveBeenCalledTimes(1);
+          expect(result.current.formStatus.submitted).toBe(true);
+        });
       });
 
       it('keeps a submitOnly async error when an unrelated path is changed', async () => {

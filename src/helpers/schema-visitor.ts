@@ -848,6 +848,28 @@ export const isAsyncSchema = (schema: z.ZodMiniType): boolean => {
   return cached;
 };
 
+export const hasChangePhaseAsyncChecks = (
+  schema: z.ZodMiniType,
+  metaMap?: AsyncCheckMetaMap
+): boolean => {
+  if (!isAsyncSchema(schema)) {
+    return false;
+  }
+
+  let found = false;
+  walkAsyncChecks(schema, '', undefined, (check) => {
+    if (found) {
+      return;
+    }
+    const meta = getAsyncCheckMeta(check, metaMap);
+    if (!meta?.submitOnly) {
+      found = true;
+    }
+  });
+
+  return found;
+};
+
 export const collectDescriptions = <T extends z.ZodMiniType>(
   schema: T,
   field: string = '',

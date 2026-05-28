@@ -26,7 +26,7 @@ import {
   getPath,
   getPathNotation,
   getSchemaType,
-  isAsyncSchema,
+  hasChangePhaseAsyncChecks,
 } from './schema-visitor';
 import { IS_DEVELOPMENT } from './development-helper';
 import { formatErrors } from './error-formatter';
@@ -475,23 +475,14 @@ export function safeSyncParse<T extends z.ZodMiniType>(
   schema: T,
   data: unknown
 ): { result: ReturnType<T['safeParse']> | null; asyncPending: boolean } {
-  if (isAsyncSchema(schema)) {
-    return { result: null, asyncPending: true };
-  }
-
-  try {
+  if (!hasChangePhaseAsyncChecks(schema)) {
     return {
       result: schema.safeParse(data) as ReturnType<T['safeParse']>,
       asyncPending: false,
     };
-  } catch (error) {
-    // A defensive check.
-    /* v8 ignore if -- @preserve */
-    if (error instanceof z.core.$ZodAsyncError) {
-      return { result: null, asyncPending: true };
-    }
-    throw error;
   }
+
+  return { result: null, asyncPending: true };
 }
 
 // Public functions
