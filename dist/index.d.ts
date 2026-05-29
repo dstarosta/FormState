@@ -31,6 +31,7 @@ type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
 type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
 type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = { [K in keyof Selectors]: Selectors[K] extends Selector<S, infer R> ? R : never };
 type FormDataSelector<S> = {
+  <I extends Selector<S, unknown>>(inputSelector: I extends unknown[] ? never : I): Selector<S, ReturnType<I>>;
   <I extends Selector<S, unknown>, R>(inputSelector: I, resultFn: (input: ReturnType<I>) => R): Selector<S, R>;
   <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: SelectorResults<S, I>) => R): Selector<S, R>;
 };
@@ -1376,6 +1377,9 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * It is similar to the `createSelector` method in the "Reselect" library.
      *
      * @example
+     * const selectUserName = createSelector(state => state.name);
+     * const userName = selectUserName(formState.data);
+     *
      * const selectActiveUsers = createSelector(
      *   [state => state.users],
      *   users => users.filter(u => u.active)
@@ -1384,6 +1388,8 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      *
      * @param inputSelectors - One or more selectors that extract values from the source state.
      * @param resultFn - The result function that computes the final value from the extracted inputs.
+     *                   This function is optional if have a single input selector instead of an
+     *                   array of selectors.
      * @returns Memoized selector function.
      */
     useSelector: FormDataSelector<Immutable<z.infer<T>>>;

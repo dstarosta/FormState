@@ -8347,12 +8347,7 @@ describe('useFormState', () => {
         formHooks: { useSelector },
       } = result.current;
 
-      const selectorHook = renderHook(() =>
-        useSelector(
-          (state) => state.name,
-          (name) => name
-        )
-      );
+      const selectorHook = renderHook(() => useSelector((state) => state.name));
       const selectName = selectorHook.result.current;
 
       expect(selectName(formState.data)).toBe(formState.data.name);
@@ -8439,12 +8434,7 @@ describe('useFormState', () => {
         formHooks: { useSelector },
       } = result.current;
 
-      const tagSelectorHook = renderHook(() =>
-        useSelector(
-          (state) => state.tags,
-          (tags) => tags
-        )
-      );
+      const tagSelectorHook = renderHook(() => useSelector((state) => state.tags));
       const longTagSelectorHook = renderHook(() =>
         useSelector(tagSelectorHook.result.current, (tags) => tags.filter((t) => t.length >= 3))
       );

@@ -5748,10 +5748,7 @@ const result = await parseStateAsync(formSchema, apiResponse);</code></pre>
             <pre><code class="language-tsx">const { formState, formHooks } = useFormState(schema);
 
 // Extract a field as-is
-const selectName = formHooks.useSelector(
-  state =&gt; state.name,
-  name =&gt; name
-);
+const selectName = formHooks.useSelector(state =&gt; state.name);
 
 // Derive a boolean from a field
 const selectIsAdult = formHooks.useSelector(

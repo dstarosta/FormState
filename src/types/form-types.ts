@@ -66,6 +66,9 @@ type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = {
 };
 
 type FormDataSelector<S> = {
+  <I extends Selector<S, unknown>>(
+    inputSelector: I extends unknown[] ? never : I
+  ): Selector<S, ReturnType<I>>;
   <I extends Selector<S, unknown>, R>(
     inputSelector: I,
     resultFn: (input: ReturnType<I>) => R
@@ -1691,6 +1694,9 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      * It is similar to the `createSelector` method in the "Reselect" library.
      *
      * @example
+     * const selectUserName = createSelector(state => state.name);
+     * const userName = selectUserName(formState.data);
+     *
      * const selectActiveUsers = createSelector(
      *   [state => state.users],
      *   users => users.filter(u => u.active)
@@ -1699,6 +1705,8 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      *
      * @param inputSelectors - One or more selectors that extract values from the source state.
      * @param resultFn - The result function that computes the final value from the extracted inputs.
+     *                   This function is optional if have a single input selector instead of an
+     *                   array of selectors.
      * @returns Memoized selector function.
      */
     useSelector: FormDataSelector<Immutable<z.infer<T>>>;

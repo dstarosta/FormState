@@ -6,7 +6,7 @@ import type { Selector } from '../types/form-types';
 
 export function useSelector<S, R>(
   inputSelectors: Selector<S, unknown> | Selector<S, unknown>[],
-  resultFn: (...args: unknown[]) => R
+  resultFn: (...inputs: unknown[]) => R = (firstInput) => firstInput as R
 ): Selector<S, R> {
   const cache = useRef<{
     lastInputs: unknown[];
