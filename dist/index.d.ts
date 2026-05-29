@@ -30,11 +30,6 @@ type RangeOf<T> = undefined | Date | number | (IsUnion<T, Date | string> extends
 type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
 type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
 type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = { [K in keyof Selectors]: Selectors[K] extends Selector<S, infer R> ? R : never };
-type FormDataSelector<S> = {
-  <I extends Selector<S, unknown>>(inputSelector: I extends unknown[] ? never : I): Selector<S, ReturnType<I>>;
-  <I extends Selector<S, unknown>, R>(inputSelector: I, resultFn: (input: ReturnType<I>) => R): Selector<S, R>;
-  <I extends Selector<S, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: SelectorResults<S, I>) => R): Selector<S, R>;
-};
 type ImmutablePrimitive = undefined | null | boolean | string | number | symbol | Date | Error | Function | RegExp | Promise<unknown>;
 type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
 type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
@@ -63,23 +58,9 @@ type FormMutableState<T extends object> = {
   replaced: boolean;
   validated: boolean;
   manualErrors: Record<string, string>;
-  /**
-   * Errors collected from the most recently resolved async validation pass.
-   * Merged into `errors` on the next render. Cleared whenever `data` changes.
-   */
   asyncErrors: Record<keyof T | '', string | undefined>;
-  /**
-   * Monotonically increasing id used to discard stale async validation results.
-   */
   asyncRequestId: number;
-  /**
-   * Whether an async validation pass is currently pending for the latest data.
-   */
   asyncValidating: boolean;
-  /**
-   * Dot-notation path of the field whose change triggered the current async pass.
-   * `undefined` when the pass is not associated with a `change` action.
-   */
   asyncTrigger: string | undefined;
 };
 type FormTypeOptions = {
@@ -595,6 +576,14 @@ type FormStatus = {
    */
   readonly dirty: boolean;
   /**
+   * Whether an async validation pass is currently in flight for the latest data.
+   *
+   * Always `false` for schemas that do not contain async checks. Sync-only
+   * changes complete between renders, so `validating` never flips for them
+   * even on async-capable schemas.
+   */
+  readonly validating: boolean;
+  /**
    * Whether the form is valid (has no errors).
    *
    * The value is `null` if the form has not been validated.
@@ -606,12 +595,6 @@ type FormStatus = {
    * The value is `null` if the form has not been validated.
    */
   readonly validSchema: boolean | null;
-  /**
-   * Whether an async validation pass is currently in flight for the latest data.
-   *
-   * Always `false` for schemas that do not contain async checks.
-   */
-  readonly validating: boolean;
   /**
    * Whether the form submit action is pending.
    *
@@ -1380,19 +1363,57 @@ type FormStateResponse<T extends z.ZodMiniObject> = {
      * const selectUserName = createSelector(state => state.name);
      * const userName = selectUserName(formState.data);
      *
-     * const selectActiveUsers = createSelector(
-     *   [state => state.users],
-     *   users => users.filter(u => u.active)
-     * );
-     * const activeUsers = selectActiveUsers(formState.data);
-     *
      * @param inputSelectors - One or more selectors that extract values from the source state.
      * @param resultFn - The result function that computes the final value from the extracted inputs.
      *                   This function is optional if have a single input selector instead of an
      *                   array of selectors.
      * @returns Memoized selector function.
      */
-    useSelector: FormDataSelector<Immutable<z.infer<T>>>;
+    useSelector: {
+      <I extends Selector<Immutable<z.infer<T>>, unknown>>(inputSelector: I extends unknown[] ? never : I): Selector<Immutable<z.infer<T>>, ReturnType<I>>;
+      /**
+       * A hook that creates a memoized selector over the form state data or derived data.
+       * It is similar to the `createSelector` method in the "Reselect" library.
+       *
+       * @example
+       * const selectUserName = createSelector(state => state.name);
+       * const userName = selectUserName(formState.data);
+       *
+       * const selectActiveUsers = createSelector(
+       *   (state) => state.users,
+       *   (users) => users.filter(u => u.active)
+       * );
+       * const activeUsers = selectActiveUsers(formState.data);
+       *
+       * @param inputSelectors - One or more selectors that extract values from the source state.
+       * @param resultFn - The result function that computes the final value from the extracted inputs.
+       *                   This function is optional if have a single input selector instead of an
+       *                   array of selectors.
+       * @returns Memoized selector function.
+       */
+      <I extends Selector<Immutable<z.infer<T>>, unknown>, R>(inputSelector: I, resultFn: (input: ReturnType<I>) => R): Selector<Immutable<z.infer<T>>, R>;
+      /**
+       * A hook that creates a memoized selector over the form state data or derived data.
+       * It is similar to the `createSelector` method in the "Reselect" library.
+       *
+       * @example
+       * const selectUserName = createSelector(state => state.name);
+       * const userName = selectUserName(formState.data);
+       *
+       * const selectVisibleItems = createSelector(
+       *   [(state) => state.items, (state) => state.filter],
+       *   (items, filter) => items.filter(item => item.category === filter)
+       * );
+       * const visibleItems = selectVisibleItems(formState.data);
+       *
+       * @param inputSelectors - One or more selectors that extract values from the source state.
+       * @param resultFn - The result function that computes the final value from the extracted inputs.
+       *                   This function is optional if have a single input selector instead of an
+       *                   array of selectors.
+       * @returns Memoized selector function.
+       */
+      <I extends Selector<Immutable<z.infer<T>>, unknown>[], R>(inputSelectors: [...I], resultFn: (...inputs: SelectorResults<Immutable<z.infer<T>>, I>) => R): Selector<Immutable<z.infer<T>>, R>;
+    };
     /**
      * A hook that guards navigation while a condition over the form state holds.
      *
