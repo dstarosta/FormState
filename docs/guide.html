@@ -1883,14 +1883,14 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
           </ol>
           <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
             <li>
-              Server-returned field errors (e.g. a 422 response with
-              <code>{ email: 'Already taken' }</code>) flow through the same
-              <code>setManualError</code> / <code>asyncErrors</code> pipeline as client-side async
-              validation. Errors persist across re-renders, clear when the user edits the offending
-              field, and integrate with <code>touched</code> and <code>formStatus.valid</code> the
-              same way schema errors do. Other libraries support manual error setting but the
-              persistence semantics across submits, edits, and resets vary — verify against your
-              expected UX.
+              Server-returned errors (e.g. a 422 with <code>{ email: 'Already taken' }</code>) are
+              set as manual errors. They persist across re-renders, clear when the user edits the
+              field, and behave like schema errors — including how they affect
+              <code>touched</code> and <code>formStatus.valid</code>. You set them under any key you
+              choose — a field name, or something like <code>serverError</code> for a form-level
+              message (see <a href="#submission">Form Submission</a>). Other libraries support
+              manual error setting but the persistence semantics across submits, edits, and resets
+              vary — verify against your expected UX.
             </li>
           </ol>
           <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
@@ -2007,32 +2007,38 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
           <p>The same design choice has consequences that extend beyond the bug catalog:</p>
           <ul>
             <li>
-              <strong>State follows React's rules.</strong> <code>data.firstName</code> in a
-              <code>useEffect</code> dependency works the way the syntax suggests.
-              <strong>TanStack Form</strong> keeps state in TanStack Store, and
-              <strong>Final Form</strong> in its own external store — reads like
-              <code>form.state.values.x</code> look identical to React state but don't trigger
-              re-renders or invalidate dependency arrays. Silent footgun, especially for developers
-              still building their React mental model.
+              <p>
+                <strong>State follows React's rules.</strong> <code>data.firstName</code> in a
+                <code>useEffect</code> dependency works the way the syntax suggests.
+                <strong>TanStack Form</strong> keeps state in TanStack Store, and
+                <strong>Final Form</strong> in its own external store — reads like
+                <code>form.state.values.x</code> look identical to React state but don't trigger
+                re-renders or invalidate dependency arrays. Silent footgun, especially for
+                developers still building their React mental model.
+              </p>
             </li>
             <li>
-              <strong>Validation is deterministic.</strong> <strong>TanStack Form</strong>'s
-              per-field validators register at mount and fire on their own event slots
-              (<code>onChange</code>, <code>onBlur</code>, <code>onSubmit</code>) — which is why an
-              empty submit can light up every error at once, and individual errors can flicker as
-              you type depending on which slot ran last. <strong>FormState</strong>
-              runs the whole schema once over the canonical state on every change, so the error list
-              is a pure function of the data — same input, same errors, every time.
+              <p>
+                <strong>Validation is deterministic.</strong> <strong>TanStack Form</strong>'s
+                per-field validators register at mount and fire on their own event slots
+                (<code>onChange</code>, <code>onBlur</code>, <code>onSubmit</code>) — which is why
+                an empty submit can light up every error at once, and individual errors can flicker
+                as you type depending on which slot ran last. <strong>FormState</strong>
+                runs the whole schema once over the canonical state on every change, so the error
+                list is a pure function of the data — same input, same errors, every time.
+              </p>
             </li>
             <li>
-              <strong>Footguns are caught at lint time.</strong> <strong>FormState</strong> ships an
-              official ESLint plugin that flags misuse patterns the runtime can't catch — for
-              example, passing a <a href="#watch"><code>useWatch</code></a> return value into a hook
-              dependency array. No other form library ships an official equivalent:
-              <strong>React Hook Form</strong> has only a community-maintained plugin;
-              <strong>TanStack Form</strong> has none. The asymmetry isn't an accident — static
-              linting works best when the library has a narrow, well-defined misuse surface, which
-              schema-derived state happens to provide.
+              <p>
+                <strong>Footguns are caught at lint time.</strong> <strong>FormState</strong> ships
+                an official ESLint plugin that flags misuse patterns the runtime can't catch — for
+                example, passing a <a href="#watch"><code>useWatch</code></a> return value into a
+                hook dependency array. No other form library ships an official equivalent:
+                <strong>React Hook Form</strong> has only a community-maintained plugin;
+                <strong>TanStack Form</strong> has none. The asymmetry isn't an accident — static
+                linting works best when the library has a narrow, well-defined misuse surface, which
+                schema-derived state happens to provide.
+              </p>
             </li>
           </ul>
           <h3 id="state-slice">Form data as a state slice</h3>
@@ -2059,42 +2065,52 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
           </p>
           <ul>
             <li>
-              <strong>Context-based access to data, not just the API.</strong> Other libraries'
-              context (<code>useFormContext</code>, <code>formContext</code>) exposes the form
-              instance; you still subscribe per-field with <code>watch</code> or
-              <code>&lt;Controller&gt;</code> to get reactive values. With FormState, wrap a tree
-              with <code>formConnect</code> and any descendant calls
-              <code>useFormStateContext</code>
-              to read the form's data, status, and actions directly as a typed, subscribed slice —
-              selector-style, so reads are reactive without forcing tree-wide re-renders.
+              <p>
+                <strong>Context-based access to data, not just the API.</strong> Other libraries'
+                context (<code>useFormContext</code>, <code>formContext</code>) exposes the form
+                instance; you still subscribe per-field with <code>watch</code> or
+                <code>&lt;Controller&gt;</code> to get reactive values. With FormState, wrap a tree
+                with <code>formConnect</code> and any descendant calls
+                <code>useFormStateContext</code>
+                to read the form's data, status, and actions directly as a typed, subscribed slice —
+                selector-style, so reads are reactive without forcing tree-wide re-renders.
+              </p>
             </li>
             <li>
-              <strong>Listeners sync to other stores.</strong>
-              <code>formHooks.useListener</code> is FormState's equivalent of
-              <code>store.subscribe</code>: mirror state into a Redux slice, push it into TanStack
-              Query, write to IndexedDB, broadcast across tabs — anything with a "set" API can stay
-              in lockstep with the form.
+              <p>
+                <strong>Listeners sync to other stores.</strong>
+                <code>formHooks.useListener</code> is FormState's equivalent of
+                <code>store.subscribe</code>: mirror state into a Redux slice, push it into TanStack
+                Query, write to IndexedDB, broadcast across tabs — anything with a "set" API can
+                stay in lockstep with the form.
+              </p>
             </li>
             <li>
-              <strong>Lifecycle as a single tagged stream.</strong>
-              Listeners receive a tagged event — <code>'change'</code>, <code>'submit'</code>, and
-              so on — so the form's lifecycle becomes a substrate for features beyond validation:
-              multi-step wizards that advance on each step's submit, undo/redo by snapshotting state
-              on every change, draft persistence to sessionStorage that clears on successful submit.
-              Other libraries route change and submit through separate APIs; FormState routes both
-              through one ordered stream, so handling them stays in one place.
+              <p>
+                <strong>Lifecycle as a single tagged stream.</strong>
+                Listeners receive a tagged event — <code>'change'</code>, <code>'submit'</code>, and
+                so on — so the form's lifecycle becomes a substrate for features beyond validation:
+                multi-step wizards that advance on each step's submit, undo/redo by snapshotting
+                state on every change, draft persistence to sessionStorage that clears on successful
+                submit. Other libraries route change and submit through separate APIs; FormState
+                routes both through one ordered stream, so handling them stays in one place.
+              </p>
             </li>
             <li>
-              <strong>Replace-style updates for async data.</strong>
-              <code>formActions.replace(data)</code> swaps in new data while preserving schema
-              invariants — dirty tracking, validation, and derived state continue to work correctly
-              across the swap.
+              <p>
+                <strong>Replace-style updates for async data.</strong>
+                <code>formActions.replace(data)</code> swaps in new data while preserving schema
+                invariants — dirty tracking, validation, and derived state continue to work
+                correctly across the swap.
+              </p>
             </li>
             <li>
-              <strong>Survives lazy mounts and Suspense.</strong> Because state is schema-derived, a
-              <code>lazy()</code>-loaded or <code>&lt;Suspense&gt;</code>-wrapped field group can
-              arrive at any time — the data was there before the component, and stays there if it
-              unmounts.
+              <p>
+                <strong>Survives lazy mounts and Suspense.</strong> Because state is schema-derived,
+                a <code>lazy()</code>-loaded or <code>&lt;Suspense&gt;</code>-wrapped field group
+                can arrive at any time — the data was there before the component, and stays there if
+                it unmounts.
+              </p>
             </li>
           </ul>
           <p>Form state as data slice — examples:</p>
@@ -2136,54 +2152,71 @@ formHooks.useListener((state) =&gt; {
           </p>
           <ul>
             <li>
-              <strong>You aren't already using Zod.</strong> The schema isn't an optional resolver
-              here — it's the contract that drives data shape, derived constraints, typed paths, and
-              the async-validation pipeline. Adding Zod purely to use FormState pays Zod's bundle
-              cost without recouping it elsewhere; React Hook Form with a lightweight validator (or
-              none at all) will be smaller and simpler.
+              <p>
+                <strong>You aren't already using Zod.</strong> The schema isn't an optional resolver
+                here — it's the contract that drives data shape, derived constraints, typed paths,
+                and the async-validation pipeline. Adding Zod purely to use FormState pays Zod's
+                bundle cost without recouping it elsewhere; React Hook Form with a lightweight
+                validator (or none at all) will be smaller and simpler.
+              </p>
+              <p>
+                Yup, Valibot, Joi, ArkType, and hand-rolled validators don't plug in. React Hook
+                Form and TanStack Form are schema-agnostic and will integrate with what you already
+                use.
+              </p>
             </li>
             <li>
-              <strong>You need a validator other than Zod.</strong> Yup, Valibot, Joi, ArkType, and
-              hand-rolled validators don't plug in. React Hook Form and TanStack Form are
-              schema-agnostic and will integrate with what you already use.
+              <p>
+                <strong>You need minimum-bundle granular re-renders by default.</strong> FormState
+                re-renders the calling component on every state change unless you opt in to
+                <a href="#watch"><code>useWatch</code></a> or uncontrolled inputs. For a 100-field
+                data-entry form where every keystroke matters, React Hook Form's
+                <code>register</code>-by-default model requires less thinking to get there.
+              </p>
             </li>
             <li>
-              <strong>Your forms are mostly trivial.</strong> A login form, a search box, a
-              three-field settings panel — the abstraction cost of a schema, a hook, and a typed
-              state object outweighs the benefit. <code>useState</code> with a submit handler is
-              fine. FormState's wins compound with form complexity (many fields, async validation,
-              cross-field rules, server errors, draft persistence); below that threshold, simpler
-              tools win.
-            </li>
-            <li>
-              <strong>You need minimum-bundle granular re-renders by default.</strong> FormState
-              re-renders the calling component on every state change unless you opt in to
-              <a href="#watch"><code>useWatch</code></a> or uncontrolled inputs. For a 100-field
-              data-entry form where every keystroke matters, React Hook Form's
-              <code>register</code>-by-default model requires less thinking to get there.
-            </li>
-            <li>
-              <strong>You expect form state and application state to be the same thing.</strong>
-              FormState owns form-editing state — masked strings, empty-vs-undefined, dirty/touched,
-              validation status — using its own internal store. Like React Query owning server-cache
-              state alongside Zustand, FormState coexists with Redux, MobX, Zustand, or any external
-              store: a one-line <a href="#listener"><code>useListener</code></a> mirrors every valid
-              change into the external store via <code>schema.toObject()</code>, which converts the
-              form representation (empty strings, raw mask values, form-string dates) into the
-              API/business representation (<code>undefined</code>, unmasked values,
-              <code>Date</code>
-              objects). The form holds the editing shape; the external store holds the canonical
-              shape; the schema is the bridge. If instead you want a single store to hold both
-              representations and drive the form directly without a bridge, FormState's
-              schema-derived model isn't the right fit.
+              <p>
+                <strong>You expect form state and application state to be the same thing.</strong>
+                FormState owns form-editing state — masked strings, empty-vs-undefined,
+                dirty/touched, validation status — using its own internal store. Like React Query
+                owning server-cache state alongside Zustand, FormState coexists with Redux, MobX,
+                Zustand, or any external store.
+              </p>
+              <p>
+                A one-line <a href="#listener"><code>useListener</code></a> mirrors every valid
+                change into the external store via <code>schema.toObject()</code>. That call
+                translates the "form" representation into the "API/business" representation, field
+                by field:
+              </p>
+              <ul>
+                <li>
+                  empty <code>formNumber</code>, <code>formBoolean</code>, etc. &rarr;
+                  <code>undefined</code> — the form holds <code>''</code>, the type doesn't
+                </li>
+                <li>
+                  empty <code>formString</code> &rarr; <code>undefined</code>, only with
+                  <code>allowEmpty: false</code>
+                </li>
+                <li><code>formDate</code> strings &rarr; <code>Date</code> objects</li>
+                <li>raw mask values &rarr; unmasked values</li>
+              </ul>
+              <p>
+                In short: the form holds the editing shape, the external store holds the canonical
+                shape, and the schema is the bridge between them. If instead you want a single store
+                to hold both representations and drive the form directly &mdash; with no bridge
+                &mdash; then FormState's schema-derived model isn't the right fit.
+              </p>
             </li>
           </ul>
-          <p>
-            None of the above is a flaw to apologize for — they're consequences of the bets the
-            library makes. Forms that fit those bets get a meaningfully better developer experience
-            than the generic libraries can provide. Forms that don't fit them are better served by
-            picking a library whose bets line up with the constraints.
-          </p>
+          <div class="callout callout-info">
+            <div class="callout-label">In short</div>
+            <p>
+              None of the above is a flaw to apologize for — they're consequences of the bets the
+              library makes. Forms that fit those bets get a meaningfully better developer
+              experience than the generic libraries can provide. Forms that don't fit them are
+              better served by picking a library whose bets line up with the constraints.
+            </p>
+          </div>
         </section>
         <section class="section" id="license">
           <div class="section-eyebrow">Getting Started</div>
@@ -3532,7 +3565,7 @@ formState.errors.get((path) =&gt; path.info.age)           // string | undefined
 formState.errors.get((path) =&gt; path.notes[index].text)  // string | undefined
 
 // Manual errors set via setError()
-formState.errors.getManual('_serverError')
+formState.errors.getManual('serverError')
 
 // All current errors
 formState.errors.getAll()    // string[]  — all messages
@@ -4364,7 +4397,8 @@ const handleSubmit = formHandlers.handleSubmit(
       });
       return true; // success
     } catch (err) {
-      return { _serverError: 'Something went wrong. Please try again.' };
+      // Surface a form-level error under any key you choose (here: serverError)
+      return { serverError: 'Something went wrong. Please try again.' };
     }
   },
   {
@@ -4768,6 +4802,11 @@ const onSubmit = async (state: SubmitState&lt;FormSchema&gt;, formData: FormData
             Set errors outside of schema validation — server errors, async uniqueness checks, or
             cross-field constraints — using <code>formActions.setError</code>.
           </p>
+          <p>
+            The key is yours to choose. Use a field name to attach the error to that field, or any
+            other string (like <code>serverError</code>) for a form-level message that isn't tied to
+            one input.
+          </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
             <pre><code class="language-tsx">// Set by field key
@@ -4777,7 +4816,7 @@ formActions.setError('email', 'This email address is already registered');
 formActions.setError((path) =&gt; path.notes[index].text, '666 is not allowed as note text');
 
 // Set a form-level error (arbitrary string key)
-formActions.setError('_serverError', 'Something went wrong. Please try again.');
+formActions.setError('serverError', 'Something went wrong. Please try again.');
 
 // Clear a specific manual error (pass null, undefined, or call with one argument)
 formActions.setError('email', null);
@@ -4788,15 +4827,15 @@ formActions.clearManualErrors();
 
 // Clear only errors matching a predicate
 formActions.clearManualErrors({
-  predicate: (key) =&gt; key.startsWith('_'),
+  predicate: (key) =&gt; key === 'serverError',
 });</code></pre>
           </div>
           <p>Read manual errors with <code>errors.getManual(key)</code>:</p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-            <pre><code class="language-tsx">{formState.errors.getManual('_serverError') &amp;&amp; (
+            <pre><code class="language-tsx">{formState.errors.getManual('serverError') &amp;&amp; (
   &lt;div className="form-error"&gt;
-    {formState.errors.getManual('_serverError')}
+    {formState.errors.getManual('serverError')}
   &lt;/div&gt;
 )}</code></pre>
           </div>
@@ -6213,14 +6252,14 @@ export default function ContactForm() {
       await submitContact(state.data);
       return true;
     } catch (ex) {
-      return { _serverError: ex instanceof Error ? ex.message : "Server error" };
+      return { serverError: ex instanceof Error ? ex.message : "Server error" };
     }
   });
 
   return (
     &lt;Form action={handleSubmit}&gt;
-      {errors.getManual("_serverError") &amp;&amp; (
-        &lt;p className="error"&gt;{errors.getManual("_serverError")}&lt;/p&gt;
+      {errors.getManual("serverError") &amp;&amp; (
+        &lt;p className="error"&gt;{errors.getManual("serverError")}&lt;/p&gt;
       )}
 
       &lt;label&gt;
@@ -6405,7 +6444,7 @@ export default function ContactForm() {
 
     if (!res.ok) {
       const error = await res.json() as Error;
-      return { _serverError: error?.message ?? "Server error" };
+      return { serverError: error?.message ?? "Server error" };
     }
 
     return true;
@@ -6413,8 +6452,8 @@ export default function ContactForm() {
 
   return (
     &lt;Form action={handleSubmit}&gt;
-      {errors.getManual("_serverError") &amp;&amp; (
-        &lt;p className="error"&gt;{errors.getManual("_serverError")}&lt;/p&gt;
+      {errors.getManual("serverError") &amp;&amp; (
+        &lt;p className="error"&gt;{errors.getManual("serverError")}&lt;/p&gt;
       )}
 
       &lt;label&gt;
@@ -6629,7 +6668,7 @@ export default function ContactForm() {
 
     if (!res.ok) {
       const error = (await res.json()) as Error;
-      return { _serverError: error?.message ?? "Server error" };
+      return { serverError: error?.message ?? "Server error" };
     }
 
     return true;
@@ -6637,8 +6676,8 @@ export default function ContactForm() {
 
   return (
     &lt;Form action={handleSubmit}&gt;
-      {errors.getManual("_serverError") &amp;&amp; (
-        &lt;p className="error"&gt;{errors.getManual("_serverError")}&lt;/p&gt;
+      {errors.getManual("serverError") &amp;&amp; (
+        &lt;p className="error"&gt;{errors.getManual("serverError")}&lt;/p&gt;
       )}
 
       &lt;label&gt;
@@ -6839,7 +6878,7 @@ function ProfileForm({ userId }: { userId: string }) {
         await mutateAsync(profileSchema.toObject(submitState.data));
         return true;
       } catch (err) {
-        return { _serverError: err instanceof Error ? err.message : 'Save failed.' };
+        return { serverError: err instanceof Error ? err.message : 'Save failed.' };
       }
     },
     {
@@ -6851,7 +6890,7 @@ function ProfileForm({ userId }: { userId: string }) {
 
   return (
     &lt;Form action={handleSubmit}&gt;
-      &lt;FormError error={formState.errors.getManual('_serverError')} /&gt;
+      &lt;FormError error={formState.errors.getManual('serverError')} /&gt;
 
       &lt;label&gt;
         {formState.descriptions.name}
@@ -7013,7 +7052,7 @@ const handleSubmit = formHandlers.handleSubmit(
       return true;                         // signals success to formStatus
     } catch (err) {
       // Returning an object surfaces it as a manual error in the form
-      return { _serverError: err instanceof Error ? err.message : 'Save failed.' };
+      return { serverError: err instanceof Error ? err.message : 'Save failed.' };
     }
   }
 );</code></pre>
@@ -7048,13 +7087,13 @@ const handleSubmit = formHandlers.handleSubmit(
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">// Form-level error — display it near the submit button or at the top
-return { _serverError: 'The server is unavailable. Try again later.' };
+return { serverError: 'The server is unavailable. Try again later.' };
 
 // Field-level error returned from the server
 return { email: 'This email is already registered.' };
 
 // Read either with getManual() — schema errors use errors.name, errors.email etc.
-&lt;FormError error={formState.errors.getManual('_serverError')} /&gt;</code></pre>
+&lt;FormError error={formState.errors.getManual('serverError')} /&gt;</code></pre>
           </div>
           <div class="callout callout-info">
             <div class="callout-label">Note</div>
@@ -7195,6 +7234,76 @@ function AppForm() {
             </p>
             <p>You do not need it for SPAs or TanStack Start.</p>
           </div>
+
+          <h3>Plugin options</h3>
+          <p>
+            Pass an options object to <code>formStateTools()</code> to control where the dock is
+            injected and how it behaves. Every option is optional; omit them to accept the defaults.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">ts</span></div>
+            <pre><code class="language-ts">formStateTools({
+  collapsed: false,
+  captureErrors: 'console',
+  ignoreErrorPatterns: [/ResizeObserver/, 'Network request failed'],
+})</code></pre>
+          </div>
+          <table class="prop-table">
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>enabled</code></td>
+                <td><code>boolean</code></td>
+                <td>dev only</td>
+                <td class="prop-desc">
+                  Overrides the automatic dev-only behavior. Set <code>true</code> to inject the
+                  dock even in non-dev builds, or <code>false</code> to turn the plugin off
+                  entirely.
+                </td>
+              </tr>
+              <tr>
+                <td><code>clientEntry</code></td>
+                <td><code>string</code></td>
+                <td>auto-detected</td>
+                <td class="prop-desc">
+                  A substring matched against module ids to locate your app's client-entry module.
+                  Only needed for SSR setups whose client entry is not auto-detected. Must name a
+                  JavaScript module, not an HTML file.
+                </td>
+              </tr>
+              <tr>
+                <td><code>collapsed</code></td>
+                <td><code>boolean</code></td>
+                <td><code>true</code></td>
+                <td class="prop-desc">Whether the dock starts in its collapsed state.</td>
+              </tr>
+              <tr>
+                <td><code>captureErrors</code></td>
+                <td><code>'all' | 'console' | 'thrown' | 'none'</code></td>
+                <td><code>'all'</code></td>
+                <td class="prop-desc">
+                  Which kinds of errors the dock surfaces as an on-screen toast: thrown errors,
+                  <code>console.error</code> calls, both, or none.
+                </td>
+              </tr>
+              <tr>
+                <td><code>ignoreErrorPatterns</code></td>
+                <td><code>(string | RegExp)[]</code></td>
+                <td><code>[]</code></td>
+                <td class="prop-desc">
+                  Patterns for errors the dock should not show. An error is ignored when its message
+                  matches any of these patterns. <code>RegExp</code> patterns keep their flags.
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
           <h3>What it looks like</h3>
           <p>
