@@ -73,9 +73,10 @@ export type AsyncCheckMeta = {
   skipWhen: ((item: unknown, prevItem: unknown) => boolean) | undefined;
   getPrevAt: (location: string) => unknown;
   commitAt: (location: string, value: unknown) => void;
+  clearPrev: (location: string) => void;
+  pathKey: string;
   submitOnly: boolean;
   setPhase: (phase: 'change' | 'submit') => void;
-  /** Synchronous gate the Zod `when` closure delegates to. */
   whenGate: (payload: { value: unknown; issues: unknown[] }) => boolean;
   runPredicate: (value: unknown) => Promise<boolean>;
 };

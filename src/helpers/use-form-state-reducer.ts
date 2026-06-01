@@ -1,12 +1,16 @@
 import { useActionState, useCallback, useRef } from 'react';
 import * as z from 'zod/mini';
 
-import type { FormAction, FormMutableState } from '../types/form-types';
+import type { AsyncCheckMetaMap, FormAction, FormMutableState } from '../types/form-types';
 import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 import { formatErrors, normalizeManualError } from './error-formatter';
 import { dotPathGet, dotPathSet } from './dot-path';
 import { deepEqual } from './deep-equal';
-import { coerceFormData, collectActiveAsyncCheckPaths } from './schema-visitor';
+import {
+  coerceFormData,
+  collectActiveAsyncCheckPaths,
+  invalidateAsyncCheckPrevByPath,
+} from './schema-visitor';
 import {
   composeErrors,
   createState,
@@ -23,7 +27,8 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
   state: FormMutableState<z.infer<T>>,
   validateBeforeSubmit: boolean,
   validateOnMount: boolean,
-  errorMessageSeparator: string
+  errorMessageSeparator: string,
+  asyncMetaMap: AsyncCheckMetaMap
 ) {
   type State = z.infer<T>;
 
@@ -208,11 +213,15 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
               ? { ...prevState.touched, [pathNotation]: true }
               : prevState.touched;
 
+          const isPrunedKey = (key: string) =>
+            key === pathNotation || key.startsWith(`${pathNotation}.`);
+
+          if (shouldValidate) {
+            invalidateAsyncCheckPrevByPath(schema, isPrunedKey, asyncMetaMap);
+          }
+
           const asyncErrors = shouldValidate
-            ? pruneAsyncErrors(
-                prevState.asyncErrors,
-                (key) => key === pathNotation || key.startsWith(`${pathNotation}.`)
-              )
+            ? pruneAsyncErrors(prevState.asyncErrors, isPrunedKey)
             : prevState.asyncErrors;
 
           const errors = shouldValidate
@@ -635,7 +644,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         }
       }
     },
-    [schema, errorMessageSeparator, validateBeforeSubmit, validateOnMount]
+    [schema, errorMessageSeparator, validateBeforeSubmit, validateOnMount, asyncMetaMap]
   );
 
   return useActionState<FormMutableState<State>, FormAction<State>>(reducer, state);

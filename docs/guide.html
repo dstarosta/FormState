@@ -4458,12 +4458,11 @@ formActions.blur();</code></pre>
               <tr>
                 <td class="prop-desc">React 19 post-submit reset prevention <sup>1</sup></td>
                 <td class="prop-desc">
-                  Includes <code>&lt;FormResetBlocker&gt;</code> automatically — form fields are not
-                  cleared after a form action specified in the <code>action</code> prop completes
+                  Includes <code>&lt;FormResetBlocker&gt;</code> automatically
                 </td>
                 <td class="prop-desc">
                   Must place <code>&lt;FormResetBlocker&gt;</code> inside the
-                  <code>&lt;form&gt;</code> manually to support form actions
+                  <code>&lt;form&gt;</code> manually
                 </td>
               </tr>
               <tr>
@@ -4520,9 +4519,9 @@ formActions.blur();</code></pre>
           </table>
           <ol class="prop-desc" style="margin-top: 1rem; padding-left: 1.25rem">
             <li>
-              React 19 resets form fields after the submit, which is undesirable when the form is
-              driven by client-side state. <code>&lt;FormResetBlocker&gt;</code> intercepts and
-              cancels that reset.
+              React 19 resets unmanaged form fields after the submit action, which is undesirable
+              when the form is driven by client-side state.
+              <code>&lt;FormResetBlocker&gt;</code> intercepts and cancels that reset.
             </li>
           </ol>
           <ol class="prop-desc" start="2" style="margin-top: 0; padding-left: 1.25rem">

@@ -4,6 +4,7 @@ import { act, cleanup, render, renderHook, screen } from '@testing-library/react
 import { renderToString } from 'react-dom/server';
 
 import type {
+  AsyncCheckMetaMap,
   DeepPartial,
   FormMutableState,
   FormState,
@@ -28,8 +29,10 @@ import {
   collectAsyncCheckPaths,
   commitActiveAsyncCheckPaths,
   getSchemaType,
+  invalidateAsyncCheckPrevByPath,
   isAsyncSchema,
   setAsyncCheckPhase,
+  withMetaMap,
 } from './schema-visitor';
 import { isValidDate } from './date-formatter';
 import {
@@ -64,6 +67,8 @@ vi.mock('react-dom', async (importOriginal) => {
 
 // Error Formatter and Schema Visitor have no public functions and are extensively tested
 // by the "useFormState" tests.
+
+const skipWhenPrevExists = (_item: unknown, prevItem: unknown) => prevItem !== undefined;
 
 describe('helpers', () => {
   describe('state manager', () => {
@@ -1030,6 +1035,118 @@ describe('helpers', () => {
           collectActiveAsyncCheckPaths(schema, { name: 'Mike', email: 'a@b.c' }, 'submit')
         ).toStrictEqual(['name', 'email']);
       });
+    });
+  });
+
+  describe('invalidateAsyncCheckPrevByPath', () => {
+    it('clears committed prev for a check whose fullPath matches (object-level, empty location)', () => {
+      const schema = z.object({ name: z.formString({ required: true }) }).check(
+        z.validateAsync(() => Promise.resolve(true), {
+          path: ['name'],
+          error: 'nope',
+          skipWhen: skipWhenPrevExists,
+        })
+      );
+      const metaMap: AsyncCheckMetaMap = new Map();
+
+      commitActiveAsyncCheckPaths(schema, { name: 'Mike' }, 'submit', metaMap);
+
+      expect(
+        collectActiveAsyncCheckPaths(schema, { name: 'Mike' }, 'submit', metaMap)
+      ).toStrictEqual([]);
+
+      invalidateAsyncCheckPrevByPath(schema, (key) => key === 'name', metaMap);
+
+      expect(
+        collectActiveAsyncCheckPaths(schema, { name: 'Mike' }, 'submit', metaMap)
+      ).toStrictEqual(['name']);
+    });
+
+    it('clears committed prev for a check whose fullPath joins location and suffix with a dot', () => {
+      const schema = z.object({
+        notes: z.array(
+          z.object({
+            text: z.formString({ required: true }).check(
+              z.validateAsync(() => Promise.resolve(true), {
+                error: 'nope',
+                skipWhen: skipWhenPrevExists,
+              })
+            ),
+          })
+        ),
+      });
+      const metaMap: AsyncCheckMetaMap = new Map();
+      const data = { notes: [{ text: 'a' }] };
+
+      commitActiveAsyncCheckPaths(schema, data, 'submit', metaMap);
+      expect(collectActiveAsyncCheckPaths(schema, data, 'submit', metaMap)).toStrictEqual([]);
+
+      invalidateAsyncCheckPrevByPath(schema, (key) => key === 'notes.0.text', metaMap);
+
+      expect(collectActiveAsyncCheckPaths(schema, data, 'submit', metaMap)).toStrictEqual([
+        'notes.0.text',
+      ]);
+    });
+
+    it('handles an object-level check with no path (location and suffix both empty)', () => {
+      const schema = z.object({ name: z.formString({ required: true }) }).check(
+        z.validateAsync(() => Promise.resolve(true), {
+          error: 'nope',
+          skipWhen: skipWhenPrevExists,
+        })
+      );
+      const metaMap: AsyncCheckMetaMap = new Map();
+      const data = { name: 'Mike' };
+
+      commitActiveAsyncCheckPaths(schema, data, 'submit', metaMap);
+      expect(collectActiveAsyncCheckPaths(schema, data, 'submit', metaMap)).toStrictEqual([]);
+
+      invalidateAsyncCheckPrevByPath(schema, (key) => key === '', metaMap);
+
+      expect(collectActiveAsyncCheckPaths(schema, data, 'submit', metaMap)).toStrictEqual(['']);
+    });
+
+    it('leaves committed prev untouched when the predicate does not match', () => {
+      const schema = z.object({ name: z.formString({ required: true }) }).check(
+        z.validateAsync(() => Promise.resolve(true), {
+          path: ['name'],
+          error: 'nope',
+          skipWhen: skipWhenPrevExists,
+        })
+      );
+      const metaMap: AsyncCheckMetaMap = new Map();
+      const data = { name: 'Mike' };
+
+      commitActiveAsyncCheckPaths(schema, data, 'submit', metaMap);
+      expect(collectActiveAsyncCheckPaths(schema, data, 'submit', metaMap)).toStrictEqual([]);
+
+      invalidateAsyncCheckPrevByPath(schema, (key) => key === 'other.field', metaMap);
+
+      expect(collectActiveAsyncCheckPaths(schema, data, 'submit', metaMap)).toStrictEqual([]);
+    });
+
+    it('also clears the whenGate `prevValues` cache so Zod refines re-run after invalidation', async () => {
+      const predicate = vi.fn(() => Promise.resolve(true));
+
+      const schema = z.object({ name: z.formString({ required: true }) }).check(
+        z.validateAsync(predicate, {
+          path: ['name'],
+          error: 'nope',
+          skipWhen: (_item, prev) => prev !== undefined,
+        })
+      );
+      const metaMap: AsyncCheckMetaMap = new Map();
+      const data = { name: 'Mike' };
+
+      await withMetaMap(metaMap, () => schema.safeParseAsync(data));
+      expect(predicate).toHaveBeenCalledTimes(1);
+
+      await withMetaMap(metaMap, () => schema.safeParseAsync(data));
+      expect(predicate).toHaveBeenCalledTimes(1);
+
+      invalidateAsyncCheckPrevByPath(schema, (key) => key === 'name', metaMap);
+      await withMetaMap(metaMap, () => schema.safeParseAsync(data));
+      expect(predicate).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -2587,7 +2704,9 @@ describe('helpers', () => {
     it('discards an asyncErrors action with a stale request id', () => {
       const initial = buildInitialState();
 
-      const { result } = renderHook(() => useFormStateReducer(schema, initial, true, false, '|'));
+      const { result } = renderHook(() =>
+        useFormStateReducer(schema, initial, true, false, '|', new Map() as AsyncCheckMetaMap)
+      );
 
       const [stateBefore, dispatch] = result.current;
 
@@ -2615,7 +2734,9 @@ describe('helpers', () => {
     it('applies an asyncErrors action whose request id matches the current one', () => {
       const initial = buildInitialState();
 
-      const { result } = renderHook(() => useFormStateReducer(schema, initial, true, false, '|'));
+      const { result } = renderHook(() =>
+        useFormStateReducer(schema, initial, true, false, '|', new Map() as AsyncCheckMetaMap)
+      );
 
       const [stateBefore, dispatch] = result.current;
 

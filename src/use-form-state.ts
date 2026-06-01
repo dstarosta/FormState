@@ -291,13 +291,17 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The set to dedupe "useCallback" warnings on debounce.
   const debounceCallbackWarning = useRef(new Set<string>());
 
+  // Per-form storage for `validateAsync` closure state.
+  const [asyncMetaMap] = useState<AsyncCheckMetaMap>(() => new Map());
+
   // The main form state reducer.
   const [formState, dispatch] = useFormStateReducer(
     schema,
     state,
     validateBeforeSubmit,
     validateOnMount,
-    errorMessageSeparator
+    errorMessageSeparator,
+    asyncMetaMap
   );
 
   // Ref to avoid stale closures in validate/handleSubmit callbacks.
@@ -360,9 +364,6 @@ export function useFormState<T extends z.ZodMiniObject>(
   // Snapshot of the form state from before the change that started the current async burst.
   const prevAsyncSnapshotRef = useRef<ReturnType<typeof snapshotAsyncListenerState> | null>(null);
 
-  // Per-form storage for `validateAsync` closure state.
-  const asyncMetaMapRef = useRef<AsyncCheckMetaMap>(new Map());
-
   // Seed the prev-snapshot at mount so the first change-driven burst has a pre-change ref.
   useIsomorphicLayoutEffect(() => {
     if (prevAsyncSnapshotRef.current === null) {
@@ -422,12 +423,16 @@ export function useFormState<T extends z.ZodMiniObject>(
     const requestId = formState.asyncRequestId;
     const triggerField = formStateRef.current.asyncTrigger ?? '';
 
-    const metaMap = asyncMetaMapRef.current;
-    setAsyncCheckPhase(schema, 'change', metaMap);
+    setAsyncCheckPhase(schema, 'change', asyncMetaMap);
 
-    const activePaths = collectActiveAsyncCheckPaths(schema, formState.data, 'change', metaMap);
+    const activePaths = collectActiveAsyncCheckPaths(
+      schema,
+      formState.data,
+      'change',
+      asyncMetaMap
+    );
 
-    commitActiveAsyncCheckPaths(schema, formState.data, 'change', metaMap);
+    commitActiveAsyncCheckPaths(schema, formState.data, 'change', asyncMetaMap);
 
     let cancelled = false;
 
@@ -485,7 +490,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     };
 
-    withMetaMap(metaMap, () => schema.safeParseAsync(formState.data))
+    withMetaMap(asyncMetaMap, () => schema.safeParseAsync(formState.data))
       .then((result) => {
         if (cancelled) {
           return;
@@ -539,6 +544,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     changeListeners,
     snapshotAsyncListenerState,
     drainPendingValidating,
+    asyncMetaMap,
   ]);
 
   // Registers listener callbacks.
@@ -1252,18 +1258,9 @@ export function useFormState<T extends z.ZodMiniObject>(
     [schema, errorMessageSeparator, dispatch]
   );
 
-  // The memoized "validateAsync" function.
-  const validateAsync = useCallback(async (): Promise<boolean> => {
-    const metaMap = asyncMetaMapRef.current;
-    const requestId = formStateRef.current.asyncRequestId;
-
-    // Only fire `asyncValidating` if there isn't already an in-flight burst.
-    const ownsBurst = !asyncBurstActiveRef.current;
-
-    const fireValidatingEvent = (
-      type: 'asyncValidating' | 'asyncValidated',
-      paths: readonly string[]
-    ) => {
+  // Fires an `asyncValidating` / `asyncValidated` event.
+  const fireAsyncListenerEvent = useCallback(
+    (type: 'asyncValidating' | 'asyncValidated', paths: readonly string[]) => {
       if (changeListeners.size === 0 || paths.length === 0) {
         return;
       }
@@ -1281,23 +1278,42 @@ export function useFormState<T extends z.ZodMiniObject>(
           });
         }
       }
-    };
+    },
+    [changeListeners, snapshotAsyncListenerState]
+  );
 
-    const { activePaths, result } = await runSubmitPhaseParse(
-      schema,
-      formStateRef.current.data,
-      metaMap,
-      (collected) => {
-        if (ownsBurst) {
-          asyncBurstActiveRef.current = true;
-          fireValidatingEvent('asyncValidating', collected);
+  // The memoized "validateAsync" function.
+  const validateAsync = useCallback(async (): Promise<boolean> => {
+    const requestId = formStateRef.current.asyncRequestId;
+
+    // Only fire `asyncValidating` if there isn't already an in-flight burst.
+    const ownsBurst = !asyncBurstActiveRef.current;
+
+    let activePaths: readonly string[] = [];
+    let freshAsyncErrors: Record<keyof State | '', string | undefined>;
+
+    try {
+      const parsed = await runSubmitPhaseParse(
+        schema,
+        formStateRef.current.data,
+        asyncMetaMap,
+        (collected) => {
+          activePaths = collected;
+          if (ownsBurst) {
+            asyncBurstActiveRef.current = true;
+            fireAsyncListenerEvent('asyncValidating', collected);
+          }
         }
-      }
-    );
+      );
+      activePaths = parsed.activePaths;
+      freshAsyncErrors = formatErrors<State>(parsed.result.error, errorMessageSeparator);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error && error.message ? error.message : 'Async validation failed.';
+      freshAsyncErrors = { '': message } as Record<keyof State | '', string | undefined>;
+    }
 
     const superseded = requestId !== formStateRef.current.asyncRequestId;
-
-    const freshAsyncErrors = formatErrors<State>(result.error, errorMessageSeparator);
 
     const asyncErrors = mergeAsyncErrors(
       formStateRef.current.asyncErrors,
@@ -1318,7 +1334,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       asyncBurstActiveRef.current = false;
 
       if (!superseded) {
-        fireValidatingEvent('asyncValidated', activePaths);
+        fireAsyncListenerEvent('asyncValidated', activePaths);
       }
     }
 
@@ -1329,7 +1345,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       Object.keys(mergedErrors).length === 0 &&
       Object.keys(formStateRef.current.manualErrors).length === 0
     );
-  }, [schema, errorMessageSeparator, dispatch, changeListeners, snapshotAsyncListenerState]);
+  }, [schema, errorMessageSeparator, dispatch, fireAsyncListenerEvent, asyncMetaMap]);
 
   // The memoized "handleReset" function.
   const handleReset = useCallback(
@@ -1372,20 +1388,34 @@ export function useFormState<T extends z.ZodMiniObject>(
 
         try {
           const currentState = formStateRef.current;
-          const metaMap = asyncMetaMapRef.current;
           const requestId = currentState.asyncRequestId;
 
-          const { activePaths, result: safeData } = await runSubmitPhaseParse(
-            schema,
-            currentState.data,
-            metaMap
-          );
+          let activePaths: readonly string[] = [];
+          let errors: Record<keyof State | '', string | undefined>;
+
+          try {
+            const parsed = await runSubmitPhaseParse(
+              schema,
+              currentState.data,
+              asyncMetaMap,
+              (collected) => {
+                activePaths = collected;
+                fireAsyncListenerEvent('asyncValidating', collected);
+              }
+            );
+            activePaths = parsed.activePaths;
+            errors = formatErrors<State>(parsed.result.error, errorMessageSeparator);
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error && error.message ? error.message : 'Async validation failed.';
+            errors = { '': message } as Record<keyof State | '', string | undefined>;
+          }
 
           if (requestId !== formStateRef.current.asyncRequestId) {
             return;
           }
 
-          const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
+          fireAsyncListenerEvent('asyncValidated', activePaths);
 
           const mergedAsyncErrors = mergeAsyncErrors(
             formStateRef.current.asyncErrors,
@@ -1487,7 +1517,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         }
       };
     },
-    [schema, errorMessageSeparator, setIsSubmitting, dispatch]
+    [schema, errorMessageSeparator, setIsSubmitting, dispatch, fireAsyncListenerEvent, asyncMetaMap]
   );
 
   // The memoized "reset" function.

@@ -998,6 +998,11 @@ export function validateAsync<T>(
       commitAt: (location, value) => {
         prevByLocation.set(location, value as T);
       },
+      clearPrev: (location) => {
+        prevByLocation.delete(location);
+        prevValues.delete(pathKey);
+      },
+      pathKey,
       submitOnly,
       setPhase: (next) => {
         phase = next;

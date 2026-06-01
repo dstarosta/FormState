@@ -783,6 +783,29 @@ export const setAsyncCheckPhase = (
   setAsyncNestedPhase(schema, phase, metaMap);
 };
 
+export const invalidateAsyncCheckPrevByPath = (
+  schema: z.ZodMiniType,
+  isInvalidatedKey: (key: string) => boolean,
+  metaMap: AsyncCheckMetaMap
+): void => {
+  walkAsyncChecks(schema, '', undefined, (check, location) => {
+    const meta = getAsyncCheckMeta(check, metaMap);
+
+    // Unreachable guard
+    /* v8 ignore if -- @preserve */
+    if (!meta) {
+      return;
+    }
+
+    const suffix = meta.pathKey;
+    const fullPath = location && suffix ? `${location}.${suffix}` : location || suffix;
+
+    if (isInvalidatedKey(fullPath)) {
+      meta.clearPrev(location);
+    }
+  });
+};
+
 export const registerAsyncCheckFactory = (
   check: AsyncCheck,
   factory: () => AsyncCheckMeta

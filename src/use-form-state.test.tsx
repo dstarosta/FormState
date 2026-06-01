@@ -2591,7 +2591,6 @@ describe('useFormState', () => {
 
         expect(result.current.errors.name).toBe('Validation error');
 
-        // Submit again WITHOUT changing data. The submitOnly async error must persist.
         await act(async () => {
           await submit(new FormData());
         });
@@ -2603,6 +2602,96 @@ describe('useFormState', () => {
         expect(onSuccess).not.toHaveBeenCalled();
         expect(result.current.errors.name).toBe('Validation error');
         expect(result.current.formStatus.valid).toBe(false);
+      });
+
+      it('REPRO: re-runs a submitOnly check when a round-trip change restores the previously-committed value', async () => {
+        const PRIORITY_TYPE = 2;
+
+        type FormShape = { priority: boolean | ''; notes: { typeId: number | '' }[] };
+
+        const submitSchema = z
+          .object({
+            priority: z.formBoolean(),
+            notes: z.array(z.object({ typeId: z.formNumber({ required: true }) })),
+          })
+          .check(
+            z.validateAsync(
+              (data: FormShape) => {
+                const hasPriorityType = data.notes.some((n) => n.typeId === PRIORITY_TYPE);
+                return Promise.resolve(Boolean(data.priority) || !hasPriorityType);
+              },
+              {
+                path: ['priority'],
+                error: 'Priority must be set to allow priority notes.',
+                submitOnly: true,
+                skipWhen: (data: FormShape, prevData?: FormShape) => {
+                  const hasPriorityType = data.notes.some((n) => n.typeId === PRIORITY_TYPE);
+                  const prevHasPriorityType = prevData?.notes.some(
+                    (n) => n.typeId === PRIORITY_TYPE
+                  );
+                  return (
+                    data.priority === prevData?.priority && hasPriorityType === prevHasPriorityType
+                  );
+                },
+              }
+            )
+          );
+
+        const onSuccess = vi.fn();
+        const onError = vi.fn();
+
+        const Component = () => {
+          const {
+            formState: { errors },
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, {
+            initialData: { priority: true, notes: [{ typeId: PRIORITY_TYPE }] },
+          });
+          return { errors, change, handleSubmit };
+        };
+        const { result } = renderHook(() => Component());
+        const submit = result.current.handleSubmit(() => Promise.resolve(true), {
+          onSuccess,
+          onError,
+        });
+
+        // 1. Submit with priority=true -> succeeds.
+        await act(async () => {
+          await submit(new FormData());
+        });
+        expect(onSuccess).toHaveBeenCalledTimes(1);
+        expect(onError).not.toHaveBeenCalled();
+
+        // 2. Uncheck priority -> submit fails.
+        act(() => {
+          result.current.change('priority', false);
+        });
+        await act(async () => {
+          await submit(new FormData());
+        });
+        expect(result.current.errors.priority).toBe(
+          'Priority must be set to allow priority notes.'
+        );
+        expect(onError).toHaveBeenCalledTimes(1);
+
+        // 3. Toggle priority true then back to false (round-trip).
+        act(() => {
+          result.current.change('priority', true);
+        });
+        act(() => {
+          result.current.change('priority', false);
+        });
+
+        // 4. Submit again -> the check must still fail
+        onSuccess.mockClear();
+        await act(async () => {
+          await submit(new FormData());
+        });
+        expect(onSuccess).not.toHaveBeenCalled();
+        expect(result.current.errors.priority).toBe(
+          'Priority must be set to allow priority notes.'
+        );
       });
 
       it('preserves a submitOnly async error across 2x submits when a prior change ran the async pipeline', async () => {
@@ -3632,6 +3721,457 @@ describe('useFormState', () => {
         );
         expect(validatingPaths).toStrictEqual(new Set(['email', 'name']));
         expect(validatedPaths).toStrictEqual(new Set(['email', 'name']));
+      });
+
+      it('fires asyncValidating / asyncValidated during handleSubmit, including submitOnly checks', async () => {
+        type SubmitEventData = { name: string };
+        const events: StateChangeEvent<SubmitEventData>[] = [];
+        const listener = vi.fn((event: StateChangeEvent<SubmitEventData>) => {
+          events.push(event);
+        });
+
+        const submitSchema = z
+          .object({
+            name: z
+              .formString({ required: true })
+              .check(z.validateAsync(() => Promise.resolve(true), 'name failed')),
+          })
+          .check(
+            z.validateAsync((data: { name: string }) => Promise.resolve(data.name !== 'bad'), {
+              path: ['name'],
+              error: 'submitOnly error',
+              submitOnly: true,
+            })
+          );
+
+        const Component = () => {
+          const {
+            formHandlers: { handleSubmit },
+            formHooks: { useListener },
+          } = useFormState(submitSchema, { initialData: { name: 'Mike' } });
+          useListener(listener);
+          return { handleSubmit };
+        };
+        const { result } = renderHook(() => Component());
+
+        await act(async () => {
+          await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+        });
+
+        const asyncEvents = events.filter(
+          (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+        );
+
+        expect(asyncEvents.some((evt) => evt.type === 'asyncValidating')).toBe(true);
+        expect(asyncEvents.some((evt) => evt.type === 'asyncValidated')).toBe(true);
+
+        const validatedPaths = new Set(
+          asyncEvents.filter((evt) => evt.type === 'asyncValidated').map((evt) => evt.schemaPath)
+        );
+        // Both the regular async check and the submit-only one fire on submit.
+        expect(validatedPaths.has('name')).toBe(true);
+      });
+
+      describe('handleSubmit-triggered async events (mirror of change-phase coverage)', () => {
+        it('exposes schemaPath with the dot-path of the async check on submit', async () => {
+          const events: AsyncEvent[] = [];
+          const listener = vi.fn((event: AsyncEvent) => {
+            events.push(event);
+          });
+          const asyncSchema = buildAsyncSchema(new Set(['Mike']));
+
+          const Component = () => {
+            const {
+              formHandlers: { handleSubmit },
+              formHooks: { useListener },
+            } = useFormState(asyncSchema, { initialData: { name: 'Mike' } });
+            useListener(listener);
+            return { handleSubmit };
+          };
+          const { result } = renderHook(() => Component());
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+          });
+
+          const validating = events.find((evt) => evt.type === 'asyncValidating');
+          expect(validating?.schemaPath).toBe('name');
+        });
+
+        it('uses an empty string in schemaPath for a top-level async check on submit', async () => {
+          type RootSchemaData = { name: string };
+          const events: StateChangeEvent<RootSchemaData>[] = [];
+          const listener = vi.fn((event: StateChangeEvent<RootSchemaData>) => {
+            events.push(event);
+          });
+
+          const rootAsyncSchema = z
+            .object({ name: z.formString({ required: true }) })
+            .check(z.validateAsync(() => Promise.resolve(true), 'fails'));
+
+          const Component = () => {
+            const {
+              formHandlers: { handleSubmit },
+              formHooks: { useListener },
+            } = useFormState(rootAsyncSchema, { initialData: { name: 'Mike' } });
+            useListener(listener);
+            return { handleSubmit };
+          };
+          const { result } = renderHook(() => Component());
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+          });
+
+          const validating = events.find((evt) => evt.type === 'asyncValidating');
+          expect(validating?.schemaPath).toBe('');
+        });
+
+        it('fires no asyncValidating/asyncValidated events on submit for a sync-only schema', async () => {
+          const events: AsyncEvent[] = [];
+          const listener = vi.fn((event: AsyncEvent) => {
+            events.push(event);
+          });
+          const syncSchema = z.object({
+            name: z.formString({ required: true, error: 'Name is required' }),
+          });
+
+          const Component = () => {
+            const {
+              formHandlers: { handleSubmit },
+              formHooks: { useListener },
+            } = useFormState(syncSchema, { initialData: { name: 'Mike' } });
+            useListener(listener);
+            return { handleSubmit };
+          };
+          const { result } = renderHook(() => Component());
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+          });
+
+          const asyncEvents = events.filter(
+            (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+          );
+          expect(asyncEvents).toStrictEqual([]);
+        });
+
+        it('isolates per-form async submit events when two forms share the same schema', async () => {
+          const eventsA: AsyncEvent[] = [];
+          const eventsB: AsyncEvent[] = [];
+          const sharedSchema = buildAsyncSchema(new Set(['Mike']));
+
+          const useFormA = () => {
+            const form = useFormState(sharedSchema, { initialData: { name: 'Mike' } });
+            form.formHooks.useListener((evt) => {
+              eventsA.push(evt);
+            });
+            return form;
+          };
+          const useFormB = () => {
+            const form = useFormState(sharedSchema, { initialData: { name: 'Mike' } });
+            form.formHooks.useListener((evt) => {
+              eventsB.push(evt);
+            });
+            return form;
+          };
+
+          const formA = renderHook(() => useFormA());
+          renderHook(() => useFormB());
+
+          await act(async () => {
+            await formA.result.current.formHandlers.handleSubmit(() => Promise.resolve(true))(
+              new FormData()
+            );
+          });
+
+          const asyncA = eventsA.filter(
+            (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+          );
+          const asyncB = eventsB.filter(
+            (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+          );
+          expect(asyncA.length).toBeGreaterThan(0);
+          expect(asyncB).toStrictEqual([]);
+        });
+
+        it('fires no events on submit when skipWhen returns true for every async check', async () => {
+          type SkipData = { name: string };
+          const events: StateChangeEvent<SkipData>[] = [];
+          const listener = vi.fn((event: StateChangeEvent<SkipData>) => {
+            events.push(event);
+          });
+
+          const skipSchema = z.object({
+            name: z.formString({ required: true }).check(
+              z.validateAsync(() => Promise.resolve(true), {
+                error: 'nope',
+                skipWhen: () => true,
+              })
+            ),
+          });
+
+          const Component = () => {
+            const {
+              formHandlers: { handleSubmit },
+              formHooks: { useListener },
+            } = useFormState(skipSchema, { initialData: { name: 'Mike' } });
+            useListener(listener);
+            return { handleSubmit };
+          };
+          const { result } = renderHook(() => Component());
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+          });
+
+          const asyncEvents = events.filter(
+            (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+          );
+          expect(asyncEvents).toStrictEqual([]);
+        });
+
+        it('only fires submit events for the non-skipped check when one of two checks has skipWhen=true', async () => {
+          type MixedData = { name: string; email: string };
+          const events: StateChangeEvent<MixedData>[] = [];
+          const listener = vi.fn((event: StateChangeEvent<MixedData>) => {
+            events.push(event);
+          });
+
+          const mixedSchema = z.object({
+            name: z.formString({ required: true }).check(
+              z.validateAsync(() => Promise.resolve(true), {
+                error: 'nope',
+                skipWhen: () => true,
+              })
+            ),
+            email: z
+              .formString({ required: true })
+              .check(z.validateAsync(() => Promise.resolve(true), 'email failed')),
+          });
+
+          const Component = () => {
+            const {
+              formHandlers: { handleSubmit },
+              formHooks: { useListener },
+            } = useFormState(mixedSchema, {
+              initialData: { name: 'Mike', email: 'mike@x.com' },
+            });
+            useListener(listener);
+            return { handleSubmit };
+          };
+          const { result } = renderHook(() => Component());
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+          });
+
+          const asyncEvents = events.filter(
+            (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+          );
+          const paths = new Set(asyncEvents.map((evt) => evt.schemaPath));
+          expect(paths).toStrictEqual(new Set(['email']));
+        });
+
+        it('sets triggerField to undefined for handleSubmit-triggered events', async () => {
+          const events: AsyncEvent[] = [];
+          const listener = vi.fn((event: AsyncEvent) => {
+            events.push(event);
+          });
+          const asyncSchema = buildAsyncSchema(new Set(['Alice']));
+
+          const Component = () => {
+            const {
+              formHandlers: { handleSubmit },
+              formHooks: { useListener },
+            } = useFormState(asyncSchema, { initialData: { name: 'Alice' } });
+            useListener(listener);
+            return { handleSubmit };
+          };
+          const { result } = renderHook(() => Component());
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+          });
+
+          const asyncEvents = events.filter(
+            (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+          );
+          expect(asyncEvents[0]?.triggerField).toBeUndefined();
+          expect(asyncEvents.at(-1)?.triggerField).toBeUndefined();
+        });
+
+        it('fires one asyncValidating / asyncValidated pair per active async check on submit', async () => {
+          type TwoCheckData = { name: string; email: string };
+          const events: StateChangeEvent<TwoCheckData>[] = [];
+          const listener = vi.fn((event: StateChangeEvent<TwoCheckData>) => {
+            events.push(event);
+          });
+
+          const twoCheckSchema = z.object({
+            name: z
+              .formString({ required: true })
+              .check(z.validateAsync(() => Promise.resolve(true), 'name failed')),
+            email: z
+              .formString({ required: true })
+              .check(z.validateAsync(() => Promise.resolve(true), 'email failed')),
+          });
+
+          const Component = () => {
+            const {
+              formHandlers: { handleSubmit },
+              formHooks: { useListener },
+            } = useFormState(twoCheckSchema, {
+              initialData: { name: 'Mike', email: 'mike@x.com' },
+            });
+            useListener(listener);
+            return { handleSubmit };
+          };
+          const { result } = renderHook(() => Component());
+
+          await act(async () => {
+            await result.current.handleSubmit(() => Promise.resolve(true))(new FormData());
+          });
+
+          const asyncEvents = events.filter(
+            (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+          );
+          expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+            'asyncValidating',
+            'asyncValidating',
+            'asyncValidated',
+            'asyncValidated',
+          ]);
+          const validatingPaths = new Set(
+            asyncEvents.filter((evt) => evt.type === 'asyncValidating').map((evt) => evt.schemaPath)
+          );
+          const validatedPaths = new Set(
+            asyncEvents.filter((evt) => evt.type === 'asyncValidated').map((evt) => evt.schemaPath)
+          );
+          expect(validatingPaths).toStrictEqual(new Set(['email', 'name']));
+          expect(validatedPaths).toStrictEqual(new Set(['email', 'name']));
+        });
+
+        it('surfaces an async predicate rejection on submit as a root error and fires asyncValidated', async () => {
+          process.on('unhandledRejection', swallowNetworkDown);
+
+          try {
+            type RejectingData = { name: string };
+            const events: StateChangeEvent<RejectingData>[] = [];
+            const listener = vi.fn((event: StateChangeEvent<RejectingData>) => {
+              events.push(event);
+            });
+
+            const rejectingSchema = z.object({
+              name: z.formString({ required: true }).check(
+                z.validateAsync(
+                  () =>
+                    new Promise<boolean>((_resolve, reject) => {
+                      setTimeout(() => {
+                        reject(new Error('Network down'));
+                      }, 0);
+                    }),
+                  'unused'
+                )
+              ),
+            });
+
+            const onError = vi.fn();
+            const onSuccess = vi.fn();
+
+            const Component = () => {
+              const {
+                formState: { errors },
+                formHandlers: { handleSubmit },
+                formHooks: { useListener },
+              } = useFormState(rejectingSchema, { initialData: { name: 'Mike' } });
+              useListener(listener);
+              return { errors, handleSubmit };
+            };
+            const { result } = renderHook(() => Component());
+
+            await act(async () => {
+              await result.current.handleSubmit(() => Promise.resolve(true), {
+                onError,
+                onSuccess,
+              })(new FormData());
+            });
+
+            // Rejection becomes a root error and submission is blocked.
+            expect(result.current.errors.getAll()).toContain('Network down');
+            expect(onError).toHaveBeenCalledTimes(1);
+            expect(onSuccess).not.toHaveBeenCalled();
+
+            // Listener still sees asyncValidating followed by asyncValidated.
+            const asyncEvents = events.filter(
+              (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+            );
+            expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+              'asyncValidating',
+              'asyncValidated',
+            ]);
+          } finally {
+            process.off('unhandledRejection', swallowNetworkDown);
+          }
+        });
+
+        it('surfaces an async predicate rejection on validateAsync() as a root error and fires asyncValidated', async () => {
+          process.on('unhandledRejection', swallowNetworkDown);
+
+          try {
+            type RejectingData = { name: string };
+            const events: StateChangeEvent<RejectingData>[] = [];
+            const listener = vi.fn((event: StateChangeEvent<RejectingData>) => {
+              events.push(event);
+            });
+
+            const rejectingSchema = z.object({
+              name: z.formString({ required: true }).check(
+                z.validateAsync(
+                  () =>
+                    new Promise<boolean>((_resolve, reject) => {
+                      setTimeout(() => {
+                        reject(new Error('Network down'));
+                      }, 0);
+                    }),
+                  'unused'
+                )
+              ),
+            });
+
+            const Component = () => {
+              const {
+                formState: { errors },
+                formStatus,
+                formActions: { validateAsync },
+                formHooks: { useListener },
+              } = useFormState(rejectingSchema, { initialData: { name: 'Mike' } });
+              useListener(listener);
+              return { errors, formStatus, validateAsync };
+            };
+            const { result } = renderHook(() => Component());
+
+            let outcome: boolean | undefined;
+            await act(async () => {
+              outcome = await result.current.validateAsync();
+            });
+
+            // validateAsync() resolves false instead of throwing, and the root error appears.
+            expect(outcome).toBe(false);
+            expect(result.current.errors.getAll()).toContain('Network down');
+            expect(result.current.formStatus.validating).toBe(false);
+
+            const asyncEvents = events.filter(
+              (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+            );
+            expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+              'asyncValidating',
+              'asyncValidated',
+            ]);
+          } finally {
+            process.off('unhandledRejection', swallowNetworkDown);
+          }
+        });
       });
 
       it('only fires events for the non-skipped check when one of two checks has skipWhen=true', async () => {
@@ -9229,13 +9769,12 @@ describe('useFormState', () => {
   describe('formHooks.useBlocker', () => {
     const initialData: InitialSchema = { name: 'John', info: { age: 30 } };
 
-    // Renders the blocker inside the same component as the form so the form's
-    // layout effect keeps the blocker's state ref current before `guard` runs.
     function useFormWithBlocker(
       shouldBlock: (state: FormState<Schema>, status: { dirty: boolean }) => boolean
     ) {
       const form = useFormState(schema, { initialData });
       const blocker = form.formHooks.useBlocker(shouldBlock);
+
       return { form, blocker };
     }
 
@@ -9252,35 +9791,36 @@ describe('useFormState', () => {
 
       const { result } = renderHook(() => useFormWithBlocker(shouldBlock));
 
-      // Pristine form: guard runs the navigation immediately.
       const navigateBefore = vi.fn();
+
       act(() => {
         result.current.blocker.guard(navigateBefore);
       });
+
       expect(navigateBefore).toHaveBeenCalledTimes(1);
       expect(result.current.blocker.blockerState).toBe('unblocked');
 
-      // Dirty the form; the layout effect refreshes the blocker's state ref.
       act(() => {
         result.current.form.formActions.change('name', 'Changed');
       });
 
-      // Now guard sees dirty === true and holds the navigation.
       const navigateAfter = vi.fn();
       act(() => {
         result.current.blocker.guard(navigateAfter);
       });
+
       expect(navigateAfter).not.toHaveBeenCalled();
       expect(result.current.blocker.blockerState).toBe('blocked');
 
-      // shouldBlock received the live state on the last call.
       const [state, status] = shouldBlock.mock.calls.at(-1) ?? [];
+
       expect(state?.data.name).toBe('Changed');
       expect(status?.dirty).toBe(true);
 
       act(() => {
         result.current.blocker.proceed();
       });
+
       expect(navigateAfter).toHaveBeenCalledTimes(1);
       expect(result.current.blocker.blockerState).toBe('unblocked');
     });
