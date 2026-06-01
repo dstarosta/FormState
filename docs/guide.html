@@ -7166,8 +7166,9 @@ function AppForm() {
             If you use Vite, the <code>form-state-tools/vite</code> plugin can mount the dock for
             you — no <code>&lt;FormDock&gt;</code> in your JSX. Add it to your Vite config and feed
             it your form state with the <code>useFormDock</code> hook. The plugin auto-detects how
-            to inject the dock: it uses the HTML entry for plain Vite/React SPAs and the framework
-            client entry for SSR setups such as TanStack Start.
+            to inject the dock: it uses the HTML entry for plain Vite/React SPAs, the framework
+            client entry for TanStack Start, and the root module (<code>root.tsx</code>) for React
+            Router 7 (Remix).
           </p>
           <div class="callout callout-warning">
             <div class="callout-label">Vite only</div>
@@ -7230,9 +7231,13 @@ function AppForm() {
               client-entry module with the <code>clientEntry</code> option — a substring matched
               against module ids (e.g.
               <code>formStateTools({ clientEntry: 'entry-client' })</code>). This must name a
-              JavaScript module, not an HTML file.
+              JavaScript module, not an HTML file. When set, the dock is mounted only from that
+              module.
             </p>
-            <p>You do not need it for SPAs or TanStack Start.</p>
+            <p>
+              You do not need it for SPAs, TanStack Start, or React Router 7 (Remix) — all are
+              auto-detected.
+            </p>
           </div>
 
           <h3>Plugin options</h3>
