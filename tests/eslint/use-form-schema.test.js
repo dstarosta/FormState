@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
-import { useFormSchema } from './use-form-schema.js';
+import { useFormSchema } from '../../eslint/rules/use-form-schema.js';
 
 RuleTester.describe = describe;
 RuleTester.it = it;
@@ -157,7 +157,8 @@ ruleTester.run('use-form-schema', useFormSchema, {
         { messageId: 'useFormSchema', data: { formHelper: 'formString', primitive: 'string' } },
         { messageId: 'useFormSchema', data: { formHelper: 'formNumber', primitive: 'number' } },
       ],
-      output: 'z.object({ name: z.formString({ required: true }), age: z.formNumber({ required: true }) })',
+      output:
+        'z.object({ name: z.formString({ required: true }), age: z.formNumber({ required: true }) })',
     },
     // Primitive inside a nested z.object()
     {

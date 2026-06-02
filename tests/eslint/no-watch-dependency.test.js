@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
-import { noWatchDependency } from './no-watch-dependency.js';
+import { noWatchDependency } from '../../eslint/rules/no-watch-dependency.js';
 
 RuleTester.describe = describe;
 RuleTester.it = it;
@@ -49,7 +49,9 @@ ruleTester.run('no-watch-dependency', noWatchDependency, {
     },
 
     // Member-expression hook call body use (not dep)
-    { code: 'function C() { const v = formHooks.useWatch("x"); useEffect(() => { doThing(v); }, []); }' },
+    {
+      code: 'function C() { const v = formHooks.useWatch("x"); useEffect(() => { doThing(v); }, []); }',
+    },
 
     // VariableDeclarator: !scope — top-level declaration, no enclosing function
     { code: 'const v = useWatch("x"); useEffect(() => {}, [v]);' },

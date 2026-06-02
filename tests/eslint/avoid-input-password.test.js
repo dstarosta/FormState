@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
-import { avoidInputPassword } from './avoid-input-password.js';
+import { avoidInputPassword } from '../../eslint/rules/avoid-input-password.js';
 
 RuleTester.describe = describe;
 RuleTester.it = it;
@@ -76,7 +76,7 @@ ruleTester.run('avoid-input-password', avoidInputPassword, {
       code: '<form action={fn}><input type="password" name="csrf" value="token" /></form>',
       errors: [{ messageId: 'useSecureInput' }],
       output:
-        "import { SecureInput } from 'form-state';\n<form action={fn}><SecureInput name=\"csrf\" value=\"token\" /></form>",
+        'import { SecureInput } from \'form-state\';\n<form action={fn}><SecureInput name="csrf" value="token" /></form>',
     },
     // Both action and onSubmit
     {
@@ -97,32 +97,32 @@ ruleTester.run('avoid-input-password', avoidInputPassword, {
       code: '<form onSubmit={fn}><input type="password" /><input type="password" /></form>',
       errors: [{ messageId: 'useSecureInput' }, { messageId: 'useSecureInput' }],
       output:
-        "import { SecureInput } from 'form-state';\n<form onSubmit={fn}><SecureInput /><input type=\"password\" /></form>",
+        'import { SecureInput } from \'form-state\';\n<form onSubmit={fn}><SecureInput /><input type="password" /></form>',
     },
     // Existing import from 'form-state' without SecureInput — appends to specifiers
     {
-      code: "import { useForm } from 'form-state';\n<form onSubmit={fn}><input type=\"password\" /></form>",
+      code: 'import { useForm } from \'form-state\';\n<form onSubmit={fn}><input type="password" /></form>',
       errors: [{ messageId: 'useSecureInput' }],
       output:
         "import { useForm, SecureInput } from 'form-state';\n<form onSubmit={fn}><SecureInput /></form>",
     },
     // Existing import from 'form-state' already includes SecureInput — no import change
     {
-      code: "import { SecureInput } from 'form-state';\n<form onSubmit={fn}><input type=\"password\" /></form>",
+      code: 'import { SecureInput } from \'form-state\';\n<form onSubmit={fn}><input type="password" /></form>',
       errors: [{ messageId: 'useSecureInput' }],
       output:
         "import { SecureInput } from 'form-state';\n<form onSubmit={fn}><SecureInput /></form>",
     },
     // Other imports present — new import added after last import
     {
-      code: "import React from 'react';\n<form onSubmit={fn}><input type=\"password\" /></form>",
+      code: 'import React from \'react\';\n<form onSubmit={fn}><input type="password" /></form>',
       errors: [{ messageId: 'useSecureInput' }],
       output:
         "import React from 'react';\nimport { SecureInput } from 'form-state';\n<form onSubmit={fn}><SecureInput /></form>",
     },
     // Bare side-effect import from 'form-state' (no specifiers) — replaced with named import
     {
-      code: "import {} from 'form-state';\n<form onSubmit={fn}><input type=\"password\" /></form>",
+      code: 'import {} from \'form-state\';\n<form onSubmit={fn}><input type="password" /></form>',
       errors: [{ messageId: 'useSecureInput' }],
       output:
         "import { SecureInput } from 'form-state';\n<form onSubmit={fn}><SecureInput /></form>",

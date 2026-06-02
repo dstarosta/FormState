@@ -13,8 +13,7 @@
   "files": [
     "src",
     "dist",
-    "eslint",
-    "!eslint/**/*.test.js"
+    "eslint"
   ],
   "main": "dist/form-state.js",
   "exports": {
@@ -32,7 +31,7 @@
     "check-ts": "node -e \"const v=require('typescript').version; if(v<'5.9.0'){console.error('❌ TS version '+v+' is too low. Need >= 5.9.0');process.exit(1)}\"",
     "build": "npm i && npm run check-ts && npm run prettier && npm run typecheck && npm run lint && npm run test && tsdown --config tsdown.types.config.ts && tsdown",
     "lint": "eslint .",
-    "prettier": "prettier -c src/**",
+    "prettier": "prettier -c src/** tests/**",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage"
   },

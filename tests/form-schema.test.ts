@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
-import { formatErrors } from './helpers/error-formatter';
-import { useFormState, z } from '.';
+import { formatErrors } from '../src/helpers/error-formatter';
+import { useFormState, z } from '../src';
 
 describe('form schema', () => {
   it('formBoolean should parse values', () => {

@@ -1,7 +1,7 @@
 /* eslint-disable unicorn/consistent-function-scoping, no-sparse-arrays */
 import { describe, expect, it } from 'vitest';
 
-import { deepEqual } from './deep-equal';
+import { deepEqual } from '../../src/helpers/deep-equal';
 
 describe('deepEqual', () => {
   describe('primitives (SameValueZero)', () => {

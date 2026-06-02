@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
-import { stableDebouncedCallback } from './stable-debounced-callback.js';
+import { stableDebouncedCallback } from '../../eslint/rules/stable-debounced-callback.js';
 
 RuleTester.describe = describe;
 RuleTester.it = it;

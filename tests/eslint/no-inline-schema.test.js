@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
-import { noInlineSchema } from './no-inline-schema.js';
+import { noInlineSchema } from '../../eslint/rules/no-inline-schema.js';
 
 RuleTester.describe = describe;
 RuleTester.it = it;
