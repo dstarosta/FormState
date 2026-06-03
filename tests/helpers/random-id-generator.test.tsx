@@ -44,4 +44,40 @@ describe('generateUniqueId', () => {
       });
     }
   });
+
+  it('falls back to Math.random when no crypto CSPRNG is available', () => {
+    const originalRandomUUID = crypto.randomUUID.bind(crypto);
+    const originalGetRandomValues = crypto.getRandomValues.bind(crypto);
+
+    Object.defineProperty(crypto, 'randomUUID', {
+      configurable: true,
+      value: undefined,
+    });
+
+    Object.defineProperty(crypto, 'getRandomValues', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const randomSpy = vi.spyOn(Math, 'random');
+
+    try {
+      const id = generateUniqueId();
+
+      expect(id).toMatch(UUID_PATTERN);
+      expect(randomSpy).toHaveBeenCalled();
+    } finally {
+      randomSpy.mockRestore();
+
+      Object.defineProperty(crypto, 'randomUUID', {
+        configurable: true,
+        value: originalRandomUUID,
+      });
+
+      Object.defineProperty(crypto, 'getRandomValues', {
+        configurable: true,
+        value: originalGetRandomValues,
+      });
+    }
+  });
 });

@@ -302,6 +302,12 @@ export function SecureInput({
 
   const handleCopyOrCut = (event: React.ClipboardEvent<HTMLInputElement>) => {
     event.preventDefault();
+
+    try {
+      event.clipboardData.setData('text/plain', '');
+    } catch {
+      /* empty */
+    }
   };
 
   const handleDrag = (event: React.DragEvent<HTMLInputElement>) => {

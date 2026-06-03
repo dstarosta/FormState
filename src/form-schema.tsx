@@ -45,6 +45,20 @@ const parseFormArgs = <O, C>(
   return { options: {} as O, checks: [first as C, ...rest] };
 };
 
+const toValidationErrors = (issues: readonly unknown[]): ZodValidationError[] =>
+  (issues as ZodValidationError[]).map((issue) => ({
+    ...issue,
+    message:
+      issue.message ||
+      (typeof issue.params === 'object' &&
+      issue.params !== null &&
+      'message' in issue.params &&
+      typeof issue.params.message === 'string'
+        ? issue.params['message']
+        : 'Invalid input'),
+    pathNotation: combinePath(issue.path),
+  }));
+
 const pushRequiredIssue = (
   ctx: { issues: z.core.$ZodRawIssue[] },
   options: { required?: boolean; error?: string },
@@ -862,21 +876,7 @@ export function validate<T>(
   const error = paramsIsError ? params : params?.error;
 
   return z.refine<T>((obj) => predicate(obj), {
-    when: (payload) =>
-      condition(
-        payload.issues.map((issue) => ({
-          ...issue,
-          message:
-            issue.message ||
-            (typeof issue.params === 'object' &&
-            issue.params !== null &&
-            'message' in issue.params &&
-            typeof issue.params.message === 'string'
-              ? issue.params['message']
-              : 'Invalid input'),
-          pathNotation: combinePath(issue.path),
-        }))
-      ),
+    when: (payload) => condition(toValidationErrors(payload.issues)),
     path: Array.isArray(path) || path === undefined ? path : [path],
     params: error ? { message: error } : undefined,
     error,
@@ -977,20 +977,7 @@ export function validateAsync<T>(
         return false;
       }
 
-      return condition(
-        (payload.issues as ZodValidationError[]).map((issue) => ({
-          ...issue,
-          message:
-            issue.message ||
-            (typeof issue.params === 'object' &&
-            issue.params !== null &&
-            'message' in issue.params &&
-            typeof issue.params.message === 'string'
-              ? issue.params['message']
-              : 'Invalid input'),
-          pathNotation: combinePath(issue.path),
-        }))
-      );
+      return condition(toValidationErrors(payload.issues));
     };
 
     return {
