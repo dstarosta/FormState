@@ -888,6 +888,18 @@ type FormResetOptions<T extends z.ZodMiniObject> = {
    */
   retainData?: boolean;
   /**
+   * Optional data to reset the form to, used instead of the form's `initialData`. The provided
+   * partial data is merged with the schema defaults to build the reset target.
+   *
+   * When `names` is provided, only the listed fields present in this data are reset to it; any
+   * listed field not present falls back to the form's `initialData`.
+   *
+   * The form's `initialData` is left unchanged, so a later plain reset still returns to it.
+   *
+   * Note: This option is ignored when `retainData` is `true`.
+   */
+  data?: DeepPartial<z.infer<T>> | undefined;
+  /**
    * Indicates whether to reset the touched state of the fields (default: `false`).
    */
   resetTouched?: boolean;

@@ -362,6 +362,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         case 'resetFields': {
           const {
             names,
+            data: resetData,
             options: { retainData, resetTouched },
           } = action;
 
@@ -369,9 +370,15 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           const dirty = { ...prevState.dirty };
           const touched = { ...prevState.touched };
 
+          const usesCustomData = !retainData && Boolean(resetData);
+          const customTarget = usesCustomData ? createState(schema, resetData) : undefined;
+
           for (const name of names) {
             if (!retainData) {
-              mergedData[name] = prevState.initialData[name];
+              mergedData[name] =
+                customTarget && Object.hasOwn(resetData as object, name)
+                  ? customTarget[name]
+                  : prevState.initialData[name];
             }
 
             dirty[name] = false;
@@ -424,8 +431,14 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
         // form reset event
         case 'reset': {
           const {
+            data: resetData,
             options: { retainData, resetTouched },
           } = action;
+
+          const usesCustomData = !retainData && Boolean(resetData);
+          const resetTarget = usesCustomData
+            ? createState(schema, resetData)
+            : prevState.initialData;
 
           const errors =
             validateOnMount && prevState.submitCount === 0
@@ -436,10 +449,10 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             initialData: prevState.initialData,
             initialErrors: prevState.initialErrors,
             submittedData: prevState.submittedData,
-            data: retainData ? prevState.data : prevState.initialData,
+            data: retainData ? prevState.data : resetTarget,
             mode: prevState.mode,
             changed: true,
-            replaced: prevState.replaced,
+            replaced: prevState.replaced || usesCustomData,
             validated: prevState.submitCount > 0 || validateOnMount,
             submitCount: prevState.submitCount,
             dirty: { ...stateRef.current.dirty },

@@ -1197,7 +1197,240 @@ describe('form actions', () => {
     expect(formState.data.info.age).toBe(29);
     expect(formState.dirty.info).toBe(true);
     expect(formState.touched.name).toBe(false);
-    expect(formState.touched.get((path) => path.info.age)).toBe(true); // other fields should remain touched
+    expect(formState.touched.get((path) => path.info.age)).toBe(true);
+  });
+
+  it('should reset the form to custom data instead of the initial data', () => {
+    const initialData: InitialSchema = {
+      name: 'John',
+      info: { age: 30 },
+    };
+    const { result } = renderHook(() => useFormState(schema, { initialData }));
+    const {
+      formActions: { change, reset },
+    } = result.current;
+
+    act(() => {
+      change('name', 'Jonathan');
+      change((path) => path.info.age, 29);
+    });
+
+    act(() => {
+      reset({
+        data: { name: 'Jane', info: { age: 40 } },
+        callback: (state) => {
+          expect(state.data.name).toBe('Jane');
+          expect(state.data.info.age).toBe(40);
+          expect(state.dirty.name).toBe(false);
+          expect(state.dirty.info).toBe(false);
+        },
+      });
+    });
+
+    const { formState, formStatus } = result.current;
+
+    expect(formState.data.name).toBe('Jane');
+    expect(formState.data.info.age).toBe(40);
+    expect(formStatus.dirty).toBe(false);
+  });
+
+  it('should ignore custom reset data when retainData is true', () => {
+    const initialData: InitialSchema = {
+      name: 'John',
+      info: { age: 30 },
+    };
+    const { result } = renderHook(() => useFormState(schema, { initialData }));
+    const {
+      formActions: { change, reset },
+    } = result.current;
+
+    act(() => {
+      change('name', 'Jonathan');
+      change((path) => path.info.age, 29);
+    });
+
+    act(() => {
+      reset({
+        retainData: true,
+        data: { name: 'Jane', info: { age: 40 } },
+        callback: (state) => {
+          expect(state.data.name).toBe('Jonathan');
+          expect(state.data.info.age).toBe(29);
+          expect(state.dirty.name).toBe(false);
+          expect(state.dirty.info).toBe(false);
+        },
+      });
+    });
+
+    const { formState, formStatus } = result.current;
+
+    expect(formState.data.name).toBe('Jonathan');
+    expect(formState.data.info.age).toBe(29);
+    expect(formStatus.dirty).toBe(false);
+  });
+
+  it('should not revert custom reset data via reactive initial data sync', () => {
+    const initialData: InitialSchema = {
+      name: 'John',
+      info: { age: 30 },
+    };
+    const { result } = renderHook(() => useFormState(schema, { initialData }));
+    const {
+      formActions: { change, reset },
+    } = result.current;
+
+    act(() => {
+      change('name', 'Jonathan');
+      change((path) => path.info.age, 29);
+    });
+
+    act(() => {
+      reset({ data: { name: 'Jane', info: { age: 40 } } });
+    });
+
+    const { formState } = result.current;
+
+    expect(formState.data.name).toBe('Jane');
+    expect(formState.data.info.age).toBe(40);
+  });
+
+  it('should leave the form initialData untouched after a custom-data reset', () => {
+    const initialData: InitialSchema = {
+      name: 'John',
+      info: { age: 30 },
+    };
+    const { result } = renderHook(() => useFormState(schema, { initialData }));
+    const {
+      formActions: { change, reset },
+    } = result.current;
+
+    act(() => {
+      reset({ data: { name: 'Jane', info: { age: 40 } } });
+    });
+
+    act(() => {
+      change('name', 'Jonathan');
+      change((path) => path.info.age, 29);
+    });
+
+    act(() => {
+      reset({
+        callback: (state) => {
+          expect(state.data.name).toBe('John');
+          expect(state.data.info.age).toBe(30);
+        },
+      });
+    });
+
+    const { formState } = result.current;
+
+    expect(formState.data.name).toBe('John');
+    expect(formState.data.info.age).toBe(30);
+  });
+
+  it('should reset specific fields to the custom data (names path)', () => {
+    const initialData: InitialSchema = {
+      name: 'John',
+      info: { age: 30 },
+    };
+    const { result } = renderHook(() => useFormState(schema, { initialData }));
+    const {
+      formActions: { change, reset },
+    } = result.current;
+
+    act(() => {
+      change('name', 'Jonathan');
+      change((path) => path.info.age, 29);
+    });
+
+    act(() => {
+      reset({
+        names: ['name'],
+        data: { name: 'Jane', info: { age: 40 } },
+        callback: (state) => {
+          expect(state.data.name).toBe('Jane');
+          expect(state.data.info.age).toBe(29);
+          expect(state.dirty.name).toBe(false);
+          expect(state.dirty.info).toBe(true);
+        },
+      });
+    });
+
+    const { formState } = result.current;
+
+    expect(formState.data.name).toBe('Jane');
+    expect(formState.data.info.age).toBe(29);
+    expect(formState.dirty.name).toBe(false);
+    expect(formState.dirty.info).toBe(true);
+  });
+
+  it('should fall back to initialData for listed fields absent from the custom data (names path)', () => {
+    const initialData: InitialSchema = {
+      name: 'John',
+      info: { age: 30 },
+    };
+    const { result } = renderHook(() => useFormState(schema, { initialData }));
+    const {
+      formActions: { change, reset },
+    } = result.current;
+
+    act(() => {
+      change('name', 'Jonathan');
+      change((path) => path.info.age, 29);
+    });
+
+    act(() => {
+      reset({
+        names: ['name', 'info'],
+        data: { name: 'Jane' },
+        callback: (state) => {
+          expect(state.data.name).toBe('Jane');
+          expect(state.data.info.age).toBe(30);
+          expect(state.dirty.name).toBe(false);
+          expect(state.dirty.info).toBe(false);
+        },
+      });
+    });
+
+    const { formState } = result.current;
+
+    expect(formState.data.name).toBe('Jane');
+    expect(formState.data.info.age).toBe(30);
+    expect(formState.dirty.name).toBe(false);
+    expect(formState.dirty.info).toBe(false);
+  });
+
+  it('should ignore custom reset data for specific fields when retainData is true (names path)', () => {
+    const initialData: InitialSchema = {
+      name: 'John',
+      info: { age: 30 },
+    };
+    const { result } = renderHook(() => useFormState(schema, { initialData }));
+    const {
+      formActions: { change, reset },
+    } = result.current;
+
+    act(() => {
+      change('name', 'Jonathan');
+      change((path) => path.info.age, 29);
+    });
+
+    act(() => {
+      reset({
+        names: ['name'],
+        retainData: true,
+        data: { name: 'Jane' },
+        callback: (state) => {
+          expect(state.data.name).toBe('Jonathan');
+          expect(state.dirty.name).toBe(false);
+        },
+      });
+    });
+
+    const { formState } = result.current;
+
+    expect(formState.data.name).toBe('Jonathan');
+    expect(formState.dirty.name).toBe(false);
   });
 
   it('should reset the form and keep errors empty without validation', () => {

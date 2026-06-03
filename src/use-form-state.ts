@@ -1365,6 +1365,7 @@ export function useFormState<T extends z.ZodMiniObject>(
         dispatch({
           type: 'resetFields',
           names: options.names,
+          data: options.data,
           options: {
             retainData: Boolean(options.retainData),
             resetTouched: Boolean(options.resetTouched),
@@ -1373,6 +1374,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       } else {
         dispatch({
           type: 'reset',
+          data: options?.data,
           options: {
             retainData: Boolean(options?.retainData),
             resetTouched: Boolean(options?.resetTouched),

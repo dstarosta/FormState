@@ -1533,6 +1533,18 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
                 </td>
               </tr>
               <tr>
+                <td><code>data</code></td>
+                <td>—</td>
+                <td class="prop-desc">
+                  Resets the form to this data instead of its <code>initialData</code>. You can pass
+                  a partial object — any missing fields fall back to their schema defaults. With
+                  <code>names</code>, only those fields are reset, taking their values from here when
+                  present and from <code>initialData</code> otherwise. This never changes the form's
+                  <code>initialData</code>, so a later plain reset still goes back to the originals.
+                  Has no effect when <code>retainData</code> is <code>true</code>.
+                </td>
+              </tr>
+              <tr>
                 <td><code>names</code></td>
                 <td>—</td>
                 <td class="prop-desc">
