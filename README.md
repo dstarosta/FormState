@@ -24,9 +24,9 @@ A type-safe, schema-driven form management library for React 19, built on [Zod](
 | `react-dom`     | >= 19.2.0        |
 | `zod`           | >= 4.3.0 < 5.0.0 |
 
-| Toolchain    | Version   |
-| ------------ | --------- |
-| `typescript` | >= 5.9.0  |
+| Toolchain    | Version  |
+| ------------ | -------- |
+| `typescript` | >= 5.9.0 |
 
 ## Installation
 
@@ -78,16 +78,14 @@ function LoginForm() {
 
 **[Full Developer Guide →](https://dstarosta.github.io/FormState/)**
 
-**Getting Started** — [Overview](https://dstarosta.github.io/FormState/#overview) · [Installation](https://dstarosta.github.io/FormState/#installation) · [ESLint](https://dstarosta.github.io/FormState/#eslint) · [Philosophy](https://dstarosta.github.io/FormState/#philosophy) · [TypeScript](https://dstarosta.github.io/FormState/#typescript)
+**Getting Started** — [Overview](https://dstarosta.github.io/FormState/#overview) · [Installation](https://dstarosta.github.io/FormState/#installation) · [ESLint](https://dstarosta.github.io/FormState/#eslint) · [Philosophy](https://dstarosta.github.io/FormState/#philosophy) · [TypeScript](https://dstarosta.github.io/FormState/#typescript) · [Comparison](https://dstarosta.github.io/FormState/#comparison) · [License](https://dstarosta.github.io/FormState/#license)
 
-**Core Concepts** — [Defining a Schema](https://dstarosta.github.io/FormState/#schema) · [Schema Methods](https://dstarosta.github.io/FormState/#schema-methods) · [Basic Usage](https://dstarosta.github.io/FormState/#basic-usage) · [Path Expressions](https://dstarosta.github.io/FormState/#path-expressions) · [Form State](https://dstarosta.github.io/FormState/#form-state) · [Form Status](https://dstarosta.github.io/FormState/#form-status) · [Schema Metadata](https://dstarosta.github.io/FormState/#ranges-descriptions)
+**Core Concepts** — [Defining a Schema](https://dstarosta.github.io/FormState/#schema) · [Schema Methods](https://dstarosta.github.io/FormState/#schema-methods) · [Basic Usage](https://dstarosta.github.io/FormState/#basic-usage) · [Path Expressions](https://dstarosta.github.io/FormState/#path-expressions) · [Form State](https://dstarosta.github.io/FormState/#form-state) · [Form Status](https://dstarosta.github.io/FormState/#form-status) · [Schema Metadata](https://dstarosta.github.io/FormState/#ranges-descriptions) · [Form Groups](https://dstarosta.github.io/FormState/#form-groups)
 
-**Features** — [Array Fields](https://dstarosta.github.io/FormState/#arrays) · [Validation](https://dstarosta.github.io/FormState/#validation) · [Form Submission](https://dstarosta.github.io/FormState/#submission) · [Manual Errors](https://dstarosta.github.io/FormState/#manual-errors) · [Readonly & Disabled](https://dstarosta.github.io/FormState/#readonly-disabled) · [CSS Classes](https://dstarosta.github.io/FormState/#css-classes) · [Context & Provider](https://dstarosta.github.io/FormState/#context) · [Input Controls](https://dstarosta.github.io/FormState/#input-controls)
+**Features** — [Array Fields](https://dstarosta.github.io/FormState/#arrays) · [Validation](https://dstarosta.github.io/FormState/#validation) · [Form Submission](https://dstarosta.github.io/FormState/#submission) · [Manual Errors](https://dstarosta.github.io/FormState/#manual-errors) · [Readonly & Disabled](https://dstarosta.github.io/FormState/#readonly-disabled) · [CSS Classes](https://dstarosta.github.io/FormState/#css-classes) · [Context & Provider](https://dstarosta.github.io/FormState/#context) · [Input Controls](https://dstarosta.github.io/FormState/#input-controls) · [Debounced Changes](https://dstarosta.github.io/FormState/#debounce) · [inferName](https://dstarosta.github.io/FormState/#infer-name) · [Value Helpers](https://dstarosta.github.io/FormState/#helpers)
 
-**Advanced** — [Selectors](https://dstarosta.github.io/FormState/#selectors) · [Debounced Changes](https://dstarosta.github.io/FormState/#debounce) · [State Listener](https://dstarosta.github.io/FormState/#listener) · [useWatch](https://dstarosta.github.io/FormState/#watch) · [inferName](https://dstarosta.github.io/FormState/#infer-name) · [Value Helpers](https://dstarosta.github.io/FormState/#helpers) · [Next.js](https://dstarosta.github.io/FormState/#nextjs) · [React Router 7](https://dstarosta.github.io/FormState/#remix) · [TanStack Query](https://dstarosta.github.io/FormState/#tanstack-query) · [DevTools](https://dstarosta.github.io/FormState/#devtools)
+**Hooks** — [Memoized Selector](https://dstarosta.github.io/FormState/#selectors) · [State Listener](https://dstarosta.github.io/FormState/#listener) · [Field Watch](https://dstarosta.github.io/FormState/#watch) · [Navigation Blocker](https://dstarosta.github.io/FormState/#blocker)
 
-**Reference** — [Form Library Comparison](https://dstarosta.github.io/FormState/#comparison)
+**Integration** — [Next.js](https://dstarosta.github.io/FormState/#nextjs) · [React Router 7](https://dstarosta.github.io/FormState/#remix) · [TanStack Start](https://dstarosta.github.io/FormState/#tanstack-start) · [TanStack Query](https://dstarosta.github.io/FormState/#tanstack-query)
 
-## License
-
-MIT © Dmitry Starosta
+**Tools** — [DevTools](https://dstarosta.github.io/FormState/#devtools)

@@ -13,7 +13,9 @@
   "files": [
     "src",
     "dist",
-    "eslint"
+    "eslint",
+    "LICENSE",
+    "README.md"
   ],
   "main": "dist/form-state.js",
   "exports": {
