@@ -26,6 +26,7 @@ export type {
   FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
+  Group,
   Immutable,
   SchemaDataObject,
   StateChangeEvent,

@@ -8,6 +8,7 @@ import type {
   FormDateOptions,
   FormStringOptions,
   FormTypeOptions,
+  Grouped,
   SchemaDataObject,
   ZodValidationError,
 } from './types/form-types';
@@ -1048,6 +1049,33 @@ export function validateAsync<T>(
 
   return check;
 }
+
+/**
+ * Assigns a root-level group name to a schema property so it can be retrieved together with
+ * the other properties of the same group via `formState.getGroup(name)`.
+ *
+ * Note: Groups are only allowed on root-level schema properties.
+ *
+ * @example
+ * const schema = z.object({
+ *   email: z.group(z.formString({ required: true, error: 'Required' }), 'contact-info'),
+ *   phone: z.group(z.formString(), 'contact-info'),
+ *   name: z.formString(),
+ * });
+ *
+ * const contact = formState.getGroup('contact-info');
+ * // contact.data -> { email, phone }   (narrowed; excludes `name`)
+ *
+ * @typeParam S - The wrapped schema type.
+ * @typeParam G - The group name literal.
+ * @param schema - The schema property to assign to the group.
+ * @param name - The group name.
+ * @returns The schema branded with the group name.
+ */
+export const group = <S extends z.ZodMiniType, const G extends string>(
+  schema: S,
+  name: G
+): Grouped<S, G> => schema.with(z.meta({ group: name })) as unknown as Grouped<S, G>;
 
 // Array validations
 

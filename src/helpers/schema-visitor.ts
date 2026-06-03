@@ -451,6 +451,44 @@ const setAsyncNestedPhase = (
   });
 };
 
+const assertNoNestedGroups = (schema: z.ZodMiniType): void => {
+  const ERROR_MESSAGE = 'Groups are only allowed on root-level schema properties.';
+
+  const baseSchema = getBaseType(schema);
+
+  if (baseSchema instanceof z.ZodMiniArray) {
+    const element = baseSchema.def.element as z.ZodMiniType;
+
+    if (
+      z.globalRegistry.get(element)?.['group'] ||
+      z.globalRegistry.get(getBaseType(element))?.['group']
+    ) {
+      throw new Error(ERROR_MESSAGE);
+    }
+
+    assertNoNestedGroups(element);
+  } else if (baseSchema instanceof z.ZodMiniObject) {
+    for (const prop in baseSchema.shape) {
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (!Object.prototype.hasOwnProperty.call(baseSchema.shape, prop)) {
+        continue;
+      }
+
+      const field = baseSchema.shape[prop] as z.ZodMiniType;
+
+      if (
+        z.globalRegistry.get(field)?.['group'] ||
+        z.globalRegistry.get(getBaseType(field))?.['group']
+      ) {
+        throw new Error(ERROR_MESSAGE);
+      }
+
+      assertNoNestedGroups(field);
+    }
+  }
+};
+
 // Internal functions
 
 export const getBaseType = (value: unknown) => {
@@ -916,6 +954,36 @@ export const collectDescriptions = <T extends z.ZodMiniType>(
   recursiveCollect(baseSchema, descriptions, key, collectDescriptions);
 
   return descriptions as Record<keyof z.infer<T> | '', string | undefined>;
+};
+
+export const collectGroups = <T extends z.ZodMiniType>(schema: T) => {
+  const groups: Record<string, string> = {};
+
+  const baseSchema = getBaseType(schema);
+
+  if (baseSchema instanceof z.ZodMiniObject) {
+    for (const prop in baseSchema.shape) {
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (!Object.prototype.hasOwnProperty.call(baseSchema.shape, prop)) {
+        continue;
+      }
+
+      const field = baseSchema.shape[prop] as z.ZodMiniType;
+
+      const group =
+        z.globalRegistry.get(field)?.['group'] ??
+        z.globalRegistry.get(getBaseType(field))?.['group'];
+
+      if (typeof group === 'string' && group.length > 0) {
+        groups[prop] = group;
+      }
+
+      assertNoNestedGroups(field);
+    }
+  }
+
+  return groups as Record<keyof z.infer<T>, string>;
 };
 
 export const getPath = <T extends object>(_data: T, expression: (data: T) => unknown) => {

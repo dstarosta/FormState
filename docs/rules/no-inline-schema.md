@@ -18,9 +18,9 @@ The rule fires when the first argument to a known schema-hook call is an express
 Hooks watched by default:
 
 - `useFormState`
-- `useFormStateContext`
+- `useFormStateContext`It should be an error rule used by default
 
-### ❌ Incorrect
+### ❌ IncorrectIt should be an error rule used by default
 
 ```jsx
 import { useFormState, z } from 'form-state';

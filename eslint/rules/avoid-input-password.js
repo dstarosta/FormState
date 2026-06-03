@@ -54,7 +54,8 @@ function getImportFix(fixer, sourceCode) {
       return null;
     }
 
-    const lastSpecifier = formStateImport.specifiers[formStateImport.specifiers.length - 1];
+    const lastSpecifier = formStateImport.specifiers.at(-1);
+
     if (lastSpecifier) {
       return fixer.insertTextAfter(lastSpecifier, ', SecureInput');
     }

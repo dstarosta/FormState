@@ -1,4 +1,3 @@
-// Maps hook name → index of its dependency array argument
 const HOOKS_DEPS_ARG = new Map([
   ['useCallback', 1],
   ['useDeepMemo', 1],
@@ -9,6 +8,16 @@ const HOOKS_DEPS_ARG = new Map([
   ['useLayoutEffect', 1],
   ['useMemo', 1],
 ]);
+
+function getHookName(node) {
+  if (node.type === 'Identifier') {
+    return node.name;
+  }
+  if (node.type === 'MemberExpression' && node.property.type === 'Identifier') {
+    return node.property.name;
+  }
+  return null;
+}
 
 function isUseWatch(node) {
   return (
@@ -51,7 +60,7 @@ export const noWatchDependency = {
     const scopeStack = [];
 
     function currentScope() {
-      return scopeStack[scopeStack.length - 1];
+      return scopeStack.at(-1);
     }
 
     function enterScope() {
@@ -72,23 +81,22 @@ export const noWatchDependency = {
 
       VariableDeclarator(node) {
         const scope = currentScope();
-        if (!scope || node.id.type !== 'Identifier') return;
+
+        if (!scope || node.id.type !== 'Identifier') {
+          return;
+        }
+
         scope.declaredVars.add(node.id.name);
+
         if (node.init?.type === 'CallExpression' && isUseWatch(node.init.callee)) {
           scope.watchVars.add(node.id.name);
         }
       },
 
       CallExpression(node) {
-        const callee = node.callee;
-        const hookName =
-          callee.type === 'Identifier'
-            ? callee.name
-            : callee.type === 'MemberExpression' && callee.property.type === 'Identifier'
-              ? callee.property.name
-              : null;
-
+        const hookName = getHookName(node.callee);
         const depsIndex = hookName ? hooksMap.get(hookName) : undefined;
+
         if (depsIndex === undefined) {
           return;
         }
@@ -104,7 +112,6 @@ export const noWatchDependency = {
             continue;
           }
 
-          // Walk from innermost to outermost scope; stop at the first scope that declares the variable
           for (let i = scopeStack.length - 1; i >= 0; i--) {
             const scope = scopeStack[i];
             if (scope.watchVars.has(dep.name)) {
@@ -112,7 +119,7 @@ export const noWatchDependency = {
               break;
             }
             if (scope.declaredVars.has(dep.name)) {
-              break; // shadowed by a non-watch variable in this scope
+              break;
             }
           }
         }

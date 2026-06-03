@@ -365,6 +365,81 @@ export const createImmutableRequired = <T extends z.ZodMiniObject>(
     getKeys: () => truthyKeys(required),
   });
 
+const pickByKeys = <V>(
+  source: Record<string, V>,
+  keys: ReadonlySet<string>,
+  includeRootKey: boolean
+): Record<string, V> => {
+  const result: Record<string, V> = {};
+
+  for (const key of Object.keys(source)) {
+    const rootSegment = key.split('.', 1)[0] ?? key;
+
+    if (keys.has(rootSegment) || (includeRootKey && key === '')) {
+      result[key] = source[key] as V;
+    }
+  }
+
+  return result;
+};
+
+// Resolves the root-level field names assigned to a group, throwing when none exist.
+// The public group APIs are typed to reject unknown group names, so an empty result is
+// only reachable when the type system is bypassed (e.g. an `as` cast or a JS caller).
+export const groupFieldNames = (groups: Record<string, string>, name: string): string[] => {
+  const fieldNames = Object.keys(groups).filter((field) => groups[field] === name);
+
+  if (fieldNames.length === 0) {
+    throw new TypeError(`No fields are assigned to the group '${name}'.`);
+  }
+
+  return fieldNames;
+};
+
+// Returns a shallow copy of `data` containing only the group's root-level fields.
+export const pickGroupData = <T extends object>(
+  groups: Record<string, string>,
+  name: string,
+  data: T
+): Partial<T> => {
+  const result: Partial<T> = {};
+
+  for (const field of groupFieldNames(groups, name)) {
+    result[field as keyof T] = data[field as keyof T];
+  }
+
+  return result;
+};
+
+export const createGroupBundle = (
+  groups: Record<string, string>,
+  slices: {
+    data: Record<string, unknown>;
+    errors: Record<string, string | undefined>;
+    touched: Record<string, boolean>;
+    dirty: Record<string, boolean>;
+    required: Record<string, boolean>;
+    ranges: Record<string, { type: string; format: string; min: FieldRange; max: FieldRange }>;
+    patterns: Record<string, string | undefined>;
+    descriptions: Record<string, string | undefined>;
+  }
+) => {
+  return (name: string) => {
+    const keys = new Set(groupFieldNames(groups, name));
+
+    return freezeObject({
+      data: pickByKeys(slices.data, keys, false),
+      errors: pickByKeys(slices.errors, keys, true),
+      touched: pickByKeys(slices.touched, keys, false),
+      dirty: pickByKeys(slices.dirty, keys, false),
+      required: pickByKeys(slices.required, keys, false),
+      ranges: pickByKeys(slices.ranges, keys, false),
+      patterns: pickByKeys(slices.patterns, keys, false),
+      descriptions: pickByKeys(slices.descriptions, keys, true),
+    });
+  };
+};
+
 export const touchErroredFields = <T extends Record<string, unknown>, K extends keyof T>(
   touched: Record<K, boolean>,
   errors: Record<string, string | undefined>,

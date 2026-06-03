@@ -24,10 +24,15 @@ export const stableDebouncedCallback = {
             callee.property.type === 'Identifier' &&
             callee.property.name === 'change');
 
-        if (!isChange) return;
+        if (!isChange) {
+          return;
+        }
 
         const options = node.arguments[2];
-        if (!options || options.type !== 'ObjectExpression') return;
+
+        if (!options || options.type !== 'ObjectExpression') {
+          return;
+        }
 
         const hasDebounce = options.properties.some(
           (p) =>
@@ -37,7 +42,9 @@ export const stableDebouncedCallback = {
             p.key.name === 'debounceIntervalMs'
         );
 
-        if (!hasDebounce) return;
+        if (!hasDebounce) {
+          return;
+        }
 
         const callbackProp = options.properties.find(
           (p) =>
@@ -47,11 +54,14 @@ export const stableDebouncedCallback = {
             p.key.name === 'callback'
         );
 
-        if (!callbackProp) return;
+        if (!callbackProp) {
+          return;
+        }
 
-        const cb = callbackProp.value;
-        if (cb.type === 'ArrowFunctionExpression' || cb.type === 'FunctionExpression') {
-          context.report({ node: cb, messageId: 'unstableCallback' });
+        const callback = callbackProp.value;
+
+        if (callback.type === 'ArrowFunctionExpression' || callback.type === 'FunctionExpression') {
+          context.report({ node: callback, messageId: 'unstableCallback' });
         }
       },
     };

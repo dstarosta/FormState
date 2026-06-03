@@ -1,34 +1,32 @@
-// Hooks that accept a schema as their first argument. A new schema object
-// created on every render breaks referential stability inside the hook
-// (re-subscriptions, lost cache, fresh validators) and is almost always a bug.
 const SCHEMA_HOOKS = new Set(['useFormState', 'useFormStateContext']);
 
 function getHookName(node) {
-  if (node.type === 'Identifier') return node.name;
+  if (node.type === 'Identifier') {
+    return node.name;
+  }
   if (node.type === 'MemberExpression' && node.property.type === 'Identifier') {
     return node.property.name;
   }
   return null;
 }
 
-// An expression is an "inline schema" if evaluating it allocates a fresh
-// schema object every time it runs. The clearest signal is a CallExpression
-// (z.object(...), z.formString(...), buildSchema(), etc.) or an
-// ObjectExpression / ArrayExpression literal passed directly.
 function isInlineSchemaExpression(node) {
   switch (node.type) {
     case 'CallExpression':
     case 'NewExpression':
     case 'ObjectExpression':
-    case 'ArrayExpression':
+    case 'ArrayExpression': {
       return true;
+    }
     case 'TSAsExpression':
     case 'TSSatisfiesExpression':
     case 'TSNonNullExpression':
-    case 'TSTypeAssertion':
+    case 'TSTypeAssertion': {
       return isInlineSchemaExpression(node.expression);
-    default:
+    }
+    default: {
       return false;
+    }
   }
 }
 
@@ -70,11 +68,19 @@ export const noInlineSchema = {
 
     return {
       CallExpression(node) {
-        if (!isHook(node.callee)) return;
-        if (node.arguments.length === 0) return;
+        if (!isHook(node.callee)) {
+          return;
+        }
+
+        if (node.arguments.length === 0) {
+          return;
+        }
 
         const firstArg = node.arguments[0];
-        if (!isInlineSchemaExpression(firstArg)) return;
+
+        if (!isInlineSchemaExpression(firstArg)) {
+          return;
+        }
 
         context.report({
           node: firstArg,

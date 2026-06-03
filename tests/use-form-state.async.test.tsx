@@ -3179,6 +3179,9 @@ describe('async schema validation', () => {
 
       await waitFor(() => {
         expect(result.current.formStatus.validating).toBe(false);
+        expect(events.filter((evt) => evt.type === 'asyncValidated').length).toBeGreaterThanOrEqual(
+          1
+        );
       });
 
       const asyncEvents = events.filter(

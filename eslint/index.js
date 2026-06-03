@@ -1,5 +1,6 @@
 import { avoidInputPassword } from './rules/avoid-input-password.js';
 import { noInlineSchema } from './rules/no-inline-schema.js';
+import { noNestedGroup } from './rules/no-nested-group.js';
 import { noWatchDependency } from './rules/no-watch-dependency.js';
 import { stableDebouncedCallback } from './rules/stable-debounced-callback.js';
 import { useFormSchema } from './rules/use-form-schema.js';
@@ -13,6 +14,7 @@ const plugin = {
   rules: {
     'avoid-input-password': avoidInputPassword,
     'no-inline-schema': noInlineSchema,
+    'no-nested-group': noNestedGroup,
     'no-watch-dependency': noWatchDependency,
     'stable-debounced-callback': stableDebouncedCallback,
     'use-form-schema': useFormSchema,

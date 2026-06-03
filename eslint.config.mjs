@@ -12,29 +12,12 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 
 export default defineConfig([
-  globalIgnores(['coverage', 'dist', 'node_modules']),
+  globalIgnores(['coverage', 'dist', 'docs', 'node_modules']),
+  js.configs.recommended,
+  eslintPluginUnicorn.configs.all,
+  sonarjs.configs.recommended,
+  eslintConfigPrettier,
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.strictTypeChecked,
-      eslintPluginUnicorn.configs.all,
-      formState.configs.recommended,
-      sonarjs.configs.recommended,
-      react.configs.flat.recommended,
-      react.configs.flat['jsx-runtime'],
-      reactHooks.configs.flat.recommended,
-      testingLibrary.configs['flat/dom'],
-      reactYouMightNotNeedAnEffect.configs.recommended,
-      eslintConfigPrettier,
-    ],
-    languageOptions: {
-      ecmaVersion: 2022,
-      globals: globals.browser,
-      parserOptions: {
-        projectService: true,
-      },
-    },
     rules: {
       // Non-recommended JS rules that can catch problems
       'array-callback-return': 'error',
@@ -60,22 +43,18 @@ export default defineConfig([
       'no-unsafe-optional-chaining': 'error',
       'no-useless-call': 'error',
       'no-useless-concat': 'error',
+      'nonblock-statement-body-position': ['error', 'below'],
       'require-atomic-updates': 'error',
       'symbol-description': 'error',
       'use-isnan': 'error',
-      curly: 'error',
+      curly: ['error', 'multi-line'],
       radix: 'error',
       strict: ['error', 'never'],
-      // TS rules
-      '@typescript-eslint/no-dynamic-delete': 'off', // mutable state objects cannot be replaced with Maps due to Zod and strongly typed paths
-      '@typescript-eslint/unified-signatures': 'off', // allow various overloads
-      // You might not need a useEffect
-      'react-you-might-not-need-an-effect/no-event-handler': 'off', // handlers cannot be moved to a parent component outside the library
       // Annoying Sonar rules
       'sonarjs/cognitive-complexity': 'off', // reducers and schema visitors are difficult to break up into _readable_ small functions
       'sonarjs/function-return-type': 'off', // different return types (ex: discriminated unions) are not an issue
       'sonarjs/no-nested-functions': 'off', // nested functions are very useful for closures in TS/JS
-      'sonarjs/todo-tag': 'warn', // a TODO comment should not break the build; but it's a good idea to periodically remind you about it
+      'sonarjs/todo-tag': 'warn', // a "to do" comment should not break the build; but it's a good idea to periodically remind you about it
       // Annoying Unicorn rules
       'unicorn/no-keyword-prefix': 'off', // We need classNames for formClasses().
       'unicorn/no-null': 'off', // Douglas Crockford is wrong. "null" should be used as a literal when assigned manually, not "undefined".
@@ -84,6 +63,32 @@ export default defineConfig([
       'unicorn/numeric-separators-style': 'off', // always forcing underscores in numeric constants makes no sense
       'unicorn/prefer-string-replace-all': 'off', // replace(/[set of numbers]/g) is way more terse for fallback GUID generation
       'unicorn/prevent-abbreviations': 'off', // "ref" and "args" abbreviations are commonly used
+    },
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      tseslint.configs.strictTypeChecked,
+      formState.configs.recommended,
+      react.configs.flat.recommended,
+      react.configs.flat['jsx-runtime'],
+      reactHooks.configs.flat.recommended,
+      reactYouMightNotNeedAnEffect.configs.recommended,
+      testingLibrary.configs['flat/dom'],
+    ],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.browser,
+      parserOptions: {
+        projectService: true,
+      },
+    },
+    rules: {
+      // TS rules
+      '@typescript-eslint/no-dynamic-delete': 'off', // mutable state objects cannot be replaced with Maps due to Zod and strongly typed paths
+      '@typescript-eslint/unified-signatures': 'off', // allow various overloads
+      // You might not need a useEffect
+      'react-you-might-not-need-an-effect/no-event-handler': 'off', // handlers cannot be moved to a parent component outside the library
     },
   },
 ]);

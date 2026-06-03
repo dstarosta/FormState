@@ -54,6 +54,7 @@
           <a href="#form-state" class="nav-link">Form State</a>
           <a href="#form-status" class="nav-link">Form Status</a>
           <a href="#ranges-descriptions" class="nav-link">Schema Metadata</a>
+          <a href="#form-groups" class="nav-link">Form Groups</a>
         </div>
         <div class="nav-section">
           <span class="nav-section-label">Features</span>
@@ -190,7 +191,8 @@ npm install github:dstarosta/FormState#v1.0.0</code></pre>
           <p>
             FormState ships an official ESLint plugin that catches common mistakes at development
             time — incorrect schema primitives, <code>useWatch</code> return values as hook
-            dependencies, unsafe password inputs, and unstable debounced callbacks.
+            dependencies, unsafe password inputs, unstable debounced callbacks, and groups placed on
+            nested schema properties.
           </p>
           <p>
             The plugin requires <strong>ESLint 9.0 or greater</strong>, which introduced flat config
@@ -262,6 +264,22 @@ export default defineConfig([
                   <code>useFormState()</code> or <code>useFormStateContext()</code>. An inline
                   schema is rebuilt on every render and invalidates the hook's subscriptions — hoist
                   the schema to module scope or memoize it.
+                </td>
+                <td>error</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <a
+                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/no-nested-group.md"
+                    target="_blank"
+                    ><code>no-nested-group</code></a
+                  >
+                </td>
+                <td>
+                  Disallows <code>group()</code> on nested schema properties. Groups are only
+                  allowed on root-level properties, so a group placed on an object field, an array
+                  element, or any deeper field is reported instead of failing at runtime.
                 </td>
                 <td>error</td>
                 <td></td>
@@ -845,6 +863,15 @@ formActions.array.append((path) =&gt; path.notes, duplicated);</code></pre>
             Provide it explicitly when inference does not apply (for example, in the props of a
             generic component) so paths, errors, and state values stay typed end-to-end.
           </p>
+          <div class="callout callout-info">
+            <div class="callout-label">FormSchema in these examples</div>
+            <p>
+              Throughout the examples below, <code>FormSchema</code> refers to your inferred schema
+              type — <code>type FormSchema = z.infer&lt;typeof schema&gt;</code> — where
+              <code>schema</code> is the object you pass to <code>useFormState</code>. Define it
+              once and reuse it wherever a form type is needed.
+            </p>
+          </div>
           <h4><span class="type-chip">FormPath&lt;T&gt;</span></h4>
           <p>
             The type of a path expression — either a top-level key string or an arrow function that
@@ -1005,6 +1032,34 @@ const listener: StateChangeListener&lt;FormSchema&gt; = ({ type, data, submitCou
 
 // In the component
 formHooks.useListener(listener);</code></pre>
+          </div>
+          <h4><span class="type-chip">Group&lt;T, G&gt;</span></h4>
+          <p>
+            The type returned by
+            <a href="#form-groups"><code>formState.getGroup(name)</code></a> for the group
+            <code>G</code> of schema <code>T</code>. Use it to type a component prop that receives a
+            single group's slice of the form state — the bundle is narrowed to exactly the fields
+            assigned to that group. The group name is checked against the schema, so an unknown name
+            is a compile error.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">import { type Group } from 'form-state';
+
+// A section component that receives one group's bundle as a prop
+function ContactSection({ contact }: { contact: Group&lt;FormSchema, 'contact'&gt; }) {
+  return (
+    &lt;fieldset&gt;
+      &lt;legend&gt;Contact&lt;/legend&gt;
+      &lt;input value={contact.data.email} readOnly /&gt;
+      &lt;input value={contact.data.phone} readOnly /&gt;
+      {/* contact.data.age — compile error: 'age' is not in the 'contact' group */}
+    &lt;/fieldset&gt;
+  );
+}
+
+// Caller — getGroup() returns a value assignable to the Group prop
+&lt;ContactSection contact={formState.getGroup('contact')} /&gt;</code></pre>
           </div>
           <h4><span class="type-chip">DeepPartial&lt;T&gt;</span></h4>
           <p>
@@ -4139,6 +4194,85 @@ formStatus.touched                               // true if any field is touched
             </p>
           </div>
         </section>
+        <section class="section" id="form-groups">
+          <div class="section-eyebrow">Core Concepts</div>
+          <h2>Form Groups</h2>
+          <p>
+            Larger forms are often organized into sections — contact details, shipping address,
+            preferences. Form groups let you label related fields in the schema and then pull
+            everything about that section out of the form state in one call.
+          </p>
+          <p>
+            Wrap a field with <code>z.group(schema, name)</code> to assign it to a group. Groups are
+            only allowed on top-level fields:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const schema = z.object({
+  email: z.group(z.formString({ required: true }), 'contact'),
+  phone: z.group(z.formString(), 'contact'),
+  street: z.group(z.formString({ required: true }), 'address'),
+  city: z.group(z.formString({ required: true }), 'address'),
+  newsletter: z.formBoolean(),
+});</code></pre>
+          </div>
+          <p>
+            Call <code>formState.getGroup(name)</code> to get a bundle containing every form-state
+            slice — <code>data</code>, <code>errors</code>, <code>touched</code>,
+            <code>dirty</code>, <code>required</code>, <code>ranges</code>, <code>patterns</code>,
+            and <code>descriptions</code> — narrowed to just that group's fields:
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">const contact = formState.getGroup('contact');
+
+contact.data.email; // 'jane@example.com'
+contact.errors.phone; // error message, if any
+contact.required.email; // true
+
+// Render a whole section from the bundle
+&lt;fieldset&gt;
+  &lt;legend&gt;Contact&lt;/legend&gt;
+  {Object.keys(contact.data).map((field) =&gt; (
+    &lt;div key={field}&gt;
+      &lt;label htmlFor={field}&gt;{contact.descriptions[field]}&lt;/label&gt;
+      &lt;input
+        type="text"
+        id={field}
+        value={contact.data[field]}
+        onChange={(e) =&gt; formActions.change(field, e.target.value)}
+        onBlur={() =&gt; formActions.touch(field)}
+      /&gt;
+      {contact.errors[field] &amp;&amp; &lt;span&gt;{contact.errors[field]}&lt;/span&gt;}
+    &lt;/div&gt;
+  ))}
+&lt;/fieldset&gt;</code></pre>
+          </div>
+          <p>
+            Each bundle contains only the fields in that group — the <code>address</code> group
+            never exposes <code>email</code>, and ungrouped fields such as
+            <code>newsletter</code> appear in no group at all. The returned objects are read-only,
+            just like the rest of the form state.
+          </p>
+          <p>
+            This also makes groups a natural fit for forms shown one section at a time, such as a
+            multi-step wizard: render a single group per step while the rest of the form state stays
+            intact in the background, then submit the whole form once every step is complete.
+          </p>
+          <p>
+            The group name is checked against the schema, so requesting a group that does not exist
+            is a TypeScript error and autocomplete suggests the valid names.
+          </p>
+          <div class="callout callout-tip">
+            <div class="callout-label">Tip</div>
+            <p>
+              Groups only apply to top-level fields. Placing a group on a nested object field or an
+              array element is reported by the
+              <a href="#eslint"><code>no-nested-group</code></a> ESLint rule and throws when the
+              form initializes.
+            </p>
+          </div>
+        </section>
         <section class="section" id="arrays">
           <div class="section-eyebrow">Features</div>
           <h2>Array Fields</h2>
@@ -5884,6 +6018,32 @@ const summary = selectOrderSummary(formState.data);
             >
             — selectors written here can be swapped for reselect selectors and vice versa.
           </p>
+          <h3>Selecting by group</h3>
+          <p>
+            Pass a <a href="#form-groups">group name</a> as the first argument to select that
+            group's data slice. With no second argument the selector returns the group's data
+            fields; with a second selector, it runs over the group's data — scoped so fields outside
+            the group are a compile error. The result is memoized like any other selector.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">// Whole data slice for the 'contact' group
+const selectContact = formHooks.useSelector('contact');
+const contact = selectContact(formState.data);
+// { email: string; phone: string }   (only the group's fields)
+
+// Scoped selector — input is narrowed to the group's data
+const selectEmailDomain = formHooks.useSelector('contact', (data) =&gt;
+  data.email.split('@')[1]
+);
+const domain = selectEmailDomain(formState.data);
+
+// Group slice as the data source
+const domainFromSlice = selectEmailDomain(formState.getGroup('contact').data);
+
+// formHooks.useSelector('contact', (data) =&gt; data.age)
+//   ^ compile error: 'age' is not in the 'contact' group</code></pre>
+          </div>
         </section>
         <section class="section" id="listener">
           <div class="section-eyebrow">Hooks</div>

@@ -35,7 +35,9 @@ export const useFormSchema = {
 
         const method = callee.property.name;
         const target = mapping[method];
-        if (!target) return;
+        if (!target) {
+          return;
+        }
 
         if (node.parent.type === 'CallExpression') {
           const pc = node.parent.callee;

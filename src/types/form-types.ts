@@ -259,6 +259,83 @@ export type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> =
 
 export type Selector<S, R> = (state: S) => R;
 
+export type Grouped<S extends z.ZodMiniType, G extends string> = S & {
+  readonly __group__: G;
+};
+
+export type GroupSchemaShape<S> = S extends z.ZodMiniObject<infer Sh> ? Sh : never;
+
+export type GroupNames<Sh> = {
+  [K in keyof Sh]: Sh[K] extends Grouped<z.ZodMiniType, infer G> ? G : never;
+}[keyof Sh];
+
+export type KeysInGroup<Sh, G extends string> = {
+  [K in keyof Sh]: Sh[K] extends Grouped<z.ZodMiniType, G> ? K : never;
+}[keyof Sh];
+
+/**
+ * A bundle of form state slices filtered to the root-level properties of a single group.
+ * Every slice is immutable and contains only the keys that belong to the group.
+ *
+ * @typeParam T - The form data type.
+ * @typeParam K - The group's property keys (a subset of `keyof T`).
+ */
+export type GroupBundle<T extends object, K extends keyof T> = {
+  /**
+   * Group data.
+   */
+  data: Immutable<Pick<FormMutableState<T>['data'], K>>;
+  /**
+   * Group errors. Includes the root error key `''`.
+   */
+  errors: Immutable<Pick<FormMutableState<T>['errors'], (K & string) | ''>>;
+  /**
+   * Group touched flags.
+   */
+  touched: Immutable<Pick<FormMutableState<T>['touched'], K>>;
+  /**
+   * Group dirty flags.
+   */
+  dirty: Immutable<Pick<FormMutableState<T>['dirty'], K>>;
+  /**
+   * Group required flags.
+   */
+  required: Immutable<Pick<FormMutableState<T>['required'], K>>;
+  /**
+   * Group min/max ranges.
+   */
+  ranges: Immutable<Pick<FormMutableState<T>['ranges'], K>>;
+  /**
+   * Group regular expression patterns.
+   */
+  patterns: Immutable<Pick<FormMutableState<T>['patterns'], K>>;
+  /**
+   * Group field descriptions. Includes the root description key `''`.
+   */
+  descriptions: Immutable<Pick<FormMutableState<T>['descriptions'], (K & string) | ''>>;
+};
+
+/**
+ * The `getGroup` method signature for a given schema. Narrows the returned bundle to the
+ * keys of the requested group. Only declared group names are accepted.
+ *
+ * @typeParam S - The schema type.
+ */
+export type GetByGroup<S extends z.ZodMiniObject> = <G extends GroupNames<GroupSchemaShape<S>>>(
+  name: G
+) => Group<S, G>;
+
+/**
+ * The data slice of a schema narrowed to the root-level fields assigned to the group `G`.
+ *
+ * @typeParam S - The schema type.
+ * @typeParam G - A group name declared on `S`.
+ */
+export type GroupData<S extends z.ZodMiniObject, G extends GroupNames<GroupSchemaShape<S>>> = Pick<
+  z.infer<S>,
+  KeysInGroup<GroupSchemaShape<S>, G> & keyof z.infer<S>
+>;
+
 // Public types
 
 /**
@@ -781,6 +858,29 @@ export type FormState<T extends object> = {
 };
 
 /**
+ * The form-state bundle returned by `formState.getGroup(name)` for the group `G` of schema `S`.
+ *
+ * Use it to type a component prop that receives a single group's slice of the form state. The
+ * bundle is narrowed to exactly the root-level fields assigned to `G` via `z.group(schema, name)`.
+ *
+ * @example
+ * type ContactSectionProps = {
+ *   contact: Group<typeof schema, 'contact'>;
+ * };
+ *
+ * function ContactSection({ contact }: ContactSectionProps) {
+ *   return <input value={contact.data.email} />;
+ * }
+ *
+ * @typeParam S - The schema type.
+ * @typeParam G - A group name string value declared on `S`.
+ */
+export type Group<
+  S extends z.ZodMiniObject,
+  G extends GroupNames<GroupSchemaShape<S>>,
+> = GroupBundle<z.infer<S>, KeysInGroup<GroupSchemaShape<S>, G> & keyof z.infer<S>>;
+
+/**
  * Form status type.
  */
 export type FormStatus = {
@@ -1103,7 +1203,7 @@ export type FormValidateOptions<T extends z.ZodMiniObject> = {
    * Indicates whether to reset the touched state of the fields after the form was
    * submitted. (default: `true`).
    *
-   * Note: this setting is applicable only when `submit` is set to true. Regular
+   * Note: This setting is applicable only when `submit` is set to true. Regular
    * validations do not affect `touched` flags.
    */
   resetTouched?: boolean;
@@ -1247,7 +1347,25 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
   /**
    * Form state - data, errors, touched and dirty flags as well as max lengths for strings and arrays.
    */
-  formState: FormState<z.infer<T>>;
+  formState: FormState<z.infer<T>> & {
+    /**
+     * Returns a bundle of every form state slice (`data`, `errors`, `touched`, `dirty`,
+     * `required`, `ranges`, `patterns`, `descriptions`) filtered to the root-level properties
+     * assigned to the group `name` via `z.group(schema, name)`. Each slice is immutable and
+     * narrowed to the group's keys.
+     *
+     * Only declared group names are accepted; an unknown name is a compile-time error.
+     *
+     * @example
+     * const contact = formState.getGroup('contact-info');
+     * contact.data.email;      // narrowed to the group's fields
+     * contact.errors.phone;
+     *
+     * @param name - The group name.
+     * @returns The group bundle.
+     */
+    getGroup: GetByGroup<T>;
+  };
   /**
    * Form status.
    */
@@ -1288,7 +1406,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
     /**
      * Resets the form data to its initial state.
      *
-     * Note: this method does not reset the HTML form element.
+     * Note: This method does not reset the HTML form element.
      *
      * @typeParam T - form state type.
      * @param options - Options for reset event.
@@ -1679,6 +1797,48 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
      * @returns Memoized selector function.
      */
     useSelector: {
+      /**
+       * A hook that creates a memoized selector over a single group's data slice.
+       *
+       * The first argument is a group name declared via `z.group(schema, name)`. The returned
+       * selector yields an immutable object containing only that group's root-level data fields.
+       *
+       * @example
+       * const selectContact = useSelector('contact');
+       * const contact = selectContact(formState.data); // { email, phone }
+       *
+       * The produced selector accepts either the full form data or the group's data slice, so
+       * `selectContact(formState.data)` and `selectContact(formState.getGroup('contact').data)`
+       * both work.
+       *
+       * @param groupName - A declared group name.
+       * @returns Memoized selector over the group's data slice.
+       */
+      <G extends GroupNames<GroupSchemaShape<T>>>(
+        groupName: G
+      ): Selector<Immutable<z.infer<T>> | Immutable<GroupData<T, G>>, Immutable<GroupData<T, G>>>;
+      /**
+       * A hook that creates a memoized selector scoped to a single group's data slice.
+       *
+       * The first argument is a group name; the second selector receives only that group's data
+       * fields, so navigating to a field outside the group is a compile error.
+       *
+       * @example
+       * const selectEmail = useSelector('contact', (data) => data.email);
+       * const email = selectEmail(formState.data);
+       *
+       * The produced selector accepts either the full form data or the group's data slice, so
+       * `selectContact(formState.data)` and `selectContact(formState.getGroup('contact').data)`
+       * both work.
+       *
+       * @param groupName - A declared group name.
+       * @param resultFn - A selector over the group's data slice.
+       * @returns Memoized selector over the derived value.
+       */
+      <G extends GroupNames<GroupSchemaShape<T>>, R>(
+        groupName: G,
+        resultFn: (groupData: Immutable<GroupData<T, G>>) => R
+      ): Selector<Immutable<z.infer<T>> | Immutable<GroupData<T, G>>, R>;
       <I extends Selector<Immutable<z.infer<T>>, unknown>>(
         inputSelector: I extends unknown[] ? never : I
       ): Selector<Immutable<z.infer<T>>, ReturnType<I>>;

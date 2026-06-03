@@ -39,6 +39,7 @@ import type {
   FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
+  Selector,
   StateCallback,
   StateChangeListener,
   SubmitState,
@@ -52,6 +53,7 @@ import {
   commitActiveAsyncCheckPaths,
   runSubmitPhaseParse,
   collectDescriptions,
+  collectGroups,
   collectLengths,
   collectPatterns,
   collectRanges,
@@ -66,6 +68,7 @@ import {
 import { useDeepMemo } from './helpers/use-deep-memo';
 import {
   cleanEmpty,
+  createGroupBundle,
   createImmutableData,
   createImmutableDescriptions,
   createImmutableDirty,
@@ -78,6 +81,7 @@ import {
   freezeObject,
   mergeAsyncErrors,
   mutateArrayState,
+  pickGroupData,
   safeSyncParse,
 } from './helpers/state-manager';
 import { classNames } from './helpers/class-helper';
@@ -627,6 +631,9 @@ export function useFormState<T extends z.ZodMiniObject>(
     () => createImmutableRequired(formState.required, formState.data),
     [formState.required, formState.data]
   );
+
+  // Group map.
+  const groups = useMemo(() => collectGroups(schema), [schema]);
 
   const generateCallbackState = useCallback(
     () => ({
@@ -1778,6 +1785,31 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formState.initialData, formState.initialErrors]
   );
 
+  const getGroup = useMemo(
+    () =>
+      createGroupBundle(groups, {
+        data: formState.data,
+        errors: formState.errors,
+        touched: formState.touched,
+        dirty: formState.dirty,
+        required: formState.required,
+        ranges: formState.ranges,
+        patterns: formState.patterns,
+        descriptions: formState.descriptions,
+      }),
+    [
+      groups,
+      formState.data,
+      formState.errors,
+      formState.touched,
+      formState.dirty,
+      formState.required,
+      formState.ranges,
+      formState.patterns,
+      formState.descriptions,
+    ]
+  );
+
   const formStateResponse = useMemo(
     () => ({
       data: formData,
@@ -1788,9 +1820,10 @@ export function useFormState<T extends z.ZodMiniObject>(
       ranges,
       patterns,
       descriptions,
+      getGroup,
     }),
-    [formData, formErrors, dirty, touched, required, ranges, patterns, descriptions]
-  );
+    [formData, formErrors, dirty, touched, required, ranges, patterns, descriptions, getGroup]
+  ) as FormStateResponse<T>['formState'];
 
   // Blocker state ref
   const blockerStateRef = useRef({ formState: formStateResponse, formStatus });
@@ -1862,14 +1895,36 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const formHandlers = useMemo(() => ({ handleSubmit, handleReset }), [handleSubmit, handleReset]);
 
+  // Group-aware `useSelector`. When the first argument is a group name (a `string`), the input
+  // selector is narrowed to that group's data slice; an optional second selector then runs over
+  // the scoped data. Otherwise the call is forwarded to the standard selector hook unchanged.
+  const groupAwareUseSelector = useCallback(
+    (
+      first: string | Selector<unknown, unknown> | Selector<unknown, unknown>[],
+      second?: (...inputs: unknown[]) => unknown
+    ) => {
+      if (typeof first === 'string') {
+        const groupInput: Selector<Record<string, unknown>, unknown> = (data) =>
+          pickGroupData(groups, first, data);
+
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- arg shape is stable per call site
+        return useSelector(groupInput as Selector<unknown, unknown>, second);
+      }
+
+      // eslint-disable-next-line react-hooks/rules-of-hooks -- arg shape is stable per call site
+      return useSelector(first, second);
+    },
+    [groups]
+  ) as FormStateResponse<T>['formHooks']['useSelector'];
+
   const formHooks = useMemo(
     () => ({
       useListener: listenerHook,
       useWatch: watchHook,
-      useSelector,
+      useSelector: groupAwareUseSelector,
       useBlocker: blockerHook,
     }),
-    [listenerHook, watchHook, blockerHook]
+    [listenerHook, watchHook, groupAwareUseSelector, blockerHook]
   );
 
   const response = useMemo<FormStateResponse<T>>(
