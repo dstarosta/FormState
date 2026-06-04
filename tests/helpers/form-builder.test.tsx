@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { formDataEncode } from '../../src';
+import { formDataDecode, formDataEncode } from '../../src';
+
+const entries = (formData: FormData) => [...formData.entries()];
 
 describe('form builder', () => {
   it('should convert FormData into URL parameters', () => {
@@ -209,6 +211,92 @@ describe('form builder', () => {
 
         expect(formDataEncode(formData).toString()).toBe('name=Alice&info.age=30');
       });
+    });
+  });
+
+  describe('formDataDecode', () => {
+    it('decodes a query string into FormData', () => {
+      const formData = formDataDecode('param1=Some+value&param2=value1&param3=');
+
+      expect(entries(formData)).toEqual([
+        ['param1', 'Some value'],
+        ['param2', 'value1'],
+        ['param3', ''],
+      ]);
+    });
+
+    it('decodes a leading-question-mark query string', () => {
+      const formData = formDataDecode('?name=Alice&age=30');
+
+      expect(entries(formData)).toEqual([
+        ['name', 'Alice'],
+        ['age', '30'],
+      ]);
+    });
+
+    it('decodes a URLSearchParams instance', () => {
+      const formData = formDataDecode(new URLSearchParams('name=Alice&age=30'));
+
+      expect(entries(formData)).toEqual([
+        ['name', 'Alice'],
+        ['age', '30'],
+      ]);
+    });
+
+    it('decodes an array of name/value pairs', () => {
+      const formData = formDataDecode([
+        ['name', 'Alice'],
+        ['age', '30'],
+      ]);
+
+      expect(entries(formData)).toEqual([
+        ['name', 'Alice'],
+        ['age', '30'],
+      ]);
+    });
+
+    it('decodes a record of name/value pairs', () => {
+      const formData = formDataDecode({ name: 'Alice', age: '30' });
+
+      expect(entries(formData)).toEqual([
+        ['name', 'Alice'],
+        ['age', '30'],
+      ]);
+    });
+
+    it('preserves repeated keys as multiple entries', () => {
+      const formData = formDataDecode('param2=value1&param2=value2');
+
+      expect(formData.getAll('param2')).toEqual(['value1', 'value2']);
+    });
+
+    it('decodes percent-encoded characters', () => {
+      const formData = formDataDecode('file=some%3Cfile%3E.txt');
+
+      expect(formData.get('file')).toBe('some<file>.txt');
+    });
+
+    it('returns an empty FormData for undefined input', () => {
+      const formData = formDataDecode(undefined);
+
+      expect(formData).toBeInstanceOf(FormData);
+      expect(entries(formData)).toEqual([]);
+    });
+
+    it('returns an empty FormData for an empty string', () => {
+      expect(entries(formDataDecode(''))).toEqual([]);
+    });
+
+    it('round-trips with formDataEncode', () => {
+      const original = new FormData();
+      original.append('param1', 'Some value');
+      original.append('param2', 'value1');
+      original.append('param2', 'value2');
+      original.append('param3', '');
+
+      const decoded = formDataDecode(formDataEncode(original));
+
+      expect(entries(decoded)).toEqual(entries(original));
     });
   });
 });

@@ -257,6 +257,29 @@ export const formDataEncode = (
   );
 
 /**
+ * Creates a `FormData` instance from URL name/value pairs.
+ *
+ * @param nameValuePairs - The name/value pairs.
+ * @returns The `FormData` instance containing the provided name/value pairs.
+ */
+export const formDataDecode = (
+  nameValuePairs: URLSearchParams | string | string[][] | Record<string, string> | undefined
+) => {
+  const searchParams =
+    nameValuePairs instanceof URLSearchParams
+      ? nameValuePairs
+      : new URLSearchParams(nameValuePairs);
+
+  const formData = new FormData();
+
+  for (const [name, value] of searchParams) {
+    formData.append(name, value);
+  }
+
+  return formData;
+};
+
+/**
  * Submits a form element.
  *
  * This function supports asynchronous action forms.

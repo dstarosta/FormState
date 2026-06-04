@@ -2308,12 +2308,12 @@ describe('async schema validation', () => {
 
       let submitPromise: Promise<void> | undefined;
 
-      await act(async () => {
+      act(() => {
         submitPromise = submit(new FormData());
+      });
 
-        await waitFor(() => {
-          expect(onSubmitHandler).toHaveBeenCalled();
-        });
+      await waitFor(() => {
+        expect(onSubmitHandler).toHaveBeenCalled();
       });
 
       act(() => {

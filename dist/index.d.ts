@@ -2575,6 +2575,13 @@ declare function safeParseDate(input: string | undefined, format?: FormDateForma
  */
 declare const formDataEncode: (formData: FormData, omitNames?: string[], nameFormat?: "bracket" | "dot") => URLSearchParams;
 /**
+ * Creates a `FormData` instance from URL name/value pairs.
+ *
+ * @param nameValuePairs - The name/value pairs.
+ * @returns The `FormData` instance containing the provided name/value pairs.
+ */
+declare const formDataDecode: (nameValuePairs: URLSearchParams | string | string[][] | Record<string, string> | undefined) => FormData;
+/**
  * Submits a form element.
  *
  * This function supports asynchronous action forms.
@@ -2867,7 +2874,7 @@ declare const toFloat: (value: string) => number | "";
 declare const toDate: (value: string, options?: {
   dateFormat?: FormDateFormat;
   asUTC?: boolean;
-}) => Date | "";
+}) => "" | Date;
 /**
  * Converts a boolean in a form string notation to the `boolean` type.
  *
@@ -2946,5 +2953,5 @@ declare function asDateString(value: Date | string, dateFormat: FormDateFormat):
  */
 declare function asDateString(value: Date | string, dateFormat?: string): string;
 //#endregion
-export { type BlockerResponse, type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Group, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, classNames, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataEncode, formatDate, getState, parseState, parseStateAsync, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type BlockerResponse, type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Group, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationResult, classNames, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataDecode, formDataEncode, formatDate, getState, parseState, parseStateAsync, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map
