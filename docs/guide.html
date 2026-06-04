@@ -7350,12 +7350,21 @@ return { email: 'This email is already registered.' };
             <div class="code-block-header"><span class="code-block-lang">bash</span></div>
             <pre><code class="language-bash">npm install github:dstarosta/FormStateTools#v1.0.0</code></pre>
           </div>
-          <h3>Setup</h3>
+          <h3 id="devtools-setup">Setup</h3>
           <p>
             Pass the entire return value of <code>useFormState</code> (or
             <code>useFormStateContext</code>) to the <code>form</code> prop. Drop it anywhere in
             your component tree — it positions itself as a fixed bottom dock.
           </p>
+          <div class="callout callout-info">
+            <div class="callout-label">Bundler setup</div>
+            <p>
+              This works in any React app but increases the bundle size. For
+              <a href="#devtools-nextjs">Next.js</a> and <a href="#vite-plugin">Vite</a>, see the
+              configuration below.
+            </p>
+            <p>On Create React App or any other bundler, this manual setup is all you need.</p>
+          </div>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">import { FormDock } from 'form-state-tools';
@@ -7375,25 +7384,40 @@ function AppForm() {
   );
 }</code></pre>
           </div>
-          <div class="callout callout-tip">
-            <div class="callout-label">Tip</div>
-            <p>
-              For projects with SSR, such as Remix or TanStack Start, <code>NODE_ENV</code> may not
-              be set to <code>development</code> automatically. Without it, FormDock may render on
-              the server and break SSR. Pass your build's dev flag to <code>devMode</code> to be
-              explicit:
-            </p>
-            <div class="code-block">
-              <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
-              <pre><code class="language-tsx">&lt;FormDock form={form} devMode={isDev} /&gt;</code></pre>
-            </div>
-            <p>
-              In Vite, <code>isDev</code> would be <code>import.meta.env.DEV</code>; in Webpack it
-              might be <code>process.env.NODE_ENV !== 'production'</code>.
-            </p>
+
+          <h3 id="devtools-nextjs">Next.js</h3>
+          <p>
+            On Next.js, load <code>FormDock</code> with <code>next/dynamic</code> and show it only
+            in development. This keeps <code>form-state-tools</code> out of your production bundle.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">'use client';
+
+import dynamic from 'next/dynamic';
+
+const FormDock = dynamic(
+  () =&gt; import('form-state-tools').then(({ FormDock }) =&gt; FormDock),
+  { ssr: false },
+);
+
+function AppForm() {
+  const form = useFormState(schema);   // or useFormStateContext(schema)
+  const { Form, formHandlers } = form;
+
+  return (
+    &lt;&gt;
+      &lt;Form action={formHandlers.handleSubmit(onSubmit)}&gt;
+        {/* ... */}
+      &lt;/Form&gt;
+
+      {process.env.NODE_ENV === 'development' &amp;&amp; &lt;FormDock form={form} /&gt;}
+    &lt;/&gt;
+  );
+}</code></pre>
           </div>
 
-          <h3>Vite plugin (auto-inject)</h3>
+          <h3 id="vite-plugin">Vite plugin (auto-inject)</h3>
           <p>
             If you use Vite, the <code>form-state-tools/vite</code> plugin can mount the dock for
             you — no <code>&lt;FormDock&gt;</code> in your JSX. Add it to your Vite config and feed
@@ -7402,14 +7426,6 @@ function AppForm() {
             client entry for TanStack Start, and the root module (<code>root.tsx</code>) for React
             Router 7 (Remix).
           </p>
-          <div class="callout callout-warning">
-            <div class="callout-label">Vite only</div>
-            <p>
-              This plugin is a Vite plugin — it does nothing under other bundlers. On Next.js,
-              Create React App, or any non-Vite setup, skip the plugin and use the manual
-              <code>&lt;FormDock form={form} /&gt;</code> setup above, which works in any React app.
-            </p>
-          </div>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">ts</span></div>
             <pre><code class="language-ts">// vite.config.ts
@@ -7444,17 +7460,6 @@ function AppForm() {
     &lt;/Form&gt;
   );
 }</code></pre>
-          </div>
-          <div class="callout callout-info">
-            <div class="callout-label">The plugin is not part of your bundle</div>
-            <p>
-              <code>formStateTools()</code> only applies during <code>vite dev</code> (<code
-                >apply: 'serve'</code
-              >), so it — and the dock it injects — are never included in your production build. The
-              plugin code itself runs in Node at dev time, not in the browser, so it adds nothing to
-              your shipped JavaScript. In a production build, <code>useFormDock</code> is a no-op
-              that tree-shakes away.
-            </p>
           </div>
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
@@ -7966,9 +7971,8 @@ function AppForm() {
           <h3 id="dock-detach">Detach into a popup</h3>
           <p>
             The header's left-most icon button toggles between the in-page dock and a separate
-            browser popup window. While attached, the button shows a <em>detach</em> glyph (an arrow
-            leaving a frame). Click it to pop the panel out into its own browser window — the
-            in-page dock disappears and the JSON tree renders in the popup instead.
+            browser popup window. Click the <em>detach</em> icon to move the panel into its own
+            window.
           </p>
           <div class="dock-sizes">
             <div class="dock-size-demo">
@@ -8026,46 +8030,10 @@ function AppForm() {
           </div>
           <p>
             The popup opens centered, sized to 65% of the screen width × 500px tall, and inherits
-            the host page's stylesheets so the JSON tree looks identical. The dock remembers the
-            detached state in <code>sessionStorage</code> under <code>__form-dock-detached</code>,
-            so a page refresh keeps the popup open.
+            the host page's stylesheets so the JSON tree looks identical. The dock remembers its
+            size, and you can close it by clicking the <em>attach</em> icon, clicking the header, or
+            navigating away.
           </p>
-          <p>There are four ways to dismiss the popup and re-attach the panel:</p>
-          <table class="prop-table">
-            <thead>
-              <tr>
-                <th>Action</th>
-                <th>Effect</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="prop-desc">Click the attach icon in the popup header</td>
-                <td class="prop-desc">
-                  Closes the popup and restores the in-page dock to its previous size.
-                </td>
-              </tr>
-              <tr>
-                <td class="prop-desc">Click the popup header text (or right-click it)</td>
-                <td class="prop-desc">
-                  Same as the attach icon — any click on the header while detached re-attaches.
-                </td>
-              </tr>
-              <tr>
-                <td class="prop-desc">Close the popup window directly (browser X button)</td>
-                <td class="prop-desc">
-                  The <code>pagehide</code> event triggers the same re-attach flow.
-                </td>
-              </tr>
-              <tr>
-                <td class="prop-desc">Navigate away from / reload the host page</td>
-                <td class="prop-desc">
-                  The popup closes automatically with its parent. After reload, the dock starts
-                  detached again (state persisted in <code>sessionStorage</code>).
-                </td>
-              </tr>
-            </tbody>
-          </table>
 
           <h3>Error toast</h3>
           <p>
@@ -8208,14 +8176,6 @@ ConsoleError: Warning: Each child in a list should have a unique "key" prop.
 
 // Force-disable in dev for a specific story/test
 &lt;FormDock form={form} devMode={false} /&gt;</code></pre>
-          </div>
-          <div class="callout callout-tip">
-            <div class="callout-label">Tip</div>
-            <p>
-              FormDock saves the last-used panel size to <code>sessionStorage</code> so it persists
-              across hot reloads. The <code>collapsed</code> prop is only used when there is no
-              saved size.
-            </p>
           </div>
           <div class="callout callout-info">
             <div class="callout-label">Production safety</div>
