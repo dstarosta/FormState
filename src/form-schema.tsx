@@ -1,7 +1,5 @@
 import * as z from 'zod/mini';
 
-import { deepEqual } from './helpers/deep-equal';
-
 import type {
   AsyncCheckMeta,
   FormDateOptions,
@@ -12,6 +10,7 @@ import type {
   ZodValidationError,
 } from './types/form-types';
 
+import { deepEqual } from './helpers/deep-equal';
 import { isValidDate, parseDate } from './helpers/date-formatter';
 import { debounceAsync } from './helpers/debouncer';
 import {

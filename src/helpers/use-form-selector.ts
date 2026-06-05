@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react';
 
-import { deepEqual } from './deep-equal';
-
 import type { Selector } from '../types/form-types';
+import { deepEqual } from './deep-equal';
 
 export function useSelector<S, R>(
   inputSelectors: Selector<S, unknown> | Selector<S, unknown>[],

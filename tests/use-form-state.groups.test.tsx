@@ -104,6 +104,7 @@ describe('form state groups', () => {
 
     const contact = result.current.formState.getGroup('contact-info');
 
+    expect(contact.ranges.get((path) => path.phone)).toBeUndefined();
     expect(() => contact.ranges.getMin((path) => path.phone)).toThrow(TypeError);
     expect(() => contact.ranges.getMax((path) => path.phone)).toThrow(TypeError);
   });
@@ -144,7 +145,7 @@ describe('form state groups', () => {
     expect('email' in demographics.patterns).toBe(false);
 
     expect(contact.patterns.get((path) => path.email)).toBe(z.regexes.email.source);
-    expect(contact.patterns.get((path) => path.phone)).toBe('');
+    expect(contact.patterns.get((path) => path.phone)).toBeUndefined();
     expect(contact.patterns.getKeys()).toContain('email');
 
     expect(contact.descriptions.email).toBe('Your email address');
@@ -265,6 +266,30 @@ describe('form state groups', () => {
     expect(contact.errors.getAll().length).toBe(1);
     expect(contact.errors.email).toBe('Invalid email format');
     expect(contact.validGroup).toBe(false);
+  });
+
+  it('excludes the root error from a group and ignores it for validGroup', () => {
+    const rootErrorSchema = z
+      .object({
+        email: z.group(z.formString({ required: true }), 'contact-info'),
+        phone: z.group(z.formString({ required: true }), 'contact-info'),
+      })
+      .check(z.validate((data) => data.email !== data.phone, 'Email and phone must differ'));
+
+    const { result } = renderHook(() =>
+      useFormState(rootErrorSchema, {
+        initialData: { email: 'same', phone: 'same' },
+        validateOnMount: true,
+      })
+    );
+
+    const contact = result.current.formState.getGroup('contact-info');
+
+    expect(result.current.formState.errors['']).toBe('Email and phone must differ');
+
+    expect('' in contact.errors).toBe(false);
+    expect(contact.errors.getAll()).toStrictEqual([]);
+    expect(contact.validGroup).toBe(true);
   });
 
   it('narrows the returned keys to the requested group at the type level', () => {

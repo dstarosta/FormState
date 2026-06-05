@@ -266,6 +266,8 @@ export type FormStringOptions =
 export type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> =
   P extends FormPath<T> ? FormPathValue<T, P> : unknown;
 
+export type PathExpression<T> = (data: T) => unknown;
+
 export type Selector<S, R> = (state: S) => R;
 
 /**
@@ -308,7 +310,7 @@ export type GroupBundle<T extends object, K extends keyof T> = {
    * Errors for each field in the group.
    */
   errors: Immutable<
-    Pick<FormMutableState<T>['errors'], (K & string) | ''> & {
+    Pick<FormMutableState<T>['errors'], K & string> & {
       /**
        * Gets an error message for a nested field within the group.
        *
@@ -337,7 +339,7 @@ export type GroupBundle<T extends object, K extends keyof T> = {
     }
   >;
   /**
-   * Errors for each field in the group.
+   * Dirty status for each field in the group.
    */
   dirty: Immutable<
     Pick<FormMutableState<T>['dirty'], K> & {
@@ -411,7 +413,7 @@ export type GroupBundle<T extends object, K extends keyof T> = {
        * @param expression - Form state path expression.
        * @returns An object with the `min` and `max` properties, or `undefined`.
        */
-      get: (expression: (data: T) => unknown) => RangeResult<number | Date>;
+      get: (expression: (data: T) => unknown) => RangeResult<number | Date> | undefined;
       /**
        * Gets the minimum range value or length for a nested numeric or date field in the group.
        *
@@ -446,9 +448,9 @@ export type GroupBundle<T extends object, K extends keyof T> = {
        * group.patterns.get((path) => path.name)
        *
        * @param expression - Form state path expression.
-       * @returns `string` containing the regular expression pattern or an empty `string`.
+       * @returns `string` containing the regular expression pattern, or `undefined` if there is no pattern.
        */
-      get: (expression: (data: T) => unknown) => string;
+      get: (expression: (data: T) => unknown) => string | undefined;
       /**
        * Gets an array of all pattern keys in the group.
        */
@@ -459,7 +461,7 @@ export type GroupBundle<T extends object, K extends keyof T> = {
    * Optional field descriptions in the group.
    */
   descriptions: Immutable<
-    Pick<FormMutableState<T>['descriptions'], (K & string) | ''> & {
+    Pick<FormMutableState<T>['descriptions'], K & string> & {
       /**
        * Gets the description for a nested field within the group.
        *
@@ -996,7 +998,7 @@ export type FormState<T extends object> = {
        * formState.patterns.get((path) => path.name)
        *
        * @param path - Form state path expression.
-       * @returns `string` containing the regular expression pattern or `undefined`.
+       * @returns `string` containing the regular expression pattern, or `undefined` if there is no pattern.
        */
       get: (expression: (data: T) => unknown) => string | undefined;
       /**
@@ -1141,7 +1143,8 @@ export type BlockerResponse = {
  *
  * @typeParam T - form state type.
  */
-// "any" allows inference to flow forward.
+// Keep the return as `any`, not `unknown`. `FormPathValue` reads the field type back out of this
+// callback, and `unknown` here corrupts array/optional fields (stray `?` / `| undefined`).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FormPath<T extends z.ZodMiniObject> = keyof z.infer<T> | ((data: z.infer<T>) => any);
 

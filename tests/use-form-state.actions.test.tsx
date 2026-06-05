@@ -59,7 +59,7 @@ describe('form actions', () => {
     expect(formState.dirty.get('#name')).toBe(false);
     expect(formState.patterns.name?.length).toBeGreaterThan(0);
     expect(formState.patterns.get((path) => path.name)?.length).toBeGreaterThan(0);
-    expect(formState.patterns.get((path) => path.info.uuid)).toBe('');
+    expect(formState.patterns.get((path) => path.info.uuid)).toBeUndefined();
     expect(formState.descriptions.name).toBe('Name');
     expect(formState.descriptions.get((path) => path.name)).toBe('Name');
     expect(formState.descriptions.get((path) => path.info.uuid)).toBe('');
@@ -144,7 +144,7 @@ describe('form actions', () => {
       expect(state.dirty.get('#name')).toBe(false);
       expect(state.patterns.name?.length).toBeGreaterThan(0);
       expect(state.patterns.get((path) => path.name)?.length).toBeGreaterThan(0);
-      expect(state.patterns.get((path) => path.info.uuid)).toBe('');
+      expect(state.patterns.get((path) => path.info.uuid)).toBeUndefined();
       expect(state.descriptions.name).toBe('Name');
       expect(state.descriptions.get((path) => path.name)).toBe('Name');
       expect(state.descriptions.get((path) => path.info.uuid)).toBe('');

@@ -8,9 +8,9 @@ import {
   useState,
   type SyntheticEvent,
 } from 'react';
-import { deepEqual } from './helpers/deep-equal';
 import * as z from 'zod/mini';
 
+import { deepEqual } from './helpers/deep-equal';
 import { dotPathGet } from './helpers/dot-path';
 import { createFormComponent } from './helpers/form-builder';
 import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';

@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/refs -- ref-cache pattern (same shape as useMemo's internals) */
 import { useRef, type DependencyList } from 'react';
+
 import { deepEqual } from './deep-equal';
 
 const sameDeps = (dependenciesA: DependencyList, dependenciesB: DependencyList) => {

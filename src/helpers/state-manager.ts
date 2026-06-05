@@ -1,11 +1,11 @@
 import * as z from 'zod/mini';
-import { deepEqual } from './deep-equal';
 
 import type {
   DeepPartial,
   FieldRange,
   FormMutableState,
   FormPath,
+  FormState,
   GetByGroup,
   Group,
   GroupNames,
@@ -18,10 +18,12 @@ import type {
   ImmutableObject,
   ParseAsObjectResult,
   ParseResult,
+  PathExpression,
   RangeResult,
   UnknownObject,
 } from '../types/form-types';
 
+import { deepEqual } from './deep-equal';
 import { dotPathGet } from './dot-path';
 import { generateUniqueId } from './random-id-generator';
 import {
@@ -244,6 +246,79 @@ const allErrors = (
     .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
     .flatMap((error) => error.split(errorMessageSeparator));
 
+const toPathKey = <T extends object>(data: T, expression: PathExpression<T>): string =>
+  getPath(data, expression).join('.');
+
+const toPathNotation = <T extends object>(data: T, expression: PathExpression<T>): string =>
+  getPathNotation(getPath(data, expression) as Parameters<typeof getPathNotation>[0]);
+
+const errorGetters = <T extends object>(
+  errors: Record<string, string | undefined>,
+  data: T,
+  errorMessageSeparator: string
+) => ({
+  get: (expression: PathExpression<T>) => errors[toPathKey(data, expression)],
+  getManual: (key: string) => errors[key],
+  getAll: () => allErrors(errors, errorMessageSeparator),
+  getKeys: () => truthyKeys(errors),
+});
+
+const touchedGetters = <T extends object>(touched: Record<string, unknown>, data: T) => ({
+  get: (expression: PathExpression<T>) => Boolean(touched[toPathKey(data, expression)]),
+  getKeys: () => truthyKeys(touched),
+});
+
+const dirtyGetters = (dirty: Record<string, unknown>) => ({
+  get: (key: `#${string}`) => Boolean(dirty[key]),
+  getKeys: () => truthyKeys(dirty),
+});
+
+const requiredGetters = <T extends object>(required: Record<string, unknown>, data: T) => ({
+  get: (expression: PathExpression<T>) => Boolean(required[toPathKey(data, expression)]),
+  getKeys: () => truthyKeys(required),
+});
+
+const rangeOf = <T extends object>(
+  ranges: Record<string, { min: FieldRange; max: FieldRange } | undefined>,
+  data: T,
+  nameOrPath: PropertyKey | PathExpression<T>,
+  bound: 'min' | 'max'
+): number | Date => {
+  const path =
+    typeof nameOrPath === 'function' ? toPathNotation(data, nameOrPath) : String(nameOrPath);
+
+  const value = ranges[path]?.[bound];
+
+  if (value === undefined) {
+    throw new TypeError(`No ${bound} range value is defined for path '${path}'.`);
+  }
+
+  return value;
+};
+
+const rangeGetters = <T extends object>(
+  ranges: Record<string, { min: FieldRange; max: FieldRange } | undefined>,
+  data: T
+) => ({
+  get: (expression: PathExpression<T>) =>
+    ranges[toPathNotation(data, expression)] as RangeResult<number | Date> | undefined,
+  getMin: (nameOrPath: PropertyKey | PathExpression<T>) => rangeOf(ranges, data, nameOrPath, 'min'),
+  getMax: (nameOrPath: PropertyKey | PathExpression<T>) => rangeOf(ranges, data, nameOrPath, 'max'),
+  getKeys: () => truthyKeys(ranges),
+});
+
+const stringGetters = <T extends object, F extends boolean>(
+  slice: Record<string, string | undefined>,
+  data: T,
+  emptyFallback: F
+) => ({
+  get: (expression: PathExpression<T>) => {
+    const value = slice[toPathNotation(data, expression)];
+    return (emptyFallback ? (value ?? '') : value) as F extends true ? string : string | undefined;
+  },
+  getKeys: () => truthyKeys(slice),
+});
+
 export const freezeObject = <T extends object>(obj: T) => {
   return IS_DEVELOPMENT ? (deepFreeze(obj) as Immutable<T>) : (obj as Immutable<T>);
 };
@@ -260,10 +335,7 @@ export const createImmutableErrors = <T extends z.ZodMiniObject>(
 ) =>
   freezeObject({
     ...errors,
-    get: (expression: (data: z.infer<T>) => unknown) => errors[getPath(data, expression).join('.')],
-    getManual: (key: string) => errors[key],
-    getAll: () => allErrors(errors, errorMessageSeparator),
-    getKeys: () => truthyKeys(errors),
+    ...errorGetters(errors, data, errorMessageSeparator),
   });
 
 export const createImmutableDirty = <T extends z.ZodMiniObject>(
@@ -271,8 +343,7 @@ export const createImmutableDirty = <T extends z.ZodMiniObject>(
 ) =>
   freezeObject({
     ...dirty,
-    get: (key: `#${string}`) => Boolean(dirty[key]),
-    getKeys: () => truthyKeys(dirty),
+    ...dirtyGetters(dirty),
   });
 
 export const createImmutableTouched = <T extends z.ZodMiniObject>(
@@ -281,9 +352,7 @@ export const createImmutableTouched = <T extends z.ZodMiniObject>(
 ) =>
   freezeObject({
     ...touched,
-    get: (expression: (data: z.infer<T>) => unknown) =>
-      Boolean(touched[getPath(data, expression).join('.')]),
-    getKeys: () => truthyKeys(touched),
+    ...touchedGetters(touched, data),
   });
 
 export const createImmutableRanges = <T extends z.ZodMiniObject>(
@@ -300,42 +369,8 @@ export const createImmutableRanges = <T extends z.ZodMiniObject>(
 ) =>
   freezeObject({
     ...ranges,
-    get: (expression: (data: z.infer<T>) => unknown) =>
-      ranges[getPathNotation(getPath(data, expression))] as RangeResult<unknown>,
-    // "any" allows inference to flow forward.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    getMin: (nameOrPath: keyof z.infer<T> | ((data: z.infer<T>) => unknown)): any => {
-      const path =
-        typeof nameOrPath === 'function'
-          ? getPathNotation(getPath(data, nameOrPath))
-          : String(nameOrPath);
-
-      const range = ranges[path];
-
-      if (range?.min === undefined) {
-        throw new TypeError(`No min range value is defined for path '${path}'.`);
-      }
-
-      return range.min;
-    },
-    // "any" allows inference to flow forward.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    getMax: (nameOrPath: keyof z.infer<T> | ((data: z.infer<T>) => unknown)): any => {
-      const path =
-        typeof nameOrPath === 'function'
-          ? getPathNotation(getPath(data, nameOrPath))
-          : String(nameOrPath);
-
-      const range = ranges[path];
-
-      if (range?.max === undefined) {
-        throw new TypeError(`No max range value is defined for path '${path}'.`);
-      }
-
-      return range.max;
-    },
-    getKeys: () => truthyKeys(ranges),
-  });
+    ...rangeGetters(ranges, data),
+  }) as FormState<z.infer<T>>['ranges'];
 
 export const createImmutablePatterns = <T extends z.ZodMiniObject>(
   patterns: Record<keyof z.infer<T>, string | undefined>,
@@ -343,9 +378,7 @@ export const createImmutablePatterns = <T extends z.ZodMiniObject>(
 ) =>
   freezeObject({
     ...patterns,
-    get: (expression: (data: z.infer<T>) => unknown) =>
-      patterns[getPathNotation(getPath(data, expression))] ?? '',
-    getKeys: () => truthyKeys(patterns),
+    ...stringGetters(patterns, data, false),
   });
 
 export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
@@ -354,9 +387,7 @@ export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
 ) =>
   freezeObject({
     ...descriptions,
-    get: (expression: (data: z.infer<T>) => unknown) =>
-      descriptions[getPathNotation(getPath(data, expression))] ?? '',
-    getKeys: () => truthyKeys(descriptions),
+    ...stringGetters(descriptions, data, true),
   });
 
 export const createImmutableRequired = <T extends z.ZodMiniObject>(
@@ -365,9 +396,7 @@ export const createImmutableRequired = <T extends z.ZodMiniObject>(
 ) =>
   freezeObject({
     ...required,
-    get: (expression: (data: z.infer<T>) => unknown) =>
-      Boolean(required[getPath(data, expression).join('.')]),
-    getKeys: () => truthyKeys(required),
+    ...requiredGetters(required, data),
   });
 
 const pickByKeys = <V>(
@@ -421,7 +450,7 @@ export const createGroupBundle = <T extends z.ZodMiniObject>(
     const keys = new Set(groupFieldNames(groups, name));
 
     const data = pickByKeys(slices.data, keys, false);
-    const errors = pickByKeys(slices.errors, keys, true);
+    const errors = pickByKeys(slices.errors, keys, false);
     const touched = pickByKeys(slices.touched, keys, false);
     const dirty = pickByKeys(slices.dirty, keys, false);
     const required = pickByKeys(slices.required, keys, false);
@@ -430,85 +459,44 @@ export const createGroupBundle = <T extends z.ZodMiniObject>(
       { type: string; format: string; min: FieldRange; max: FieldRange }
     >;
     const patterns = pickByKeys(slices.patterns, keys, false);
-    const descriptions = pickByKeys(slices.descriptions, keys, true);
+    const descriptions = pickByKeys(slices.descriptions, keys, false);
+
+    const expressionData = data as z.infer<T>;
 
     return freezeObject({
       data: data as Pick<State['data'], K>,
       errors: {
-        ...(errors as Pick<State['errors'], (K & string) | ''>),
-        get: (expression: (data: unknown) => unknown) =>
-          errors[getPath(data, expression).join('.')],
-        getManual: (key: string) => errors[key],
-        getAll: () => allErrors(errors, errorMessageSeparator),
-        getKeys: () => truthyKeys(errors),
+        ...(errors as Pick<State['errors'], K & string>),
+        ...errorGetters(errors, expressionData, errorMessageSeparator),
       },
       touched: {
         ...(touched as Pick<State['touched'], K>),
-        get: (expression: (data: unknown) => unknown) =>
-          Boolean(touched[getPath(data, expression).join('.')]),
-        getKeys: () => truthyKeys(touched),
+        ...touchedGetters(touched, expressionData),
       },
       dirty: {
         ...(dirty as Pick<State['dirty'], K>),
-        get: (key: `#${string}`) => Boolean(dirty[key]),
-        getKeys: () => truthyKeys(dirty),
+        ...dirtyGetters(dirty),
       },
       required: {
         ...(required as Pick<State['required'], K>),
-        get: (expression: (data: unknown) => unknown) =>
-          Boolean(required[getPath(data, expression).join('.')]),
-        getKeys: () => truthyKeys(required),
+        ...requiredGetters(required, expressionData),
       },
       ranges: {
         ...(ranges as Pick<State['ranges'], K>),
-        get: (expression: (data: unknown) => unknown) =>
-          ranges[getPathNotation(getPath(data, expression))] as RangeResult<number | Date>,
-        getMin: (nameOrPath: string | ((data: unknown) => unknown)): number | Date => {
-          const path =
-            typeof nameOrPath === 'function'
-              ? getPathNotation(getPath(data, nameOrPath))
-              : nameOrPath;
-
-          const range = ranges[path];
-
-          if (range?.min === undefined) {
-            throw new TypeError(`No min range value is defined for path '${path}'.`);
-          }
-
-          return range.min;
-        },
-        getMax: (nameOrPath: string | ((data: unknown) => unknown)): number | Date => {
-          const path =
-            typeof nameOrPath === 'function'
-              ? getPathNotation(getPath(data, nameOrPath))
-              : nameOrPath;
-
-          const range = ranges[path];
-
-          if (range?.max === undefined) {
-            throw new TypeError(`No max range value is defined for path '${path}'.`);
-          }
-
-          return range.max;
-        },
-        getKeys: () => truthyKeys(ranges),
+        ...rangeGetters(ranges, expressionData),
       },
       patterns: {
         ...(patterns as Pick<State['patterns'], K>),
-        get: (expression: (data: unknown) => unknown) =>
-          patterns[getPathNotation(getPath(data, expression))] ?? '',
-        getKeys: () => truthyKeys(patterns),
+        ...stringGetters(patterns, expressionData, false),
       },
       descriptions: {
-        ...(descriptions as Pick<State['descriptions'], (K & string) | ''>),
-        get: (expression: (data: unknown) => unknown) =>
-          descriptions[getPathNotation(getPath(data, expression))] ?? '',
-        getKeys: () => truthyKeys(descriptions),
+        ...(descriptions as Pick<State['descriptions'], K & string>),
+        ...stringGetters(descriptions, expressionData, true),
       },
       dirtyGroup: Object.values(dirty).some(Boolean),
       touchedGroup: Object.values(touched).some(Boolean),
-      validGroup: Object.keys(errors).length === 0,
-    }) as Bundle<G>;
+      validGroup: truthyKeys(errors).length === 0,
+    });
   };
 };
 
