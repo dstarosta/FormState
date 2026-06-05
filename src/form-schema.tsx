@@ -3,7 +3,6 @@ import * as z from 'zod/mini';
 import { deepEqual } from './helpers/deep-equal';
 
 import type {
-  AsyncCheck,
   AsyncCheckMeta,
   FormDateOptions,
   FormStringOptions,
@@ -1014,7 +1013,7 @@ export function validateAsync<T>(
     },
     {
       when: (payload) => {
-        const meta = getAsyncCheckMetaForCurrentMap(check as unknown as AsyncCheck);
+        const meta = getAsyncCheckMetaForCurrentMap(check);
         // Unreachable guard
         /* v8 ignore if -- @preserve */
         if (!meta) {
@@ -1032,7 +1031,7 @@ export function validateAsync<T>(
     }
   );
 
-  registerAsyncCheckFactory(check as unknown as AsyncCheck, factory);
+  registerAsyncCheckFactory(check, factory);
 
   return check;
 }
@@ -1059,10 +1058,8 @@ export function validateAsync<T>(
  * @param name - The group name.
  * @returns The schema branded with the group name.
  */
-export const group = <S extends z.ZodMiniType, const G extends string>(
-  schema: S,
-  name: G
-): Grouped<S, G> => schema.with(z.meta({ group: name })) as unknown as Grouped<S, G>;
+export const group = <S extends z.ZodMiniType, const G extends string>(schema: S, name: G) =>
+  schema.with(z.meta({ group: name })) as Grouped<S, G>;
 
 // Array validations
 

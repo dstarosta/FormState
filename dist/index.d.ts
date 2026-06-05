@@ -114,6 +114,15 @@ type FormStringOptions = {
 };
 type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> = P extends FormPath<T> ? FormPathValue<T, P> : unknown;
 type Selector<S, R> = (state: S) => R;
+/**
+ * Component props.
+ */
+type FormResetBlockerProps = Readonly<{
+  /**
+   * An optional form reference to avoid a hidden inner dev element.
+   */
+  formRef?: React.RefObject<HTMLFormElement | null>;
+}>;
 type Grouped<S extends z.ZodMiniType, G extends string> = S & {
   readonly __group__: G;
 };
@@ -2735,15 +2744,6 @@ declare const submitForm: (form?: HTMLFormElement | null, submitter?: HTMLElemen
 //#endregion
 //#region src/helpers/form-reset-blocker.d.ts
 /**
- * Component props.
- */
-type FormResetBlockerProps = Readonly<{
-  /**
-   * An optional form reference to avoid a hidden inner dev element.
-   */
-  formRef?: React.RefObject<HTMLFormElement | null>;
-}>;
-/**
  * A component to put inside a form element that has a function called from the `action` attribute
  * to avoid versions React 19.3+ from resetting the form after submitting the data.
  */
@@ -2769,7 +2769,7 @@ declare const classNames: (...values: FormClassValue[]) => string;
  * flag and an {@link MaskedFocusEvent.unmaskedValue} string carrying just
  * the user-entered characters.
  */
-interface MaskedFocusEvent extends React.FocusEvent<HTMLInputElement> {
+type MaskedFocusEvent = React.FocusEvent<HTMLInputElement> & {
   /**
    * `true` if every required mask slot in the mask is filled. otherwise `false`.
    * Optional slots can be unfilled.
@@ -2781,13 +2781,13 @@ interface MaskedFocusEvent extends React.FocusEvent<HTMLInputElement> {
    * and value `"(555) 123-____"`, this is `"555123"`.
    */
   unmaskedValue: string;
-}
+};
 /**
  * `React.ChangeEvent` augmented with a {@link MaskedChangeEvent.complete}
  * flag and an {@link MaskedChangeEvent.unmaskedValue} string carrying just
  * the user-entered characters.
  */
-interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
+type MaskedChangeEvent = React.ChangeEvent<HTMLInputElement> & {
   /**
    * `true` if every required slot in the mask is filled. otherwise `false`.
    * Optional slots can be unfilled.
@@ -2799,8 +2799,8 @@ interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
    * and value `"(555) 123-____"`, this is `"555123"`.
    */
   unmaskedValue: string;
-}
-interface MaskedInputProps extends Omit<React.ComponentPropsWithRef<'input'>, 'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'> {
+};
+type MaskedInputProps = Omit<React.ComponentPropsWithRef<'input'>, 'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'> & {
   /**
    * Mask pattern. Tokens accept user input — `9` (digit), `a` (letter),
    * `*` (alphanumeric). `?` marks every following position as optional.
@@ -2858,7 +2858,7 @@ interface MaskedInputProps extends Omit<React.ComponentPropsWithRef<'input'>, 'o
    * the required mask slots are filled.
    */
   onChange?: (event: MaskedChangeEvent) => void;
-}
+};
 /**
  * Masked input component. Restricts user input to a fixed pattern of slots
  * and literal characters and always renders the full mask in place.
@@ -2922,7 +2922,10 @@ declare function MaskedInput({
 }: Readonly<MaskedInputProps>): _$react_jsx_runtime0.JSX.Element;
 //#endregion
 //#region src/secure-input.d.ts
-interface SecureInputProps extends Omit<React.ComponentPropsWithRef<'input'>, 'onChange' | 'type' | 'value' | 'defaultValue'> {
+/**
+ * Secure input props.
+ */
+type SecureInputProps = Omit<React.ComponentPropsWithRef<'input'>, 'onChange' | 'type' | 'value' | 'defaultValue'> & {
   /**
    * Visual rendering of the input. `'text'` shows the bullet mask in the
    * DOM; `'password'` lets the browser apply its own password-style mask
@@ -2956,7 +2959,7 @@ interface SecureInputProps extends Omit<React.ComponentPropsWithRef<'input'>, 'o
    * the latest value.
    */
   onSecureBlur?: (value: string) => void;
-}
+};
 /**
  * Secure input component that simulates a password input but does not
  * store its value inside DOM for additional security.

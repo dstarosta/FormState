@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
 
 import type { SyntheticEvent } from 'react';
-import type * as z from 'zod/mini';
+import * as z from 'zod/mini';
 
 // Extending ZodMiniObject type
 
@@ -67,7 +67,14 @@ type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = {
 
 // Internal types
 
-export type AsyncCheck = { _zod: { def: { fn?: unknown } } };
+export type AsyncCheck = z.core.$ZodCheck & {
+  _zod: {
+    def: {
+      fn?: unknown;
+      path?: PropertyKey[];
+    };
+  };
+};
 
 export type AsyncCheckMeta = {
   skipWhen: ((item: unknown, prevItem: unknown) => boolean) | undefined;
@@ -260,6 +267,16 @@ export type FormPathValueOrUnknown<T extends z.ZodMiniObject, P> =
   P extends FormPath<T> ? FormPathValue<T, P> : unknown;
 
 export type Selector<S, R> = (state: S) => R;
+
+/**
+ * Component props.
+ */
+export type FormResetBlockerProps = Readonly<{
+  /**
+   * An optional form reference to avoid a hidden inner dev element.
+   */
+  formRef?: React.RefObject<HTMLFormElement | null>;
+}>;
 
 export type Grouped<S extends z.ZodMiniType, G extends string> = S & {
   readonly __group__: G;

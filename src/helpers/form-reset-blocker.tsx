@@ -1,17 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 
+import type { FormResetBlockerProps } from '../types/form-types';
 import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
-
-/**
- * Component props.
- */
-type FormResetBlockerProps = Readonly<{
-  /**
-   * An optional form reference to avoid a hidden inner dev element.
-   */
-  formRef?: React.RefObject<HTMLFormElement | null>;
-}>;
 
 /**
  * A component to put inside a form element that has a function called from the `action` attribute

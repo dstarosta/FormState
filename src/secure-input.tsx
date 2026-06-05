@@ -5,10 +5,13 @@ import { mergeRefs } from './helpers/ref-merge';
 import { createSyntheticChangeEvent } from './helpers/synthetic-event';
 import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 
-interface SecureInputProps extends Omit<
+/**
+ * Secure input props.
+ */
+type SecureInputProps = Omit<
   React.ComponentPropsWithRef<'input'>,
   'onChange' | 'type' | 'value' | 'defaultValue'
-> {
+> & {
   /**
    * Visual rendering of the input. `'text'` shows the bullet mask in the
    * DOM; `'password'` lets the browser apply its own password-style mask
@@ -42,7 +45,7 @@ interface SecureInputProps extends Omit<
    * the latest value.
    */
   onSecureBlur?: (value: string) => void;
-}
+};
 
 const MASK_CHAR = '•';
 

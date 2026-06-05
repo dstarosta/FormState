@@ -317,17 +317,15 @@ const hasAsyncChecks = (schema: z.ZodMiniType): boolean => {
   return false;
 };
 
-type AsyncCheckNode = { _zod: { def: { fn?: unknown; path?: PropertyKey[] } } };
-
 const walkAsyncChecks = (
   schema: z.ZodMiniType,
   parentKey: string,
   data: unknown,
-  visit: (check: AsyncCheckNode, parentKey: string) => void
+  visit: (check: AsyncCheck, parentKey: string) => void
 ): void => {
   const checks = (
     schema._zod.def as {
-      checks?: AsyncCheckNode[];
+      checks?: AsyncCheck[];
     }
   ).checks;
 

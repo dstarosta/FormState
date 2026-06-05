@@ -12,7 +12,7 @@ describe('createUseBlocker', () => {
 
   // Minimal getters; the blocker only forwards these into `shouldBlock`.
   const makeBlocker = (status: Partial<FormStatus> = {}) => {
-    const formState = { data: { name: '' } } as unknown as FormState<Shape>;
+    const formState = { data: { name: '' } } as FormState<Shape>;
     const formStatus = { dirty: false, ...status } as FormStatus;
     return createUseBlocker<Shape>(
       () => formState,

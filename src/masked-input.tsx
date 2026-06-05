@@ -15,7 +15,7 @@ const TOKEN_PATTERNS: Record<string, RegExp> = {
  * flag and an {@link MaskedFocusEvent.unmaskedValue} string carrying just
  * the user-entered characters.
  */
-export interface MaskedFocusEvent extends React.FocusEvent<HTMLInputElement> {
+export type MaskedFocusEvent = React.FocusEvent<HTMLInputElement> & {
   /**
    * `true` if every required mask slot in the mask is filled. otherwise `false`.
    * Optional slots can be unfilled.
@@ -27,14 +27,14 @@ export interface MaskedFocusEvent extends React.FocusEvent<HTMLInputElement> {
    * and value `"(555) 123-____"`, this is `"555123"`.
    */
   unmaskedValue: string;
-}
+};
 
 /**
  * `React.ChangeEvent` augmented with a {@link MaskedChangeEvent.complete}
  * flag and an {@link MaskedChangeEvent.unmaskedValue} string carrying just
  * the user-entered characters.
  */
-export interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
+export type MaskedChangeEvent = React.ChangeEvent<HTMLInputElement> & {
   /**
    * `true` if every required slot in the mask is filled. otherwise `false`.
    * Optional slots can be unfilled.
@@ -46,12 +46,12 @@ export interface MaskedChangeEvent extends React.ChangeEvent<HTMLInputElement> {
    * and value `"(555) 123-____"`, this is `"555123"`.
    */
   unmaskedValue: string;
-}
+};
 
-interface MaskedInputProps extends Omit<
+type MaskedInputProps = Omit<
   React.ComponentPropsWithRef<'input'>,
   'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'
-> {
+> & {
   /**
    * Mask pattern. Tokens accept user input — `9` (digit), `a` (letter),
    * `*` (alphanumeric). `?` marks every following position as optional.
@@ -109,21 +109,21 @@ interface MaskedInputProps extends Omit<
    * the required mask slots are filled.
    */
   onChange?: (event: MaskedChangeEvent) => void;
-}
+};
 
-interface MaskPosition {
+type MaskPosition = {
   isSlot: boolean;
   pattern: RegExp | null;
   literal: string | null;
   placeholderChar: string;
   optional: boolean;
-}
+};
 
-interface MaskInfo {
+type MaskInfo = {
   positions: MaskPosition[];
   length: number;
   empty: string;
-}
+};
 
 type Slots = (string | null)[];
 
