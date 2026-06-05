@@ -4238,9 +4238,15 @@ formStatus.touched                               // true if any field is touched
             <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
             <pre><code class="language-tsx">const contact = formState.getGroup('contact');
 
-contact.data.email; // 'jane@example.com'
-contact.errors.phone; // error message, if any
+contact.data.email;     // 'jane@example.com'
+contact.errors.phone;   // error message, if any
+contact.touched.email;  // true
+contact.dirty.email;    // false
 contact.required.email; // true
+
+contact.dirtyGroup;   // false - none of the group fields are dirty
+contact.touchedGroup; // true - at least one of the group fields has been touched
+contact.validGroup;   // true - validates all the group fields
 
 // Render a whole section from the bundle
 &lt;fieldset&gt;
@@ -4275,13 +4281,20 @@ contact.required.email; // true
             The group name is checked against the schema, so requesting a group that does not exist
             is a TypeScript error and autocomplete suggests the valid names.
           </p>
-          <div class="callout callout-tip">
-            <div class="callout-label">Tip</div>
+          <div class="callout callout-info">
+            <div class="callout-label">Note</div>
             <p>
               Groups only apply to top-level fields. Placing a group on a nested object field or an
               array element is reported by the
               <a href="#eslint"><code>no-nested-group</code></a> ESLint rule and throws when the
               form initializes.
+            </p>
+          </div>
+          <div class="callout callout-tip">
+            <div class="callout-label">Tip</div>
+            <p>
+              Groups can be used as a <a href="#select-group"><code>selector's</code></a> first
+              argument to memoize the underlying slice of the form state.
             </p>
           </div>
         </section>
@@ -6030,7 +6043,7 @@ const summary = selectOrderSummary(formState.data);
             >
             — selectors written here can be swapped for reselect selectors and vice versa.
           </p>
-          <h3>Selecting by group</h3>
+          <h3 id="select-group">Selecting by group</h3>
           <p>
             Pass a <a href="#form-groups">group name</a> as the first argument to select that
             group's data slice. With no second argument the selector returns the group's data

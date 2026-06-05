@@ -6,6 +6,11 @@ import type {
   FieldRange,
   FormMutableState,
   FormPath,
+  GetByGroup,
+  Group,
+  GroupNames,
+  GroupSchemaShape,
+  KeysInGroup,
   FormPathValueOrUnknown,
   FormStatePath,
   Immutable,
@@ -383,9 +388,6 @@ const pickByKeys = <V>(
   return result;
 };
 
-// Resolves the root-level field names assigned to a group, throwing when none exist.
-// The public group APIs are typed to reject unknown group names, so an empty result is
-// only reachable when the type system is bypassed (e.g. an `as` cast or a JS caller).
 export const groupFieldNames = (groups: Record<string, string>, name: string): string[] => {
   const fieldNames = Object.keys(groups).filter((field) => groups[field] === name);
 
@@ -394,6 +396,120 @@ export const groupFieldNames = (groups: Record<string, string>, name: string): s
   }
 
   return fieldNames;
+};
+
+export const createGroupBundle = <T extends z.ZodMiniObject>(
+  groups: Record<string, string>,
+  slices: {
+    data: Record<string, unknown>;
+    errors: Record<string, string | undefined>;
+    touched: Record<string, boolean>;
+    dirty: Record<string, boolean>;
+    required: Record<string, boolean>;
+    ranges: Record<string, { type: string; format: string; min: FieldRange; max: FieldRange }>;
+    patterns: Record<string, string | undefined>;
+    descriptions: Record<string, string | undefined>;
+  },
+  errorMessageSeparator: string = '|'
+): GetByGroup<T> => {
+  type Bundle<G extends GroupNames<GroupSchemaShape<T>>> = Group<T, G>;
+  type State = FormMutableState<z.infer<T>>;
+
+  return <G extends GroupNames<GroupSchemaShape<T>>>(name: G): Bundle<G> => {
+    type K = KeysInGroup<GroupSchemaShape<T>, G> & keyof z.infer<T>;
+
+    const keys = new Set(groupFieldNames(groups, name));
+
+    const data = pickByKeys(slices.data, keys, false);
+    const errors = pickByKeys(slices.errors, keys, true);
+    const touched = pickByKeys(slices.touched, keys, false);
+    const dirty = pickByKeys(slices.dirty, keys, false);
+    const required = pickByKeys(slices.required, keys, false);
+    const ranges = pickByKeys(slices.ranges, keys, false) as Record<
+      string,
+      { type: string; format: string; min: FieldRange; max: FieldRange }
+    >;
+    const patterns = pickByKeys(slices.patterns, keys, false);
+    const descriptions = pickByKeys(slices.descriptions, keys, true);
+
+    return freezeObject({
+      data: data as Pick<State['data'], K>,
+      errors: {
+        ...(errors as Pick<State['errors'], (K & string) | ''>),
+        get: (expression: (data: unknown) => unknown) =>
+          errors[getPath(data, expression).join('.')],
+        getManual: (key: string) => errors[key],
+        getAll: () => allErrors(errors, errorMessageSeparator),
+        getKeys: () => truthyKeys(errors),
+      },
+      touched: {
+        ...(touched as Pick<State['touched'], K>),
+        get: (expression: (data: unknown) => unknown) =>
+          Boolean(touched[getPath(data, expression).join('.')]),
+        getKeys: () => truthyKeys(touched),
+      },
+      dirty: {
+        ...(dirty as Pick<State['dirty'], K>),
+        get: (key: `#${string}`) => Boolean(dirty[key]),
+        getKeys: () => truthyKeys(dirty),
+      },
+      required: {
+        ...(required as Pick<State['required'], K>),
+        get: (expression: (data: unknown) => unknown) =>
+          Boolean(required[getPath(data, expression).join('.')]),
+        getKeys: () => truthyKeys(required),
+      },
+      ranges: {
+        ...(ranges as Pick<State['ranges'], K>),
+        get: (expression: (data: unknown) => unknown) =>
+          ranges[getPathNotation(getPath(data, expression))] as RangeResult<number | Date>,
+        getMin: (nameOrPath: string | ((data: unknown) => unknown)): number | Date => {
+          const path =
+            typeof nameOrPath === 'function'
+              ? getPathNotation(getPath(data, nameOrPath))
+              : nameOrPath;
+
+          const range = ranges[path];
+
+          if (range?.min === undefined) {
+            throw new TypeError(`No min range value is defined for path '${path}'.`);
+          }
+
+          return range.min;
+        },
+        getMax: (nameOrPath: string | ((data: unknown) => unknown)): number | Date => {
+          const path =
+            typeof nameOrPath === 'function'
+              ? getPathNotation(getPath(data, nameOrPath))
+              : nameOrPath;
+
+          const range = ranges[path];
+
+          if (range?.max === undefined) {
+            throw new TypeError(`No max range value is defined for path '${path}'.`);
+          }
+
+          return range.max;
+        },
+        getKeys: () => truthyKeys(ranges),
+      },
+      patterns: {
+        ...(patterns as Pick<State['patterns'], K>),
+        get: (expression: (data: unknown) => unknown) =>
+          patterns[getPathNotation(getPath(data, expression))] ?? '',
+        getKeys: () => truthyKeys(patterns),
+      },
+      descriptions: {
+        ...(descriptions as Pick<State['descriptions'], (K & string) | ''>),
+        get: (expression: (data: unknown) => unknown) =>
+          descriptions[getPathNotation(getPath(data, expression))] ?? '',
+        getKeys: () => truthyKeys(descriptions),
+      },
+      dirtyGroup: Object.values(dirty).some(Boolean),
+      touchedGroup: Object.values(touched).some(Boolean),
+      validGroup: Object.keys(errors).length === 0,
+    }) as Bundle<G>;
+  };
 };
 
 // Returns a shallow copy of `data` containing only the group's root-level fields.
@@ -409,35 +525,6 @@ export const pickGroupData = <T extends object>(
   }
 
   return result;
-};
-
-export const createGroupBundle = (
-  groups: Record<string, string>,
-  slices: {
-    data: Record<string, unknown>;
-    errors: Record<string, string | undefined>;
-    touched: Record<string, boolean>;
-    dirty: Record<string, boolean>;
-    required: Record<string, boolean>;
-    ranges: Record<string, { type: string; format: string; min: FieldRange; max: FieldRange }>;
-    patterns: Record<string, string | undefined>;
-    descriptions: Record<string, string | undefined>;
-  }
-) => {
-  return (name: string) => {
-    const keys = new Set(groupFieldNames(groups, name));
-
-    return freezeObject({
-      data: pickByKeys(slices.data, keys, false),
-      errors: pickByKeys(slices.errors, keys, true),
-      touched: pickByKeys(slices.touched, keys, false),
-      dirty: pickByKeys(slices.dirty, keys, false),
-      required: pickByKeys(slices.required, keys, false),
-      ranges: pickByKeys(slices.ranges, keys, false),
-      patterns: pickByKeys(slices.patterns, keys, false),
-      descriptions: pickByKeys(slices.descriptions, keys, true),
-    });
-  };
 };
 
 export const touchErroredFields = <T extends Record<string, unknown>, K extends keyof T>(

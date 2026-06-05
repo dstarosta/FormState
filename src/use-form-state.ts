@@ -1789,16 +1789,20 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const getGroup = useMemo(
     () =>
-      createGroupBundle(groups, {
-        data: formState.data,
-        errors: formState.errors,
-        touched: formState.touched,
-        dirty: formState.dirty,
-        required: formState.required,
-        ranges: formState.ranges,
-        patterns: formState.patterns,
-        descriptions: formState.descriptions,
-      }),
+      createGroupBundle<T>(
+        groups,
+        {
+          data: formState.data,
+          errors: formState.errors,
+          touched: formState.touched,
+          dirty: formState.dirty,
+          required: formState.required,
+          ranges: formState.ranges,
+          patterns: formState.patterns,
+          descriptions: formState.descriptions,
+        },
+        errorMessageSeparator
+      ),
     [
       groups,
       formState.data,
@@ -1809,6 +1813,7 @@ export function useFormState<T extends z.ZodMiniObject>(
       formState.ranges,
       formState.patterns,
       formState.descriptions,
+      errorMessageSeparator,
     ]
   );
 

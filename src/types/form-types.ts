@@ -284,37 +284,193 @@ export type KeysInGroup<Sh, G extends string> = {
  */
 export type GroupBundle<T extends object, K extends keyof T> = {
   /**
-   * Group data.
+   * Group state data.
    */
   data: Immutable<Pick<FormMutableState<T>['data'], K>>;
   /**
-   * Group errors. Includes the root error key `''`.
+   * Errors for each field in the group.
    */
-  errors: Immutable<Pick<FormMutableState<T>['errors'], (K & string) | ''>>;
+  errors: Immutable<
+    Pick<FormMutableState<T>['errors'], (K & string) | ''> & {
+      /**
+       * Gets an error message for a nested field within the group.
+       *
+       * @example
+       * group.errors.get((path) => path.company.name)
+       *
+       * @param expression - Form state path expression.
+       * @returns Error message for the specified field, or `undefined` if there is no error.
+       */
+      get: (expression: (data: T) => unknown) => string | undefined;
+      /**
+       * Gets a manual error message with an arbitrary `string` key.
+       *
+       * @param key - Manual error key.
+       * @returns Error message for the specified key, or `undefined` if there is no error.
+       */
+      getManual: (key: string) => string | undefined;
+      /**
+       * Gets an array of all error messages in the group.
+       */
+      getAll: () => string[];
+      /**
+       * Gets an array of all error keys in the group.
+       */
+      getKeys: () => string[];
+    }
+  >;
   /**
-   * Group touched flags.
+   * Errors for each field in the group.
    */
-  touched: Immutable<Pick<FormMutableState<T>['touched'], K>>;
+  dirty: Immutable<
+    Pick<FormMutableState<T>['dirty'], K> & {
+      /**
+       * Gets the dirty state for an arbitrary `string` key.
+       *
+       * @param key - A `string` key. The key must start with the `#` character to avoid key
+       *              collisions.
+       * @returns `true` if the key exists and is dirty, `false` otherwise.
+       */
+      get: (key: `#${string}`) => boolean;
+      /**
+       * Gets an array of all dirty keys in the group.
+       */
+      getKeys: () => string[];
+    }
+  >;
   /**
-   * Group dirty flags.
+   * Touched status for each field in the group.
    */
-  dirty: Immutable<Pick<FormMutableState<T>['dirty'], K>>;
+  touched: Immutable<
+    Pick<FormMutableState<T>['touched'], K> & {
+      /**
+       * Gets the touched state for a nested field within the group.
+       *
+       * @example
+       * group.touched.get((path) => path.info.age)
+       *
+       * @param expression - Form state path expression.
+       * @returns `true` if the field exists and has been touched, `false` otherwise.
+       */
+      get: (expression: (data: T) => unknown) => boolean;
+      /**
+       * Gets an array of all touched keys in the group.
+       */
+      getKeys: () => string[];
+    }
+  >;
   /**
-   * Group required flags.
+   * Required status for each field in the group.
    */
-  required: Immutable<Pick<FormMutableState<T>['required'], K>>;
+  required: Immutable<
+    Pick<FormMutableState<T>['required'], K> & {
+      /**
+       * Gets the required state for a nested field within the group.
+       *
+       * @example
+       * group.required.get((path) => path.info.age)
+       *
+       * @param expression - Form state path expression.
+       * @returns `true` if the field is required in the form, `false` otherwise.
+       */
+      get: (expression: (data: T) => unknown) => boolean;
+      /**
+       * Gets an array of all required keys in the group.
+       */
+      getKeys: () => string[];
+    }
+  >;
   /**
-   * Group min/max ranges.
+   * Optional min/max ranges for numeric and date fields in the group.
    */
-  ranges: Immutable<Pick<FormMutableState<T>['ranges'], K>>;
+  ranges: Immutable<
+    Pick<FormMutableState<T>['ranges'], K> & {
+      /**
+       * Gets the minimum and maximum values for a nested numeric or date field within the group.
+       *
+       * @example
+       * const { min, max } = group.ranges.get((path) => path.info.birthDate) ?? {}
+       *
+       * @param expression - Form state path expression.
+       * @returns An object with the `min` and `max` properties, or `undefined`.
+       */
+      get: (expression: (data: T) => unknown) => RangeResult<number | Date>;
+      /**
+       * Gets the minimum range value or length for a nested numeric or date field in the group.
+       *
+       * @param nameOrPath - Field name or a state path expression.
+       * @returns The minimum range value.
+       * @throws `TypeError` when a range with the minimum value is not defined in the schema.
+       */
+      getMin: (nameOrPath: K | ((data: T) => unknown)) => number | Date;
+      /**
+       * Gets the maximum range value or length for a nested numeric or date field in the group.
+       *
+       * @param nameOrPath - Field name or a state path expression.
+       * @returns The maximum range value.
+       * @throws `TypeError` when a range with the maximum value is not defined in the schema.
+       */
+      getMax: (nameOrPath: K | ((data: T) => unknown)) => number | Date;
+      /**
+       * Gets an array of all range keys in the group.
+       */
+      getKeys: () => string[];
+    }
+  >;
   /**
-   * Group regular expression patterns.
+   * Optional regular expression patterns for fields in the group.
    */
-  patterns: Immutable<Pick<FormMutableState<T>['patterns'], K>>;
+  patterns: Immutable<
+    Pick<FormMutableState<T>['patterns'], K> & {
+      /**
+       * Gets the regular expression pattern for a nested field within the group.
+       *
+       * @example
+       * group.patterns.get((path) => path.name)
+       *
+       * @param expression - Form state path expression.
+       * @returns `string` containing the regular expression pattern or an empty `string`.
+       */
+      get: (expression: (data: T) => unknown) => string;
+      /**
+       * Gets an array of all pattern keys in the group.
+       */
+      getKeys: () => string[];
+    }
+  >;
   /**
-   * Group field descriptions. Includes the root description key `''`.
+   * Optional field descriptions in the group.
    */
-  descriptions: Immutable<Pick<FormMutableState<T>['descriptions'], (K & string) | ''>>;
+  descriptions: Immutable<
+    Pick<FormMutableState<T>['descriptions'], (K & string) | ''> & {
+      /**
+       * Gets the description for a nested field within the group.
+       *
+       * @example
+       * group.descriptions.get((path) => path.name)
+       *
+       * @param expression - Form state path expression.
+       * @returns `string` containing the description; no description returns an empty `string`.
+       */
+      get: (expression: (data: T) => unknown) => string;
+      /**
+       * Gets an array of all description keys in the group.
+       */
+      getKeys: () => string[];
+    }
+  >;
+  /**
+   * Whether any field in the group is dirty.
+   */
+  readonly dirtyGroup: boolean;
+  /**
+   * Whether any field in the group has been touched.
+   */
+  readonly touchedGroup: boolean;
+  /**
+   * Whether the group has no errors.
+   */
+  readonly validGroup: boolean;
 };
 
 /**
