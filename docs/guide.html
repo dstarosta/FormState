@@ -7474,6 +7474,15 @@ function AppForm() {
   );
 }</code></pre>
           </div>
+          <p>
+            <code>useFormDock</code> takes an optional second argument that controls whether the
+            dock is shown. It defaults to <code>true</code> (always shown):
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// Only show the dock when the URL carries `?devtools=true`.
+useFormDock(form, new URLSearchParams(location.search).get('devtools') === 'true');</code></pre>
+          </div>
           <div class="callout callout-tip">
             <div class="callout-label">Tip</div>
             <p>
