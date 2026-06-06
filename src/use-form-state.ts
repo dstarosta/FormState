@@ -39,14 +39,12 @@ import type {
   FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
-  Selector,
   StateCallback,
   StateChangeListener,
   SubmitState,
   SubmittedData,
   ValidationResult,
 } from './types/form-types';
-import { useSelector } from './helpers/use-form-selector';
 import {
   coerceFormData,
   collectActiveAsyncCheckPaths,
@@ -81,7 +79,6 @@ import {
   freezeObject,
   mergeAsyncErrors,
   mutateArrayState,
-  pickGroupData,
   safeSyncParse,
 } from './helpers/state-manager';
 import { classNames } from './helpers/class-helper';
@@ -93,6 +90,7 @@ import { createUseListener } from './helpers/use-listener-builder';
 import { createUseWatch } from './helpers/use-watch-builder';
 import { createUseBlocker } from './helpers/use-blocker-builder';
 import { IS_DEVELOPMENT } from './helpers/development-helper';
+import { createUseSelector } from './helpers/use-selector-builder';
 
 /**
  * Hook that manages form state.
@@ -261,21 +259,6 @@ export function useFormState<T extends z.ZodMiniObject>(
   const changeCallbackRefs = useRef<StateCallback<State>[]>([]);
 
   const [changeListeners] = useState(() => new Set<StateChangeListener<State>>());
-
-  // Holds a callback the `useListener` hook calls when a new listener registers.
-  const onListenerAddedRef = useRef<((listener: StateChangeListener<State>) => void) | null>(null);
-
-  // The closure reads `onListenerAddedRef.current` only when a listener is
-  // added inside a "useEffect", never during render.
-  // eslint-disable-next-line react-hooks/refs
-  const [listenerHook] = useState(() =>
-    createUseListener(changeListeners, (listener) => {
-      onListenerAddedRef.current?.(listener);
-    })
-  );
-
-  // The watch hook.
-  const [watchHook] = useState(() => createUseWatch(store));
 
   // The debounce dispatch cache.
   const debounceCache = useRef(
@@ -1832,16 +1815,37 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formData, formErrors, dirty, touched, required, ranges, patterns, descriptions, getGroup]
   ) as FormStateResponse<T>['formState'];
 
-  // Blocker state ref
+  // Blocker state ref.
   const blockerStateRef = useRef({ formState: formStateResponse, formStatus });
 
-  // The blocker hook. Getters read the latest state and status through the ref above.
+  // Blocker hook. Getters read the latest state and status through the ref above.
   // eslint-disable-next-line react-hooks/refs
   const [blockerHook] = useState(() =>
     createUseBlocker<State>(
       () => blockerStateRef.current.formState,
       () => blockerStateRef.current.formStatus
     )
+  );
+
+  // Holds a callback the `useListener` hook calls when a new listener registers.
+  const onListenerAddedRef = useRef<((listener: StateChangeListener<State>) => void) | null>(null);
+
+  // The closure reads `onListenerAddedRef.current` only when a listener is
+  // added inside a "useEffect", never during render.
+  // eslint-disable-next-line react-hooks/refs
+  const [listenerHook] = useState(() =>
+    createUseListener(changeListeners, (listener) => {
+      onListenerAddedRef.current?.(listener);
+    })
+  );
+
+  // Watch hook.
+  const [watchHook] = useState(() => createUseWatch(store));
+
+  // Selector hook.
+  const selectorHook = useMemo(
+    () => createUseSelector(groups) as FormStateResponse<T>['formHooks']['useSelector'],
+    [groups]
   );
 
   // Keep the blocker getters' ref current with the latest state and status.
@@ -1902,36 +1906,14 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const formHandlers = useMemo(() => ({ handleSubmit, handleReset }), [handleSubmit, handleReset]);
 
-  // Group-aware `useSelector`. When the first argument is a group name (a `string`), the input
-  // selector is narrowed to that group's data slice; an optional second selector then runs over
-  // the scoped data. Otherwise the call is forwarded to the standard selector hook unchanged.
-  const groupAwareUseSelector = useCallback(
-    (
-      first: string | Selector<unknown, unknown> | Selector<unknown, unknown>[],
-      second?: (...inputs: unknown[]) => unknown
-    ) => {
-      if (typeof first === 'string') {
-        const groupInput: Selector<Record<string, unknown>, unknown> = (data) =>
-          pickGroupData(groups, first, data);
-
-        // eslint-disable-next-line react-hooks/rules-of-hooks -- arg shape is stable per call site
-        return useSelector(groupInput as Selector<unknown, unknown>, second);
-      }
-
-      // eslint-disable-next-line react-hooks/rules-of-hooks -- arg shape is stable per call site
-      return useSelector(first, second);
-    },
-    [groups]
-  ) as FormStateResponse<T>['formHooks']['useSelector'];
-
   const formHooks = useMemo(
     () => ({
-      useListener: listenerHook,
-      useWatch: watchHook,
-      useSelector: groupAwareUseSelector,
       useBlocker: blockerHook,
+      useListener: listenerHook,
+      useSelector: selectorHook,
+      useWatch: watchHook,
     }),
-    [listenerHook, watchHook, groupAwareUseSelector, blockerHook]
+    [blockerHook, watchHook, selectorHook, listenerHook]
   );
 
   const response = useMemo<FormStateResponse<T>>(
