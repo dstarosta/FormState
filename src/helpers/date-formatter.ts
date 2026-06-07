@@ -4,6 +4,10 @@ import type { DateParseResult, FormDateFormat } from '../types/form-types';
 
 const INVALID_DATE = new Date('Invalid Date');
 
+const YYYY = String.raw`\d{4}`;
+const MM = '(0[1-9]|1[0-2])';
+const DD = String.raw`(0[1-9]|[12]\d|3[01])`;
+
 const DATE_PATTERNS = new Map<FormDateFormat, RegExp>([
   ['dd.MM.yyyy', /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/],
   ['dd/MM/yyyy', /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/],
@@ -11,6 +15,15 @@ const DATE_PATTERNS = new Map<FormDateFormat, RegExp>([
   ['dd-MM-yyyy', /^(\d{1,2})-(\d{1,2})-(\d{4})$/],
   ['MM-dd-yyyy', /^(\d{1,2})-(\d{1,2})-(\d{4})$/],
   ['yyyy-MM-dd', /^(\d{4})-(\d{1,2})-(\d{1,2})$/],
+]);
+
+const JSON_SCHEMA_DATE_PATTERNS = new Map<FormDateFormat, string>([
+  ['dd.MM.yyyy', String.raw`^${DD}\.${MM}\.${YYYY}$`],
+  ['dd/MM/yyyy', `^${DD}/${MM}/${YYYY}$`],
+  ['MM/dd/yyyy', `^${MM}/${DD}/${YYYY}$`],
+  ['dd-MM-yyyy', `^${DD}-${MM}-${YYYY}$`],
+  ['MM-dd-yyyy', `^${MM}-${DD}-${YYYY}$`],
+  ['yyyy-MM-dd', `^${YYYY}-${MM}-${DD}$`],
 ]);
 
 // Private functions
@@ -26,6 +39,16 @@ const getParserExpression = (format: FormDateFormat) => {
 };
 
 // Internal functions
+
+export const getDatePattern = (format: FormDateFormat): string => {
+  const pattern = JSON_SCHEMA_DATE_PATTERNS.get(format);
+
+  if (!pattern) {
+    throw new TypeError('Invalid date format provided.');
+  }
+
+  return pattern;
+};
 
 export const toUTC = (date: Date | undefined) => {
   if (!date || !isValidDate(date)) {

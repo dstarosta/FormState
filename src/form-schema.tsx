@@ -2,6 +2,7 @@ import * as z from 'zod/mini';
 
 import type {
   AsyncCheckMeta,
+  FormDateFormat,
   FormDateOptions,
   FormStringOptions,
   FormTypeOptions,
@@ -11,7 +12,7 @@ import type {
 } from './types/form-types';
 
 import { deepEqual } from './helpers/deep-equal';
-import { isValidDate, parseDate } from './helpers/date-formatter';
+import { getDatePattern, isValidDate, parseDate } from './helpers/date-formatter';
 import { debounceAsync } from './helpers/debouncer';
 import {
   combinePath,
@@ -79,15 +80,182 @@ const pushRequiredIssue = (
   return true;
 };
 
+type JSONSchemaNode = Record<string, unknown>;
+
+const isSchemaObject = (node: unknown): node is JSONSchemaNode =>
+  typeof node === 'object' && node !== null && !Array.isArray(node);
+
+const isEmptyStringSchema = (node: unknown): boolean =>
+  isSchemaObject(node) && node['type'] === 'string' && node['const'] === EMPTY_STRING;
+
+const FORM_META_KEYS = ['allowEmpty', 'required'] as const;
+
+const getUnionMembers = (node: JSONSchemaNode): unknown[] | undefined => {
+  const members = node['anyOf'] ?? node['oneOf'];
+
+  return Array.isArray(members) ? members : undefined;
+};
+
+const hasRequiredMeta = (node: unknown): boolean =>
+  isSchemaObject(node) &&
+  (node['required'] === true ||
+    (getUnionMembers(node)?.some((member) => hasRequiredMeta(member)) ?? false));
+
+const isFieldRequired = (node: unknown, listedAsRequired: boolean): boolean => {
+  if (hasRequiredMeta(node)) {
+    return true;
+  }
+
+  if (!listedAsRequired || !isSchemaObject(node)) {
+    return false;
+  }
+
+  const isOptionalUnion = getUnionMembers(node) !== undefined;
+  const hasEmptyEnum = Array.isArray(node['enum']) && node['enum'].includes(EMPTY_STRING);
+
+  return !isOptionalUnion && !hasEmptyEnum;
+};
+
+const isEmptySchema = (node: unknown): boolean =>
+  isSchemaObject(node) && Object.keys(node).length === 0;
+
+const isDateFormatSchema = (node: unknown): boolean =>
+  isSchemaObject(node) && typeof node['format'] === 'string' && node['type'] === undefined;
+
+const normalizeDateSchema = ({ format, ...rest }: JSONSchemaNode): JSONSchemaNode => {
+  const dateFormat = format as FormDateFormat;
+
+  return {
+    type: 'string',
+    // The standard `format: 'date'` keyword means ISO 8601 (YYYY-MM-DD); only emit it when the field
+    // actually uses that format. Other formats are validated solely by their `pattern`.
+    ...(dateFormat === 'yyyy-MM-dd' ? { format: 'date' } : {}),
+    pattern: getDatePattern(dateFormat),
+    ...rest,
+  };
+};
+
+const stripFormArtifacts = (node: unknown): unknown => {
+  if (Array.isArray(node)) {
+    return node.map((item) => stripFormArtifacts(item));
+  }
+
+  if (!isSchemaObject(node)) {
+    return node;
+  }
+
+  const result: JSONSchemaNode = {};
+
+  for (const [key, value] of Object.entries(node)) {
+    if ((FORM_META_KEYS as readonly string[]).includes(key)) {
+      continue;
+    }
+
+    if (key === 'enum' && Array.isArray(value)) {
+      result[key] = value.filter((entry) => entry !== EMPTY_STRING);
+      continue;
+    }
+
+    if ((key === 'anyOf' || key === 'oneOf') && Array.isArray(value)) {
+      const members = value as unknown[];
+
+      const isOptionalFieldUnion =
+        members.length === 2 && members.some((member) => isEmptyStringSchema(member));
+      const withoutEmptyString = isOptionalFieldUnion
+        ? members.filter((member) => !isEmptyStringSchema(member))
+        : members;
+      const hasDate = withoutEmptyString.some((member) => isDateFormatSchema(member));
+      const kept: unknown[] = hasDate
+        ? withoutEmptyString.map((member) =>
+            isDateFormatSchema(member) ? normalizeDateSchema(member as JSONSchemaNode) : member
+          )
+        : withoutEmptyString;
+
+      if (
+        hasDate &&
+        kept.every((member) => isSchemaObject(member) && member['type'] === 'string')
+      ) {
+        const merged: JSONSchemaNode = {};
+
+        for (const member of kept as JSONSchemaNode[]) {
+          Object.assign(merged, member);
+        }
+
+        Object.assign(result, stripFormArtifacts(merged));
+        continue;
+      }
+
+      if (kept.length === 1) {
+        Object.assign(result, stripFormArtifacts(kept[0]));
+        continue;
+      }
+
+      result[key] = kept.map((member) => stripFormArtifacts(member));
+      continue;
+    }
+
+    if (key === 'properties' && isSchemaObject(value)) {
+      const properties: JSONSchemaNode = {};
+      const required: string[] = [];
+      const listedAsRequired = new Set(
+        Array.isArray(node['required']) ? (node['required'] as string[]) : []
+      );
+
+      for (const [propKey, propValue] of Object.entries(value)) {
+        if (isEmptySchema(propValue)) {
+          continue;
+        }
+
+        if (isFieldRequired(propValue, listedAsRequired.has(propKey))) {
+          required.push(propKey);
+        }
+
+        properties[propKey] = stripFormArtifacts(propValue);
+      }
+
+      result['properties'] = properties;
+
+      if (required.length > 0) {
+        result['required'] = required;
+      }
+
+      continue;
+    }
+
+    result[key] = stripFormArtifacts(value);
+  }
+
+  return result;
+};
+
 // Internal functions
 
 /**
  * Converts an inferred schema instance into an object without empty literal unions.
+ *
+ * @param data - Inferred schema object.
+ * @returns The data object without empty literal unions.
  */
 (z.ZodMiniObject.prototype as Record<string, unknown>)['toObject'] = function toObject<
   T extends z.ZodMiniObject,
 >(this: T, data: z.infer<T>) {
   return cleanEmpty(this, data) as SchemaDataObject<z.infer<T>>;
+};
+
+/**
+ * Converts an inferred schema instance into an JSON schema.
+ *
+ * @param formatted - Whether to format the output with line breaks and spaces (default: `true`).
+ * @returns A `string` containing the JSON schema that represents the form schema.
+ */
+(z.ZodMiniObject.prototype as Record<string, unknown>)['toJSONSchema'] = function toJSONSchema(
+  this: z.ZodMiniObject,
+  formatted: boolean = true
+) {
+  const jsonSchema = z.toJSONSchema(this, { unrepresentable: 'any' });
+  const cleaned = stripFormArtifacts(jsonSchema);
+
+  return JSON.stringify(cleaned, undefined, formatted ? 2 : undefined);
 };
 
 /**
@@ -321,6 +489,7 @@ export const advanced = {
   promise: z.promise,
   function: z.function,
   json: z.json,
+  custom: z.custom,
 
   // Optionality/nullability
   optional: z.optional,

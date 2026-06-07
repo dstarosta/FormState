@@ -1836,6 +1836,14 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
                 <td>🛑</td>
               </tr>
               <tr>
+                <td>Export schema as JSON Schema</td>
+                <td>✅ <sup>4</sup></td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+                <td>🛑</td>
+              </tr>
+              <tr>
                 <td>Cross-field validation</td>
                 <td>✅</td>
                 <td>✅</td>
@@ -1845,7 +1853,7 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               </tr>
               <tr>
                 <td>Server validation integration</td>
-                <td>✅ <sup>4</sup></td>
+                <td>✅ <sup>5</sup></td>
                 <td>❓</td>
                 <td>❓</td>
                 <td>❓</td>
@@ -1861,7 +1869,7 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               </tr>
               <tr>
                 <td>Initial data reactivity</td>
-                <td>✅ <sup>5</sup></td>
+                <td>✅ <sup>6</sup></td>
                 <td>🛑</td>
                 <td>🛑</td>
                 <td>🛑</td>
@@ -1893,7 +1901,7 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               </tr>
               <tr>
                 <td>Password value not stored in DOM</td>
-                <td>✅ <sup>6</sup></td>
+                <td>✅ <sup>7</sup></td>
                 <td>🛑</td>
                 <td>🛑</td>
                 <td>🛑</td>
@@ -1901,8 +1909,8 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               </tr>
               <tr>
                 <td>Unsaved changes navigation prompt</td>
-                <td>✅ <sup>7</sup></td>
-                <td>🛑 <sup>7</sup></td>
+                <td>✅ <sup>8</sup></td>
+                <td>🛑 <sup>8</sup></td>
                 <td>🛑</td>
                 <td>🛑</td>
                 <td>🛑</td>
@@ -1910,8 +1918,8 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               <tr>
                 <td>ESLint plugin</td>
                 <td>✅</td>
-                <td>❓ <sup>8</sup></td>
                 <td>❓ <sup>9</sup></td>
+                <td>❓ <sup>10</sup></td>
                 <td>🛑</td>
                 <td>🛑</td>
               </tr>
@@ -1950,6 +1958,18 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
           </ol>
           <ol class="prop-desc" start="4" style="margin-top: 0; padding-left: 1.25rem">
             <li>
+              <code>schema.toJSONSchema()</code> exports a standard
+              <a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a>
+              describing the clean data shape, including required fields, value constraints, allowed
+              values, and date formats (see <a href="#form-state">Form State</a>). Custom function
+              validations — anything expressed as a refinement or an async check — cannot be
+              represented in JSON Schema and are not reflected in the output. Other libraries rely
+              on an external validation schema (such as Zod or Yup) and do not offer a built-in
+              export.
+            </li>
+          </ol>
+          <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
+            <li>
               Server-returned errors (e.g. a 422 with <code>{ email: 'Already taken' }</code>) are
               set as manual errors. They persist across re-renders, clear when the user edits the
               field, and behave like schema errors — including how they affect
@@ -1960,14 +1980,14 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               vary — verify against your expected UX.
             </li>
           </ol>
-          <ol class="prop-desc" start="5" style="margin-top: 0; padding-left: 1.25rem">
+          <ol class="prop-desc" start="6" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               Non-dirty fields automatically reflect changes to <code>initialData</code> (e.g. when
               server data loads asynchronously). Fields the user has already edited are never
               overwritten. This does not affect the dirty state of any field.
             </li>
           </ol>
-          <ol class="prop-desc" start="6" style="margin-top: 0; padding-left: 1.25rem">
+          <ol class="prop-desc" start="7" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               Requires the <code>SecureInput</code> component instead of a plain
               <code>&lt;input type="password"&gt;</code>. The value is kept out of the DOM and never
@@ -1978,7 +1998,7 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               </p>
             </li>
           </ol>
-          <ol class="prop-desc" start="7" style="margin-top: 0; padding-left: 1.25rem">
+          <ol class="prop-desc" start="8" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               Provided by the <a href="#blocker"><code>useBlocker</code></a> hook
               (<code>formHooks.useBlocker(shouldBlock)</code>). Guards both tab close / reload (via
@@ -1994,7 +2014,7 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               the form <code>state</code> and <code>status</code> instead of the target route.
             </li>
           </ol>
-          <ol class="prop-desc" start="8" style="margin-top: 0; padding-left: 1.25rem">
+          <ol class="prop-desc" start="9" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               TanStack Query ships
               <a
@@ -2004,7 +2024,7 @@ useFormState(schema, { cssOptions: { classNames: fieldClasses } });</code></pre>
               >. TanStack Form does not have a dedicated ESLint plugin.
             </li>
           </ol>
-          <ol class="prop-desc" start="9" style="margin-top: 0; padding-left: 1.25rem">
+          <ol class="prop-desc" start="10" style="margin-top: 0; padding-left: 1.25rem">
             <li>
               React Hook Form has a
               <a href="https://github.com/andykao1213/eslint-plugin-react-hook-form" target="_blank"
@@ -2414,14 +2434,16 @@ const schema = z.strictObject({
 });
 
 type Schema = z.infer&lt;typeof schema&gt;;
-// {
-//   name: string;
-//   age: number | '';
-//   birthDate: Date | '';
-//   status: 'active' | 'inactive' | 'pending' | '';
-//   isAdmin: boolean;
-//   tags: string[];
-// }</code></pre>
+/*
+{
+  name: string;
+  age: number | '';
+  birthDate: Date | '';
+  status: 'active' | 'inactive' | 'pending' | '';
+  isAdmin: boolean;
+  tags: string[];
+}
+*/</code></pre>
           </div>
           <h3>Cross-field validation</h3>
           <p>
@@ -3730,11 +3752,68 @@ await api.post('/users', payload);</code></pre>
 });
 
 schema.toObject(formState.data);
-// {
-//   birthDate: '12-31-2020',
-//   registeredOn: '06/30/2020',
-//   updateDates: ['2019-12-12', '2020-04-15'],
-// }</code></pre>
+/*
+{
+  birthDate: '12-31-2020',
+  registeredOn: '06/30/2020',
+  updateDates: ['2019-12-12', '2020-04-15'],
+}
+*/</code></pre>
+          </div>
+          <h3>Generating a JSON Schema</h3>
+          <p>
+            <code>schema.toJSONSchema()</code> returns a standard
+            <a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a>
+            (as a string) describing the shape your form produces — the same clean shape you get
+            from
+            <code>toObject()</code>, not the editing shape. It's handy for sharing a contract with a
+            backend, generating API documentation, or validating payloads on the server.
+          </p>
+          <p>
+            The output mirrors the data contract: required fields are listed in the schema's
+            <code>required</code> array while optional fields are simply left out of it; field
+            constraints such as length, numeric ranges, allowed values, and regular expressions
+            carry through; and each date field becomes a string with a <code>pattern</code> matching
+            its configured format. Symbol fields (like <code>z.symbol()</code>) and editing-only
+            details are omitted.
+          </p>
+          <p>
+            JSON Schema cannot represent functional checks like <code>z.validate</code> or
+            <code>z.superRefine</code> methods. Therefore, it is important to keep simple
+            validations like <code>min/max/maxLength/gt/gte/lt/lte/format/pattern/required</code> on
+            the field level using simple constraints as shown in the examples.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">const schema = z.object({
+  name: z.formString({ required: true }, z.maxLength(50)),
+  age: z.formNumber(z.gte(0)),
+  category: z.formValues(['standard', 'premium'], { required: true }),
+  joined: z.formDate({ required: true, format: 'MM/dd/yyyy' }),
+});
+
+schema.toJSONSchema();
+/*
+{
+  "type": "object",
+  "properties": {
+    "name":     { "type": "string", "minLength": 1, "maxLength": 50 },
+    "age":      { "type": "number", "minimum": 0 },
+    "category": { "type": "string", "enum": ["standard", "premium"] },
+    "joined":   { "type": "string", "pattern": "^(0[1-9]|1[0-2])/(0[1-9]|[12]\\d|3[01])/\\d{4}$", "minLength": 1 }
+  },
+  "required": ["name", "category", "joined"]
+}
+*/</code></pre>
+          </div>
+          <p>
+            Pass <code>false</code> to get compact, single-line output instead of the pretty-printed
+            default — useful when embedding the schema in a request body or a file.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
+            <pre><code class="language-tsx">schema.toJSONSchema();      // pretty-printed (default)
+schema.toJSONSchema(false); // compact, single line</code></pre>
           </div>
         </section>
         <section class="section" id="form-status">

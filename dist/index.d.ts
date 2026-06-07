@@ -18,6 +18,13 @@ declare module 'zod/mini' {
      * @returns The data object without empty literal unions.
      */
     toObject<T extends this, U extends z.infer<T>>(data: U | DeepPartial<U> | FormState<U>['data']): SchemaDataObject<z.infer<T>>;
+    /**
+     * Converts an inferred schema instance into an JSON schema.
+     *
+     * @param formatted - Whether to format the output with line breaks and spaces (default: `true`).
+     * @returns A `string` containing the JSON schema that represents the form schema.
+     */
+    toJSONSchema(this: z.ZodMiniObject, formatted?: boolean): string;
   }
 }
 type PathValue<T, P extends string> = P extends keyof T ? T[P] : P extends `${infer K}.${infer R}` ? K extends keyof T ? PathValue<T[K], R> : never : never;
@@ -2115,6 +2122,7 @@ declare const advanced: {
   promise: typeof z.promise;
   function: typeof z._function;
   json: typeof z.json;
+  custom: typeof z.custom;
   optional: typeof z.optional;
   nonoptional: typeof z.nonoptional;
   nullable: typeof z.nullable;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatDate, safeParseDate } from '../../src';
+import { getDatePattern } from '../../src/helpers/date-formatter';
 
 describe('date formatter', () => {
   it('should format dates correctly', () => {
@@ -58,6 +59,34 @@ describe('date formatter', () => {
 
     expect(parsedDate.success).toBe(true);
     expect(parsedDate.date).toEqual(new Date(2020, 11, 31));
+  });
+
+  it('should return a strict JSON Schema pattern for each date format', () => {
+    const cases = [
+      ['yyyy-MM-dd', '2020-12-31', '12/31/2020'],
+      ['MM/dd/yyyy', '12/31/2020', '2020-12-31'],
+      ['dd/MM/yyyy', '31/12/2020', '12/31/2020'],
+      ['MM-dd-yyyy', '12-31-2020', '31-12-2020'],
+      ['dd-MM-yyyy', '31-12-2020', '12-31-2020'],
+      ['dd.MM.yyyy', '31.12.2020', '31/12/2020'],
+    ] as const;
+
+    for (const [format, valid, invalid] of cases) {
+      const pattern = new RegExp(getDatePattern(format));
+
+      expect(pattern.test(valid)).toBe(true);
+      expect(pattern.test(invalid)).toBe(false);
+    }
+
+    const iso = new RegExp(getDatePattern('yyyy-MM-dd'));
+
+    expect(iso.test('2020-13-01')).toBe(false); // invalid month
+    expect(iso.test('2020-12-32')).toBe(false); // invalid day
+    expect(iso.test('2020-1-1')).toBe(false); // not zero-padded
+  });
+
+  it('should throw for an unknown date format pattern', () => {
+    expect(() => getDatePattern('MM~dd~yyyy' as unknown as 'MM/dd/yyyy')).toThrow(TypeError);
   });
 });
 
