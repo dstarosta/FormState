@@ -1169,6 +1169,8 @@ export function validateAsync<T>(
 
   const pendingMetas: (AsyncCheckMeta | undefined)[] = [];
 
+  // This raw async refine is the validateAsync implementation. The rule is suppressed here by design.
+  // eslint-disable-next-line form-state/prefer-validate-over-refine
   const check = z.refine<T>(
     async (obj) => {
       const meta = pendingMetas.shift();

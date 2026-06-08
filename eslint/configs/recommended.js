@@ -11,6 +11,7 @@ const recommended = (plugin) => {
         [`${name}/no-inline-schema`]: 'error',
         [`${name}/no-nested-group`]: 'error',
         [`${name}/no-watch-dependency`]: 'error',
+        [`${name}/prefer-validate-over-refine`]: 'warn',
         [`${name}/stable-debounced-callback`]: 'error',
         [`${name}/use-form-schema`]: 'warn',
       },

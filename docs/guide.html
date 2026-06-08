@@ -303,6 +303,25 @@ export default defineConfig([
               <tr>
                 <td>
                   <a
+                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/prefer-validate-over-refine.md"
+                    target="_blank"
+                    ><code>prefer-validate-over-refine</code></a
+                  >
+                </td>
+                <td>
+                  Recommends <code>z.validate()</code> over <code>z.refine()</code> when the
+                  <code>refine</code> call only uses features <code>validate</code> supports,
+                  keeping whole-object validation on a single stage. An async <code>refine</code>
+                  predicate gets a separate, non-fixable advisory toward
+                  <code>z.validateAsync()</code>. Skips calls that need raw-refine features (the
+                  <code>when</code> payload, custom issue codes, <code>abort</code>).
+                </td>
+                <td>warn</td>
+                <td>✅ (sync only)</td>
+              </tr>
+              <tr>
+                <td>
+                  <a
                     href="https://github.com/dstarosta/FormState/blob/master/docs/rules/stable-debounced-callback.md"
                     target="_blank"
                     ><code>stable-debounced-callback</code></a

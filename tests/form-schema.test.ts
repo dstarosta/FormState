@@ -112,7 +112,7 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse(undefined).success).toBe(false);
     expect(requiredFieldSchema.safeParse(undefined).error).toBeDefined();
 
-    const refinedFieldSchema = z.formDate(z.refine((val) => val.getDate() !== 31));
+    const refinedFieldSchema = z.formDate(z.validate((val) => val.getDate() !== 31));
 
     expect(refinedFieldSchema.safeParse(date).success).toBe(false);
     expect(refinedFieldSchema.safeParse(date).data).toBeUndefined();
@@ -121,7 +121,7 @@ describe('form schema', () => {
   it('formDate should not parse values that fail validation', () => {
     const date = new Date(2025, 11, 31);
 
-    const refinedFieldSchema = z.formDate(z.refine((val) => val.getDate() !== 31));
+    const refinedFieldSchema = z.formDate(z.validate((val) => val.getDate() !== 31));
 
     expect(refinedFieldSchema.safeParse(date).success).toBe(false);
     expect(refinedFieldSchema.safeParse(date).data).toBeUndefined();

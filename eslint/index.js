@@ -2,6 +2,7 @@ import { avoidInputPassword } from './rules/avoid-input-password.js';
 import { noInlineSchema } from './rules/no-inline-schema.js';
 import { noNestedGroup } from './rules/no-nested-group.js';
 import { noWatchDependency } from './rules/no-watch-dependency.js';
+import { preferValidateOverRefine } from './rules/prefer-validate-over-refine.js';
 import { stableDebouncedCallback } from './rules/stable-debounced-callback.js';
 import { useFormSchema } from './rules/use-form-schema.js';
 import recommended from './configs/recommended.js';
@@ -16,6 +17,7 @@ const plugin = {
     'no-inline-schema': noInlineSchema,
     'no-nested-group': noNestedGroup,
     'no-watch-dependency': noWatchDependency,
+    'prefer-validate-over-refine': preferValidateOverRefine,
     'stable-debounced-callback': stableDebouncedCallback,
     'use-form-schema': useFormSchema,
   },
