@@ -83,5 +83,3 @@ schema.check(z.validateAsync(async (data) => await isUniqueEmail(data.email), 'E
 ## When Not to Use It
 
 You should keep this rule on. It is conservative by construction: the synchronous suggestion already skips every `refine` call that uses a refine-only capability — a `when` clause, custom issue params, `abort`, or a `ctx` parameter — so whenever it fires, the call genuinely could be `validate`, and `validate` is the default you want for whole-object checks. The async advisory is similarly narrow: it only points out that a raw async `refine` should almost certainly be `validateAsync`. There is no "I rely on refine here" exception at a flagged call, because the rule does not flag calls that legitimately need raw `refine`.
-
-The one place a raw async `refine` is correct is inside `validateAsync`'s own implementation — which is why the library suppresses the rule on exactly that line. Reach for raw `refine` only when you genuinely need a refine-only capability; in that case the rule stays silent on its own.
