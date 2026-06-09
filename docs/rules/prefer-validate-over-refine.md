@@ -15,6 +15,7 @@ Recommends `z.validate()` over `z.refine()` (and `z.validateAsync()` over an asy
 
 The rule is **conservative**: it only fires when the `refine` call is mechanically equivalent to a `validate` call, so it never produces a misleading suggestion. All of the following must hold:
 
+- The `z` (or bare `refine`) must be imported from `form-state`. The rule does not touch `refine` calls on a plain zod schema or any other value.
 - The callee is `refine` (`z.refine` or a bare `refine` import) — never `superRefine`.
 - The predicate is an inline arrow or function expression that is **synchronous** and declares **at most one parameter** (a second `ctx` parameter signals `superRefine`-style issue emission, which `validate` cannot express). An **async** predicate is handled by a separate advisory — see [Async predicates](#async-predicates) below.
 - The options object, if present, uses **only** `path` and `error`. Any other key — `when`, `params`, `abort`, a spread, or a computed/string-literal key — leaves the call untouched.

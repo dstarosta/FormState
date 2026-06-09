@@ -1,5 +1,53 @@
 const VALIDATE_FORWARDABLE_KEYS = new Set(['path', 'error']);
 
+function isFormStateSource(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  if (value === 'form-state' || value.startsWith('form-state/')) {
+    return true;
+  }
+
+  return /^(\.\.?\/)+src$/.test(value);
+}
+
+function getImportSource(identifier, scope) {
+  let currentScope = scope;
+
+  while (currentScope) {
+    const variable = currentScope.variables.find((v) => v.name === identifier.name);
+
+    if (variable) {
+      for (const def of variable.defs) {
+        if (def.type === 'ImportBinding' && def.parent && def.parent.type === 'ImportDeclaration') {
+          return def.parent.source.value;
+        }
+      }
+
+      return null;
+    }
+
+    currentScope = currentScope.upper;
+  }
+
+  return null;
+}
+
+function isFormStateRefine(node, scope) {
+  const callee = node.callee;
+
+  if (callee.type === 'Identifier') {
+    return isFormStateSource(getImportSource(callee, scope));
+  }
+
+  if (callee.type === 'MemberExpression' && callee.object.type === 'Identifier') {
+    return isFormStateSource(getImportSource(callee.object, scope));
+  }
+
+  return false;
+}
+
 function getCalleeName(callee) {
   if (callee.type === 'Identifier') {
     return callee.name;
@@ -51,6 +99,7 @@ function classifyOptions(optionsArg) {
   }
 
   let errorProp;
+
   for (const prop of optionsArg.properties) {
     if (prop.type !== 'Property' || prop.computed || prop.key.type !== 'Identifier') {
       return { kind: 'blocked' };
@@ -93,7 +142,12 @@ export const preferValidateOverRefine = {
     return {
       CallExpression(node) {
         const calleeName = getCalleeName(node.callee);
+
         if (calleeName !== 'refine') {
+          return;
+        }
+
+        if (!isFormStateRefine(node, sourceCode.getScope(node))) {
           return;
         }
 
