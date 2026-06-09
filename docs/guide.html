@@ -5794,32 +5794,31 @@ export default formConnect({
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">formActions.change('search', inputValue, {
-  debounceIntervalMs: 400,
-  callback: (state, status) =&gt; {
-    // Fires 400ms after the last keystroke
-    performSearch(state.data.search);
-  },
-});
+            <pre><code class="language-tsx">// Define the callback at module level so it has a stable reference.
+function onSearch(state: FormState&lt;FormSchema&gt;, status: FormStatus) {
+  // Fires 400ms after the last keystroke
+  performSearch(state.data.search);
+}
 
-// Arrow function path — nested field
-formActions.change((path) =&gt; path.notes[index].text, e.target.value, {
-  debounceIntervalMs: 500,
+formActions.change('search', inputValue, {
+  debounceIntervalMs: 400,
   touch: true,
-  callback: (state: FormState&lt;FormSchema&gt;) =&gt; {
-    // Custom async check after user stops typing
-    if (state.data.notes[index].text === '666') {
-      formActions.setError((path) =&gt; path.notes[index].text, 'Not allowed');
-    } else {
-      formActions.setError((path) =&gt; path.notes[index].text);
-    }
-  },
+  callback: onSearch,
 });</code></pre>
           </div>
           <p>
             The callback always receives the latest <code>(state, status)</code> snapshot — even
             when multiple rapid changes fired before the debounce elapsed.
           </p>
+          <div class="callout callout-warning">
+            <div class="callout-label">Warning</div>
+            <p>
+              When you pass a <code>callback</code> alongside <code>debounceIntervalMs</code>, give
+              it a stable reference — wrap it in <code>useCallback</code> or define it outside the
+              component. An inline arrow function is recreated on every render and is flagged by the
+              <code>stable-debounced-callback</code> ESLint rule.
+            </p>
+          </div>
         </section>
         <section class="section" id="infer-name">
           <div class="section-eyebrow">Features</div>
