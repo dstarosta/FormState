@@ -86,8 +86,6 @@ ruleTester.run('prefer-validate-over-refine', preferValidateOverRefine, {
     { code: fs('z.refine((o) => ok(o), { "error": "x" })') },
     // options is an identifier, not an object literal
     { code: fs('z.refine((o) => ok(o), opts)') },
-    // options already a bare error string (refine signature; left alone)
-    { code: fs('z.refine((o) => ok(o), "mismatch")') },
 
     // --- Arity / spread guards --------------------------------------------
     // more than two arguments
@@ -178,6 +176,12 @@ ruleTester.run('prefer-validate-over-refine', preferValidateOverRefine, {
     {
       code: fs('z.refine((o) => ok(o), { error: messages.mismatch })'),
       output: fs('z.validate((o) => ok(o), messages.mismatch)'),
+      errors: [{ messageId: 'preferValidate' }],
+    },
+    // bare error string -> validate shares that overload; rename only
+    {
+      code: fs('z.refine((o) => ok(o), "mismatch")'),
+      output: fs('z.validate((o) => ok(o), "mismatch")'),
       errors: [{ messageId: 'preferValidate' }],
     },
 

@@ -182,7 +182,7 @@ export const preferValidateOverRefine = {
 
         const options = classifyOptions(optionsArg);
 
-        if (options.kind === 'blocked' || options.kind === 'string') {
+        if (options.kind === 'blocked') {
           return;
         }
 
