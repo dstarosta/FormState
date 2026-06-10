@@ -2273,11 +2273,18 @@ formHooks.useListener((state) =&gt; {
             </li>
             <li>
               <p>
-                <strong>You need minimum-bundle granular re-renders by default.</strong> FormState
-                re-renders the calling component on every state change unless you opt in to
-                <a href="#watch"><code>useWatch</code></a> or uncontrolled inputs. For a 100-field
-                data-entry form where every keystroke matters, React Hook Form's
-                <code>register</code>-by-default model requires less thinking to get there.
+                <strong>You need granular, per-field re-renders by default.</strong> FormState
+                re-renders the whole form component on each change, but React only updates the DOM
+                for the field you actually changed &mdash; so it stays fast and feels granular even
+                though the re-render isn't. With uncontrolled inputs (the default) a keystroke
+                doesn't re-render the component at all; even controlled <code>value=</code> inputs
+                are fine for ordinary forms &mdash; the whole-form re-render measures in
+                single-digit milliseconds. It only becomes worth avoiding on a very large controlled
+                form, where you would reach for <a href="#watch"><code>useWatch</code></a> to narrow
+                the render to the fields that changed; React Hook Form's
+                <code>register</code>-by-default model gets you there with less thinking, though it
+                does so by keeping values in refs outside React &mdash; sidestepping the render
+                cycle rather than working with it.
               </p>
             </li>
             <li>
@@ -2289,28 +2296,20 @@ formHooks.useListener((state) =&gt; {
                 Zustand, or any external store.
               </p>
               <p>
-                A one-line <a href="#listener"><code>useListener</code></a> mirrors every valid
-                change into the external store via <code>schema.toObject()</code>. That call
-                translates the "form" representation into the "API/business" representation, field
-                by field:
+                One consequence: this store lives inside the hook, so the editing state lives and
+                dies with the component. If the form unmounts &mdash; a route change, a suspending
+                <code>&lt;Suspense&gt;</code> boundary, conditional rendering &mdash; the
+                in-progress edits go with it. Usually that's fine; when it isn't (a wizard, a form
+                that must survive navigation), mirror the state out so there's a copy to restore
+                from.
               </p>
-              <ul>
-                <li>
-                  empty <code>formNumber</code>, <code>formBoolean</code>, etc. &rarr;
-                  <code>undefined</code> — the form holds <code>''</code>, the type doesn't
-                </li>
-                <li>
-                  empty <code>formString</code> &rarr; <code>undefined</code>, only with
-                  <code>allowEmpty: false</code>
-                </li>
-                <li><code>formDate</code> strings &rarr; <code>Date</code> objects</li>
-                <li>raw mask values &rarr; unmasked values</li>
-              </ul>
               <p>
-                In short: the form holds the editing shape, the external store holds the canonical
-                shape, and the schema is the bridge between them. If instead you want a single store
-                to hold both representations and drive the form directly &mdash; with no bridge
-                &mdash; then FormState's schema-derived model isn't the right fit.
+                A one-line <a href="#listener"><code>useListener</code></a> mirrors every valid
+                change into the external store, translating the editing shape into the canonical
+                API/business shape as it goes. The form holds the editing shape, the external store
+                holds the canonical shape, and the schema is the bridge between them. If instead you
+                want a single store to hold both representations and drive the form directly &mdash;
+                with no bridge &mdash; then FormState's schema-derived model isn't the right fit.
               </p>
             </li>
           </ul>
