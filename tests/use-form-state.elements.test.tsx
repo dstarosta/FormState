@@ -742,7 +742,7 @@ describe('form element tests', () => {
 
   it('should call the onbeforeunload event', () => {
     const handleUnload = vi.fn();
-    globalThis.addEventListener('beforeunload', handleUnload);
+    addEventListener('beforeunload', handleUnload);
 
     render(<FormComponent watch={true} />);
 
@@ -751,9 +751,9 @@ describe('form element tests', () => {
     fireEvent.change(input, { target: { value: 'John' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    globalThis.dispatchEvent(new Event('beforeunload'));
+    dispatchEvent(new Event('beforeunload'));
 
-    globalThis.removeEventListener('beforeunload', handleUnload);
+    removeEventListener('beforeunload', handleUnload);
 
     expect(handleUnload).toHaveBeenCalled();
   });

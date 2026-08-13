@@ -18,7 +18,7 @@ describe('date formatter', () => {
   it('should throw formatting invalid dates', () => {
     expect(() => formatDate('' as unknown as Date)).toThrow(TypeError);
     expect(() => formatDate(undefined as unknown as Date)).toThrow(TypeError);
-    expect(() => formatDate(new Date(Number.NaN))).toThrow(TypeError);
+    expect(() => formatDate(new Date(NaN))).toThrow(TypeError);
     expect(() => formatDate(new Date(2021, 0, 1), 'MM-MM-MM' as unknown as 'MM/dd/yyyy')).toThrow(
       TypeError
     );

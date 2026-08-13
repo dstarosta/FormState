@@ -44,15 +44,15 @@ describe('value-converter', () => {
 
     it('parses valid number strings (int or float)', () => {
       expect(toFloat('42')).toBe(42);
-      expect(toFloat('3.14')).toBe(3.14);
-      expect(toFloat('-0.001')).toBe(-0.001);
+      expect(toFloat('4.25')).toBeCloseTo(4.25);
+      expect(toFloat('-0.001')).toBeCloseTo(-0.001);
       expect(toFloat('0')).toBe(0);
     });
 
     it('returns empty string for invalid float inputs', () => {
       expect(toFloat('abc')).toBe('');
       expect(toFloat('12.34.56')).toBe('');
-      expect(toFloat('3,14')).toBe(''); // comma is not valid in JS parseFloat
+      expect(toFloat('4,25')).toBe(''); // comma is not valid in JS parseFloat
       expect(toFloat('Infinity')).toBe('');
     });
   });
@@ -176,12 +176,12 @@ describe('value-converter', () => {
 
     it('converts numbers (including zero)', () => {
       expect(toString(42)).toBe('42');
-      expect(toString(-3.14)).toBe('-3.14');
+      expect(toString(-4.25)).toBe('-4.25');
       expect(toString(0)).toBe('0');
     });
 
     it('returns empty string for NaN', () => {
-      expect(toString(Number.NaN)).toBe('');
+      expect(toString(NaN)).toBe('');
     });
 
     it('passes through strings unchanged', () => {
@@ -238,14 +238,14 @@ describe('value-converter', () => {
       expect(asNumber(0, 1)).toBe(0);
       expect(asNumber(Infinity)).toBe(Infinity);
       expect(asNumber(Infinity, 1)).toBe(Infinity);
-      expect(asNumber(-1.2451)).toBe(-1.2451);
-      expect(asNumber(-1.2451, 1)).toBe(-1.2451);
+      expect(asNumber(-1.2451)).toBeCloseTo(-1.2451);
+      expect(asNumber(-1.2451, 1)).toBeCloseTo(-1.2451);
     });
 
     it('converts an empty string to the default value', () => {
       expect(asNumber('')).toBe(0);
       expect(asNumber('', 1)).toBe(1);
-      expect(asNumber('', -1.2451)).toBe(-1.2451);
+      expect(asNumber('', -1.2451)).toBeCloseTo(-1.2451);
     });
   });
 

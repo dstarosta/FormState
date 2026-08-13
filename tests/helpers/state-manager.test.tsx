@@ -309,7 +309,7 @@ describe('safeSyncParse', () => {
     const { result, asyncPending } = safeSyncParse(asyncSchema, { name: 'Mike' });
 
     expect(asyncPending).toBe(true);
-    expect(result).toBe(null);
+    expect(result).toBeNull();
   });
 
   it('rethrows non-async errors raised during parsing', () => {

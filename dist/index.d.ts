@@ -1,8 +1,5 @@
 import * as z from "zod/mini";
 import { ComponentType, PropsWithChildren, SyntheticEvent } from "react";
-import * as _$react_jsx_runtime0 from "react/jsx-runtime";
-
-//#region \0rolldown/runtime.js
 //#endregion
 //#region src/types/form-types.d.ts
 declare module 'zod/mini' {
@@ -29,17 +26,17 @@ declare module 'zod/mini' {
 }
 type PathValue<T, P extends string> = P extends keyof T ? T[P] : P extends `${infer K}.${infer R}` ? K extends keyof T ? PathValue<T[K], R> : never : never;
 type IsUnion<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
-type Flatten<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+type Flatten<T> = T extends (infer O) ? { [K in keyof O]: O[K]; } : never;
 type ReplaceEmptyWithUndefined<T> = T extends '' ? undefined : T;
-type DateToString<T> = T extends Date ? string : T extends (infer Item)[] ? DateToString<Item>[] : T extends object ? { [K in keyof T]: DateToString<T[K]> } : T;
+type DateToString<T> = T extends Date ? string : T extends (infer Item)[] ? DateToString<Item>[] : T extends object ? { [K in keyof T]: DateToString<T[K]>; } : T;
 type NormalizePrimitives<T> = DateToString<ReplaceEmptyWithUndefined<T>>;
 type RangeOf<T> = undefined | Date | number | (IsUnion<T, Date | string> extends true ? Date | string : never) | (IsUnion<T, number | ''> extends true ? number | '' : never);
 type ImmutableMap<K, V> = ReadonlyMap<Immutable<K>, Immutable<V>>;
 type ImmutableSet<T> = ReadonlySet<Immutable<T>>;
-type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = { [K in keyof Selectors]: Selectors[K] extends Selector<S, infer R> ? R : never };
+type SelectorResults<S, Selectors extends Selector<S, unknown>[]> = { [K in keyof Selectors]: Selectors[K] extends Selector<S, infer R> ? R : never; };
 type ImmutablePrimitive = undefined | null | boolean | string | number | symbol | Date | Error | Function | RegExp | Promise<unknown>;
 type ImmutableArray<T> = ReadonlyArray<Immutable<T>>;
-type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
+type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]>; };
 type ArrayElement<A> = A extends readonly (infer U)[] ? U : never;
 type FieldRange = number | Date | undefined;
 type FormMutableState<T extends object> = {
@@ -134,8 +131,8 @@ type Grouped<S extends z.ZodMiniType, G extends string> = S & {
   readonly __group__: G;
 };
 type GroupSchemaShape<S> = S extends z.ZodMiniObject<infer Sh> ? Sh : never;
-type GroupNames<Sh> = { [K in keyof Sh]: Sh[K] extends Grouped<z.ZodMiniType, infer G> ? G : never }[keyof Sh];
-type KeysInGroup<Sh, G extends string> = { [K in keyof Sh]: Sh[K] extends Grouped<z.ZodMiniType, G> ? K : never }[keyof Sh];
+type GroupNames<Sh> = { [K in keyof Sh]: Sh[K] extends Grouped<z.ZodMiniType, infer G> ? G : never; }[keyof Sh];
+type KeysInGroup<Sh, G extends string> = { [K in keyof Sh]: Sh[K] extends Grouped<z.ZodMiniType, G> ? K : never; }[keyof Sh];
 /**
  * A bundle of form state slices filtered to the root-level properties of a single group.
  * Every slice is immutable and contains only the keys that belong to the group.
@@ -340,7 +337,7 @@ type Immutable<T> = T extends ImmutablePrimitive ? T : T extends Array<infer U> 
 /**
  * Recursive `Partial<T>` like type.
  */
-type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
+type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]>; } : T;
 /**
  * Zod validation error.
  */
@@ -516,7 +513,7 @@ type FormProviderInitOptions<T extends z.ZodMiniObject> = FormInitOptions<T> & {
 /**
  * Type of schema data with stripped empty literals from union types.
  */
-type SchemaDataObject<T> = T extends ImmutablePrimitive ? NormalizePrimitives<T> : T extends unknown[] ? T extends (infer Item)[] ? SchemaDataObject<NormalizePrimitives<Item>>[] : T : Flatten<{ [K in keyof T as T[K] extends object ? K : ReplaceEmptyWithUndefined<T[K]> extends never ? never : undefined extends NormalizePrimitives<T[K]> ? never : K]: T[K] extends object ? SchemaDataObject<T[K]> : NormalizePrimitives<T[K]> } & { [K in keyof T as T[K] extends object ? never : NormalizePrimitives<T[K]> extends never ? never : undefined extends NormalizePrimitives<T[K]> ? K : never]?: NormalizePrimitives<T[K]> }>;
+type SchemaDataObject<T> = T extends ImmutablePrimitive ? NormalizePrimitives<T> : T extends unknown[] ? T extends (infer Item)[] ? SchemaDataObject<NormalizePrimitives<Item>>[] : T : Flatten<{ [K in keyof T as T[K] extends object ? K : ReplaceEmptyWithUndefined<T[K]> extends never ? never : undefined extends NormalizePrimitives<T[K]> ? never : K]: T[K] extends object ? SchemaDataObject<T[K]> : NormalizePrimitives<T[K]>; } & { [K in keyof T as T[K] extends object ? never : NormalizePrimitives<T[K]> extends never ? never : undefined extends NormalizePrimitives<T[K]> ? K : never]?: NormalizePrimitives<T[K]>; }>;
 /**
  * Form state on submission.
  *
@@ -692,7 +689,7 @@ type FormState<T extends object> = {
        * @returns The minimum range value.
        * @throws `TypeError` when a range with the minimum value is not defined in the schema.
        */
-      <K extends { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never }[keyof T]>(name: K): T[K] extends Date ? Date : number;
+      <K extends { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never; }[keyof T]>(name: K): T[K] extends Date ? Date : number;
       /**
        * Gets the minimum range value from the corresponding range of a field.
        *
@@ -710,7 +707,7 @@ type FormState<T extends object> = {
        * @returns The maximum range value.
        * @throws `TypeError` when a range with the maximum value is not defined in the schema.
        */
-      <K extends { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never }[keyof T]>(name: K): T[K] extends Date ? Date : number;
+      <K extends { [P in keyof T]: T[P] extends string | unknown[] | number | Date | undefined ? P : never; }[keyof T]>(name: K): T[K] extends Date ? Date : number;
       /**
        * Gets the maximum range value from the corresponding range of a field.
        *
@@ -1194,12 +1191,10 @@ type FormSubmitHandler<T extends z.ZodMiniObject> = (
 /**
  * The submitted form state.
  */
-
 state: SubmitState<z.infer<T>>,
 /**
  * Form data in the `FormData` format.
  */
-
 formData: FormData) => Promise<ValidationResult> | ValidationResult;
 /**
  * The form mode type.
@@ -2243,7 +2238,7 @@ declare function formString(options: FormStringOptions, ...checks: readonly (z.c
 declare function formValues<const T extends readonly [string, ...string[]]>(values: T, options: {
   required: true;
   error?: string;
-}): z.ZodMiniPipe<z.ZodMiniTransform, z.ZodMiniEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }>>;
+}): z.ZodMiniPipe<z.ZodMiniTransform, z.ZodMiniEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik; }]: { [ik in (T | readonly [...T])[number]]: ik; }[k]; }>>;
 /**
  * Zod schema for a control with a limited number of literal string values.
  *
@@ -2257,7 +2252,7 @@ declare function formValues<const T extends readonly [string, ...string[]]>(valu
 declare function formValues<const T extends readonly [string, ...string[]]>(values: T, options?: {
   required?: false;
   error?: string;
-}): z.ZodMiniPipe<z.ZodMiniTransform, z.ZodMiniEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik }]: { [ik in (T | readonly [...T])[number]]: ik }[k] }> | z.ZodMiniLiteral<''>>;
+}): z.ZodMiniPipe<z.ZodMiniTransform, z.ZodMiniEnum<{ [k in keyof { [ik in (T | readonly [...T])[number]]: ik; }]: { [ik in (T | readonly [...T])[number]]: ik; }[k]; }> | z.ZodMiniLiteral<''>>;
 /**
  * Zod schema for an array form schema element of simple elements.
  *
@@ -2496,7 +2491,7 @@ declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?
  * @param props - Provider props.
  * @returns A form state provider.
  */
-declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): _$react_jsx_runtime0.JSX.Element;
+declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): import("react").JSX.Element;
 /**
  * Hook that manages form state inside React components that are, or have a parent component,
  * wrapped with the formConnect HOC.
@@ -2556,7 +2551,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  * @returns A curried function to wrap the component.
  */
 declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
-  (innerProps: Readonly<P>): _$react_jsx_runtime0.JSX.Element;
+  (innerProps: Readonly<P>): import("react").JSX.Element;
   displayName: string;
 };
 //#endregion
@@ -2755,9 +2750,7 @@ declare const submitForm: (form?: HTMLFormElement | null, submitter?: HTMLElemen
  * A component to put inside a form element that has a function called from the `action` attribute
  * to avoid versions React 19.3+ from resetting the form after submitting the data.
  */
-declare function FormResetBlocker({
-  formRef
-}: FormResetBlockerProps): _$react_jsx_runtime0.JSX.Element | null;
+declare function FormResetBlocker({ formRef }: FormResetBlockerProps): import("react").JSX.Element | null;
 //#endregion
 //#region src/helpers/class-helper.d.ts
 /**
@@ -2909,25 +2902,7 @@ type MaskedInputProps = Omit<React.ComponentPropsWithRef<'input'>, 'onBlur' | 'o
  *
  * @returns The component instance.
  */
-declare function MaskedInput({
-  mask,
-  type,
-  placeholderChar,
-  placeholder,
-  inputMode,
-  value,
-  defaultValue,
-  onBlur,
-  onChange,
-  onFocus,
-  onClick,
-  onMouseDown,
-  name,
-  readOnly,
-  disabled,
-  ref,
-  ...props
-}: Readonly<MaskedInputProps>): _$react_jsx_runtime0.JSX.Element;
+declare function MaskedInput({ mask, type, placeholderChar, placeholder, inputMode, value, defaultValue, onBlur, onChange, onFocus, onClick, onMouseDown, name, readOnly, disabled, ref, ...props }: Readonly<MaskedInputProps>): import("react").JSX.Element;
 //#endregion
 //#region src/secure-input.d.ts
 /**
@@ -2983,20 +2958,7 @@ type SecureInputProps = Omit<React.ComponentPropsWithRef<'input'>, 'onChange' | 
  *
  * @returns The component instance.
  */
-declare function SecureInput({
-  type,
-  defaultValue,
-  value,
-  onChange,
-  onSecureChange,
-  onSecureBlur,
-  onBlur,
-  name,
-  readOnly,
-  disabled,
-  ref,
-  ...props
-}: Readonly<SecureInputProps>): _$react_jsx_runtime0.JSX.Element;
+declare function SecureInput({ type, defaultValue, value, onChange, onSecureChange, onSecureBlur, onBlur, name, readOnly, disabled, ref, ...props }: Readonly<SecureInputProps>): import("react").JSX.Element;
 declare namespace value_converter_d_exports {
   export { asBoolean, asDateString, asNumber, toBoolean, toDate, toFloat, toInt, toLiteral, toString };
 }

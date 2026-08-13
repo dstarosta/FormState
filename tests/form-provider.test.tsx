@@ -100,7 +100,7 @@ const Age = () => {
           touch((path) => path.info.age);
         }}
         onChange={(evt) => {
-          change((path) => path.info.age, Number.parseInt(evt.target.value, 10));
+          change((path) => path.info.age, Number(evt.target.value));
         }}
       />
       {Boolean(errors.get((path) => path.info.age)) && (

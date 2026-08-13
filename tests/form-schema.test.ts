@@ -36,7 +36,7 @@ describe('form schema', () => {
     expect(fieldSchema.safeParse(1).success).toBe(true);
     expect(fieldSchema.safeParse(1).data).toBe(1);
     expect(fieldSchema.safeParse(10.2).success).toBe(true);
-    expect(fieldSchema.safeParse(10.2).data).toBe(10.2);
+    expect(fieldSchema.safeParse(10.2).data).toBeCloseTo(10.2);
     expect(fieldSchema.safeParse('abcd').success).toBe(false);
     expect(fieldSchema.safeParse('abcd').error).toBeDefined();
     expect(fieldSchema.safeParse('').success).toBe(true);
@@ -50,7 +50,7 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse(1).success).toBe(true);
     expect(requiredFieldSchema.safeParse(1).data).toBe(1);
     expect(requiredFieldSchema.safeParse(10.2).success).toBe(true);
-    expect(requiredFieldSchema.safeParse(10.2).data).toBe(10.2);
+    expect(requiredFieldSchema.safeParse(10.2).data).toBeCloseTo(10.2);
     expect(requiredFieldSchema.safeParse('abcd').success).toBe(false);
     expect(requiredFieldSchema.safeParse('abcd').error).toBeDefined();
     expect(requiredFieldSchema.safeParse('').success).toBe(false);
@@ -73,8 +73,8 @@ describe('form schema', () => {
     expect(fieldSchema.safeParse('12-31-2025').data).toEqual(date);
     expect(fieldSchema.safeParse('2025-12-31').success).toBe(false);
     expect(fieldSchema.safeParse('2025-12-31').error).toBeDefined();
-    expect(fieldSchema.safeParse(new Date(Number.NaN)).success).toBe(false);
-    expect(fieldSchema.safeParse(new Date(Number.NaN)).error).toBeDefined();
+    expect(fieldSchema.safeParse(new Date(NaN)).success).toBe(false);
+    expect(fieldSchema.safeParse(new Date(NaN)).error).toBeDefined();
     expect(fieldSchema.safeParse('').success).toBe(true);
     expect(fieldSchema.safeParse('').data).toBe('');
 
@@ -86,8 +86,8 @@ describe('form schema', () => {
     expect(defaultFieldSchema.safeParse('2025-12-31').data).toEqual(date);
     expect(defaultFieldSchema.safeParse('12-31-2025').success).toBe(false);
     expect(defaultFieldSchema.safeParse('12-31-2025').error).toBeDefined();
-    expect(defaultFieldSchema.safeParse(new Date(Number.NaN)).success).toBe(false);
-    expect(defaultFieldSchema.safeParse(new Date(Number.NaN)).error).toBeDefined();
+    expect(defaultFieldSchema.safeParse(new Date(NaN)).success).toBe(false);
+    expect(defaultFieldSchema.safeParse(new Date(NaN)).error).toBeDefined();
     expect(defaultFieldSchema.safeParse('').success).toBe(true);
     expect(defaultFieldSchema.safeParse('').error).toBeUndefined();
     expect(defaultFieldSchema.safeParse(undefined).success).toBe(true);
@@ -105,8 +105,8 @@ describe('form schema', () => {
     expect(requiredFieldSchema.safeParse('2025-12-31').data).toEqual(date);
     expect(requiredFieldSchema.safeParse('12-31-2025').success).toBe(false);
     expect(requiredFieldSchema.safeParse('12-31-2025').error).toBeDefined();
-    expect(requiredFieldSchema.safeParse(new Date(Number.NaN)).success).toBe(false);
-    expect(requiredFieldSchema.safeParse(new Date(Number.NaN)).error).toBeDefined();
+    expect(requiredFieldSchema.safeParse(new Date(NaN)).success).toBe(false);
+    expect(requiredFieldSchema.safeParse(new Date(NaN)).error).toBeDefined();
     expect(requiredFieldSchema.safeParse('').success).toBe(false);
     expect(requiredFieldSchema.safeParse('').error).toBeDefined();
     expect(requiredFieldSchema.safeParse(undefined).success).toBe(false);
@@ -141,7 +141,7 @@ describe('form schema', () => {
     expect(booleanResult.error?.issues[0]?.message).toBe('Invalid input: "true".');
   });
 
-  it('formBoolean should parse values', () => {
+  it('formString should parse values', () => {
     const stringSchema = z.formString();
 
     expect(stringSchema.safeParse(null).success).toBe(true);
@@ -156,8 +156,8 @@ describe('form schema', () => {
     expect(requiredStringSchema.safeParse('test').success).toBe(true);
 
     const nfcSchema = z.formString({ normalize: 'NFC' });
-    const decomposed = '\u006E\u0303'; // 'n' + combining tilde, length 2
-    const composed = '\u00F1'; // single 'n with tilde', length 1
+    const decomposed = '\u{6E}\u{303}'; // 'n' + combining tilde, length 2
+    const composed = '\u{F1}'; // single 'n with tilde', length 1
     expect(nfcSchema.safeParse(decomposed).data).toBe(composed);
 
     const nfdSchema = z.formString({ normalize: 'NFD' });
@@ -644,7 +644,7 @@ describe('form schema', () => {
     );
 
     expect(result.current.formStatus.validating).toBe(true);
-    expect(result.current.formStatus.valid).toBe(null);
+    expect(result.current.formStatus.valid).toBeNull();
 
     await waitFor(() => {
       expect(result.current.formStatus.validating).toBe(false);

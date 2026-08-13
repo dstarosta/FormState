@@ -254,7 +254,7 @@ describe('form state groups', () => {
 
     let contact = result.current.formState.getGroup('contact-info');
 
-    expect(contact.errors.getAll().length).toBe(0);
+    expect(contact.errors.getAll()).toHaveLength(0);
     expect(contact.validGroup).toBe(true);
 
     act(() => {
@@ -263,7 +263,7 @@ describe('form state groups', () => {
 
     contact = result.current.formState.getGroup('contact-info');
 
-    expect(contact.errors.getAll().length).toBe(1);
+    expect(contact.errors.getAll()).toHaveLength(1);
     expect(contact.errors.email).toBe('Invalid email format');
     expect(contact.validGroup).toBe(false);
   });

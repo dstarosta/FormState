@@ -14,7 +14,7 @@ const propToArray = (prop: string) => {
 
   for (let i = 0; i < segments.length; i++) {
     const el = segments[i] as string;
-    const last = i > 0 ? segments[i - 1] : undefined;
+    const last = segments[i - 1];
 
     if (last && ESCAPED_DOT_RE.test(last)) {
       const prev = result.pop();
@@ -42,7 +42,7 @@ const getArrayIndex = (head: string, obj: unknown[]) => {
     throw new Error(`Array index '${head}' must be a non-negative integer.`);
   }
 
-  return Number.parseInt(head, 10);
+  return Number(head);
 };
 
 /**

@@ -295,11 +295,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
 
-          let asyncPending = false;
-
-          if (shouldValidate) {
-            asyncPending = parseAndCache(prevState.data).asyncPending;
-          }
+          const asyncPending = shouldValidate ? parseAndCache(prevState.data).asyncPending : false;
 
           const pathNotation = Array.isArray(name) ? name.join('.') : name;
           const touched = { ...prevState.touched, [pathNotation]: true };

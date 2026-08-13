@@ -104,7 +104,7 @@ describe('createUseBlocker', () => {
     renderHook(() => useBlocker(() => true));
 
     const event = new Event('beforeunload', { cancelable: true });
-    const prevented = !globalThis.dispatchEvent(event);
+    const prevented = !dispatchEvent(event);
 
     expect(prevented).toBe(true);
   });
@@ -115,7 +115,7 @@ describe('createUseBlocker', () => {
     renderHook(() => useBlocker(() => true, { enableBeforeUnload: true }));
 
     const event = new Event('beforeunload', { cancelable: true });
-    const prevented = !globalThis.dispatchEvent(event);
+    const prevented = !dispatchEvent(event);
 
     expect(prevented).toBe(true);
   });
@@ -126,7 +126,7 @@ describe('createUseBlocker', () => {
     renderHook(() => useBlocker(() => true, { enableBeforeUnload: false }));
 
     const event = new Event('beforeunload', { cancelable: true });
-    const prevented = !globalThis.dispatchEvent(event);
+    const prevented = !dispatchEvent(event);
 
     expect(prevented).toBe(false);
   });
@@ -137,7 +137,7 @@ describe('createUseBlocker', () => {
     renderHook(() => useBlocker(() => false));
 
     const event = new Event('beforeunload', { cancelable: true });
-    const prevented = !globalThis.dispatchEvent(event);
+    const prevented = !dispatchEvent(event);
 
     expect(prevented).toBe(false);
   });
@@ -149,7 +149,7 @@ describe('createUseBlocker', () => {
     unmount();
 
     const event = new Event('beforeunload', { cancelable: true });
-    const prevented = !globalThis.dispatchEvent(event);
+    const prevented = !dispatchEvent(event);
 
     expect(prevented).toBe(false);
   });

@@ -99,9 +99,9 @@ export const parseDate = (
     [, year, month, day] = match;
   }
 
-  const numYear = Number.parseInt(year ?? '', 10);
-  const numMonth = Number.parseInt(month ?? '', 10) - 1;
-  const numDay = Number.parseInt(day ?? '', 10);
+  const numYear = Number(year ?? '');
+  const numMonth = Number(month ?? '') - 1;
+  const numDay = Number(day ?? '');
 
   let date: Date;
   let dateYear: number;

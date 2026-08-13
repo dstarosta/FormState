@@ -236,8 +236,7 @@ export type FormStore = {
 };
 
 export type FormTypeOptions =
-  | { required: boolean; error?: string }
-  | { required?: boolean; error: string };
+  { required: boolean; error?: string } | { required?: boolean; error: string };
 
 export type FormDateOptions =
   | { required: boolean; dateFormat?: FormDateFormat; error?: string; dateFormatError?: string }
@@ -733,21 +732,25 @@ export type SchemaDataObject<T> = T extends ImmutablePrimitive
       : T
     : Flatten<
         {
-          [K in keyof T as T[K] extends object
-            ? K
-            : ReplaceEmptyWithUndefined<T[K]> extends never
-              ? never
-              : undefined extends NormalizePrimitives<T[K]>
+          [
+            K in keyof T as T[K] extends object
+              ? K
+              : ReplaceEmptyWithUndefined<T[K]> extends never
                 ? never
-                : K]: T[K] extends object ? SchemaDataObject<T[K]> : NormalizePrimitives<T[K]>;
+                : undefined extends NormalizePrimitives<T[K]>
+                  ? never
+                  : K
+          ]: T[K] extends object ? SchemaDataObject<T[K]> : NormalizePrimitives<T[K]>;
         } & {
-          [K in keyof T as T[K] extends object
-            ? never
-            : NormalizePrimitives<T[K]> extends never
+          [
+            K in keyof T as T[K] extends object
               ? never
-              : undefined extends NormalizePrimitives<T[K]>
-                ? K
-                : never]?: NormalizePrimitives<T[K]>;
+              : NormalizePrimitives<T[K]> extends never
+                ? never
+                : undefined extends NormalizePrimitives<T[K]>
+                  ? K
+                  : never
+          ]?: NormalizePrimitives<T[K]>;
         }
       >;
 
@@ -1879,8 +1882,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
       remove: <P extends FormPath<T>>(
         nameOrPath: P,
         indexOrPredicate:
-          | number
-          | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
+          number | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
         options?: FormChangeArrayOptions<T>
       ) => void;
       /**
@@ -2177,12 +2179,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
  * The date notation format in a `string`.
  */
 export type FormDateFormat =
-  | 'yyyy-MM-dd'
-  | 'MM/dd/yyyy'
-  | 'dd/MM/yyyy'
-  | 'MM-dd-yyyy'
-  | 'dd-MM-yyyy'
-  | 'dd.MM.yyyy';
+  'yyyy-MM-dd' | 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'MM-dd-yyyy' | 'dd-MM-yyyy' | 'dd.MM.yyyy';
 
 /**
  * Form props.

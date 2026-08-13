@@ -120,10 +120,12 @@ export function SecureInput({
   });
 
   useIsomorphicLayoutEffect(() => {
-    if (caretRef.current !== null && inputRef.current) {
-      inputRef.current.setSelectionRange(caretRef.current, caretRef.current);
-      caretRef.current = null;
+    if (caretRef.current === null || !inputRef.current) {
+      return;
     }
+
+    inputRef.current.setSelectionRange(caretRef.current, caretRef.current);
+    caretRef.current = null;
   });
 
   const select = (): [number, number] => {
@@ -227,9 +229,6 @@ export function SecureInput({
     }
 
     const [start, end] = select();
-    const existingValue = realValueRef.current;
-
-    const hasSelection = start !== end;
 
     // Ctrl/Meta combos are reserved for shortcuts. The `!event.altKey` carve-out lets
     // Windows AltGr combos (ctrlKey + altKey) fall through to character insertion.
@@ -243,6 +242,9 @@ export function SecureInput({
 
       return;
     }
+
+    const existingValue = realValueRef.current;
+    const hasSelection = start !== end;
 
     if (event.key === 'Backspace') {
       event.preventDefault();

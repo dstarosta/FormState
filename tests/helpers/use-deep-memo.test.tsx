@@ -59,11 +59,11 @@ describe('useDeepMemo', () => {
   it('treats NaN deps as equal via Object.is', () => {
     const factory = vi.fn(() => ({}));
     const { result, rerender } = renderHook(({ deps }) => useDeepMemo(factory, deps), {
-      initialProps: { deps: [Number.NaN] as unknown[] },
+      initialProps: { deps: [NaN] as unknown[] },
     });
 
     const first = result.current;
-    rerender({ deps: [Number.NaN] });
+    rerender({ deps: [NaN] });
 
     expect(factory).toHaveBeenCalledTimes(1);
     expect(result.current).toBe(first);

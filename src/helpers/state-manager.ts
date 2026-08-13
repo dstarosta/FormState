@@ -225,8 +225,8 @@ const deepFreeze = <T>(value: T): T => {
       deepFreeze(item);
     }
   } else {
-    for (const key of Object.keys(value)) {
-      deepFreeze((value as Record<string, unknown>)[key]);
+    for (const value_ of Object.values(value as Record<string, unknown>)) {
+      deepFreeze(value_);
     }
   }
 
@@ -235,7 +235,7 @@ const deepFreeze = <T>(value: T): T => {
 
 const truthyKeys = (obj: Record<string, unknown>): string[] =>
   Object.entries(obj)
-    .filter((entry) => Boolean(entry[1]))
+    .filter((entry) => entry[1])
     .map((entry) => entry[0]);
 
 const allErrors = (
@@ -406,11 +406,11 @@ const pickByKeys = <V>(
 ): Record<string, V> => {
   const result: Record<string, V> = {};
 
-  for (const key of Object.keys(source)) {
+  for (const [key, value] of Object.entries(source)) {
     const rootSegment = key.split('.', 1)[0] ?? key;
 
     if (keys.has(rootSegment) || (includeRootKey && key === '')) {
-      result[key] = source[key] as V;
+      result[key] = value;
     }
   }
 

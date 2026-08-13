@@ -26,10 +26,12 @@ export function FormResetBlocker({ formRef }: FormResetBlockerProps) {
     }
 
     const blockReset = (event: Event) => {
-      if (pendingRef.current) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
+      if (!pendingRef.current) {
+        return;
       }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
     };
 
     form.addEventListener('reset', blockReset, { capture: true });

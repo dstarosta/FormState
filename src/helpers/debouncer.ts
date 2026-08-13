@@ -21,13 +21,15 @@ export function debounce<T extends unknown[]>(fn: (...args: T) => void, wait: nu
     }
 
     timeoutId = setTimeout(() => {
-      if (lastArgs !== null) {
-        const currentArgs = lastArgs;
-
-        cleanup();
-
-        fn(...currentArgs);
+      if (lastArgs === null) {
+        return;
       }
+
+      const currentArgs = lastArgs;
+
+      cleanup();
+
+      fn(...currentArgs);
     }, wait);
   };
 
@@ -65,14 +67,15 @@ export function debounceAsync<T extends unknown[], R>(
       timeoutId = setTimeout(() => {
         timeoutId = null;
         pendingResolve = null;
-        fn(...args)
-          .then((result) => {
+        void (async () => {
+          try {
+            const result = await fn(...args);
             lastResult = result;
             resolve(result);
-          })
-          .catch(() => {
+          } catch {
             resolve(fallback);
-          });
+          }
+        })();
       }, wait);
     });
   };

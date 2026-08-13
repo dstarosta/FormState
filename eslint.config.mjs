@@ -14,7 +14,7 @@ import eslintConfigPrettier from 'eslint-config-prettier/flat';
 export default defineConfig([
   globalIgnores(['coverage', 'dist', 'docs', 'node_modules']),
   js.configs.recommended,
-  eslintPluginUnicorn.configs.all,
+  eslintPluginUnicorn.configs.unopinionated,
   sonarjs.configs.recommended,
   eslintConfigPrettier,
   {
@@ -54,15 +54,12 @@ export default defineConfig([
       'sonarjs/cognitive-complexity': 'off', // reducers and schema visitors are difficult to break up into _readable_ small functions
       'sonarjs/function-return-type': 'off', // different return types (ex: discriminated unions) are not an issue
       'sonarjs/no-nested-functions': 'off', // nested functions are very useful for closures in TS/JS
+      'sonarjs/parameterized-tests': 'off', // clusters often have varied setup/assertions; merging into it.each hurts readability more than it helps
       'sonarjs/todo-tag': 'warn', // a "to do" comment should not break the build; but it's a good idea to periodically remind you about it
       // Annoying Unicorn rules
-      'unicorn/no-keyword-prefix': 'off', // We need classNames for formClasses().
-      'unicorn/no-null': 'off', // Douglas Crockford is wrong. "null" should be used as a literal when assigned manually, not "undefined".
-      'unicorn/no-array-sort': 'off', // This method is only available in ES2023.
-      'unicorn/no-useless-undefined': ['error', { checkArguments: false }], // you cannot omit function arguments in strict TS (in tests)
+      'unicorn/no-array-sort': 'off', // toSorted method is only available in ES2023
       'unicorn/numeric-separators-style': 'off', // always forcing underscores in numeric constants makes no sense
-      'unicorn/prefer-string-replace-all': 'off', // replace(/[set of numbers]/g) is way more terse for fallback GUID generation
-      'unicorn/prevent-abbreviations': 'off', // "ref" and "args" abbreviations are commonly used
+      'unicorn/prefer-promise-with-resolvers': 'off', // Promise.withResolvers is only available in ES2024
     },
   },
   {

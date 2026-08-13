@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formDataDecode, formDataEncode } from '../../src';
 
-const entries = (formData: FormData) => [...formData.entries()];
+const entries = (formData: FormData) => [...formData];
 
 describe('form builder', () => {
   it('should convert FormData into URL parameters', () => {

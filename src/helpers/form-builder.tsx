@@ -31,7 +31,7 @@ const getElementValue = (element: HTMLInputElement | HTMLTextAreaElement | HTMLS
 
 const reformatName = (key: string, notation: 'bracket' | 'dot') => {
   if (notation === 'dot') {
-    return key.replace(/\["([^"]+)"]/g, '.$1').replace(/\[(\d+)]/g, '.$1');
+    return key.replaceAll(/\["([^"]+)"]/g, '.$1').replaceAll(/\[(\d+)]/g, '.$1');
   }
 
   const parts = key.split('.');
@@ -67,22 +67,26 @@ export const createFormComponent = <T extends object>(
         noValidate: !nativeValidation,
         onKeyDown: (event: React.KeyboardEvent) => {
           if (
-            !submitWithEnter &&
-            event.key === 'Enter' &&
-            event.target instanceof HTMLInputElement &&
-            !event.target.onkeydown
+            !(
+              !submitWithEnter &&
+              event.key === 'Enter' &&
+              event.target instanceof HTMLInputElement
+            ) ||
+            event.target.onkeydown
           ) {
-            const element = event.target;
-            const styles = globalThis.getComputedStyle(element);
-            const isHidden =
-              !element.offsetParent ||
-              element.getAttribute('aria-hidden') === 'true' ||
-              styles.display === 'none' ||
-              styles.visibility === 'hidden';
+            return;
+          }
 
-            if (!isHidden) {
-              event.preventDefault();
-            }
+          const element = event.target;
+          const styles = getComputedStyle(element);
+          const isHidden =
+            !element.offsetParent ||
+            element.getAttribute('aria-hidden') === 'true' ||
+            styles.display === 'none' ||
+            styles.visibility === 'hidden';
+
+          if (!isHidden) {
+            event.preventDefault();
           }
         },
       }),
@@ -248,7 +252,7 @@ export const formDataEncode = (
   nameFormat?: 'bracket' | 'dot'
 ) =>
   new URLSearchParams(
-    [...formData.entries()]
+    [...formData]
       .filter((entry) => !omitNames?.length || !omitNames.includes(entry[0]))
       .map((entry) => [
         nameFormat ? reformatName(entry[0], nameFormat) : entry[0],

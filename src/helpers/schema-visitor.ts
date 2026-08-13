@@ -163,13 +163,13 @@ const getDateSchemaRange = (schema: z.ZodMiniDate) => {
 };
 
 const getSchemaPattern = (schema: z.ZodMiniString | z.ZodMiniDate) => {
-  let pattern: string | undefined;
-
   if (schema instanceof z.ZodMiniDate) {
     const format = z.globalRegistry.get(schema)?.['format'];
 
     return typeof format === 'string' && format.length > 0 ? format : 'yyyy-MM-dd';
   }
+
+  let pattern: string | undefined;
 
   if (Array.isArray(schema.def.checks)) {
     const check = schema.def.checks.find(

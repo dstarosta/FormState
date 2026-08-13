@@ -29,7 +29,7 @@ describe('async schema validation', () => {
     );
 
     expect(result.current.formStatus.validating).toBe(true);
-    expect(result.current.formStatus.valid).toBe(null);
+    expect(result.current.formStatus.valid).toBeNull();
 
     await waitFor(() => {
       expect(result.current.formStatus.validating).toBe(false);
@@ -67,7 +67,7 @@ describe('async schema validation', () => {
     );
 
     expect(result.current.formStatus.validating).toBe(false);
-    expect(result.current.formStatus.valid).toBe(null);
+    expect(result.current.formStatus.valid).toBeNull();
   });
 
   it('should re-run async validation after a change action', async () => {
@@ -90,7 +90,7 @@ describe('async schema validation', () => {
     });
 
     expect(result.current.formStatus.validating).toBe(true);
-    expect(result.current.formStatus.valid).toBe(null);
+    expect(result.current.formStatus.valid).toBeNull();
 
     await waitFor(() => {
       expect(result.current.formStatus.validating).toBe(false);
@@ -1123,7 +1123,7 @@ describe('async schema validation', () => {
       });
 
       await waitFor(() => {
-        expect(events.filter((evt) => evt.type === 'asyncValidated').length).toBe(1);
+        expect(events.filter((evt) => evt.type === 'asyncValidated')).toHaveLength(1);
       });
 
       // First burst: prev is the initial mount state ('Mike').
@@ -1237,7 +1237,7 @@ describe('async schema validation', () => {
     });
 
     it('does not submit when sync validation has an error', async () => {
-      const predicate = vi.fn((value: string) => value.length < 0);
+      const predicate = vi.fn(() => false);
 
       const submitSchema = z.object({
         name: z.formString({ required: true }).check(
@@ -1325,7 +1325,7 @@ describe('async schema validation', () => {
     it.each([true, false])(
       'does not submit when async validation has an error (submitOnly=%s)',
       async (submitOnly) => {
-        const predicate = vi.fn((value: string) => Promise.resolve(value.length < 0));
+        const predicate = vi.fn(() => Promise.resolve(false));
 
         const submitSchema = z.object({
           name: z.formString({ required: true }).check(
@@ -2471,7 +2471,7 @@ describe('async schema validation', () => {
     it.each([false, true])(
       'does not validate/submit a sync schema (submit=%s)',
       async (shouldSubmit: boolean) => {
-        const predicate = vi.fn((value: string) => value.length < 0);
+        const predicate = vi.fn(() => false);
 
         const submitSchema = z.object({
           name: z.formString({ required: true }).check(
@@ -2535,7 +2535,7 @@ describe('async schema validation', () => {
     );
 
     it('validateAsync() returns false when async validation has an error', async () => {
-      const predicate = vi.fn((value: string) => Promise.resolve(value.length < 0));
+      const predicate = vi.fn(() => Promise.resolve(false));
 
       const asyncSchema = z.object({
         name: z

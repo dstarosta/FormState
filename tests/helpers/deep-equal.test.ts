@@ -1,4 +1,4 @@
-/* eslint-disable unicorn/consistent-function-scoping, no-sparse-arrays */
+/* eslint-disable no-sparse-arrays */
 import { describe, expect, it } from 'vitest';
 
 import { deepEqual } from '../../src/helpers/deep-equal';
@@ -15,7 +15,7 @@ describe('deepEqual', () => {
     });
 
     it('treats NaN as equal to NaN', () => {
-      expect(deepEqual(Number.NaN, Number.NaN)).toBe(true);
+      expect(deepEqual(NaN, NaN)).toBe(true);
     });
 
     it('treats +0 and -0 as equal', () => {
@@ -391,8 +391,7 @@ describe('deepEqual', () => {
         coords: [1, 2, 3] as [number, number, number],
         // z.advanced.union — discriminated by `type`
         contact: { type: 'email', value: 'a@example.com' } as
-          | { type: 'email'; value: string }
-          | { type: 'phone'; value: string },
+          { type: 'email'; value: string } | { type: 'phone'; value: string },
         // z.advanced.record — dynamic-key map
         preferences: { theme: 'dark', density: 'compact' } as Record<string, string>,
         // formArray of nested objects, each carrying further nesting

@@ -16,14 +16,15 @@ describe('generateUniqueId', () => {
       originalGetRandomValues(buffer)
     );
 
-    Object.defineProperty(crypto, 'randomUUID', {
-      configurable: true,
-      value: undefined,
-    });
-
-    Object.defineProperty(crypto, 'getRandomValues', {
-      configurable: true,
-      value: getRandomValuesSpy,
+    Object.defineProperties(crypto, {
+      randomUUID: {
+        configurable: true,
+        value: undefined,
+      },
+      getRandomValues: {
+        configurable: true,
+        value: getRandomValuesSpy,
+      },
     });
 
     try {
@@ -33,14 +34,15 @@ describe('generateUniqueId', () => {
       expect(getRandomValuesSpy).toHaveBeenCalledOnce();
       expect(getRandomValuesSpy.mock.calls[0]?.[0]).toBeInstanceOf(Uint8Array);
     } finally {
-      Object.defineProperty(crypto, 'randomUUID', {
-        configurable: true,
-        value: originalRandomUUID,
-      });
-
-      Object.defineProperty(crypto, 'getRandomValues', {
-        configurable: true,
-        value: originalGetRandomValues,
+      Object.defineProperties(crypto, {
+        randomUUID: {
+          configurable: true,
+          value: originalRandomUUID,
+        },
+        getRandomValues: {
+          configurable: true,
+          value: originalGetRandomValues,
+        },
       });
     }
   });
@@ -49,14 +51,15 @@ describe('generateUniqueId', () => {
     const originalRandomUUID = crypto.randomUUID.bind(crypto);
     const originalGetRandomValues = crypto.getRandomValues.bind(crypto);
 
-    Object.defineProperty(crypto, 'randomUUID', {
-      configurable: true,
-      value: undefined,
-    });
-
-    Object.defineProperty(crypto, 'getRandomValues', {
-      configurable: true,
-      value: undefined,
+    Object.defineProperties(crypto, {
+      randomUUID: {
+        configurable: true,
+        value: undefined,
+      },
+      getRandomValues: {
+        configurable: true,
+        value: undefined,
+      },
     });
 
     const randomSpy = vi.spyOn(Math, 'random');
@@ -69,14 +72,15 @@ describe('generateUniqueId', () => {
     } finally {
       randomSpy.mockRestore();
 
-      Object.defineProperty(crypto, 'randomUUID', {
-        configurable: true,
-        value: originalRandomUUID,
-      });
-
-      Object.defineProperty(crypto, 'getRandomValues', {
-        configurable: true,
-        value: originalGetRandomValues,
+      Object.defineProperties(crypto, {
+        randomUUID: {
+          configurable: true,
+          value: originalRandomUUID,
+        },
+        getRandomValues: {
+          configurable: true,
+          value: originalGetRandomValues,
+        },
       });
     }
   });

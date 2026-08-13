@@ -425,11 +425,9 @@ describe('state and status tests', () => {
   it('should handle array fields', () => {
     const { result } = renderHook(() => useFormState(schema));
     const {
-      formActions: {
-        change,
-        array: { append, clear, insert, remove, swap, update },
-      },
-    } = result.current;
+      change,
+      array: { append, clear, insert, remove, swap, update },
+    } = result.current.formActions;
 
     act(() => {
       change('tags', ['a', 'b']);
@@ -515,10 +513,8 @@ describe('state and status tests', () => {
       useFormState(schema, { initialData: { tags: ['a', 'b'] } })
     );
     const {
-      formActions: {
-        array: { append, clear, insert, remove, swap, update },
-      },
-    } = result.current;
+      array: { append, clear, insert, remove, swap, update },
+    } = result.current.formActions;
 
     expect(() => {
       append('isArchived', true as never);
@@ -662,6 +658,7 @@ describe('state and status tests', () => {
   });
 
   it('gets the state values', () => {
+    // eslint-disable-next-line unicorn/no-unnecessary-global-this -- bare `isSecureContext` is not defined in this jsdom/vitest environment
     const prevIsSecureContext = globalThis.isSecureContext;
 
     // Stubbing a secure context value for UUID generation.

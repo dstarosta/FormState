@@ -421,7 +421,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
     commitActiveAsyncCheckPaths(schema, formState.data, 'change', asyncMetaMap);
 
-    let cancelled = false;
+    const cancelledRef = { current: false };
 
     if (!asyncBurstActiveRef.current) {
       asyncBurstActiveRef.current = true;
@@ -477,9 +477,11 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     };
 
-    withMetaMap(asyncMetaMap, () => schema.safeParseAsync(formState.data))
-      .then((result) => {
-        if (cancelled) {
+    void (async () => {
+      try {
+        const result = await withMetaMap(asyncMetaMap, () => schema.safeParseAsync(formState.data));
+
+        if (cancelledRef.current) {
           return;
         }
 
@@ -495,11 +497,10 @@ export function useFormState<T extends z.ZodMiniObject>(
         requestAnimationFrame(() => {
           finishBurst(triggerField);
         });
-      })
-      .catch((error: unknown) => {
+      } catch (error: unknown) {
         // Unreachable guard
         /* v8 ignore if -- @preserve */
-        if (cancelled) {
+        if (cancelledRef.current) {
           return;
         }
 
@@ -516,10 +517,11 @@ export function useFormState<T extends z.ZodMiniObject>(
         requestAnimationFrame(() => {
           finishBurst(triggerField);
         });
-      });
+      }
+    })();
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
     };
   }, [
     schema,
@@ -659,13 +661,15 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Calls the change callbacks on the form status change.
   useEffect(() => {
-    if (changeCallbackRefs.current.length > 0) {
-      const callbacks = changeCallbackRefs.current;
-      changeCallbackRefs.current = [];
+    if (changeCallbackRefs.current.length <= 0) {
+      return;
+    }
 
-      for (const callback of callbacks) {
-        callback(generateCallbackState(), formStatus);
-      }
+    const callbacks = changeCallbackRefs.current;
+    changeCallbackRefs.current = [];
+
+    for (const callback of callbacks) {
+      callback(generateCallbackState(), formStatus);
     }
   }, [formState, formStatus, generateCallbackState]);
 
@@ -902,27 +906,29 @@ export function useFormState<T extends z.ZodMiniObject>(
           }
 
           const debouncedFn = debounce(() => {
-            if (isMountedRef.current) {
-              const currentEntry = debounceCache.current.get(pathNotation);
+            if (!isMountedRef.current) {
+              return;
+            }
 
-              if (currentEntry) {
-                if (typeof currentEntry.callback === 'function') {
-                  changeCallbackRefs.current.push(currentEntry.callback);
-                }
+            const currentEntry = debounceCache.current.get(pathNotation);
 
-                dispatch({
-                  type: 'change',
-                  name: currentEntry.path,
-                  value: currentEntry.value,
-                  options: {
-                    touch: currentEntry.touch,
-                    validate: currentEntry.validate,
-                  },
-                  fromDebounce: true,
-                });
-
-                debounceCache.current.delete(pathNotation);
+            if (currentEntry) {
+              if (typeof currentEntry.callback === 'function') {
+                changeCallbackRefs.current.push(currentEntry.callback);
               }
+
+              dispatch({
+                type: 'change',
+                name: currentEntry.path,
+                value: currentEntry.value,
+                options: {
+                  touch: currentEntry.touch,
+                  validate: currentEntry.validate,
+                },
+                fromDebounce: true,
+              });
+
+              debounceCache.current.delete(pathNotation);
             }
           }, interval);
 
@@ -1129,8 +1135,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     <P extends FormPath<T>>(
       nameOrPath: P,
       indexOrPredicate:
-        | number
-        | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
+        number | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
       options?: FormChangeArrayOptions<T>
     ) => {
       mutateArray(
@@ -1523,7 +1528,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The memoized "setDirty" function.
   const setDirty = useCallback(
     (key: string, isDirty?: boolean) => {
-      if (!key.trim().startsWith('#')) {
+      if (!key.trimStart().startsWith('#')) {
         throw new TypeError('A missing or invalid key was provided.');
       }
 

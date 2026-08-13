@@ -33,10 +33,10 @@ export function createUseBlocker<T extends object>(
         }
       };
 
-      globalThis.addEventListener('beforeunload', handleBeforeUnload);
+      addEventListener('beforeunload', handleBeforeUnload);
 
       return () => {
-        globalThis.removeEventListener('beforeunload', handleBeforeUnload);
+        removeEventListener('beforeunload', handleBeforeUnload);
       };
     }, [block, options?.enableBeforeUnload]);
 
