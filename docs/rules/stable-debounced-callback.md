@@ -30,6 +30,10 @@ formActions.change('query', value, {
     saveToServer();
   },
 });
+
+// A function declared in the component body — also a new reference every render
+const onSaved = () => saveToServer();
+formActions.change('query', value, { debounceIntervalMs: 300, callback: onSaved });
 ```
 
 ### ✅ Correct

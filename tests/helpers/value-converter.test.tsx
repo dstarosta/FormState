@@ -18,6 +18,12 @@ describe('value-converter', () => {
       expect(toInt('')).toBe('');
     });
 
+    it('returns empty string for whitespace-only input', () => {
+      expect(toInt(' ')).toBe('');
+      expect(toInt('\t\n')).toBe('');
+      expect(toInt(' 42 ')).toBe(42);
+    });
+
     it('parses valid integer strings', () => {
       expect(toInt('42')).toBe(42);
       expect(toInt('007')).toBe(7);
@@ -40,6 +46,12 @@ describe('value-converter', () => {
   describe('toFloat', () => {
     it('returns empty string for empty input', () => {
       expect(toFloat('')).toBe('');
+    });
+
+    it('returns empty string for whitespace-only input', () => {
+      expect(toFloat('  ')).toBe('');
+      expect(toFloat('\t')).toBe('');
+      expect(toFloat(' 4.5 ')).toBeCloseTo(4.5);
     });
 
     it('parses valid number strings (int or float)', () => {

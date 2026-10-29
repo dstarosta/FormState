@@ -482,7 +482,7 @@ export const advanced = {
   discriminatedUnion: z.discriminatedUnion,
   intersection: z.intersection,
   tuple: z.tuple,
-  partialRecord: z.record,
+  partialRecord: z.partialRecord,
   record: z.record,
   map: z.map,
   set: z.set,
@@ -1127,6 +1127,12 @@ export function validateAsync<T>(
     const prevByLocation = new Map<string, T>();
     let phase: 'change' | 'submit' = 'change';
 
+    // A check that runs at several locations per parse (array rows) cannot compare against the
+    // single previous value, so it always runs. Detected by the form's schema walk, or by a second
+    // gate call within the same tick for stand-alone parses.
+    let repeated = false;
+    let gateCallsInTick = 0;
+
     const runPredicate =
       debounceMs > 0 ? debounceAsync<[T], boolean>(predicate, debounceMs, true) : predicate;
 
@@ -1135,13 +1141,25 @@ export function validateAsync<T>(
         return false;
       }
 
-      const currentValue = payload.value as T;
-      const prevItem = prevValues.get(pathKey);
+      gateCallsInTick++;
 
-      prevValues.set(pathKey, currentValue);
+      if (gateCallsInTick === 1) {
+        queueMicrotask(() => {
+          gateCallsInTick = 0;
+        });
+      } else {
+        repeated = true;
+      }
 
-      if (skipWhen(currentValue, prevItem)) {
-        return false;
+      if (!repeated) {
+        const currentValue = payload.value as T;
+        const prevItem = prevValues.get(pathKey);
+
+        prevValues.set(pathKey, currentValue);
+
+        if (skipWhen(currentValue, prevItem)) {
+          return false;
+        }
       }
 
       return condition(toValidationErrors(payload.issues));
@@ -1163,6 +1181,9 @@ export function validateAsync<T>(
         phase = next;
       },
       whenGate,
+      markRepeated: () => {
+        repeated = true;
+      },
       runPredicate: (value) => runPredicate(value as T),
     };
   };

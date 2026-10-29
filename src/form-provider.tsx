@@ -1,21 +1,76 @@
 import {
   createContext,
   use,
+  useCallback,
+  useRef,
+  useState,
+  useSyncExternalStore,
   type ComponentType,
   type Context,
   type PropsWithChildren,
 } from 'react';
 import * as z from 'zod/mini';
 
-import type { FormProviderInitOptions, FormStateResponse } from './types/form-types';
+import type {
+  FormProviderInitOptions,
+  FormStateResponse,
+  GroupData,
+  GroupNames,
+  GroupSchemaShape,
+  Immutable,
+} from './types/form-types';
 
+import { deepEqual } from './helpers/deep-equal';
+import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 import { useFormState } from './use-form-state';
 
+type AnyFormStateResponse = FormStateResponse<z.ZodMiniObject>;
+
+// Holds the latest provider response for selector subscriptions (see useFormStateContext).
+type ResponseStore = {
+  get: () => AnyFormStateResponse;
+  set: (response: AnyFormStateResponse) => void;
+  subscribe: (listener: () => void) => () => void;
+};
+
+const createResponseStore = (initial: AnyFormStateResponse): ResponseStore => {
+  let current = initial;
+  const listeners = new Set<() => void>();
+
+  return {
+    get: () => current,
+    set(response) {
+      if (response === current) {
+        return;
+      }
+
+      current = response;
+
+      for (const listener of listeners) {
+        listener();
+      }
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+};
+
+type SchemaContexts = {
+  // Changes with every form update; consumers re-render on each change.
+  response: Context<AnyFormStateResponse | null>;
+  // Stable per provider; selector consumers re-render only when their selection changes.
+  store: Context<ResponseStore | null>;
+};
+
 // Allows a separate context per schema that are garbage collected when the schema goes out of scope.
-const schemaToContext = new WeakMap<
-  z.ZodMiniObject,
-  Context<FormStateResponse<z.ZodMiniObject> | null>
->();
+const schemaToContexts = new WeakMap<z.ZodMiniObject, SchemaContexts>();
+
+const noopSubscribe = () => () => {};
 
 /**
  * Context provider to manage form state.
@@ -28,16 +83,28 @@ export function FormStateProvider<T extends z.ZodMiniObject>(
   props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>
 ) {
   const { schema, children, ...formOptions } = props;
-  const form = useFormState(schema, formOptions);
+  const form = useFormState(schema, formOptions) as unknown as AnyFormStateResponse;
+  const [store] = useState(() => createResponseStore(form));
 
-  let context = schemaToContext.get(schema);
+  useIsomorphicLayoutEffect(() => {
+    store.set(form);
+  }, [store, form]);
 
-  if (!context) {
-    context = createContext<FormStateResponse<T> | null>(null);
-    schemaToContext.set(schema, context);
+  let contexts = schemaToContexts.get(schema);
+
+  if (!contexts) {
+    contexts = {
+      response: createContext<AnyFormStateResponse | null>(null),
+      store: createContext<ResponseStore | null>(null),
+    };
+    schemaToContexts.set(schema, contexts);
   }
 
-  return <context.Provider value={form}>{children}</context.Provider>;
+  return (
+    <contexts.store.Provider value={store}>
+      <contexts.response.Provider value={form}>{children}</contexts.response.Provider>
+    </contexts.store.Provider>
+  );
 }
 
 /**
@@ -51,16 +118,96 @@ export function FormStateProvider<T extends z.ZodMiniObject>(
  * @param schema - Zod schema to validate the form data.
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
-export function useFormStateContext<T extends z.ZodMiniObject>(schema: T) {
-  const context = schemaToContext.get(schema);
+export function useFormStateContext<T extends z.ZodMiniObject>(schema: T): FormStateResponse<T>;
+/**
+ * Hook that subscribes to a single group's data slice of the form state context. The component
+ * re-renders only when that group's data changes.
+ *
+ * @example
+ * const contact = useFormStateContext(schema, 'contact'); // { email, phone }
+ *
+ * @typeParam T - type of the form data.
+ * @typeParam G - the group name.
+ * @param schema - Zod schema to validate the form data.
+ * @param groupName - A group name declared via `z.group(schema, name)`.
+ * @returns An immutable object containing only that group's root-level data fields.
+ */
+export function useFormStateContext<
+  T extends z.ZodMiniObject,
+  G extends GroupNames<GroupSchemaShape<T>>,
+>(schema: T, groupName: G): Immutable<GroupData<T, G>>;
+/**
+ * Hook that subscribes to a value selected from the form state context. The component re-renders
+ * only when the selected value changes (compared deeply).
+ *
+ * @example
+ * const city = useFormStateContext(schema, (form) => form.formState.data.city);
+ * const { change } = useFormStateContext(schema, (form) => form.formActions); // never re-renders
+ *
+ * @typeParam T - type of the form data.
+ * @typeParam R - the selected value type.
+ * @param schema - Zod schema to validate the form data.
+ * @param selector - Selects a value from the form state, status, actions, etc.
+ * @returns The selected value.
+ */
+export function useFormStateContext<T extends z.ZodMiniObject, R>(
+  schema: T,
+  selector: (form: FormStateResponse<T>) => R
+): R;
+export function useFormStateContext<T extends z.ZodMiniObject>(
+  schema: T,
+  selection?: string | ((form: FormStateResponse<T>) => unknown)
+) {
+  const contexts = schemaToContexts.get(schema);
 
-  if (context) {
-    // The `use` hook can be used conditionally.
-    const value = use(context as Context<FormStateResponse<T> | null>);
+  // The `use` hook can be used conditionally.
+  const store = contexts && selection !== undefined ? use(contexts.store) : null;
 
-    if (value) {
-      return value;
+  const cacheRef = useRef<{ form: AnyFormStateResponse; selection: unknown; value: unknown }>(null);
+
+  const subscribe = useCallback(
+    (listener: () => void) => (store ? store.subscribe(listener) : noopSubscribe()),
+    [store]
+  );
+
+  const getSnapshot = () => {
+    if (!store || selection === undefined) {
+      return;
     }
+
+    const form = store.get();
+    const cached = cacheRef.current;
+
+    if (cached?.form === form && cached.selection === selection) {
+      return cached.value;
+    }
+
+    const typedForm = form as unknown as FormStateResponse<T>;
+    const value =
+      typeof selection === 'string'
+        ? typedForm.formState.getGroup(selection as GroupNames<GroupSchemaShape<T>>).data
+        : selection(typedForm);
+
+    // Keep the previous reference for deeply equal selections so the component does not re-render.
+    const stableValue = cached && deepEqual(value, cached.value) ? cached.value : value;
+
+    cacheRef.current = { form, selection, value: stableValue };
+
+    return stableValue;
+  };
+
+  const selected = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  if (selection === undefined) {
+    if (contexts) {
+      const value = use(contexts.response);
+
+      if (value) {
+        return value as unknown as FormStateResponse<T>;
+      }
+    }
+  } else if (store) {
+    return selected;
   }
 
   throw new Error(

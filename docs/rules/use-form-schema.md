@@ -23,7 +23,7 @@ FormState extends the `z` object with form-specific helpers — `z.formString()`
 
 ## Rule Details
 
-The rule fires when a primitive is used directly as a property value inside any `z.*()` call that takes an object of field definitions.
+The rule fires when a primitive is used directly as a property value inside any `z.*()` call that takes an object of field definitions. A `z` imported from another package, such as plain `zod`, is not checked.
 
 ### ❌ Incorrect
 

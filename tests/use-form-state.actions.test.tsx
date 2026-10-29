@@ -80,6 +80,23 @@ describe('form actions', () => {
       max: 25,
     });
     expect(formState.ranges.getMax((path) => path.name)).toBe(25);
+
+    const boundsSchema = z.object({
+      lower: z.formNumber(z.gte(10), z.gt(5)),
+      upper: z.formNumber(z.lte(5), z.lt(10)),
+      exclusiveWins: z.formNumber(z.gt(10), z.gte(5)),
+      exact: z.formString(z.length(5)),
+      repeated: z.formString(z.minLength(2), z.minLength(4), z.maxLength(9), z.maxLength(6)),
+    });
+    const bounds = renderHook(() => useFormState(boundsSchema)).result.current.formState.ranges;
+
+    expect(bounds.getMin((path) => path.lower)).toBe(10);
+    expect(bounds.getMax((path) => path.upper)).toBe(5);
+    expect(bounds.getMin((path) => path.exclusiveWins)).toBe(11);
+    expect(bounds.getMin((path) => path.exact)).toBe(5);
+    expect(bounds.getMax((path) => path.exact)).toBe(5);
+    expect(bounds.getMin((path) => path.repeated)).toBe(4);
+    expect(bounds.getMax((path) => path.repeated)).toBe(6);
     expect(formState.ranges.tags).toStrictEqual({
       type: 'length',
       format: 'integer',
@@ -336,6 +353,18 @@ describe('form actions', () => {
     expect(touched.name).toBe(true);
     expect(dirty.getKeys()).toHaveLength(0);
     expect(touched.getKeys()).toHaveLength(1);
+  });
+
+  it('should call the validate callback when the validation function returns errors', () => {
+    const callback = vi.fn();
+    const { result } = renderHook(() => useFormState(schema, { initialData: { name: 'Ann' } }));
+
+    act(() => {
+      result.current.formActions.validate(() => ({ name: 'Name is taken' }), { callback });
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(result.current.formState.errors.get((path) => path.name)).toBe('Name is taken');
   });
 
   it('should call a debounced change callback per field', () => {

@@ -1,6 +1,11 @@
 // Internal methods
 
-export const deepEqual = (a: unknown, b: unknown): boolean => {
+// Object pairs currently being compared; a pair seen again is part of a cycle and assumed equal.
+type Visited = WeakMap<object, WeakSet<object>>;
+
+export const deepEqual = (a: unknown, b: unknown): boolean => equal(a, b, new WeakMap());
+
+const equal = (a: unknown, b: unknown, visited: Visited): boolean => {
   if (a === b || (a !== a && b !== b)) {
     return true;
   }
@@ -22,13 +27,47 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
     return false;
   }
 
+  // Files and blobs have no enumerable state, so only the same instance is equal.
+  if (typeof Blob !== 'undefined' && a instanceof Blob) {
+    return false;
+  }
+
+  if (a instanceof URL) {
+    return a.href === (b as URL).href;
+  }
+
+  const objA = a as object;
+  const objB = b as object;
+
+  let seen = visited.get(objA);
+
+  if (seen?.has(objB)) {
+    return true;
+  }
+
+  if (!seen) {
+    seen = new WeakSet();
+    visited.set(objA, seen);
+  }
+
+  // Only pairs still being compared count as cycles; the pair is released once it is decided.
+  seen.add(objB);
+
+  const result = equalObjects(objA, objB, visited);
+
+  seen.delete(objB);
+
+  return result;
+};
+
+const equalObjects = (a: object, b: object, visited: Visited): boolean => {
   if (Array.isArray(a)) {
     const bArr = b as unknown[];
     if (a.length !== bArr.length) {
       return false;
     }
     for (const [i, aItem] of a.entries()) {
-      if (!deepEqual(aItem, bArr[i])) {
+      if (!equal(aItem, bArr[i], visited)) {
         return false;
       }
     }
@@ -58,7 +97,7 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
         if (matched[i]) {
           continue;
         }
-        if (deepEqual(aKey, entry[0]) && deepEqual(aValue, entry[1])) {
+        if (equal(aKey, entry[0], visited) && equal(aValue, entry[1], visited)) {
           matched[i] = true;
           continue outer;
         }
@@ -88,7 +127,7 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
           continue;
         }
 
-        if (deepEqual(aItem, bItem)) {
+        if (equal(aItem, bItem, visited)) {
           matched[i] = true;
           continue outer;
         }
@@ -115,7 +154,7 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
   }
 
   for (const key of aKeys) {
-    if (!Object.prototype.hasOwnProperty.call(bObj, key) || !deepEqual(aObj[key], bObj[key])) {
+    if (!Object.prototype.hasOwnProperty.call(bObj, key) || !equal(aObj[key], bObj[key], visited)) {
       return false;
     }
   }

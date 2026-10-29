@@ -45,8 +45,39 @@ ruleTester.run('stable-debounced-callback', stableDebouncedCallback, {
 
     // Options passed as a variable — can't be statically inspected
     { code: 'change(path, value, opts)' },
+
+    // Callback declared at module scope, or memoized in the component
+    {
+      code: 'const onSaved = () => {}; function C() { change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
+    },
+    {
+      code: 'function C() { const onSaved = useCallback(() => {}, []); change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
+    },
+    // Declared in a non-component function
+    {
+      code: "it('works', () => { const onSaved = () => {}; change(path, value, { debounceIntervalMs: 300, callback: onSaved }); });",
+    },
   ],
   invalid: [
+    // Callback created during render and passed by name
+    {
+      code: 'function C() { const onSaved = () => {}; change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
+      errors: [{ messageId: 'unstableCallbackReference', data: { name: 'onSaved' } }],
+    },
+    {
+      code: 'function C() { function onSaved() {} change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
+      errors: [{ messageId: 'unstableCallbackReference', data: { name: 'onSaved' } }],
+    },
+    // Declared in the component body, used from an event handler
+    {
+      code: 'const C = () => { const onSaved = () => {}; const onInput = (v) => change(path, v, { debounceIntervalMs: 300, callback: onSaved }); };',
+      errors: [{ messageId: 'unstableCallbackReference', data: { name: 'onSaved' } }],
+    },
+    // Declared in a custom hook body
+    {
+      code: 'function useSearch() { const onSaved = () => {}; change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
+      errors: [{ messageId: 'unstableCallbackReference', data: { name: 'onSaved' } }],
+    },
     // Inline arrow function with debounceIntervalMs
     {
       code: 'change(path, value, { debounceIntervalMs: 300, callback: () => {} })',

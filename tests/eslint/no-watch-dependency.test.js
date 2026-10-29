@@ -53,20 +53,11 @@ ruleTester.run('no-watch-dependency', noWatchDependency, {
       code: 'function C() { const v = formHooks.useWatch("x"); useEffect(() => { doThing(v); }, []); }',
     },
 
-    // VariableDeclarator: !scope — top-level declaration, no enclosing function
-    { code: 'const v = useWatch("x"); useEffect(() => {}, [v]);' },
-
-    // VariableDeclarator: node.id.type !== 'Identifier' — destructuring, not tracked
-    { code: 'function C() { const [a] = useWatch("x"); useEffect(() => {}, [a]); }' },
-
     // CallExpression: deps is not an ArrayExpression (passed as variable)
     { code: 'function C() { const v = useWatch("x"); useEffect(() => {}, deps); }' },
 
     // CallExpression: sparse array hole — null element, continue
     { code: 'function C() { const v = useWatch("x"); useEffect(() => {}, [,]); }' },
-
-    // CallExpression: dep is not an Identifier (member expression)
-    { code: 'function C() { const v = useWatch("x"); useEffect(() => {}, [v.prop]); }' },
 
     // CallExpression: dep not declared in any scope — loop exhausts without match
     { code: 'function C() { useEffect(() => {}, [externalVar]); }' },
@@ -76,8 +67,42 @@ ruleTester.run('no-watch-dependency', noWatchDependency, {
 
     // isUseWatch: computed member expression — not treated as useWatch
     { code: 'function C() { const v = hooks["useWatch"]("x"); useEffect(() => {}, [v]); }' },
+
+    // A block-scoped variable shadows the useWatch value
+    {
+      code: 'function C() { const v = useWatch("x"); { const v = 1; useEffect(() => {}, [v]); } }',
+    },
+
+    // Member access on a non-watch variable
+    { code: 'function C() { const v = useWatch("x"); const o = {}; useEffect(() => {}, [o.v]); }' },
   ],
   invalid: [
+    // Destructured useWatch values
+    {
+      code: 'function C() { const [a] = useWatch("x"); useEffect(() => {}, [a]); }',
+      errors: [{ messageId: 'watchDependency', data: { name: 'a' } }],
+    },
+    {
+      code: 'function C() { const { a } = useWatch("x"); useMemo(() => a, [a]); }',
+      errors: [{ messageId: 'watchDependency', data: { name: 'a' } }],
+    },
+
+    // Member dependencies on a useWatch value
+    {
+      code: 'function C() { const v = useWatch("x"); useEffect(() => {}, [v.prop]); }',
+      errors: [{ messageId: 'watchDependency', data: { name: 'v' } }],
+    },
+    {
+      code: 'function C() { const v = useWatch("x"); useEffect(() => {}, [v?.a.b]); }',
+      errors: [{ messageId: 'watchDependency', data: { name: 'v' } }],
+    },
+
+    // Declared outside a function
+    {
+      code: 'const v = useWatch("x"); useEffect(() => {}, [v]);',
+      errors: [{ messageId: 'watchDependency', data: { name: 'v' } }],
+    },
+
     // useEffect with watch value as dep
     {
       code: 'function C() { const value = useWatch("field"); useEffect(() => {}, [value]); }',

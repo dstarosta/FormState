@@ -158,7 +158,42 @@ export function SecureInput({
       return;
     }
 
+    // IME composition updates cannot be cancelled and carry the whole composition so far, so they
+    // are ignored and the final text is committed once on compositionend.
+    let composition: { start: number; end: number } | null = null;
+
+    const handleCompositionStart = () => {
+      composition = { start: element.selectionStart ?? 0, end: element.selectionEnd ?? 0 };
+    };
+
+    const handleCompositionEnd = (event: CompositionEvent) => {
+      const range = composition;
+      composition = null;
+
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (!range) {
+        return;
+      }
+
+      const existingValue = realValueRef.current;
+
+      // The browser wrote the composed plaintext into the DOM; mask it again right away.
+      element.value = MASK_CHAR.repeat(existingValue.length);
+
+      if (event.data) {
+        commit(
+          spliceValue(existingValue, range.start, range.end, event.data),
+          range.start + event.data.length
+        );
+      }
+    };
+
     const handler = (event: InputEvent) => {
+      if (composition && event.inputType === 'insertCompositionText') {
+        return;
+      }
+
       event.preventDefault();
 
       const existingValue = realValueRef.current;
@@ -213,9 +248,13 @@ export function SecureInput({
     };
 
     element.addEventListener('beforeinput', handler);
+    element.addEventListener('compositionstart', handleCompositionStart);
+    element.addEventListener('compositionend', handleCompositionEnd);
 
     return () => {
       element.removeEventListener('beforeinput', handler);
+      element.removeEventListener('compositionstart', handleCompositionStart);
+      element.removeEventListener('compositionend', handleCompositionEnd);
     };
   }, [commit]);
 

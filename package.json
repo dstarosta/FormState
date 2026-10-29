@@ -5,7 +5,7 @@
   "license": "MIT",
   "name": "form-state",
   "sideEffects": [
-    "./dist/form-schema.js"
+    "./dist/form-schema*.js"
   ],
   "type": "module",
   "types": "dist/index.d.ts",
@@ -30,7 +30,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "check-ts": "node -e \"const v=require('typescript').version; if(v<'5.9.0'){console.error('❌ TS version '+v+' is too low. Need >= 5.9.0');process.exit(1)}\"",
+    "check-ts": "node -e \"const v=require('typescript').version; const [major,minor]=v.split('.').map(Number); if(major<5||(major===5&&minor<9)){console.error('❌ TS version '+v+' is too low. Need >= 5.9.0');process.exit(1)}\"",
     "build": "npm i && npm run check-ts && npm run prettier && npm run typecheck && npm run lint && npm run test && tsdown --config tsdown.types.config.ts && tsdown",
     "lint": "eslint .",
     "prettier": "prettier -c src/** tests/**",

@@ -79,45 +79,29 @@ const getDefaultMapFor = (check: AsyncCheck): AsyncCheckMetaMap => {
 };
 
 const getSchemaLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
-  const checks =
-    (schema instanceof z.ZodMiniString || schema instanceof z.ZodMiniArray) &&
-    Array.isArray(schema.def.checks)
-      ? schema.def.checks
-      : undefined;
+  // Zod reduces repeated min/max checks and exact `length` checks into the tightest bounds.
+  const bag = schema._zod.bag as { minimum?: number; maximum?: number } | undefined;
 
-  const minCheck = checks?.find(
-    (chk): chk is z.core.$ZodCheckMinLength => chk._zod.def.check === 'min_length'
-  )?._zod.def;
-
-  const maxCheck = checks?.find(
-    (chk): chk is z.core.$ZodCheckMaxLength => chk._zod.def.check === 'max_length'
-  )?._zod.def;
-
-  return { type: 'length', format: 'integer', min: minCheck?.minimum, max: maxCheck?.maximum };
+  return { type: 'length', format: 'integer', min: bag?.minimum, max: bag?.maximum };
 };
 
 const getNumericSchemaRange = (schema: z.ZodMiniNumber) => {
   const bag = schema._zod.bag as Record<string, number | undefined> | undefined;
 
-  let rawMin: number | undefined;
-  let rawMax: number | undefined;
+  // Zod keeps inclusive and exclusive bounds separately; use the tighter one on each side
+  // (an exclusive bound wins a tie).
+  const minimum = bag?.['minimum'];
+  const exclusiveMinimum = bag?.['exclusiveMinimum'];
+  const maximum = bag?.['maximum'];
+  const exclusiveMaximum = bag?.['exclusiveMaximum'];
 
-  let exclusiveMin = false;
-  let exclusiveMax = false;
+  const exclusiveMin =
+    exclusiveMinimum !== undefined && (minimum === undefined || exclusiveMinimum >= minimum);
+  const exclusiveMax =
+    exclusiveMaximum !== undefined && (maximum === undefined || exclusiveMaximum <= maximum);
 
-  if (bag?.['exclusiveMinimum'] !== undefined) {
-    rawMin = bag['exclusiveMinimum'];
-    exclusiveMin = true;
-  } else if (bag?.['minimum'] !== undefined) {
-    rawMin = bag['minimum'];
-  }
-
-  if (bag?.['exclusiveMaximum'] !== undefined) {
-    rawMax = bag['exclusiveMaximum'];
-    exclusiveMax = true;
-  } else if (bag?.['maximum'] !== undefined) {
-    rawMax = bag['maximum'];
-  }
+  const rawMin = exclusiveMin ? exclusiveMinimum : minimum;
+  const rawMax = exclusiveMax ? exclusiveMaximum : maximum;
 
   let minValue = Number.isFinite(rawMin) ? rawMin : undefined;
   let maxValue = Number.isFinite(rawMax) ? rawMax : undefined;
@@ -321,7 +305,8 @@ const walkAsyncChecks = (
   schema: z.ZodMiniType,
   parentKey: string,
   data: unknown,
-  visit: (check: AsyncCheck, parentKey: string) => void
+  visit: (check: AsyncCheck, parentKey: string, inArray: boolean) => void,
+  inArray = false
 ): void => {
   const checks = (
     schema._zod.def as {
@@ -337,27 +322,33 @@ const walkAsyncChecks = (
         continue;
       }
 
-      visit(check, parentKey);
+      visit(check, parentKey, inArray);
     }
   }
 
   const baseSchema = getBaseType(schema);
 
   if (baseSchema !== schema) {
-    walkAsyncChecks(baseSchema, parentKey, data, visit);
+    walkAsyncChecks(baseSchema, parentKey, data, visit, inArray);
   }
 
   if (baseSchema instanceof z.ZodMiniArray) {
     const element = baseSchema.def.element as z.ZodMiniType;
 
     if (data === undefined) {
-      walkAsyncChecks(element, parentKey ? `${parentKey}.0` : '0', undefined, visit);
+      walkAsyncChecks(element, parentKey ? `${parentKey}.0` : '0', undefined, visit, true);
     } else {
       const arr = parentKey ? dotPathGet(data as object, parentKey) : data;
       if (Array.isArray(arr)) {
         for (let i = 0; i < arr.length; i++) {
           const indexKey = String(i);
-          walkAsyncChecks(element, parentKey ? `${parentKey}.${indexKey}` : indexKey, data, visit);
+          walkAsyncChecks(
+            element,
+            parentKey ? `${parentKey}.${indexKey}` : indexKey,
+            data,
+            visit,
+            true
+          );
         }
       }
     }
@@ -368,7 +359,8 @@ const walkAsyncChecks = (
           baseSchema.shape[prop] as z.ZodMiniType,
           parentKey ? `${parentKey}.${prop}` : prop,
           data,
-          visit
+          visit,
+          inArray
         );
       }
     }
@@ -383,8 +375,12 @@ const collectNestedActiveAsyncCheckPaths = (
   phase: 'change' | 'submit',
   metaMap: AsyncCheckMetaMap | undefined
 ) => {
-  walkAsyncChecks(schema, parentKey, data, (check, key) => {
+  walkAsyncChecks(schema, parentKey, data, (check, key, inArray) => {
     const meta = getAsyncCheckMeta(check, metaMap);
+
+    if (inArray) {
+      meta?.markRepeated();
+    }
 
     if (meta?.submitOnly && phase !== 'submit') {
       return;
@@ -984,7 +980,11 @@ export const collectGroups = <T extends z.ZodMiniType>(schema: T) => {
   return groups as Record<keyof z.infer<T>, string>;
 };
 
-export const getPath = <T extends object>(_data: T, expression: (data: T) => unknown) => {
+export const getPath = <T extends object>(_data: T, expression: (data: T) => unknown) =>
+  getExpressionPath(expression);
+
+// Resolves a path expression by recording property accesses; no data value is read.
+export const getExpressionPath = <T extends object>(expression: (data: T) => unknown) => {
   const parts: string[] = [];
   const proxy: object = new Proxy(
     {},

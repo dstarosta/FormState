@@ -77,8 +77,8 @@ import {
   createImmutableTouched,
   createState,
   freezeObject,
+  getArrayPath,
   mergeAsyncErrors,
-  mutateArrayState,
   safeSyncParse,
 } from './helpers/state-manager';
 import { classNames } from './helpers/class-helper';
@@ -162,11 +162,34 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const defaultData = useMemo(() => createState(schema), [schema]);
 
+  // Inline `initialData`/`initialTouched` values are compared by content so that only real changes
+  // rebuild the initial state (and reactively update the non-dirty values).
   const memoizedInitialData = useDeepMemo(() => initialData, [initialData]);
+
+  const initialTouchedPaths = Array.isArray(initialTouched)
+    ? initialTouched.map((pathNotation) =>
+        typeof pathNotation === 'function'
+          ? getPath(defaultData, pathNotation).join('.')
+          : String(pathNotation)
+      )
+    : undefined;
+
+  const memoizedInitialTouchedPaths = useDeepMemo(() => initialTouchedPaths, [initialTouchedPaths]);
 
   const initializedData = useMemo(
     () => createState(schema, memoizedInitialData),
     [schema, memoizedInitialData]
+  );
+
+  // Schema-only metadata does not depend on the initial data.
+  const schemaMetadata = useMemo(
+    () => ({
+      required: collectRequired(schema),
+      ranges: { ...collectRanges(schema), ...collectLengths(schema) },
+      patterns: collectPatterns(schema),
+      descriptions: collectDescriptions(schema),
+    }),
+    [schema]
   );
 
   // Stable reference for form-level `formClasses` defaults.
@@ -175,7 +198,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   // The processed initial state with default property values and optional errors during the
   // initial validation.
   const state = useMemo<FormMutableState<State>>(() => {
-    const mergedData = initialData ? initializedData : defaultData;
+    const mergedData = memoizedInitialData ? initializedData : defaultData;
     const { result: safeResult, asyncPending: initialAsyncPending } = safeSyncParse(
       schema,
       mergedData
@@ -201,25 +224,15 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     }
 
-    if (Array.isArray(initialTouched)) {
-      for (const pathNotation of initialTouched) {
-        const path =
-          typeof pathNotation === 'function'
-            ? getPath(mergedData, pathNotation).join('.')
-            : String(pathNotation);
-
-        touched[path as keyof State] = true;
-      }
+    for (const path of memoizedInitialTouchedPaths ?? []) {
+      touched[path as keyof State] = true;
     }
 
     const data =
       (safeResult as { data?: State } | null)?.data ?? coerceFormData(schema, mergedData);
 
     return {
-      required: collectRequired(schema),
-      ranges: { ...collectRanges(schema), ...collectLengths(schema) },
-      patterns: collectPatterns(schema),
-      descriptions: collectDescriptions(schema),
+      ...schemaMetadata,
       initialData: data,
       submittedData: null,
       mode: initialMode,
@@ -240,10 +253,11 @@ export function useFormState<T extends z.ZodMiniObject>(
     } satisfies FormMutableState<State>;
   }, [
     schema,
+    schemaMetadata,
     defaultData,
-    initialData,
+    memoizedInitialData,
     initializedData,
-    initialTouched,
+    memoizedInitialTouchedPaths,
     initialMode,
     validateOnMount,
     errorMessageSeparator,
@@ -331,7 +345,7 @@ export function useFormState<T extends z.ZodMiniObject>(
     const current = formStateRef.current;
     return {
       data: createImmutableData(current.data),
-      errors: createImmutableErrors(current.errors, current.data, errorMessageSeparator),
+      errors: createImmutableErrors<T>(current.errors, errorMessageSeparator),
       submitCount: current.submitCount,
       valid: Object.keys(current.errors).length === 0,
     };
@@ -350,6 +364,16 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Snapshot of the form state from before the change that started the current async burst.
   const prevAsyncSnapshotRef = useRef<ReturnType<typeof snapshotAsyncListenerState> | null>(null);
+
+  // Tracks the in-flight burst started by the change-driven effect (not validateAsync): whether its
+  // result arrived (finishScheduled), the state it was validated against (closingSnapshot) and the
+  // frame that will close it (pendingFinish), which a newer validation flushes early.
+  const effectBurstRef = useRef<{
+    active: boolean;
+    finishScheduled: boolean;
+    closingSnapshot: ReturnType<typeof snapshotAsyncListenerState> | null;
+    pendingFinish: { frame: number; flush: () => void } | null;
+  }>({ active: false, finishScheduled: false, closingSnapshot: null, pendingFinish: null });
 
   // Seed the prev-snapshot at mount so the first change-driven burst has a pre-change ref.
   useIsomorphicLayoutEffect(() => {
@@ -404,7 +428,56 @@ export function useFormState<T extends z.ZodMiniObject>(
   // Dispatches async events.
   useEffect(() => {
     if (!formState.asyncValidating) {
+      const effectBurst = effectBurstRef.current;
+
+      // The burst's result was committed; remember the validated state for its closing event.
+      if (effectBurst.active && effectBurst.finishScheduled && !effectBurst.closingSnapshot) {
+        effectBurst.closingSnapshot = snapshotAsyncListenerState();
+      }
+
+      // A burst whose run was cancelled (reset, replace, a non-validating change...) never
+      // reaches finishBurst; close it so the asyncValidating/asyncValidated pair stays balanced.
+      if (effectBurst.active && !effectBurst.finishScheduled) {
+        const pending = pendingValidatingRef.current;
+
+        effectBurst.active = false;
+        asyncBurstActiveRef.current = false;
+        pendingValidatingRef.current = null;
+
+        const snapshot = snapshotAsyncListenerState();
+        prevAsyncSnapshotRef.current = snapshot;
+
+        if (pending) {
+          const { data, errors, submitCount, valid } = snapshot;
+
+          for (const schemaPath of pending.activePaths) {
+            for (const listener of pending.deliveredTo) {
+              if (changeListeners.has(listener)) {
+                listener({
+                  type: 'asyncValidated',
+                  data,
+                  errors,
+                  submitCount,
+                  valid,
+                  triggerField: pending.triggerField,
+                  schemaPath,
+                });
+              }
+            }
+          }
+        }
+      }
+
       return;
+    }
+
+    // A previous burst finished but its closing frame has not run yet: close it now so this
+    // validation starts its own burst.
+    const pendingFinish = effectBurstRef.current.pendingFinish;
+
+    if (pendingFinish) {
+      cancelAnimationFrame(pendingFinish.frame);
+      pendingFinish.flush();
     }
 
     const requestId = formState.asyncRequestId;
@@ -425,6 +498,12 @@ export function useFormState<T extends z.ZodMiniObject>(
 
     if (!asyncBurstActiveRef.current) {
       asyncBurstActiveRef.current = true;
+      effectBurstRef.current = {
+        active: true,
+        finishScheduled: false,
+        closingSnapshot: null,
+        pendingFinish: null,
+      };
 
       if (activePaths.length > 0) {
         const prevSnapshot = prevAsyncSnapshotRef.current ?? snapshotAsyncListenerState();
@@ -440,20 +519,28 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     }
 
-    const finishBurst = (resolvedTrigger: string | undefined) => {
+    // `flushed` closes the burst early because a newer validation has already started.
+    const finishBurst = (resolvedTrigger: string | undefined, flushed: boolean) => {
       // Unreachable guard
       /* v8 ignore if -- @preserve */
-      if (requestId !== formStateRef.current.asyncRequestId) {
+      if (!flushed && requestId !== formStateRef.current.asyncRequestId) {
         return;
       }
 
+      const snapshot = effectBurstRef.current.closingSnapshot ?? snapshotAsyncListenerState();
+
       asyncBurstActiveRef.current = false;
+      effectBurstRef.current = {
+        active: false,
+        finishScheduled: false,
+        closingSnapshot: null,
+        pendingFinish: null,
+      };
 
       drainPendingValidating();
 
       pendingValidatingRef.current = null;
 
-      const snapshot = snapshotAsyncListenerState();
       prevAsyncSnapshotRef.current = snapshot;
 
       if (activePaths.length === 0 || changeListeners.size === 0) {
@@ -477,6 +564,19 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     };
 
+    const scheduleFinish = () => {
+      const frame = requestAnimationFrame(() => {
+        finishBurst(triggerField, false);
+      });
+
+      effectBurstRef.current.pendingFinish = {
+        frame,
+        flush: () => {
+          finishBurst(triggerField, true);
+        },
+      };
+    };
+
     void (async () => {
       try {
         const result = await withMetaMap(asyncMetaMap, () => schema.safeParseAsync(formState.data));
@@ -487,6 +587,8 @@ export function useFormState<T extends z.ZodMiniObject>(
 
         const asyncErrors = formatErrors<State>(result.error, errorMessageSeparator);
 
+        effectBurstRef.current.finishScheduled = true;
+
         dispatch({
           type: 'asyncErrors',
           requestId,
@@ -494,9 +596,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           activePaths,
         });
 
-        requestAnimationFrame(() => {
-          finishBurst(triggerField);
-        });
+        scheduleFinish();
       } catch (error: unknown) {
         // Unreachable guard
         /* v8 ignore if -- @preserve */
@@ -507,6 +607,8 @@ export function useFormState<T extends z.ZodMiniObject>(
         const message =
           error instanceof Error && error.message ? error.message : 'Async validation failed.';
 
+        effectBurstRef.current.finishScheduled = true;
+
         dispatch({
           type: 'asyncErrors',
           requestId,
@@ -514,9 +616,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           activePaths,
         });
 
-        requestAnimationFrame(() => {
-          finishBurst(triggerField);
-        });
+        scheduleFinish();
       }
     })();
 
@@ -580,41 +680,35 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // The memoized "errors" object of the form state.
   const formErrors = useMemo(
-    () => createImmutableErrors(formState.errors, formState.data, errorMessageSeparator),
-    [formState.errors, formState.data, errorMessageSeparator]
+    () => createImmutableErrors<T>(formState.errors, errorMessageSeparator),
+    [formState.errors, errorMessageSeparator]
   );
 
   // The memoized "dirty" object of the form state.
   const dirty = useMemo(() => createImmutableDirty(formState.dirty), [formState.dirty]);
 
   // The memoized "touched" object of the form state.
-  const touched = useMemo(
-    () => createImmutableTouched(formState.touched, formState.data),
-    [formState.touched, formState.data]
-  );
+  const touched = useMemo(() => createImmutableTouched<T>(formState.touched), [formState.touched]);
 
   // The memoized "ranges" object of the form state.
-  const ranges = useMemo(
-    () => createImmutableRanges(formState.ranges, formState.data),
-    [formState.ranges, formState.data]
-  );
+  const ranges = useMemo(() => createImmutableRanges<T>(formState.ranges), [formState.ranges]);
 
   // The memoized "patterns" object of the form state.
   const patterns = useMemo(
-    () => createImmutablePatterns(formState.patterns, formState.data),
-    [formState.patterns, formState.data]
+    () => createImmutablePatterns<T>(formState.patterns),
+    [formState.patterns]
   );
 
   // The memoized "descriptions" object of the form state.
   const descriptions = useMemo(
-    () => createImmutableDescriptions(formState.descriptions, formState.data),
-    [formState.descriptions, formState.data]
+    () => createImmutableDescriptions<T>(formState.descriptions),
+    [formState.descriptions]
   );
 
   // The memoized "required" object of the form state.
   const required = useMemo(
-    () => createImmutableRequired(formState.required, formState.data),
-    [formState.required, formState.data]
+    () => createImmutableRequired<T>(formState.required),
+    [formState.required]
   );
 
   // Group map.
@@ -636,11 +730,7 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const generateListenerState = useCallback(() => {
     const data = createImmutableData(formStateRef.current.data);
-    const errors = createImmutableErrors(
-      formStateRef.current.errors,
-      formStateRef.current.data,
-      errorMessageSeparator
-    );
+    const errors = createImmutableErrors<T>(formStateRef.current.errors, errorMessageSeparator);
     const submitCount = formStateRef.current.submitCount;
     const valid = Object.keys(formStateRef.current.errors).length === 0;
 
@@ -1020,24 +1110,18 @@ export function useFormState<T extends z.ZodMiniObject>(
     [validateOnTouch, validateBeforeSubmit, dispatch]
   );
 
-  // Resolves the array at `nameOrPath`, applies `mutator`, and dispatches a "change" action.
+  // Resolves the array path (throwing for non-array schema types) and dispatches a "changeArray"
+  // action; the reducer applies `mutator` to the latest state.
   const mutateArray = useCallback(
     (
       nameOrPath: FormPath<T>,
       mutator: (draft: unknown[]) => void,
       options?: FormChangeArrayOptions<T>
     ) => {
-      const { name, value } = mutateArrayState(
-        schema,
-        formStateRef.current.data,
-        nameOrPath,
-        mutator
-      );
-
       dispatch({
-        type: 'change',
-        name,
-        value,
+        type: 'changeArray',
+        name: getArrayPath(schema, formStateRef.current.data, nameOrPath),
+        mutator,
         options: {
           touch: Boolean(options?.touch),
           validate: options?.validate ?? validateOnChange,
@@ -1110,13 +1194,22 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const swap = useCallback(
     (nameOrPath: FormPath<T>, from: number, to: number, options?: FormChangeArrayOptions<T>) => {
+      if (from < 0 || to < 0) {
+        throw new Error(`Index out of bounds: fromIndex=${String(from)}, toIndex=${String(to)}`);
+      }
+
       mutateArray(
         nameOrPath,
         (draft) => {
-          if (from < 0 || to < 0 || from >= draft.length || to >= draft.length) {
-            throw new Error(
-              `Index out of bounds: fromIndex=${String(from)}, toIndex=${String(to)}, array length=${String(draft.length)}`
-            );
+          // The upper bound is only known when the reducer runs against the latest state.
+          if (from >= draft.length || to >= draft.length) {
+            if (IS_DEVELOPMENT) {
+              console.warn(
+                `[useFormState] swap() skipped: fromIndex=${String(from)}, toIndex=${String(to)}, array length=${String(draft.length)}.`
+              );
+            }
+
+            return;
           }
 
           if (from !== to) {
@@ -1151,7 +1244,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           for (let readIndex = 0; readIndex < draft.length; readIndex++) {
             const value = draft[readIndex];
 
-            if (value && !indexOrPredicate(value as ArrayElement<FormPathValue<T, P>>, readIndex)) {
+            if (!indexOrPredicate(value as ArrayElement<FormPathValue<T, P>>, readIndex)) {
               draft[writeIndex] = value;
               writeIndex++;
             }
@@ -1190,6 +1283,13 @@ export function useFormState<T extends z.ZodMiniObject>(
         );
       }
 
+      const validationOptions = typeof onValidate === 'object' ? onValidate : options;
+
+      // Registered first so it also runs when the validation function returns errors.
+      if (typeof validationOptions?.callback === 'function') {
+        changeCallbackRefs.current.push(validationOptions.callback);
+      }
+
       if (typeof onValidate !== 'object') {
         const validationErrors = typeof onValidate === 'function' ? onValidate() : true;
 
@@ -1214,12 +1314,6 @@ export function useFormState<T extends z.ZodMiniObject>(
         }
       }
 
-      const validationOptions = typeof onValidate === 'object' ? onValidate : options;
-
-      if (typeof validationOptions?.callback === 'function') {
-        changeCallbackRefs.current.push(validationOptions.callback);
-      }
-
       if (validationOptions?.submit) {
         const safeData = schema.safeParse(formStateRef.current.data);
         const errors = formatErrors<State>(safeData.error, errorMessageSeparator);
@@ -1233,12 +1327,14 @@ export function useFormState<T extends z.ZodMiniObject>(
 
           dispatch({
             type: 'submit',
+            data: formStateRef.current.data,
             submittedData: {
               data: createImmutableData(formStateRef.current.data),
               formData: null,
             },
             asyncErrors: formStateRef.current.asyncErrors,
             freshErrors: errors,
+            superseded: false,
             options: {
               resetDirty: validationOptions.resetDirty !== false,
               resetTouched: validationOptions.resetTouched !== false,
@@ -1408,11 +1504,12 @@ export function useFormState<T extends z.ZodMiniObject>(
             errors = { '': message } as Record<keyof State | '', string | undefined>;
           }
 
+          // Close the submit-phase asyncValidating event even when a change superseded this run.
+          fireAsyncListenerEvent('asyncValidated', activePaths);
+
           if (requestId !== formStateRef.current.asyncRequestId) {
             return;
           }
-
-          fireAsyncListenerEvent('asyncValidated', activePaths);
 
           const mergedAsyncErrors = mergeAsyncErrors(
             formStateRef.current.asyncErrors,
@@ -1430,11 +1527,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           const submitState: SubmitState<State> = hasErrors
             ? {
                 valid: false,
-                errors: createImmutableErrors(
-                  submittedErrors,
-                  currentState.data,
-                  errorMessageSeparator
-                ),
+                errors: createImmutableErrors<T>(submittedErrors, errorMessageSeparator),
               }
             : {
                 valid: true,
@@ -1447,9 +1540,9 @@ export function useFormState<T extends z.ZodMiniObject>(
 
           const submissionErrors = await onSubmit(submitState, submittedFormData);
 
-          if (requestId !== formStateRef.current.asyncRequestId) {
-            return;
-          }
+          // Edits made while `onSubmit` was pending are kept (and stay dirty/validating); the
+          // submit result is applied to the data that was actually sent.
+          const superseded = formStateRef.current.data !== currentState.data;
 
           if (
             hasErrors ||
@@ -1478,14 +1571,15 @@ export function useFormState<T extends z.ZodMiniObject>(
               asyncErrors: mergedAsyncErrors,
               manualErrors: manualErrors,
               freshErrors: errors,
+              superseded,
             });
             return;
           }
 
           if (typeof options?.onSuccess === 'function') {
-            changeCallbackRefs.current.push((submittedState) => {
+            changeCallbackRefs.current.push(() => {
               options.onSuccess?.({
-                data: cleanEmpty(schema, submittedState.data) as State,
+                data: cleanEmpty(schema, currentState.data) as State,
                 formData: submittedFormData,
               });
             });
@@ -1495,12 +1589,14 @@ export function useFormState<T extends z.ZodMiniObject>(
 
           dispatch({
             type: 'submit',
+            data: currentState.data,
             submittedData: {
               data: createImmutableData(currentState.data),
               formData: submittedFormData,
             },
             asyncErrors: mergedAsyncErrors,
             freshErrors: errors,
+            superseded,
             options: {
               resetDirty: options?.resetDirty !== false,
               resetTouched: options?.resetTouched !== false,

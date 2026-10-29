@@ -54,6 +54,24 @@ describe('rendering', () => {
     expect(getInput().autocomplete).toBe('off');
   });
 
+  it('does not let props re-enable autocomplete, spellcheck or password managers', () => {
+    render(
+      <SecureInput
+        autoComplete="current-password"
+        spellCheck
+        data-1p-ignore="false"
+        data-lpignore="false"
+      />
+    );
+
+    const input = getInput();
+
+    expect(input.autocomplete).toBe('off');
+    expect(input.getAttribute('spellcheck')).toBe('false');
+    expect(input.dataset['1pIgnore']).toBe('true');
+    expect(input.dataset['lpignore']).toBe('true');
+  });
+
   it('has spellCheck disabled', () => {
     render(<SecureInput />);
 
@@ -666,6 +684,45 @@ describe('beforeinput events', () => {
       fireBeforeInput(input, 'insertText', 'Z');
 
       expect(onSecureChange).toHaveBeenCalledWith('aZe');
+    });
+  });
+
+  describe('IME composition events', () => {
+    it('commits the composed text once on compositionend and keeps the DOM masked', () => {
+      const onSecureChange = vi.fn();
+
+      render(<SecureInput defaultValue="ab" onSecureChange={onSecureChange} />);
+
+      const input = getInput();
+
+      setSelection(input, 2, 2);
+      fireEvent.compositionStart(input);
+      fireBeforeInput(input, 'insertCompositionText', 'k');
+      fireBeforeInput(input, 'insertCompositionText', 'ka');
+      fireBeforeInput(input, 'insertCompositionText', 'kan');
+      act(() => {
+        input.value = 'ab漢';
+      });
+      fireEvent.compositionEnd(input, { data: '漢' });
+
+      expect(onSecureChange).toHaveBeenCalledTimes(1);
+      expect(onSecureChange).toHaveBeenCalledWith('ab漢');
+      expect(input.value).toBe(mask(3));
+    });
+
+    it('restores the masked DOM value when a controlled parent rejects the composed text', () => {
+      render(<SecureInput value="ab" onSecureChange={() => {}} />);
+
+      const input = getInput();
+
+      setSelection(input, 2, 2);
+      fireEvent.compositionStart(input);
+      act(() => {
+        input.value = 'ab漢';
+      });
+      fireEvent.compositionEnd(input, { data: '漢' });
+
+      expect(input.value).not.toContain('漢');
     });
   });
 

@@ -1,3 +1,5 @@
+import { getImportSource, isFormStateSource } from './rule-utils.js';
+
 const mapping = {
   string: 'formString',
   number: 'formNumber',
@@ -36,6 +38,12 @@ export const useFormSchema = {
         const method = callee.property.name;
         const target = mapping[method];
         if (!target) {
+          return;
+        }
+
+        // A `z` imported from another package (e.g. plain zod) has no form* helpers.
+        const source = getImportSource(callee.object, context.sourceCode.getScope(node));
+        if (source !== null && !isFormStateSource(source)) {
           return;
         }
 
@@ -80,7 +88,16 @@ export const useFormSchema = {
         }
 
         if (method === 'array' && node.arguments.length > 0) {
-          const firstArg = node.arguments[0];
+          // Follow chained calls such as `z.object({...}).check(...)` back to the first call.
+          let firstArg = node.arguments[0];
+          while (
+            firstArg?.type === 'CallExpression' &&
+            firstArg.callee.type === 'MemberExpression' &&
+            firstArg.callee.object.type === 'CallExpression'
+          ) {
+            firstArg = firstArg.callee.object;
+          }
+
           if (
             firstArg?.type === 'CallExpression' &&
             firstArg.callee.type === 'MemberExpression' &&

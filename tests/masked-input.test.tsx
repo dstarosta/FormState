@@ -599,6 +599,38 @@ describe('insert (beforeinput insertText)', () => {
     expect(input.value).toBe('5__');
   });
 
+  it('commits IME composition once on compositionend', () => {
+    const onChange = vi.fn();
+
+    render(<MaskedInput mask="999" onChange={onChange} />);
+
+    const input = getInput();
+
+    setSelection(input, 0, 0);
+    fireEvent.compositionStart(input);
+    fireBeforeInput(input, 'insertCompositionText', '1');
+    fireBeforeInput(input, 'insertCompositionText', '12');
+    fireEvent.compositionEnd(input, { data: '12' });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(input.value).toBe('12_');
+  });
+
+  it('restores the formatted value when the composed text is entirely invalid', () => {
+    render(<MaskedInput mask="999" defaultValue="1" />);
+
+    const input = getInput();
+
+    setSelection(input, 1, 1);
+    fireEvent.compositionStart(input);
+    act(() => {
+      input.value = '1abc';
+    });
+    fireEvent.compositionEnd(input, { data: 'abc' });
+
+    expect(input.value).toBe('1__');
+  });
+
   it('inserts via insertReplacementText', () => {
     render(<MaskedInput mask="999" />);
 

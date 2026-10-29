@@ -1,3 +1,5 @@
+import { findVariable } from './rule-utils.js';
+
 const HOOKS_DEPS_ARG = new Map([
   ['useCallback', 1],
   ['useDeepMemo', 1],
@@ -25,6 +27,29 @@ function isUseWatch(node) {
     (node.type === 'MemberExpression' &&
       node.property.type === 'Identifier' &&
       node.property.name === 'useWatch')
+  );
+}
+
+// `a`, `a.b`, `a?.b.c` -> `a`
+function getRootIdentifier(node) {
+  let current = node.type === 'ChainExpression' ? node.expression : node;
+
+  while (current.type === 'MemberExpression') {
+    current = current.object;
+  }
+
+  return current.type === 'Identifier' ? current : null;
+}
+
+// Declared from a useWatch() call, directly or through destructuring.
+function isWatchVariable(variable) {
+  return Boolean(
+    variable?.defs.some(
+      (def) =>
+        def.type === 'Variable' &&
+        def.node.init?.type === 'CallExpression' &&
+        isUseWatch(def.node.init.callee)
+    )
   );
 }
 
@@ -57,42 +82,7 @@ export const noWatchDependency = {
     const { additionalHooks = {} } = context.options[0] ?? {};
     const hooksMap = new Map([...HOOKS_DEPS_ARG, ...Object.entries(additionalHooks)]);
 
-    const scopeStack = [];
-
-    function currentScope() {
-      return scopeStack.at(-1);
-    }
-
-    function enterScope() {
-      scopeStack.push({ watchVars: new Set(), declaredVars: new Set() });
-    }
-
-    function exitScope() {
-      scopeStack.pop();
-    }
-
     return {
-      FunctionDeclaration: enterScope,
-      FunctionExpression: enterScope,
-      ArrowFunctionExpression: enterScope,
-      'FunctionDeclaration:exit': exitScope,
-      'FunctionExpression:exit': exitScope,
-      'ArrowFunctionExpression:exit': exitScope,
-
-      VariableDeclarator(node) {
-        const scope = currentScope();
-
-        if (!scope || node.id.type !== 'Identifier') {
-          return;
-        }
-
-        scope.declaredVars.add(node.id.name);
-
-        if (node.init?.type === 'CallExpression' && isUseWatch(node.init.callee)) {
-          scope.watchVars.add(node.id.name);
-        }
-      },
-
       CallExpression(node) {
         const hookName = getHookName(node.callee);
         const depsIndex = hookName ? hooksMap.get(hookName) : undefined;
@@ -107,20 +97,13 @@ export const noWatchDependency = {
           return;
         }
 
-        for (const dep of deps.elements) {
-          if (!dep || dep.type !== 'Identifier') {
-            continue;
-          }
+        const scope = context.sourceCode.getScope(node);
 
-          for (let i = scopeStack.length - 1; i >= 0; i--) {
-            const scope = scopeStack[i];
-            if (scope.watchVars.has(dep.name)) {
-              context.report({ node: dep, messageId: 'watchDependency', data: { name: dep.name } });
-              break;
-            }
-            if (scope.declaredVars.has(dep.name)) {
-              break;
-            }
+        for (const dep of deps.elements) {
+          const root = dep ? getRootIdentifier(dep) : null;
+
+          if (root && isWatchVariable(findVariable(scope, root.name))) {
+            context.report({ node: dep, messageId: 'watchDependency', data: { name: root.name } });
           }
         }
       },

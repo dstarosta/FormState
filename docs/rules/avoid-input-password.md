@@ -3,11 +3,11 @@
 Enforces using `<SecureInput>` instead of `<input type="password">` inside forms with an `action` or `onSubmit` handler.
 
 **Severity:** warn  
-**Fixable:** yes (`--fix`)
+**Fixable:** no — offered as an editor suggestion instead, because the plaintext must then be read through `onSecureChange` (on `SecureInput`, `onChange` receives the masked value).
 
 ## Why
 
-`<input type="password">` stores the typed value in the DOM. Browser extensions routinely scan the DOM to capture credential data, and the value is exposed in DevTools, `FormData` serialization, and clipboard operations (copy/cut/paste/undo). `SecureInput` keeps the value in a React ref — it never appears in the DOM, in `FormData`, or in browser autofill inspection surfaces.
+`<input type="password">` stores the typed value in the DOM. Browser extensions routinely scan the DOM to capture credential data, and the value is exposed in DevTools, `FormData` serialization, and clipboard operations (copy/cut/paste/undo). `SecureInput` keeps the value out of the DOM — it never appears in DevTools, in browser autofill inspection surfaces, or to password managers. Inside the `Form` component the real value is added only to the `FormData` built at submit time.
 
 ## Rule Details
 

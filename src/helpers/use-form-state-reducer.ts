@@ -20,6 +20,7 @@ import {
   pruneAsyncErrors,
   safeSyncParse,
   touchErroredFields,
+  updateState,
 } from './state-manager';
 
 export function useFormStateReducer<T extends z.ZodMiniObject>(
@@ -162,11 +163,11 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           } satisfies FormMutableState<State>;
         }
         // state change event
+        // array mutations are applied to the latest state so that consecutive actions compose
+        case 'changeArray':
         case 'change': {
           const {
             name,
-            value,
-            fromDebounce,
             options: { validate, touch },
           } = action;
 
@@ -174,6 +175,20 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const pathNotation = Array.isArray(name) ? name.join('.') : String(name);
           const field = Array.isArray(name) ? name[0] : name;
+
+          let value: unknown;
+          let fromDebounce: boolean | undefined;
+
+          if (action.type === 'change') {
+            ({ value, fromDebounce } = action);
+          } else {
+            const currentArray = dotPathGet(prevState.data, pathNotation);
+
+            value = updateState(
+              (Array.isArray(currentArray) ? currentArray : []) as unknown[],
+              action.mutator
+            );
+          }
 
           const mergedData = dotPathSet(prevState.data, pathNotation, value) as State;
 
@@ -333,17 +348,44 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             submittedData,
             asyncErrors,
             freshErrors,
+            superseded,
             options: { resetDirty, resetTouched, updateInitialData },
           } = action;
 
-          return {
+          const submittedFields = superseded ? action.data : prevState.data;
+          const initialData = updateInitialData ? submittedFields : prevState.initialData;
+
+          const dirty = resetDirty ? { ...stateRef.current.dirty } : { ...prevState.dirty };
+
+          if (superseded) {
+            // Edits made while `onSubmit` was pending were not submitted, so they stay dirty and
+            // keep their own (possibly in-flight) validation.
+            for (const field in prevState.data) {
+              if (
+                Object.hasOwn(prevState.data, field) &&
+                !deepEqual(prevState.data[field], initialData[field])
+              ) {
+                dirty[field] = true;
+              }
+            }
+          }
+
+          const submittedState = {
             ...prevState,
-            initialData: updateInitialData ? prevState.data : prevState.initialData,
-            dirty: resetDirty ? { ...stateRef.current.dirty } : { ...prevState.dirty },
+            initialData,
+            dirty,
             touched: resetTouched ? { ...stateRef.current.touched } : { ...prevState.touched },
             validated: true,
             submitCount: prevState.submitCount + 1,
             submittedData,
+          } satisfies FormMutableState<State>;
+
+          if (superseded) {
+            return submittedState;
+          }
+
+          return {
+            ...submittedState,
             errors: composeWithFreshErrors(
               prevState.data,
               asyncErrors,
@@ -529,6 +571,27 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
             }
 
             mergedManualErrors[key] = normalized;
+          }
+
+          if (action.superseded) {
+            // The client-side results belong to the sent data; keep the newer data's validation and
+            // only apply the server's errors.
+            const errors = composeForData(
+              prevState.data,
+              prevState.asyncErrors,
+              mergedManualErrors
+            );
+
+            return diffedState(
+              {
+                ...prevState,
+                validated: true,
+                errors,
+                manualErrors: mergedManualErrors,
+                touched: touchErroredFields(prevState.touched, errors, prevState.data),
+              },
+              prevState
+            );
           }
 
           const mergedErrors = composeWithFreshErrors(

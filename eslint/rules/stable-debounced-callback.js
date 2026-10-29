@@ -1,3 +1,20 @@
+import { findVariable, isDeclaredInComponentOrHook } from './rule-utils.js';
+
+// A function created during render: an inline function variable or a nested function declaration.
+function isRenderScopedFunction(variable) {
+  if (!variable || !isDeclaredInComponentOrHook(variable)) {
+    return false;
+  }
+
+  return variable.defs.some(
+    (def) =>
+      def.type === 'FunctionName' ||
+      (def.type === 'Variable' &&
+        (def.node.init?.type === 'ArrowFunctionExpression' ||
+          def.node.init?.type === 'FunctionExpression'))
+  );
+}
+
 export const stableDebouncedCallback = {
   meta: {
     type: 'problem',
@@ -10,6 +27,8 @@ export const stableDebouncedCallback = {
     messages: {
       unstableCallback:
         'The callback passed to change() with debounceIntervalMs is an inline function. Wrap it with useCallback() or define it outside the component.',
+      unstableCallbackReference:
+        'The callback "{{name}}" passed to change() with debounceIntervalMs is created on every render. Wrap it with useCallback() or define it outside the component.',
     },
   },
 
@@ -62,6 +81,15 @@ export const stableDebouncedCallback = {
 
         if (callback.type === 'ArrowFunctionExpression' || callback.type === 'FunctionExpression') {
           context.report({ node: callback, messageId: 'unstableCallback' });
+        } else if (
+          callback.type === 'Identifier' &&
+          isRenderScopedFunction(findVariable(context.sourceCode.getScope(node), callback.name))
+        ) {
+          context.report({
+            node: callback,
+            messageId: 'unstableCallbackReference',
+            data: { name: callback.name },
+          });
         }
       },
     };

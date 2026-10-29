@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useRef, type Ref } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   submitForm,
@@ -1217,6 +1225,150 @@ describe('form element tests', () => {
 
     expect(nameError).not.toBeInTheDocument();
     expect(submittedElement).toBeInTheDocument();
+  });
+
+  it('runs both the consumer and the built-in onReset handlers', () => {
+    const onReset = vi.fn();
+
+    const Component = () => {
+      const {
+        formState: { data },
+        formActions: { change },
+        Form,
+      } = useFormState(schema, { initialData: { name: 'Jane' } });
+
+      return (
+        <Form onReset={onReset}>
+          <p>Name: {data.name}</p>
+          <button
+            type="button"
+            onClick={() => {
+              change('name', 'Changed');
+            }}
+          >
+            Change
+          </button>
+          <button type="reset">Reset</button>
+        </Form>
+      );
+    };
+
+    vi.useFakeTimers();
+
+    render(<Component />);
+
+    fireEvent.click(screen.getByText('Change'));
+    expect(screen.getByText('Name: Changed')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Reset'));
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Name: Jane')).toBeInTheDocument();
+  });
+
+  it('skips the built-in reset when the consumer onReset prevents default', () => {
+    const Component = () => {
+      const {
+        formState: { data },
+        formActions: { change },
+        Form,
+      } = useFormState(schema, { initialData: { name: 'Jill' } });
+
+      return (
+        <Form
+          onReset={(event) => {
+            event.preventDefault();
+          }}
+        >
+          <p>Name: {data.name}</p>
+          <button
+            type="button"
+            onClick={() => {
+              change('name', 'Kept');
+            }}
+          >
+            Change
+          </button>
+          <button type="reset">Reset</button>
+        </Form>
+      );
+    };
+
+    vi.useFakeTimers();
+
+    render(<Component />);
+
+    fireEvent.click(screen.getByText('Change'));
+    fireEvent.click(screen.getByText('Reset'));
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(screen.getByText('Name: Kept')).toBeInTheDocument();
+  });
+
+  it('puts the SecureInput plaintext into FormData for onSubmit forms without touching the DOM', () => {
+    let submittedSecret: FormDataEntryValue | null = null;
+
+    const Component = () => {
+      const {
+        formState: { data },
+        formActions: { change },
+        Form,
+      } = useFormState(schema, { initialData: { password: 'abc123' } });
+
+      return (
+        <Form
+          onSubmit={(event) => {
+            event.preventDefault();
+            submittedSecret = new FormData(event.currentTarget).get('secret');
+          }}
+        >
+          <SecureInput
+            name="secret"
+            value={data.password}
+            onSecureChange={(value) => {
+              change('password', value);
+            }}
+          />
+          <button>Submit</button>
+        </Form>
+      );
+    };
+
+    render(<Component />);
+
+    fireEvent.click(screen.getByText('Submit'));
+
+    expect(submittedSecret).toBe('abc123');
+    expect(screen.getByRole<HTMLInputElement>('textbox').value).toBe('••••••');
+  });
+
+  it('runs both the consumer and the built-in onKeyDown handlers', () => {
+    const onKeyDown = vi.fn();
+
+    const Component = () => {
+      const { Form } = useFormState(schema, { initialData: { name: 'Joe' } });
+
+      return (
+        <Form onKeyDown={onKeyDown}>
+          <input data-testid="keyInput" />
+        </Form>
+      );
+    };
+
+    render(<Component />);
+
+    const input = screen.getByTestId('keyInput');
+    const event = createEvent.keyDown(input, { key: 'Enter' });
+
+    fireEvent(input, event);
+
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it('does not submit a simple form by pressing Enter', async () => {

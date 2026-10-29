@@ -195,6 +195,15 @@ describe('form schema', () => {
     expect(formState.data['age']).toBe(123);
   });
 
+  it('partialRecord should accept a subset of enum keys', () => {
+    const fieldSchema = z.advanced.partialRecord(z.advanced.enum(['a', 'b']), z.number());
+
+    expect(fieldSchema.safeParse({ a: 1 }).success).toBe(true);
+    expect(
+      z.advanced.record(z.advanced.enum(['a', 'b']), z.number()).safeParse({ a: 1 }).success
+    ).toBe(false);
+  });
+
   it('should initialize with ZodPipe', () => {
     const testSchema = z.object({
       value: z.advanced.pipe(z.string(), z.string().check(z.minLength(3))),
@@ -878,6 +887,56 @@ describe('form schema', () => {
     expect(r1.success).toBe(true);
     expect(r2.success).toBe(true);
     expect(r3.success).toBe(true);
+  });
+
+  it('validateAsync validates every array row, including identical rows', async () => {
+    const predicate = vi.fn((row: { email: string }) => Promise.resolve(row.email !== 'a'));
+    const testSchema = z.object({
+      rows: z.array(
+        z
+          .object({ email: z.formString() })
+          .check(z.validateAsync(predicate, { path: 'email', error: 'taken' }))
+      ),
+    });
+    const data = { rows: [{ email: 'a' }, { email: 'a' }] };
+
+    const first = await testSchema.safeParseAsync(data);
+    const second = await testSchema.safeParseAsync(data);
+
+    for (const parsed of [first, second]) {
+      expect(parsed.error?.issues.map((issue) => issue.path.join('.'))).toStrictEqual([
+        'rows.0.email',
+        'rows.1.email',
+      ]);
+    }
+    expect(predicate).toHaveBeenCalledTimes(4);
+  });
+
+  it('validateAsync reports every invalid array row in a form', async () => {
+    const formSchema = z.object({
+      rows: z.array(
+        z.object({ email: z.formString() }).check(
+          z.validateAsync((row) => Promise.resolve(row.email !== 'a'), {
+            path: 'email',
+            error: 'taken',
+          })
+        )
+      ),
+    });
+
+    const { result } = renderHook(() =>
+      useFormState(formSchema, {
+        initialData: { rows: [{ email: 'a' }, { email: 'a' }] },
+        validateOnMount: true,
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.formStatus.validating).toBe(false);
+    });
+
+    expect(result.current.formState.errors.get((path) => path.rows[0]?.email)).toBe('taken');
+    expect(result.current.formState.errors.get((path) => path.rows[1]?.email)).toBe('taken');
   });
 
   it('should validate some items in a ZodArray', () => {

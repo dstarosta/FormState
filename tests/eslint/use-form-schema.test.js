@@ -33,9 +33,15 @@ ruleTester.run('use-form-schema', useFormSchema, {
     // z.array with z.object/z.array first arg — not reported
     { code: 'z.object({ items: z.array(z.object({ id: z.formNumber() })) })' },
     { code: 'z.object({ matrix: z.array(z.array(z.formString())) })' },
+    { code: 'z.object({ items: z.array(z.object({ id: z.formNumber() }).check(fn)) })' },
 
     // Non-z namespace
     { code: 'z.object({ name: foo.string() })' },
+
+    // `z` imported from plain zod (e.g. API or server schemas) — form helpers do not exist there
+    { code: "import { z } from 'zod';\nz.object({ name: z.string() })" },
+    { code: "import * as z from 'zod/mini';\nz.object({ name: z.string() })" },
+    { code: "import z from 'zod';\nz.object({ name: z.string() })" },
 
     // z methods not in the primitive mapping
     { code: "z.object({ status: z.enum(['a', 'b']) })" },
@@ -66,6 +72,13 @@ ruleTester.run('use-form-schema', useFormSchema, {
     { code: 'schemas.object({ name: z.string() })' },
   ],
   invalid: [
+    // `z` imported from form-state is still reported
+    {
+      code: "import { z } from 'form-state';\nz.object({ name: z.string() })",
+      errors: [{ messageId: 'useFormSchema' }],
+      output:
+        "import { z } from 'form-state';\nz.object({ name: z.formString({ required: true }) })",
+    },
     {
       code: 'z.object({ name: z.string() })',
       errors: [

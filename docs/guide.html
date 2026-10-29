@@ -249,7 +249,7 @@ export default defineConfig([
                   the value in the DOM, in DevTools, and to browser extension scanners.
                 </td>
                 <td>warn</td>
-                <td>✅</td>
+                <td>Suggestion</td>
               </tr>
               <tr>
                 <td>
@@ -5587,6 +5587,23 @@ export default formConnect({
             In React DevTools, the wrapped component is tagged <code>formConnected</code>. This
             makes it easy to spot which component in the tree owns the form's provider.
           </p>
+          <h3>Re-rendering only what changed</h3>
+          <p>
+            <code>useFormStateContext(schema)</code> re-renders its component on every form change.
+            Pass a selector or a group name as the second argument to re-render only when that
+            value changes.
+          </p>
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">tsx</span></div>
+            <pre><code class="language-tsx">// Re-renders only when the city changes
+const city = useFormStateContext(formSchema, (form) =&gt; form.formState.data.city);
+
+// Re-renders only when the "contact" group's data changes
+const contact = useFormStateContext(formSchema, 'contact');
+
+// Never re-renders — actions keep the same identity
+const { change } = useFormStateContext(formSchema, (form) =&gt; form.formActions);</code></pre>
+          </div>
           <div class="callout callout-warning">
             <div class="callout-label">Warning</div>
             <p>

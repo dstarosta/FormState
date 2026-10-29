@@ -93,6 +93,8 @@ export type AsyncCheckMeta = {
   submitOnly: boolean;
   setPhase: (phase: 'change' | 'submit') => void;
   whenGate: (payload: { value: unknown; issues: unknown[] }) => boolean;
+  /** Marks a check that runs at more than one location per parse (e.g. array rows). */
+  markRepeated: () => void;
   runPredicate: (value: unknown) => Promise<boolean>;
 };
 
@@ -147,6 +149,15 @@ export type FormAction<T extends object> =
       fromDebounce?: boolean;
     }
   | {
+      type: 'changeArray';
+      name: keyof T | FormStatePath<T>;
+      mutator: (draft: unknown[]) => void;
+      options: {
+        touch: boolean;
+        validate: boolean;
+      };
+    }
+  | {
       type: 'replace';
       data: DeepPartial<T>;
       options: {
@@ -166,9 +177,13 @@ export type FormAction<T extends object> =
     }
   | {
       type: 'submit';
+      /** The data that was sent to `onSubmit` (only used when `superseded`). */
+      data: T;
       submittedData: SubmittedData<T>;
       asyncErrors: Record<keyof T | '', string | undefined>;
       freshErrors: Record<keyof T | '', string | undefined>;
+      /** The data changed while `onSubmit` was pending. */
+      superseded: boolean;
       options: { resetDirty: boolean; resetTouched: boolean; updateInitialData: boolean };
     }
   | { type: 'changeInitialData' }
@@ -200,6 +215,8 @@ export type FormAction<T extends object> =
       asyncErrors: Record<keyof T | '', string | undefined>;
       manualErrors: Record<string, string>;
       freshErrors: Record<keyof T | '', string | undefined>;
+      /** The data changed while `onSubmit` was pending. */
+      superseded: boolean;
     }
   | { type: 'setMode'; mode: FormMode };
 

@@ -54,8 +54,35 @@ ruleTester.run('no-inline-schema', noInlineSchema, {
     { code: 'useFormState(cond ? a : b)' },
     // Callee is itself a call expression (factory pattern) — no hook name to match
     { code: 'getHook()(z.object({ name: z.formString() }))' },
+    // A variable declared at module scope is stable
+    {
+      code: 'const schema = z.object({ name: z.formString() }); function Form() { const s = schema; useFormState(s); }',
+    },
+    // A variable from a custom hook is assumed stable
+    { code: 'function Form() { const schema = useSchema(); useFormState(schema); }' },
+    // Declared in a non-component function (e.g. a test callback) and used by a nested component
+    {
+      code: "it('works', () => { const schema = z.object({}); const Form = () => useFormState(schema); });",
+    },
+    { code: 'function makeForm() { const schema = buildSchema(); return useFormState(schema); }' },
   ],
   invalid: [
+    // Schema built in the component body and passed by name
+    {
+      code: 'function Form() { const schema = z.object({ name: z.formString() }); useFormState(schema); }',
+      errors: [
+        { messageId: 'inlineSchemaReference', data: { name: 'schema', hook: 'useFormState' } },
+      ],
+    },
+    {
+      code: 'const Form = () => { const schema = buildSchema(); return useFormStateContext(schema); }',
+      errors: [
+        {
+          messageId: 'inlineSchemaReference',
+          data: { name: 'schema', hook: 'useFormStateContext' },
+        },
+      ],
+    },
     {
       code: 'useFormState(z.object({ name: z.formString() }))',
       errors: [{ messageId: 'inlineSchema', data: { hook: 'useFormState' } }],

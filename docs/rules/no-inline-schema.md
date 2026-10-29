@@ -34,6 +34,12 @@ function ProfileForm() {
     })
   );
 }
+
+function SettingsForm() {
+  // Same problem: the schema is still rebuilt on every render.
+  const schema = z.object({ theme: z.formString() });
+  const form = useFormState(schema);
+}
 ```
 
 ### ✅ Correct

@@ -1,7 +1,7 @@
-import { expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react';
 
-import { useFormStateContext, formConnect, z } from '../src';
+import { FormStateProvider, useFormStateContext, formConnect, z } from '../src';
 
 const schema = z.object({
   id: z.formNumber({ required: true }).with(z.describe('ID')),
@@ -186,4 +186,152 @@ it('throws an error when useFormStateContext was not registered with the provide
 
 it('throws an error when useFormStateContext has invalid arguments', () => {
   expect(() => useFormStateContext(null as unknown as typeof schema)).toThrow(Error);
+});
+
+describe('useFormStateContext with a selector', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const selectorSchema = z.object({
+    name: z.formString(),
+    email: z.group(z.formString(), 'contact'),
+    phone: z.group(z.formString(), 'contact'),
+    city: z.formString(),
+  });
+
+  const selectorData = { name: 'Ann', email: 'ann@example.com', phone: '555', city: 'Oslo' };
+
+  const Editor = () => {
+    const {
+      formActions: { change },
+    } = useFormStateContext(selectorSchema);
+
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            change('name', 'Bea');
+          }}
+        >
+          Change name
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            change('city', 'Rome');
+          }}
+        >
+          Change city
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            change('email', 'bea@example.com');
+          }}
+        >
+          Change email
+        </button>
+      </>
+    );
+  };
+
+  it('re-renders only when the selected value changes', () => {
+    const renders = vi.fn();
+
+    const City = () => {
+      const city = useFormStateContext(selectorSchema, (form) => form.formState.data.city);
+      renders();
+      return <p>City: {city}</p>;
+    };
+
+    render(
+      <FormStateProvider schema={selectorSchema} initialData={selectorData}>
+        <Editor />
+        <City />
+      </FormStateProvider>
+    );
+
+    expect(renders).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByText('Change name'));
+    expect(renders).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByText('Change city'));
+    expect(screen.getByText('City: Rome')).toBeInTheDocument();
+    expect(renders).toHaveBeenCalledTimes(2);
+  });
+
+  it('never re-renders a component that only selects actions', () => {
+    const renders = vi.fn();
+
+    const Actions = () => {
+      const { change } = useFormStateContext(selectorSchema, (form) => form.formActions);
+      renders();
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            change('name', 'Cid');
+          }}
+        >
+          Rename
+        </button>
+      );
+    };
+
+    const NameView = () => {
+      const { formState } = useFormStateContext(selectorSchema);
+      return <p>Name: {formState.data.name}</p>;
+    };
+
+    render(
+      <FormStateProvider schema={selectorSchema} initialData={selectorData}>
+        <Actions />
+        <NameView />
+      </FormStateProvider>
+    );
+
+    fireEvent.click(screen.getByText('Rename'));
+
+    expect(screen.getByText('Name: Cid')).toBeInTheDocument();
+    expect(renders).toHaveBeenCalledTimes(1);
+  });
+
+  it('selects a group data slice by name', () => {
+    const renders = vi.fn();
+
+    const Contact = () => {
+      const contact = useFormStateContext(selectorSchema, 'contact');
+      renders();
+      return (
+        <p>
+          Contact: {contact.email} / {contact.phone}
+        </p>
+      );
+    };
+
+    render(
+      <FormStateProvider schema={selectorSchema} initialData={selectorData}>
+        <Editor />
+        <Contact />
+      </FormStateProvider>
+    );
+
+    expect(screen.getByText('Contact: ann@example.com / 555')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Change city'));
+    expect(renders).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByText('Change email'));
+    expect(screen.getByText('Contact: bea@example.com / 555')).toBeInTheDocument();
+    expect(renders).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws outside a provider', () => {
+    expect(() => {
+      renderHook(() => useFormStateContext(selectorSchema, (form) => form.formActions));
+    }).toThrow(/FormStateProvider/);
+  });
 });

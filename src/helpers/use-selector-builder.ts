@@ -1,4 +1,4 @@
-import { useDebugValue } from 'react';
+import { useDebugValue, useMemo } from 'react';
 
 import type { Selector } from '../types/form-types';
 
@@ -12,10 +12,13 @@ export function createUseSelector(groups: Record<string, string>) {
   ) {
     useDebugValue('FormStateSelector');
 
-    const firstInput: Selector<unknown, unknown> | Selector<unknown, unknown>[] =
-      typeof first === 'string'
-        ? (data) => pickGroupData(groups, first, data as Record<string, unknown>)
-        : first;
+    const firstInput = useMemo<Selector<unknown, unknown> | Selector<unknown, unknown>[]>(
+      () =>
+        typeof first === 'string'
+          ? (data) => pickGroupData(groups, first, data as Record<string, unknown>)
+          : first,
+      [first]
+    );
 
     return useSelector(firstInput, second);
   }

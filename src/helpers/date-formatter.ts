@@ -108,13 +108,16 @@ export const parseDate = (
   let dateMonth: number;
   let dateDay: number;
 
+  // set*FullYear is used because the Date constructor maps years 0-99 to 1900-1999.
   if (asUTC) {
-    date = new Date(Date.UTC(numYear, numMonth, numDay));
+    date = new Date(0);
+    date.setUTCFullYear(numYear, numMonth, numDay);
     dateYear = date.getUTCFullYear();
     dateMonth = date.getUTCMonth();
     dateDay = date.getUTCDate();
   } else {
-    date = new Date(numYear, numMonth, numDay);
+    date = new Date(2000, 0, 1);
+    date.setFullYear(numYear, numMonth, numDay);
     dateYear = date.getFullYear();
     dateMonth = date.getMonth();
     dateDay = date.getDate();
@@ -134,10 +137,16 @@ export const parseDate = (
  *
  * @param date - The date object.
  * @param format - The date format.
+ * @param asUTC - Indicates whether to format the date using Universal Coordinated Time (UTC), matching
+ *                dates created with the `asUTC` option (default: `false`).
  * @throws A `TypeError` instance if the date object is not a valid `Date` instance.
  * @returns The formatted date string.
  */
-export function formatDate(date: Date, format: FormDateFormat = 'yyyy-MM-dd') {
+export function formatDate(
+  date: Date,
+  format: FormDateFormat = 'yyyy-MM-dd',
+  asUTC: boolean = false
+) {
   if (!isValidDate(date)) {
     throw new TypeError('Invalid date provided.');
   }
@@ -146,9 +155,9 @@ export function formatDate(date: Date, format: FormDateFormat = 'yyyy-MM-dd') {
     throw new TypeError('Invalid date format provided.');
   }
 
-  const year = date.getFullYear().toString();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
+  const year = (asUTC ? date.getUTCFullYear() : date.getFullYear()).toString().padStart(4, '0');
+  const month = ((asUTC ? date.getUTCMonth() : date.getMonth()) + 1).toString().padStart(2, '0');
+  const day = (asUTC ? date.getUTCDate() : date.getDate()).toString().padStart(2, '0');
 
   switch (format) {
     case 'dd/MM/yyyy': {

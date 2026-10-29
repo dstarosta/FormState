@@ -496,6 +496,25 @@ describe('createSelector with groups', () => {
     expect('name' in contact).toBe(false);
   });
 
+  it('returns a stable selector across renders for a group name and a stable input selector', () => {
+    const { result } = renderHook(() => useFormState(groupSchema));
+    const {
+      formHooks: { useSelector },
+    } = result.current;
+    const selectEmail = (state: { email: string }) => state.email;
+
+    const groupHook = renderHook(() => useSelector('contact'));
+    const fieldHook = renderHook(() => useSelector(selectEmail));
+    const firstGroup = groupHook.result.current;
+    const firstField = fieldHook.result.current;
+
+    groupHook.rerender();
+    fieldHook.rerender();
+
+    expect(groupHook.result.current).toBe(firstGroup);
+    expect(fieldHook.result.current).toBe(firstField);
+  });
+
   it('runs a scoped selector over the group data slice', () => {
     const { result } = renderHook(() =>
       useFormState(groupSchema, {

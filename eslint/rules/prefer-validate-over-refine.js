@@ -1,38 +1,6 @@
+import { getImportSource, isFormStateSource } from './rule-utils.js';
+
 const VALIDATE_FORWARDABLE_KEYS = new Set(['path', 'error']);
-
-function isFormStateSource(value) {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  if (value === 'form-state' || value.startsWith('form-state/')) {
-    return true;
-  }
-
-  return /^(\.\.?\/)+src$/.test(value);
-}
-
-function getImportSource(identifier, scope) {
-  let currentScope = scope;
-
-  while (currentScope) {
-    const variable = currentScope.variables.find((v) => v.name === identifier.name);
-
-    if (variable) {
-      for (const def of variable.defs) {
-        if (def.type === 'ImportBinding' && def.parent && def.parent.type === 'ImportDeclaration') {
-          return def.parent.source.value;
-        }
-      }
-
-      return null;
-    }
-
-    currentScope = currentScope.upper;
-  }
-
-  return null;
-}
 
 function isFormStateRefine(node, scope) {
   const callee = node.callee;

@@ -39,6 +39,10 @@ function SearchPreview() {
   const results = useMemo(() => filter(data, query), [query]);
 
   const handler = useCallback(() => submit(query), [query]);
+
+  // Destructured values and member access are checked too
+  const { city } = useWatch('address');
+  useEffect(() => {}, [city]);
 }
 ```
 

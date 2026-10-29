@@ -3,9 +3,12 @@ import { useCallback, useMemo, useRef } from 'react';
 import type { Selector } from '../types/form-types';
 import { deepEqual } from './deep-equal';
 
+// Module-level default so the returned selector keeps its identity across renders.
+const identityResult = (firstInput: unknown) => firstInput;
+
 export function useSelector<S, R>(
   inputSelectors: Selector<S, unknown> | Selector<S, unknown>[],
-  resultFn: (...inputs: unknown[]) => R = (firstInput) => firstInput as R
+  resultFn: (...inputs: unknown[]) => R = identityResult as (...inputs: unknown[]) => R
 ): Selector<S, R> {
   const cache = useRef<{
     lastInputs: unknown[];

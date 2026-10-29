@@ -8,7 +8,8 @@ const ALPHA_RE = /[a-z]/i;
 // Private functions
 
 const isValidNumberString = (value: string): boolean => {
-  return value.length > 0 && !ALPHA_RE.test(value);
+  // `Number('  ')` is 0, so whitespace-only values must be rejected explicitly.
+  return value.trim().length > 0 && !ALPHA_RE.test(value);
 };
 
 // Public functions
@@ -133,13 +134,15 @@ export const toLiteral = <T extends string>(value: string, validValues: readonly
  * @param options.emptyStringAsFalse - Indicates the input value is an optional `boolean` and an empty string
  *                                     should be converted to 'false'. Only set it to `true` when setting optional
  *                                     booleans in the form action handler.
+ * @param options.asUTC - Indicates whether to format `Date` values using Universal Coordinated Time (UTC),
+ *                        matching dates created with `toDate(value, { asUTC: true })` (default: `false`).
  * @returns The converted value.
  */
 export const toString = (
   value: boolean | string | number | Date | null | undefined,
-  options?: { dateFormat?: FormDateFormat; emptyStringAsFalse?: boolean }
+  options?: { dateFormat?: FormDateFormat; emptyStringAsFalse?: boolean; asUTC?: boolean }
 ) => {
-  const { dateFormat = 'yyyy-MM-dd', emptyStringAsFalse = false } = options ?? {};
+  const { dateFormat = 'yyyy-MM-dd', emptyStringAsFalse = false, asUTC = false } = options ?? {};
 
   if (emptyStringAsFalse && value === '') {
     return 'false';
@@ -158,7 +161,7 @@ export const toString = (
   }
 
   if (value instanceof Date && isValidDate(value)) {
-    return formatDate(value, dateFormat);
+    return formatDate(value, dateFormat, asUTC);
   }
 
   return EMPTY_STRING;

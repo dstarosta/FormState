@@ -507,4 +507,63 @@ describe('deepEqual', () => {
       expect(deepEqual(left, diffRecordKeys)).toBe(false);
     });
   });
+
+  describe('browser objects', () => {
+    it('compares File and Blob instances by identity', () => {
+      const file = new File(['a'], 'a.txt', { type: 'text/plain', lastModified: 1 });
+      const sameMetadata = new File(['b'], 'a.txt', { type: 'text/plain', lastModified: 1 });
+
+      expect(deepEqual(file, file)).toBe(true);
+      expect(deepEqual(file, sameMetadata)).toBe(false);
+      expect(deepEqual(new Blob(['a']), new Blob(['a']))).toBe(false);
+      expect(deepEqual([file], [file])).toBe(true);
+      expect(deepEqual({ upload: file }, { upload: sameMetadata })).toBe(false);
+    });
+
+    it('compares URL instances by href', () => {
+      expect(deepEqual(new URL('https://a.test/x'), new URL('https://a.test/x'))).toBe(true);
+      expect(deepEqual(new URL('https://a.test/x'), new URL('https://a.test/y'))).toBe(false);
+    });
+  });
+
+  describe('cyclic structures', () => {
+    it('compares self-referencing objects without overflowing the stack', () => {
+      type Node = { name: string; self?: Node };
+      const a: Node = { name: 'n' };
+      const b: Node = { name: 'n' };
+      const c: Node = { name: 'other' };
+      a.self = a;
+      b.self = b;
+      c.self = c;
+
+      expect(deepEqual(a, b)).toBe(true);
+      expect(deepEqual(a, c)).toBe(false);
+    });
+
+    it('does not treat a previously unequal nested pair as equal when retried in a Set', () => {
+      const one = { v: 1 };
+      const two = { v: 2 };
+      // Matching { one, 'x' } against { two, 'y' } compares (one, two) and fails; matching
+      // { one, 'y' } against { two, 'y' } compares (one, two) again and must still fail.
+      const left = new Set([
+        { k: one, t: 'x' },
+        { k: one, t: 'y' },
+      ]);
+      const right = new Set([
+        { k: two, t: 'y' },
+        { k: one, t: 'x' },
+      ]);
+
+      expect(deepEqual(left, right)).toBe(false);
+    });
+
+    it('compares mutually referencing arrays', () => {
+      const a: unknown[] = [1];
+      const b: unknown[] = [1];
+      a.push(a);
+      b.push(b);
+
+      expect(deepEqual(a, b)).toBe(true);
+    });
+  });
 });

@@ -773,6 +773,172 @@ describe('async schema validation', () => {
       expect(asyncEvents[1]?.triggerField).toBe('name');
     });
 
+    it('closes a burst cancelled by reset with asyncValidated and starts the next burst cleanly', async () => {
+      const events: AsyncEvent[] = [];
+      const listener = vi.fn((event: AsyncEvent) => {
+        events.push(event);
+      });
+      const asyncSchema = buildAsyncSchema(new Set(['Mike', 'John']), 30);
+
+      const { result } = renderHook(() => {
+        const {
+          formStatus,
+          formActions: { change, reset },
+          formHooks: { useListener },
+        } = useFormState(asyncSchema, { initialData: { name: 'Xavier' }, validateOnMount: true });
+        useListener(listener);
+        return { formStatus, change, reset };
+      });
+
+      // Wait for the mount burst to close (asyncValidated is emitted a frame after validating ends).
+      await waitFor(() => {
+        expect(events.map((evt) => evt.type)).toContain('asyncValidated');
+      });
+      events.length = 0;
+
+      act(() => {
+        result.current.change('name', 'Mike');
+      });
+
+      expect(result.current.formStatus.validating).toBe(true);
+
+      act(() => {
+        result.current.reset();
+      });
+
+      await waitFor(() => {
+        expect(events.map((evt) => evt.type)).toContain('asyncValidated');
+      });
+
+      const asyncTypes = (list: AsyncEvent[]) =>
+        list
+          .filter((evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated')
+          .map((evt) => evt.type);
+
+      expect(asyncTypes(events)).toStrictEqual(['asyncValidating', 'asyncValidated']);
+      events.length = 0;
+
+      act(() => {
+        result.current.change('name', 'John');
+      });
+
+      await waitFor(() => {
+        expect(asyncTypes(events)).toStrictEqual(['asyncValidating', 'asyncValidated']);
+      });
+    });
+
+    it('closes a finished burst right away when a change starts a new one before its frame', async () => {
+      const events: AsyncEvent[] = [];
+      const listener = vi.fn((event: AsyncEvent) => {
+        events.push(event);
+      });
+      const frames = new Map<number, FrameRequestCallback>();
+      let nextFrame = 0;
+      const raf = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback) => {
+        nextFrame++;
+        frames.set(nextFrame, callback);
+        return nextFrame;
+      });
+      const caf = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation((id) => {
+        frames.delete(id);
+      });
+      const runFrames = () => {
+        const pending = [...frames.values()];
+        frames.clear();
+        for (const frame of pending) {
+          frame(0);
+        }
+      };
+
+      const asyncSchema = buildAsyncSchema(new Set(['Mike', 'John']));
+
+      const { result } = renderListenerHarness(asyncSchema, listener, {
+        initialData: { name: 'Xavier' },
+        validateOnMount: true,
+      });
+
+      // The mount check has finished; its closing event is waiting for the next frame.
+      await waitFor(() => {
+        expect(frames.size).toBe(1);
+      });
+      expect(result.current.formStatus.validating).toBe(false);
+
+      act(() => {
+        result.current.change('name', 'John');
+      });
+
+      await waitFor(() => {
+        expect(frames.size).toBe(1);
+      });
+
+      act(() => {
+        runFrames();
+      });
+
+      const asyncEvents = events.filter(
+        (evt) => evt.type === 'asyncValidating' || evt.type === 'asyncValidated'
+      );
+
+      expect(asyncEvents.map((evt) => evt.type)).toStrictEqual([
+        'asyncValidating',
+        'asyncValidated',
+        'asyncValidating',
+        'asyncValidated',
+      ]);
+      expect(asyncEvents[1]?.data.name).toBe('Xavier');
+      expect(asyncEvents[3]?.data.name).toBe('John');
+
+      raf.mockRestore();
+      caf.mockRestore();
+    });
+
+    it('closes the submit-phase asyncValidating event when a change supersedes it', async () => {
+      const events: AsyncEvent[] = [];
+      const listener = vi.fn((event: AsyncEvent) => {
+        events.push(event);
+      });
+      const onSubmit = vi.fn(() => Promise.resolve(true as const));
+      const asyncSchema = buildAsyncSchema(new Set(['Mike', 'John']), 30);
+
+      const { result } = renderHook(() => {
+        const {
+          formStatus,
+          formActions: { change },
+          formHandlers: { handleSubmit },
+          formHooks: { useListener },
+        } = useFormState(asyncSchema, { initialData: { name: 'Mike' } });
+        useListener(listener);
+        return { formStatus, change, handleSubmit };
+      });
+
+      let submitted: Promise<void> | undefined;
+
+      act(() => {
+        submitted = result.current.handleSubmit(onSubmit)(new FormData());
+      });
+
+      await waitFor(() => {
+        expect(events.some((evt) => evt.type === 'asyncValidating')).toBe(true);
+      });
+
+      act(() => {
+        result.current.change('name', 'John');
+      });
+
+      await submitted;
+
+      await waitFor(() => {
+        expect(result.current.formStatus.validating).toBe(false);
+      });
+
+      const count = (type: AsyncEvent['type']) => events.filter((evt) => evt.type === type).length;
+
+      await waitFor(() => {
+        expect(count('asyncValidated')).toBe(count('asyncValidating'));
+      });
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
     it('exposes schemaPath with the dot-path of the async check', async () => {
       const events: AsyncEvent[] = [];
       const listener = vi.fn((event: AsyncEvent) => {
@@ -1234,6 +1400,141 @@ describe('async schema validation', () => {
       });
 
       expect(result.current.formStatus.submitted).toBe(true);
+    });
+
+    describe('edits made while onSubmit is pending', () => {
+      const syncSchema = z.object({ name: z.formString({ required: true }) });
+
+      const renderSubmitHarness = (
+        submitSchema: ReturnType<typeof buildAsyncSchema> | typeof syncSchema,
+        initialData: { name: string }
+      ) =>
+        renderHook(() => {
+          const {
+            formState,
+            formStatus,
+            formActions: { change },
+            formHandlers: { handleSubmit },
+          } = useFormState(submitSchema, { initialData });
+
+          return { formState, formStatus, change, handleSubmit };
+        });
+
+      const deferred = <R,>() => {
+        let resolve: (value: R) => void = () => {};
+        const promise = new Promise<R>((res) => {
+          resolve = res;
+        });
+        return { promise, resolve };
+      };
+
+      it('applies the submit to the sent data and keeps validating the newer data (async schema)', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike']), 10);
+        const { result } = renderSubmitHarness(asyncSchema, { name: 'Mike' });
+        const server = deferred<true>();
+        const onSubmit = vi.fn(() => server.promise);
+        const onSuccess = vi.fn();
+
+        let submitted: Promise<void> | undefined;
+
+        act(() => {
+          submitted = result.current.handleSubmit(onSubmit, { onSuccess })(new FormData());
+        });
+
+        await waitFor(() => {
+          expect(onSubmit).toHaveBeenCalled();
+        });
+
+        act(() => {
+          result.current.change('name', 'John');
+        });
+
+        server.resolve(true);
+        await submitted;
+
+        await waitFor(() => {
+          expect(onSuccess).toHaveBeenCalledTimes(1);
+        });
+
+        expect(onSuccess.mock.calls[0]?.[0]).toMatchObject({ data: { name: 'Mike' } });
+        expect(result.current.formStatus.submitted).toBe(true);
+        expect(result.current.formStatus.dirty).toBe(true);
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe(
+          'Name is not allowed'
+        );
+      });
+
+      it('does not mark unsubmitted edits as clean (sync schema)', async () => {
+        const { result } = renderSubmitHarness(syncSchema, { name: 'Mike' });
+        const server = deferred<true>();
+        const onSubmit = vi.fn(() => server.promise);
+        const onSuccess = vi.fn();
+
+        let submitted: Promise<void> | undefined;
+
+        act(() => {
+          submitted = result.current.handleSubmit(onSubmit, { onSuccess })(new FormData());
+        });
+
+        await waitFor(() => {
+          expect(onSubmit).toHaveBeenCalled();
+        });
+
+        act(() => {
+          result.current.change('name', 'John');
+        });
+
+        server.resolve(true);
+        await submitted;
+
+        await waitFor(() => {
+          expect(onSuccess).toHaveBeenCalledTimes(1);
+        });
+
+        expect(onSuccess.mock.calls[0]?.[0]).toMatchObject({ data: { name: 'Mike' } });
+        expect(result.current.formState.data.name).toBe('John');
+        expect(result.current.formStatus.dirty).toBe(true);
+      });
+
+      it('applies server errors and calls onError for a superseded submit', async () => {
+        const asyncSchema = buildAsyncSchema(new Set(['Mike', 'John']), 10);
+        const { result } = renderSubmitHarness(asyncSchema, { name: 'Mike' });
+        const server = deferred<{ name: string }>();
+        const onSubmit = vi.fn(() => server.promise);
+        const onError = vi.fn();
+
+        let submitted: Promise<void> | undefined;
+
+        act(() => {
+          submitted = result.current.handleSubmit(onSubmit, { onError })(new FormData());
+        });
+
+        await waitFor(() => {
+          expect(onSubmit).toHaveBeenCalled();
+        });
+
+        act(() => {
+          result.current.change('name', 'John');
+        });
+
+        server.resolve({ name: 'Already taken' });
+        await submitted;
+
+        await waitFor(() => {
+          expect(onError).toHaveBeenCalledTimes(1);
+        });
+
+        await waitFor(() => {
+          expect(result.current.formStatus.validating).toBe(false);
+        });
+
+        expect(result.current.formState.errors.get((path) => path.name)).toBe('Already taken');
+      });
     });
 
     it('does not submit when sync validation has an error', async () => {
@@ -2271,7 +2572,7 @@ describe('async schema validation', () => {
       expect(result.current.formStatus.submitted).toBe(false);
     });
 
-    it('discards a submit when the asyncRequestId changes during the onSubmit handler', async () => {
+    it('applies a submit to the sent data when the asyncRequestId changes during the onSubmit handler', async () => {
       const racySchema = z.object({
         name: z
           .formString({ required: true })
@@ -2325,9 +2626,14 @@ describe('async schema validation', () => {
         await submitPromise;
       });
 
-      expect(onSuccess).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledTimes(1);
+      });
+
+      expect(onSuccess.mock.calls[0]?.[0]).toMatchObject({ data: { name: 'Initial' } });
       expect(onError).not.toHaveBeenCalled();
-      expect(result.current.formStatus.submitted).toBe(false);
+      expect(result.current.formStatus.submitted).toBe(true);
+      expect(result.current.formStatus.dirty).toBe(true);
     });
 
     it('keeps the async error on a repeated submit with unchanged data', async () => {

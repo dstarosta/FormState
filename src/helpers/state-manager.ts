@@ -30,6 +30,7 @@ import {
   allowEmptyString,
   getBaseType,
   getDateFormat,
+  getExpressionPath,
   getPath,
   getPathNotation,
   getSchemaType,
@@ -246,25 +247,24 @@ const allErrors = (
     .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
     .flatMap((error) => error.split(errorMessageSeparator));
 
-const toPathKey = <T extends object>(data: T, expression: PathExpression<T>): string =>
-  getPath(data, expression).join('.');
+const toPathKey = <T extends object>(expression: PathExpression<T>): string =>
+  getExpressionPath(expression).join('.');
 
-const toPathNotation = <T extends object>(data: T, expression: PathExpression<T>): string =>
-  getPathNotation(getPath(data, expression) as Parameters<typeof getPathNotation>[0]);
+const toPathNotation = <T extends object>(expression: PathExpression<T>): string =>
+  getPathNotation(getExpressionPath(expression) as Parameters<typeof getPathNotation>[0]);
 
 const errorGetters = <T extends object>(
   errors: Record<string, string | undefined>,
-  data: T,
   errorMessageSeparator: string
 ) => ({
-  get: (expression: PathExpression<T>) => errors[toPathKey(data, expression)],
+  get: (expression: PathExpression<T>) => errors[toPathKey(expression)],
   getManual: (key: string) => errors[key],
   getAll: () => allErrors(errors, errorMessageSeparator),
   getKeys: () => truthyKeys(errors),
 });
 
-const touchedGetters = <T extends object>(touched: Record<string, unknown>, data: T) => ({
-  get: (expression: PathExpression<T>) => Boolean(touched[toPathKey(data, expression)]),
+const touchedGetters = <T extends object>(touched: Record<string, unknown>) => ({
+  get: (expression: PathExpression<T>) => Boolean(touched[toPathKey(expression)]),
   getKeys: () => truthyKeys(touched),
 });
 
@@ -273,19 +273,17 @@ const dirtyGetters = (dirty: Record<string, unknown>) => ({
   getKeys: () => truthyKeys(dirty),
 });
 
-const requiredGetters = <T extends object>(required: Record<string, unknown>, data: T) => ({
-  get: (expression: PathExpression<T>) => Boolean(required[toPathKey(data, expression)]),
+const requiredGetters = <T extends object>(required: Record<string, unknown>) => ({
+  get: (expression: PathExpression<T>) => Boolean(required[toPathKey(expression)]),
   getKeys: () => truthyKeys(required),
 });
 
 const rangeOf = <T extends object>(
   ranges: Record<string, { min: FieldRange; max: FieldRange } | undefined>,
-  data: T,
   nameOrPath: PropertyKey | PathExpression<T>,
   bound: 'min' | 'max'
 ): number | Date => {
-  const path =
-    typeof nameOrPath === 'function' ? toPathNotation(data, nameOrPath) : String(nameOrPath);
+  const path = typeof nameOrPath === 'function' ? toPathNotation(nameOrPath) : String(nameOrPath);
 
   const value = ranges[path]?.[bound];
 
@@ -297,23 +295,21 @@ const rangeOf = <T extends object>(
 };
 
 const rangeGetters = <T extends object>(
-  ranges: Record<string, { min: FieldRange; max: FieldRange } | undefined>,
-  data: T
+  ranges: Record<string, { min: FieldRange; max: FieldRange } | undefined>
 ) => ({
   get: (expression: PathExpression<T>) =>
-    ranges[toPathNotation(data, expression)] as RangeResult<number | Date> | undefined,
-  getMin: (nameOrPath: PropertyKey | PathExpression<T>) => rangeOf(ranges, data, nameOrPath, 'min'),
-  getMax: (nameOrPath: PropertyKey | PathExpression<T>) => rangeOf(ranges, data, nameOrPath, 'max'),
+    ranges[toPathNotation(expression)] as RangeResult<number | Date> | undefined,
+  getMin: (nameOrPath: PropertyKey | PathExpression<T>) => rangeOf<T>(ranges, nameOrPath, 'min'),
+  getMax: (nameOrPath: PropertyKey | PathExpression<T>) => rangeOf<T>(ranges, nameOrPath, 'max'),
   getKeys: () => truthyKeys(ranges),
 });
 
 const stringGetters = <T extends object, F extends boolean>(
   slice: Record<string, string | undefined>,
-  data: T,
   emptyFallback: F
 ) => ({
   get: (expression: PathExpression<T>) => {
-    const value = slice[toPathNotation(data, expression)];
+    const value = slice[toPathNotation(expression)];
     return (emptyFallback ? (value ?? '') : value) as F extends true ? string : string | undefined;
   },
   getKeys: () => truthyKeys(slice),
@@ -330,12 +326,11 @@ export const createImmutableData = <T extends z.ZodMiniObject>(data: z.infer<T>)
 
 export const createImmutableErrors = <T extends z.ZodMiniObject>(
   errors: Record<keyof z.infer<T> | '', string | undefined>,
-  data: z.infer<T>,
   errorMessageSeparator: string
 ) =>
   freezeObject({
     ...errors,
-    ...errorGetters(errors, data, errorMessageSeparator),
+    ...errorGetters<z.infer<T>>(errors, errorMessageSeparator),
   });
 
 export const createImmutableDirty = <T extends z.ZodMiniObject>(
@@ -347,12 +342,11 @@ export const createImmutableDirty = <T extends z.ZodMiniObject>(
   });
 
 export const createImmutableTouched = <T extends z.ZodMiniObject>(
-  touched: Record<keyof z.infer<T>, boolean>,
-  data: z.infer<T>
+  touched: Record<keyof z.infer<T>, boolean>
 ) =>
   freezeObject({
     ...touched,
-    ...touchedGetters(touched, data),
+    ...touchedGetters<z.infer<T>>(touched),
   });
 
 export const createImmutableRanges = <T extends z.ZodMiniObject>(
@@ -364,39 +358,35 @@ export const createImmutableRanges = <T extends z.ZodMiniObject>(
       min: FieldRange;
       max: FieldRange;
     }
-  >,
-  data: z.infer<T>
+  >
 ) =>
   freezeObject({
     ...ranges,
-    ...rangeGetters(ranges, data),
+    ...rangeGetters<z.infer<T>>(ranges),
   }) as FormState<z.infer<T>>['ranges'];
 
 export const createImmutablePatterns = <T extends z.ZodMiniObject>(
-  patterns: Record<keyof z.infer<T>, string | undefined>,
-  data: z.infer<T>
+  patterns: Record<keyof z.infer<T>, string | undefined>
 ) =>
   freezeObject({
     ...patterns,
-    ...stringGetters(patterns, data, false),
+    ...stringGetters<z.infer<T>, false>(patterns, false),
   });
 
 export const createImmutableDescriptions = <T extends z.ZodMiniObject>(
-  descriptions: Record<keyof z.infer<T> | '', string | undefined>,
-  data: z.infer<T>
+  descriptions: Record<keyof z.infer<T> | '', string | undefined>
 ) =>
   freezeObject({
     ...descriptions,
-    ...stringGetters(descriptions, data, true),
+    ...stringGetters<z.infer<T>, true>(descriptions, true),
   });
 
 export const createImmutableRequired = <T extends z.ZodMiniObject>(
-  required: Record<keyof z.infer<T>, boolean>,
-  data: z.infer<T>
+  required: Record<keyof z.infer<T>, boolean>
 ) =>
   freezeObject({
     ...required,
-    ...requiredGetters(required, data),
+    ...requiredGetters<z.infer<T>>(required),
   });
 
 const pickByKeys = <V>(
@@ -461,17 +451,15 @@ export const createGroupBundle = <T extends z.ZodMiniObject>(
     const patterns = pickByKeys(slices.patterns, keys, false);
     const descriptions = pickByKeys(slices.descriptions, keys, false);
 
-    const expressionData = data as z.infer<T>;
-
     return freezeObject({
       data: data as Pick<State['data'], K>,
       errors: {
         ...(errors as Pick<State['errors'], K & string>),
-        ...errorGetters(errors, expressionData, errorMessageSeparator),
+        ...errorGetters<z.infer<T>>(errors, errorMessageSeparator),
       },
       touched: {
         ...(touched as Pick<State['touched'], K>),
-        ...touchedGetters(touched, expressionData),
+        ...touchedGetters<z.infer<T>>(touched),
       },
       dirty: {
         ...(dirty as Pick<State['dirty'], K>),
@@ -479,19 +467,19 @@ export const createGroupBundle = <T extends z.ZodMiniObject>(
       },
       required: {
         ...(required as Pick<State['required'], K>),
-        ...requiredGetters(required, expressionData),
+        ...requiredGetters<z.infer<T>>(required),
       },
       ranges: {
         ...(ranges as Pick<State['ranges'], K>),
-        ...rangeGetters(ranges, expressionData),
+        ...rangeGetters<z.infer<T>>(ranges),
       },
       patterns: {
         ...(patterns as Pick<State['patterns'], K>),
-        ...stringGetters(patterns, expressionData, false),
+        ...stringGetters<z.infer<T>, false>(patterns, false),
       },
       descriptions: {
         ...(descriptions as Pick<State['descriptions'], K & string>),
-        ...stringGetters(descriptions, expressionData, true),
+        ...stringGetters<z.infer<T>, true>(descriptions, true),
       },
       dirtyGroup: Object.values(dirty).some(Boolean),
       touchedGroup: Object.values(touched).some(Boolean),
@@ -603,22 +591,21 @@ export const difference = <T extends object>(obj1: T, obj2: Record<string, unkno
   return result as T;
 };
 
-export function mutateArrayState<T extends z.ZodMiniObject>(
+// Resolves `nameOrPath` and verifies against the schema (not the current data) that it is an array.
+export function getArrayPath<T extends z.ZodMiniObject>(
   schema: T,
   data: z.infer<T>,
-  nameOrPath: FormPath<T>,
-  mutator: (draft: unknown[]) => void
-): { name: keyof z.infer<T> | FormStatePath<z.infer<T>>; value: unknown[] } {
+  nameOrPath: FormPath<T>
+): keyof z.infer<T> | FormStatePath<z.infer<T>> {
   const name = typeof nameOrPath === 'function' ? getPath(data, nameOrPath) : nameOrPath;
-  const pathState = getState(schema, data, nameOrPath);
+  const pathNotation = Array.isArray(name) ? name.join('.') : String(name);
+  const type = getSchemaType(schema, pathNotation);
 
-  if (!Array.isArray(pathState)) {
+  if (type !== 'array' && type !== 'tuple') {
     throw new TypeError('The "nameOrPath" argument does not refer to an array type.');
   }
 
-  const value = updateState(pathState as ImmutableArray<unknown>, mutator);
-
-  return { name, value };
+  return name;
 }
 
 export function safeSyncParse<T extends z.ZodMiniType>(

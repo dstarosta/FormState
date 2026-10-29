@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, renderHook } from '@testing-library/react';
-import { useFormState, formatDate } from '../src';
+import { useFormState, formatDate, z } from '../src';
 import { schema, type InitialSchema } from './fixtures';
 
 afterEach(() => {
@@ -508,6 +508,75 @@ describe('state and status tests', () => {
     expect(clearedState.data.tags).toStrictEqual([]);
   });
 
+  it('should apply every array action dispatched in the same event', () => {
+    const { result } = renderHook(() => useFormState(schema, { initialData: { tags: ['a'] } }));
+
+    act(() => {
+      const { append, insert, remove, swap, update } = result.current.formActions.array;
+
+      append('tags', 'b');
+      append('tags', ['c', 'd']);
+      insert('tags', 0, 'z');
+      swap('tags', 0, 1);
+      update('tags', 4, 'e');
+      remove('tags', (value) => value === 'b');
+    });
+
+    expect(result.current.formState.data.tags).toStrictEqual(['a', 'z', 'c', 'e']);
+    expect(result.current.formStatus.dirty).toBe(true);
+  });
+
+  it('should apply array actions after a change in the same event', () => {
+    const { result } = renderHook(() => useFormState(schema, { initialData: { tags: ['a'] } }));
+
+    act(() => {
+      result.current.formActions.change('tags', ['x', 'y']);
+      result.current.formActions.array.append('tags', 'z');
+    });
+
+    expect(result.current.formState.data.tags).toStrictEqual(['x', 'y', 'z']);
+  });
+
+  it('should skip a swap whose indices no longer exist when the reducer runs', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() =>
+      useFormState(schema, { initialData: { tags: ['a', 'b'] } })
+    );
+
+    act(() => {
+      result.current.formActions.change('tags', ['c']);
+      result.current.formActions.array.swap('tags', 0, 1);
+    });
+
+    expect(result.current.formState.data.tags).toStrictEqual(['c']);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('array length=1'));
+
+    warn.mockRestore();
+  });
+
+  it('should treat a missing array as empty when it is cleared earlier in the same event', () => {
+    const { result } = renderHook(() => useFormState(schema, { initialData: { tags: ['a'] } }));
+
+    act(() => {
+      result.current.formActions.change('tags', undefined as never);
+      result.current.formActions.array.append('tags', 'b');
+    });
+
+    expect(result.current.formState.data.tags).toStrictEqual(['b']);
+  });
+
+  it('should keep falsy array items when removing with a predicate', () => {
+    const { result } = renderHook(() =>
+      useFormState(schema, { initialData: { tags: ['', 'a', 'b'] } })
+    );
+
+    act(() => {
+      result.current.formActions.array.remove('tags', (value) => value === 'b');
+    });
+
+    expect(result.current.formState.data.tags).toStrictEqual(['', 'a']);
+  });
+
   it('should throw on non-array fields', () => {
     const { result } = renderHook(() =>
       useFormState(schema, { initialData: { tags: ['a', 'b'] } })
@@ -541,20 +610,47 @@ describe('state and status tests', () => {
     }).toThrow(Error);
 
     expect(() => {
-      swap('tags', 0, 9999);
-    }).toThrow(Error);
-
-    expect(() => {
-      swap('tags', 9999, 0);
-    }).toThrow(Error);
-
-    expect(() => {
       remove('version', 0);
     }).toThrow(TypeError);
 
     expect(() => {
       clear('specialNumber');
     }).toThrow(TypeError);
+  });
+
+  it('should skip and warn when swap indices are past the end of the array', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() =>
+      useFormState(schema, { initialData: { tags: ['a', 'b'] } })
+    );
+
+    act(() => {
+      result.current.formActions.array.swap('tags', 0, 9999);
+    });
+
+    act(() => {
+      result.current.formActions.array.swap('tags', 9999, 0);
+    });
+
+    expect(result.current.formState.data.tags).toStrictEqual(['a', 'b']);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('fromIndex=0, toIndex=9999'));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('fromIndex=9999, toIndex=0'));
+
+    warn.mockRestore();
+  });
+
+  it('should append to an array field that is currently undefined', () => {
+    const { result } = renderHook(() => useFormState(schema, { initialData: { tags: ['a'] } }));
+
+    act(() => {
+      result.current.formActions.change('tags', undefined as never);
+    });
+
+    act(() => {
+      result.current.formActions.array.append('tags', 'b');
+    });
+
+    expect(result.current.formState.data.tags).toStrictEqual(['b']);
   });
 
   it('should update initial state reactively', () => {
@@ -578,6 +674,68 @@ describe('state and status tests', () => {
 
     expect(formState.data.name).toBe('Tom'); // changed value
     expect(formState.data.info.age).toBe(29); // unchanged value from the initial state
+  });
+
+  it('should keep metadata and error view identities when only the data changes', () => {
+    const { result } = renderHook(() => useFormState(schema, { initialData: { name: 'Jane' } }));
+    const before = result.current.formState;
+
+    act(() => {
+      result.current.formActions.change('name', 'Janet', { validate: false });
+    });
+
+    const after = result.current.formState;
+
+    expect(after.data).not.toBe(before.data);
+    expect(after.errors).toBe(before.errors);
+    expect(after.touched).toBe(before.touched);
+    expect(after.ranges).toBe(before.ranges);
+    expect(after.patterns).toBe(before.patterns);
+    expect(after.descriptions).toBe(before.descriptions);
+    expect(after.required).toBe(before.required);
+    expect(after.errors.get((path) => path.name)).toBeUndefined();
+    expect(after.required.get((path) => path.name)).toBe(true);
+  });
+
+  it('should not re-parse the initial state for an inline initialData with unchanged content', () => {
+    const inlineSchema = z.object({ name: z.formString(), tags: z.formArray(z.formString()) });
+    const safeParse = vi.spyOn(inlineSchema, 'safeParse');
+
+    const { rerender } = renderHook(() =>
+      useFormState(inlineSchema, {
+        initialData: { name: 'Jonathan', tags: ['a'] },
+        initialTouched: [(path) => path.name, 'tags'],
+      })
+    );
+
+    const callsAfterMount = safeParse.mock.calls.length;
+
+    rerender();
+    rerender();
+    rerender();
+
+    expect(safeParse.mock.calls).toHaveLength(callsAfterMount);
+
+    safeParse.mockRestore();
+  });
+
+  it('should update non-dirty fields from an inline initialData whose content changes', () => {
+    const inlineSchema = z.object({ name: z.formString(), city: z.formString() });
+    let city = 'Paris';
+
+    const { result, rerender } = renderHook(() =>
+      useFormState(inlineSchema, { initialData: { name: 'Jonathan', city } })
+    );
+
+    act(() => {
+      result.current.formActions.change('name', 'Tom');
+    });
+
+    city = 'Rome';
+    rerender();
+
+    expect(result.current.formState.data.name).toBe('Tom');
+    expect(result.current.formState.data.city).toBe('Rome');
   });
 
   it('should not update initial state reactively after calling "replace"', () => {

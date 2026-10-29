@@ -57,7 +57,15 @@ export const createFormComponent = <T extends object>(
    * The Form component with pre-wired reset logic.
    */
   function Form(props: FormProps) {
-    const { ref: forwardedRef, nativeValidation, submitWithEnter, children, ...restProps } = props;
+    const {
+      ref: forwardedRef,
+      nativeValidation,
+      submitWithEnter,
+      children,
+      onKeyDown,
+      onReset,
+      ...restProps
+    } = props;
 
     const formRef = useRef<HTMLFormElement>(null);
     const lastSubmitter = useRef<HTMLElement>(null);
@@ -65,8 +73,11 @@ export const createFormComponent = <T extends object>(
     const formProps = useMemo(
       () => ({
         noValidate: !nativeValidation,
-        onKeyDown: (event: React.KeyboardEvent) => {
+        onKeyDown: (event: React.KeyboardEvent<HTMLFormElement>) => {
+          onKeyDown?.(event);
+
           if (
+            event.defaultPrevented ||
             !(
               !submitWithEnter &&
               event.key === 'Enter' &&
@@ -90,7 +101,7 @@ export const createFormComponent = <T extends object>(
           }
         },
       }),
-      [nativeValidation, submitWithEnter]
+      [nativeValidation, submitWithEnter, onKeyDown]
     );
 
     const resetStore = useCallback(() => {
@@ -174,17 +185,21 @@ export const createFormComponent = <T extends object>(
           form.addEventListener('change', handleInputChange);
         }
 
+        // SecureInput values are patched into every FormData (React actions, onSubmit handlers and
+        // native submits); the submitter is only tracked for React actions, which omit it.
+        form.addEventListener('formdata', handleFormData);
+
         const hasJavaScriptAction = form.action.startsWith('javascript:');
 
         if (hasJavaScriptAction) {
-          form.addEventListener('formdata', handleFormData);
           form.addEventListener('submit', handleSubmit, { capture: true });
         }
 
         return () => {
+          form.removeEventListener('formdata', handleFormData);
+
           if (hasJavaScriptAction) {
             form.removeEventListener('submit', handleSubmit, { capture: true });
-            form.removeEventListener('formdata', handleFormData);
           }
 
           if (store) {
@@ -202,19 +217,28 @@ export const createFormComponent = <T extends object>(
       [forwardedRef, handleInputChange, handleFormData, handleSubmit, resetStore]
     );
 
-    const handleReset = useCallback(() => {
-      dispatch({
-        type: 'reset',
-        options: {
-          retainData: false,
-          resetTouched: resetTouchedOnFormReset,
-        },
-      });
+    const handleReset = useCallback(
+      (event: React.SyntheticEvent<HTMLFormElement>) => {
+        onReset?.(event);
 
-      setTimeout(() => {
-        resetStore();
-      }, 0);
-    }, [resetStore]);
+        if (event.defaultPrevented) {
+          return;
+        }
+
+        dispatch({
+          type: 'reset',
+          options: {
+            retainData: false,
+            resetTouched: resetTouchedOnFormReset,
+          },
+        });
+
+        setTimeout(() => {
+          resetStore();
+        }, 0);
+      },
+      [onReset, resetStore]
+    );
 
     return (
       <form

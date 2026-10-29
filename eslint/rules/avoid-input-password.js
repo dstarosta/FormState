@@ -75,7 +75,7 @@ function getImportFix(fixer, sourceCode) {
 export const avoidInputPassword = {
   meta: {
     type: 'suggestion',
-    fixable: 'code',
+    hasSuggestions: true,
     docs: {
       description:
         'Enforce using SecureInput instead of <input type="password"> inside forms with action or onSubmit handlers',
@@ -85,6 +85,8 @@ export const avoidInputPassword = {
     messages: {
       useSecureInput:
         'Use <SecureInput> instead of <input type="password"> inside forms with action or onSubmit handlers.',
+      replaceWithSecureInput:
+        'Replace with <SecureInput> (read its plaintext through onSecureChange, not onChange).',
     },
   },
 
@@ -109,27 +111,34 @@ export const avoidInputPassword = {
                 context.report({
                   node,
                   messageId: 'useSecureInput',
-                  fix(fixer) {
-                    const fixes = [];
-                    const { sourceCode } = context;
+                  suggest: [
+                    {
+                      messageId: 'replaceWithSecureInput',
+                      fix(fixer) {
+                        const fixes = [];
+                        const { sourceCode } = context;
 
-                    fixes.push(fixer.replaceText(node.name, 'SecureInput'));
+                        fixes.push(fixer.replaceText(node.name, 'SecureInput'));
 
-                    const typeAttr = getPasswordTypeAttr(node.attributes);
-                    const tokenBefore = sourceCode.getTokenBefore(typeAttr);
-                    fixes.push(fixer.removeRange([tokenBefore.range[1], typeAttr.range[1]]));
+                        const typeAttr = getPasswordTypeAttr(node.attributes);
+                        const tokenBefore = sourceCode.getTokenBefore(typeAttr);
+                        fixes.push(fixer.removeRange([tokenBefore.range[1], typeAttr.range[1]]));
 
-                    if (node.parent.closingElement) {
-                      fixes.push(fixer.replaceText(node.parent.closingElement.name, 'SecureInput'));
-                    }
+                        if (node.parent.closingElement) {
+                          fixes.push(
+                            fixer.replaceText(node.parent.closingElement.name, 'SecureInput')
+                          );
+                        }
 
-                    const importFix = getImportFix(fixer, sourceCode);
-                    if (importFix) {
-                      fixes.push(importFix);
-                    }
+                        const importFix = getImportFix(fixer, sourceCode);
+                        if (importFix) {
+                          fixes.push(importFix);
+                        }
 
-                    return fixes;
-                  },
+                        return fixes;
+                      },
+                    },
+                  ],
                 });
               }
 

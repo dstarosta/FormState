@@ -430,7 +430,39 @@ export function MaskedInput({
       return;
     }
 
+    // IME composition updates cannot be cancelled and carry the whole composition so far, so they
+    // are ignored and the final text is inserted once on compositionend.
+    let composition: { start: number; end: number } | null = null;
+
+    const handleCompositionStart = () => {
+      composition = { start: element.selectionStart ?? 0, end: element.selectionEnd ?? 0 };
+    };
+
+    const handleCompositionEnd = (event: CompositionEvent) => {
+      const range = composition;
+      composition = null;
+
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (!range) {
+        return;
+      }
+
+      // The browser wrote the raw composed text into the DOM; restore the formatted value.
+      const currentFormatted = formatSlots(slotsRef.current, info);
+      element.value = currentFormatted === info.empty ? '' : currentFormatted;
+
+      if (event.data) {
+        const result = insertChars(slotsRef.current, info, range.start, range.end, event.data);
+        commit(result.slots, result.caret);
+      }
+    };
+
     const handler = (event: InputEvent) => {
+      if (composition && event.inputType === 'insertCompositionText') {
+        return;
+      }
+
       if (readOnly || disabled) {
         event.preventDefault();
         return;
@@ -517,10 +549,14 @@ export function MaskedInput({
 
     element.addEventListener('beforeinput', handler);
     element.addEventListener('input', inputHandler);
+    element.addEventListener('compositionstart', handleCompositionStart);
+    element.addEventListener('compositionend', handleCompositionEnd);
 
     return () => {
       element.removeEventListener('beforeinput', handler);
       element.removeEventListener('input', inputHandler);
+      element.removeEventListener('compositionstart', handleCompositionStart);
+      element.removeEventListener('compositionend', handleCompositionEnd);
     };
   }, [commit, info, readOnly, disabled]);
 

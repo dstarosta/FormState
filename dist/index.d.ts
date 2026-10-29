@@ -2110,7 +2110,7 @@ declare const advanced: {
   discriminatedUnion: typeof z.discriminatedUnion;
   intersection: typeof z.intersection;
   tuple: typeof z.tuple;
-  partialRecord: typeof z.record;
+  partialRecord: typeof z.partialRecord;
   record: typeof z.record;
   map: typeof z.map;
   set: typeof z.set;
@@ -2505,6 +2505,35 @@ declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<Pr
  */
 declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): FormStateResponse<T>;
 /**
+ * Hook that subscribes to a single group's data slice of the form state context. The component
+ * re-renders only when that group's data changes.
+ *
+ * @example
+ * const contact = useFormStateContext(schema, 'contact'); // { email, phone }
+ *
+ * @typeParam T - type of the form data.
+ * @typeParam G - the group name.
+ * @param schema - Zod schema to validate the form data.
+ * @param groupName - A group name declared via `z.group(schema, name)`.
+ * @returns An immutable object containing only that group's root-level data fields.
+ */
+declare function useFormStateContext<T extends z.ZodMiniObject, G extends GroupNames<GroupSchemaShape<T>>>(schema: T, groupName: G): Immutable<GroupData<T, G>>;
+/**
+ * Hook that subscribes to a value selected from the form state context. The component re-renders
+ * only when the selected value changes (compared deeply).
+ *
+ * @example
+ * const city = useFormStateContext(schema, (form) => form.formState.data.city);
+ * const { change } = useFormStateContext(schema, (form) => form.formActions); // never re-renders
+ *
+ * @typeParam T - type of the form data.
+ * @typeParam R - the selected value type.
+ * @param schema - Zod schema to validate the form data.
+ * @param selector - Selects a value from the form state, status, actions, etc.
+ * @returns The selected value.
+ */
+declare function useFormStateContext<T extends z.ZodMiniObject, R>(schema: T, selector: (form: FormStateResponse<T>) => R): R;
+/**
  * HOC that wraps a React component with the form state context provider and initializes the state
  * based on the provided schema.
  *
@@ -2695,10 +2724,12 @@ declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: 
  *
  * @param date - The date object.
  * @param format - The date format.
+ * @param asUTC - Indicates whether to format the date using Universal Coordinated Time (UTC), matching
+ *                dates created with the `asUTC` option (default: `false`).
  * @throws A `TypeError` instance if the date object is not a valid `Date` instance.
  * @returns The formatted date string.
  */
-declare function formatDate(date: Date, format?: FormDateFormat): string;
+declare function formatDate(date: Date, format?: FormDateFormat, asUTC?: boolean): string;
 /**
  * Parses the provided string input containing a date in the provided format.
  *
@@ -3023,11 +3054,14 @@ declare const toLiteral: <T extends string>(value: string, validValues: readonly
  * @param options.emptyStringAsFalse - Indicates the input value is an optional `boolean` and an empty string
  *                                     should be converted to 'false'. Only set it to `true` when setting optional
  *                                     booleans in the form action handler.
+ * @param options.asUTC - Indicates whether to format `Date` values using Universal Coordinated Time (UTC),
+ *                        matching dates created with `toDate(value, { asUTC: true })` (default: `false`).
  * @returns The converted value.
  */
 declare const toString: (value: boolean | string | number | Date | null | undefined, options?: {
   dateFormat?: FormDateFormat;
   emptyStringAsFalse?: boolean;
+  asUTC?: boolean;
 }) => string;
 /**
  * Returns the value represented by an optional `boolean | ''` type.

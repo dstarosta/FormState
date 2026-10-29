@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { formatDate, safeParseDate } from '../../src';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { convert, formatDate, safeParseDate } from '../../src';
 import { getDatePattern } from '../../src/helpers/date-formatter';
 
 describe('date formatter', () => {
@@ -122,4 +122,51 @@ it('should not parse invalid dates', () => {
   expect(parsedDate.date).toBeNull();
 
   expect(() => safeParseDate('12-12-12', 'MM-MM-MM' as unknown as 'MM/dd/yyyy')).toThrow(TypeError);
+});
+
+describe('date formatting across time zones', () => {
+  let originalTZ: string | undefined;
+
+  beforeEach(() => {
+    originalTZ = process.env['TZ'];
+    process.env['TZ'] = 'America/New_York';
+  });
+
+  afterEach(() => {
+    if (originalTZ === undefined) {
+      delete process.env['TZ'];
+    } else {
+      process.env['TZ'] = originalTZ;
+    }
+  });
+
+  it('formats a UTC-parsed date back to the same day with asUTC', () => {
+    const date = convert.toDate('2024-01-15', { asUTC: true }) as Date;
+
+    expect(formatDate(date, 'yyyy-MM-dd', true)).toBe('2024-01-15');
+    expect(convert.toString(date, { asUTC: true })).toBe('2024-01-15');
+    expect(convert.toString(date, { dateFormat: 'MM/dd/yyyy', asUTC: true })).toBe('01/15/2024');
+  });
+
+  it('keeps formatting local dates in local time by default', () => {
+    const date = convert.toDate('2024-01-15') as Date;
+
+    expect(formatDate(date)).toBe('2024-01-15');
+    expect(convert.toString(date)).toBe('2024-01-15');
+  });
+});
+
+describe('years before 1000', () => {
+  it('pads the year to four digits so the result can be parsed back', () => {
+    const date = new Date(2000, 0, 1);
+    date.setFullYear(999);
+
+    expect(formatDate(date)).toBe('0999-01-01');
+    expect(safeParseDate(formatDate(date)).date?.getFullYear()).toBe(999);
+  });
+
+  it('parses years 0-99 literally', () => {
+    expect(safeParseDate('0099-03-04').date?.getFullYear()).toBe(99);
+    expect((convert.toDate('0050-06-07', { asUTC: true }) as Date).getUTCFullYear()).toBe(50);
+  });
 });
