@@ -118,6 +118,27 @@ export type ImmutableObject<T> = { readonly [K in keyof T]: Immutable<T[K]> };
 
 export type ArrayElement<A> = A extends readonly (infer U)[] ? U : never;
 
+/**
+ * The `errors` key of a `validate` / `validateAsync` check: a property of the validated object, or a
+ * path tuple into it. Any key is accepted when the validated type is unknown or not an object.
+ *
+ * @typeParam T - the validated value type.
+ */
+export type ValidationPath<T> = unknown extends T
+  ? PropertyKey | readonly PropertyKey[]
+  : T extends object
+    ? keyof T | Readonly<FormStatePath<T>>
+    : PropertyKey | readonly PropertyKey[];
+
+/**
+ * Resolves to the form path `P` when it refers to an array (or tuple) property, otherwise `never`.
+ *
+ * @typeParam T - schema type.
+ * @typeParam P - the form path (either a key or a function expression).
+ */
+export type FormArrayPath<T extends z.ZodMiniObject, P extends FormPath<T>> =
+  NonNullable<FormPathValue<T, P>> extends readonly unknown[] ? P : never;
+
 export type UnknownObject = Record<string | number | symbol, unknown>;
 
 export type FieldRange = number | Date | undefined;
@@ -230,7 +251,10 @@ export type FormMutableState<T extends object> = {
   dirty: Record<keyof T, boolean>;
   touched: Record<keyof T, boolean>;
   required: Record<keyof T, boolean>;
-  ranges: Record<keyof T, { type: string; format: string; min: FieldRange; max: FieldRange }>;
+  // Only fields with a min or max (or a length) have an entry.
+  ranges: Partial<
+    Record<keyof T, { type: string; format: string; min: FieldRange; max: FieldRange }>
+  >;
   patterns: Record<keyof T, string | undefined>;
   descriptions: Record<keyof T | '', string | undefined>;
   submitCount: number;
@@ -341,10 +365,10 @@ export type GroupBundle<T extends object, K extends keyof T> = {
        * @example
        * group.errors.get((path) => path.company.name)
        *
-       * @param expression - Form state path expression.
+       * @param nameOrPath - Field name or a state path expression.
        * @returns Error message for the specified field, or `undefined` if there is no error.
        */
-      get: (expression: (data: T) => unknown) => string | undefined;
+      get: (nameOrPath: K | ((data: T) => unknown)) => string | undefined;
       /**
        * Gets a manual error message with an arbitrary `string` key.
        *
@@ -368,13 +392,15 @@ export type GroupBundle<T extends object, K extends keyof T> = {
   dirty: Immutable<
     Pick<FormMutableState<T>['dirty'], K> & {
       /**
-       * Gets the dirty state for an arbitrary `string` key.
+       * Gets the dirty state of a field, or of an arbitrary `#`-prefixed key set with `setDirty`.
+       * Dirty state is tracked per root-level field, so a nested path returns the state of its
+       * root field.
        *
-       * @param key - A `string` key. The key must start with the `#` character to avoid key
-       *              collisions.
-       * @returns `true` if the key exists and is dirty, `false` otherwise.
+       * @param nameOrPath - A field name, a state path expression, or a key that starts with the
+       *                     `#` character.
+       * @returns `true` if the field or key is dirty, `false` otherwise.
        */
-      get: (key: `#${string}`) => boolean;
+      get: (nameOrPath: K | `#${string}` | ((data: T) => unknown)) => boolean;
       /**
        * Gets an array of all dirty keys in the group.
        */
@@ -392,10 +418,10 @@ export type GroupBundle<T extends object, K extends keyof T> = {
        * @example
        * group.touched.get((path) => path.info.age)
        *
-       * @param expression - Form state path expression.
+       * @param nameOrPath - Field name or a state path expression.
        * @returns `true` if the field exists and has been touched, `false` otherwise.
        */
-      get: (expression: (data: T) => unknown) => boolean;
+      get: (nameOrPath: K | ((data: T) => unknown)) => boolean;
       /**
        * Gets an array of all touched keys in the group.
        */
@@ -413,10 +439,10 @@ export type GroupBundle<T extends object, K extends keyof T> = {
        * @example
        * group.required.get((path) => path.info.age)
        *
-       * @param expression - Form state path expression.
+       * @param nameOrPath - Field name or a state path expression.
        * @returns `true` if the field is required in the form, `false` otherwise.
        */
-      get: (expression: (data: T) => unknown) => boolean;
+      get: (nameOrPath: K | ((data: T) => unknown)) => boolean;
       /**
        * Gets an array of all required keys in the group.
        */
@@ -434,10 +460,10 @@ export type GroupBundle<T extends object, K extends keyof T> = {
        * @example
        * const { min, max } = group.ranges.get((path) => path.info.birthDate) ?? {}
        *
-       * @param expression - Form state path expression.
+       * @param nameOrPath - Field name or a state path expression.
        * @returns An object with the `min` and `max` properties, or `undefined`.
        */
-      get: (expression: (data: T) => unknown) => RangeResult<number | Date> | undefined;
+      get: (nameOrPath: K | ((data: T) => unknown)) => RangeResult<number | Date> | undefined;
       /**
        * Gets the minimum range value or length for a nested numeric or date field in the group.
        *
@@ -471,10 +497,10 @@ export type GroupBundle<T extends object, K extends keyof T> = {
        * @example
        * group.patterns.get((path) => path.name)
        *
-       * @param expression - Form state path expression.
+       * @param nameOrPath - Field name or a state path expression.
        * @returns `string` containing the regular expression pattern, or `undefined` if there is no pattern.
        */
-      get: (expression: (data: T) => unknown) => string | undefined;
+      get: (nameOrPath: K | ((data: T) => unknown)) => string | undefined;
       /**
        * Gets an array of all pattern keys in the group.
        */
@@ -492,10 +518,10 @@ export type GroupBundle<T extends object, K extends keyof T> = {
        * @example
        * group.descriptions.get((path) => path.name)
        *
-       * @param expression - Form state path expression.
+       * @param nameOrPath - Field name or a state path expression.
        * @returns `string` containing the description; no description returns an empty `string`.
        */
-      get: (expression: (data: T) => unknown) => string;
+      get: (nameOrPath: K | ((data: T) => unknown)) => string;
       /**
        * Gets an array of all description keys in the group.
        */
@@ -823,7 +849,7 @@ export type FormState<T extends object> = {
        * @param path - Form state path expression.
        * @returns Error message for the specified field, or `undefined` if there is no error.
        */
-      get: (expression: (data: T) => unknown) => string | undefined;
+      get: (nameOrPath: keyof T | ((data: T) => unknown)) => string | undefined;
       /**
        * Gets a manual error message with an arbitrary `string` key.
        *
@@ -849,16 +875,19 @@ export type FormState<T extends object> = {
   dirty: Immutable<
     FormMutableState<T>['dirty'] & {
       /**
-       * Gets the dirty state for an arbitrary `string` key.
+       * Gets the dirty state of a field, or of an arbitrary `#`-prefixed key set with `setDirty`.
+       * Dirty state is tracked per root-level field, so a nested path returns the state of its
+       * root field.
        *
        * @example
+       * formState.dirty.get('name')
        * formState.dirty.get("#myError")
        *
-       * @param key - A `string` key. The key must start with the `#` character
-       *              to avoid key collisions.
-       * @returns `true` if the key exists and is dirty, `false` otherwise.
+       * @param nameOrPath - A field name, a state path expression, or a key that starts with the
+       *                     `#` character.
+       * @returns `true` if the field or key is dirty, `false` otherwise.
        */
-      get: (key: `#${string}`) => boolean;
+      get: (nameOrPath: keyof T | `#${string}` | ((data: T) => unknown)) => boolean;
       /**
        * Gets an array of all dirty keys.
        *
@@ -881,7 +910,7 @@ export type FormState<T extends object> = {
        * @param path - Form state path expression.
        * @returns `true` if the field exists and has been touched, `false` otherwise.
        */
-      get: (expression: (data: T) => unknown) => boolean;
+      get: (nameOrPath: keyof T | ((data: T) => unknown)) => boolean;
       /**
        * Gets an array of all touched keys.
        *
@@ -904,7 +933,7 @@ export type FormState<T extends object> = {
        * @param path - Form state path expression.
        * @returns `true` if the field is required in the form, `false` otherwise.
        */
-      get: (expression: (data: T) => unknown) => boolean;
+      get: (nameOrPath: keyof T | ((data: T) => unknown)) => boolean;
       /**
        * Gets an array of all required keys.
        *
@@ -919,6 +948,18 @@ export type FormState<T extends object> = {
   ranges: Immutable<
     FormMutableState<T>['ranges'] & {
       get: {
+        /**
+         * Gets the minimum and maximum values (or lengths) for a field.
+         *
+         * @example
+         * const { min, max } = formState.ranges.get('age') ?? {}
+         *
+         * @param name - Field name.
+         * @returns An object containing the `min` and the `max` properties, or `undefined`.
+         */
+        <K extends keyof T>(
+          name: K
+        ): RangeResult<T[K] extends string | unknown[] | undefined ? number | undefined : T[K]>;
         /**
          * Gets the minimum and maximum values for a nested numeric or date field.
          *
@@ -1028,7 +1069,7 @@ export type FormState<T extends object> = {
        * @param path - Form state path expression.
        * @returns `string` containing the regular expression pattern, or `undefined` if there is no pattern.
        */
-      get: (expression: (data: T) => unknown) => string | undefined;
+      get: (nameOrPath: keyof T | ((data: T) => unknown)) => string | undefined;
       /**
        * Gets an array of all pattern keys.
        *
@@ -1051,7 +1092,7 @@ export type FormState<T extends object> = {
        * @param path - Form state path expression.
        * @returns `string` containing the description; no description returns an empty `string`.
        */
-      get: (expression: (data: T) => unknown) => string;
+      get: (nameOrPath: keyof T | ((data: T) => unknown)) => string;
       /**
        * Gets an array of all description keys.
        *
@@ -1875,8 +1916,8 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
        * @param to - The target item's array index.
        * @param options - Options for the corresponding change event.
        */
-      swap: (
-        nameOrPath: FormPath<T>,
+      swap: <P extends FormPath<T>>(
+        nameOrPath: P & FormArrayPath<T, P>,
         from: number,
         to: number,
         options?: FormChangeArrayOptions<T>
@@ -1897,7 +1938,7 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
        * @param options - Options for the corresponding change event.
        */
       remove: <P extends FormPath<T>>(
-        nameOrPath: P,
+        nameOrPath: P & FormArrayPath<T, P>,
         indexOrPredicate:
           number | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
         options?: FormChangeArrayOptions<T>
@@ -1915,7 +1956,10 @@ export type FormStateResponse<T extends z.ZodMiniObject> = {
        * @param nameOrPath - Root level field name or a state path expression.
        * @param options - Options for the corresponding change event.
        */
-      clear: (nameOrPath: FormPath<T>, options?: FormChangeArrayOptions<T>) => void;
+      clear: <P extends FormPath<T>>(
+        nameOrPath: P & FormArrayPath<T, P>,
+        options?: FormChangeArrayOptions<T>
+      ) => void;
     };
   };
   /**
@@ -2291,7 +2335,7 @@ export type ParseResult<T extends z.ZodMiniObject> = {
      * @param path - Form state path expression.
      * @returns Error message for the specified field, or `undefined` if there is no error.
      */
-    get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
+    get: (nameOrPath: keyof z.infer<T> | ((data: z.infer<T>) => unknown)) => string | undefined;
     /**
      * Gets an array of all error messages.
      *
@@ -2325,7 +2369,7 @@ export type ParseAsObjectResult<T extends z.ZodMiniObject> = {
    * Data validation errors.
    */
   errors: Record<keyof z.infer<T> | '', string | undefined> & {
-    get: (expression: (data: z.infer<T>) => unknown) => string | undefined;
+    get: (nameOrPath: keyof z.infer<T> | ((data: z.infer<T>) => unknown)) => string | undefined;
     getAll: () => string[];
     getKeys: () => string[];
   };

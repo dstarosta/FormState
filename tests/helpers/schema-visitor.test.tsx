@@ -122,7 +122,7 @@ describe('collectAsyncCheckPaths', () => {
     const sym = Symbol('hidden');
     const schema = z.object({ name: z.formString({ required: true }) }).check(
       z.validateAsync(() => Promise.resolve(true), {
-        path: [sym, 'name'] as unknown as string[],
+        path: [sym, 'name'] as unknown as ['name'],
         error: 'nope',
       })
     );
@@ -254,7 +254,7 @@ describe('collectActiveAsyncCheckPaths', () => {
     const sym = Symbol('hidden');
     const schema = z.object({ user: z.object({ name: z.formString({ required: true }) }) }).check(
       z.validateAsync(() => Promise.resolve(true), {
-        path: [sym, 'user', 'name'] as unknown as string[],
+        path: [sym, 'user', 'name'] as unknown as ['user', 'name'],
         error: 'nope',
       })
     );

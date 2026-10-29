@@ -20,7 +20,7 @@ describe('useFormStateReducer', () => {
     dirty: { name: false },
     touched: { name: false },
     required: { name: true },
-    ranges: {} as FormMutableState<State>['ranges'],
+    ranges: {},
     patterns: {} as Record<keyof State, string | undefined>,
     descriptions: {} as Record<keyof State | '', string | undefined>,
     submitCount: 0,

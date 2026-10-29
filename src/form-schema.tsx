@@ -2,6 +2,7 @@ import * as z from 'zod/mini';
 
 import type {
   AsyncCheckMeta,
+  ValidationPath,
   FormDateFormat,
   FormDateOptions,
   FormStringOptions,
@@ -25,6 +26,15 @@ const EMPTY_STRING = '' as const;
 const Z_EMPTY_STRING = z.literal(EMPTY_STRING);
 
 const ALWAYS_VALIDATE = () => true;
+
+// Normalizes a `validate` / `validateAsync` path into the mutable array Zod expects.
+const toIssuePath = (path: PropertyKey | readonly PropertyKey[] | undefined) => {
+  if (path === undefined) {
+    return;
+  }
+
+  return typeof path === 'object' ? [...path] : [path];
+};
 
 // Private functions
 
@@ -1008,7 +1018,7 @@ export function validate<T>(
   predicate: (item: NoInfer<T>) => boolean,
   params?: {
     condition?: (errors: ZodValidationError[]) => boolean;
-    path?: PropertyKey[] | PropertyKey;
+    path?: ValidationPath<T>;
     error?: string;
   }
 ): z.core.$ZodCheck<T>;
@@ -1032,7 +1042,7 @@ export function validate<T>(
   params?:
     | {
         condition?: (errors: ZodValidationError[]) => boolean;
-        path?: PropertyKey[] | PropertyKey;
+        path?: ValidationPath<T>;
         error?: string;
       }
     | string
@@ -1044,7 +1054,7 @@ export function validate<T>(
 
   return z.refine<T>((obj) => predicate(obj), {
     when: (payload) => condition(toValidationErrors(payload.issues)),
-    path: Array.isArray(path) || path === undefined ? path : [path],
+    path: toIssuePath(path),
     params: error ? { message: error } : undefined,
     error,
   });
@@ -1079,7 +1089,7 @@ export function validateAsync<T>(
   params?: {
     condition?: (errors: ZodValidationError[]) => boolean;
     skipWhen?: (item: T, prevItem: T | undefined) => boolean;
-    path?: PropertyKey[] | PropertyKey;
+    path?: ValidationPath<T>;
     error?: string;
     debounceMs?: number;
     submitOnly?: boolean;
@@ -1106,7 +1116,7 @@ export function validateAsync<T>(
     | {
         condition?: (errors: ZodValidationError[]) => boolean;
         skipWhen?: (item: T, prevItem: T | undefined) => boolean;
-        path?: PropertyKey[] | PropertyKey;
+        path?: ValidationPath<T>;
         error?: string;
         debounceMs?: number;
         submitOnly?: boolean;
@@ -1214,7 +1224,7 @@ export function validateAsync<T>(
         }
         return shouldRun;
       },
-      path: Array.isArray(path) || path === undefined ? path : [path],
+      path: toIssuePath(path),
       params: error ? { message: error } : undefined,
       error,
     }

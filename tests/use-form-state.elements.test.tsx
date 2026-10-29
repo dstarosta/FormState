@@ -1227,6 +1227,47 @@ describe('form element tests', () => {
     expect(submittedElement).toBeInTheDocument();
   });
 
+  it('keeps watched values when the Form receives an inline ref and re-renders', async () => {
+    const Component = () => {
+      const [count, setCount] = React.useState(0);
+      const {
+        formHooks: { useWatch },
+        Form,
+      } = useFormState(schema, { initialData: { name: 'init' }, watch: true });
+      const watched = useWatch('name');
+
+      return (
+        <Form ref={() => {}}>
+          <input name="name" defaultValue="init" data-testid="watchedInput" />
+          <p>Watched: {watched}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setCount(count + 1);
+            }}
+          >
+            Rerender {count}
+          </button>
+        </Form>
+      );
+    };
+
+    render(<Component />);
+
+    fireEvent.input(screen.getByTestId('watchedInput'), { target: { value: 'typed' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Watched: typed')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Rerender 0'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Rerender 1')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Watched: typed')).toBeInTheDocument();
+  });
+
   it('runs both the consumer and the built-in onReset handlers', () => {
     const onReset = vi.fn();
 

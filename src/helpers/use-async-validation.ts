@@ -338,11 +338,12 @@ export function useAsyncValidation<T extends z.ZodMiniObject>({
     asyncMetaMap,
   ]);
 
-  // Registers listener callbacks.
-  useEffect(() => {
+  // Lets newly registered listeners receive the current burst's pending event. As a layout effect
+  // it runs before the children's `useListener` effects register their listeners.
+  useIsomorphicLayoutEffect(() => {
     onListenerAddedRef.current = drainPendingValidating;
     drainPendingValidating();
-  });
+  }, [onListenerAddedRef, drainPendingValidating]);
 
   // Fires an `asyncValidating` / `asyncValidated` event.
   const fireAsyncListenerEvent = useCallback(

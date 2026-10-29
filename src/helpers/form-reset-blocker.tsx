@@ -1,8 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 
 import type { FormResetBlockerProps } from '../types/form-types';
-import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 
 /**
  * A component to put inside a form element that has a function called from the `action` attribute
@@ -12,10 +11,15 @@ export function FormResetBlocker({ formRef }: FormResetBlockerProps) {
   const innerRef = useRef<HTMLDivElement>(null);
 
   const { pending } = useFormStatus();
-  const pendingRef = useRef(pending);
 
-  useIsomorphicLayoutEffect(() => {
-    pendingRef.current = pending;
+  // Reads the latest `pending` value without re-registering the listener.
+  const blockReset = useEffectEvent((event: Event) => {
+    if (!pending) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
   });
 
   useEffect(() => {
@@ -25,19 +29,14 @@ export function FormResetBlocker({ formRef }: FormResetBlockerProps) {
       return;
     }
 
-    const blockReset = (event: Event) => {
-      if (!pendingRef.current) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopImmediatePropagation();
+    const handleReset = (event: Event) => {
+      blockReset(event);
     };
 
-    form.addEventListener('reset', blockReset, { capture: true });
+    form.addEventListener('reset', handleReset, { capture: true });
 
     return () => {
-      form.removeEventListener('reset', blockReset, { capture: true });
+      form.removeEventListener('reset', handleReset, { capture: true });
     };
   }, [formRef]);
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { setFormData } from './helpers/element-values';
 import { mergeRefs } from './helpers/ref-merge';
@@ -10,7 +10,20 @@ import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effec
  */
 type SecureInputProps = Omit<
   React.ComponentPropsWithRef<'input'>,
-  'onChange' | 'type' | 'value' | 'defaultValue'
+  | 'onChange'
+  | 'type'
+  | 'value'
+  | 'defaultValue'
+  // Always set by the component so that the plaintext cannot leak (autofill, spellcheck,
+  // clipboard, drag and drop, or a consumer's key handler).
+  | 'autoComplete'
+  | 'spellCheck'
+  | 'onKeyDown'
+  | 'onPaste'
+  | 'onCopy'
+  | 'onCut'
+  | 'onDrop'
+  | 'onDragStart'
 > & {
   /**
    * Visual rendering of the input. `'text'` shows the bullet mask in the
@@ -149,6 +162,11 @@ export function SecureInput({
     [isControlled, name]
   );
 
+  // Lets the DOM listeners below commit through the latest `commit` without re-subscribing.
+  const commitLatest = useEffectEvent((nextReal: string, caret: number) => {
+    commit(nextReal, caret);
+  });
+
   useEffect(() => {
     const element = inputRef.current;
 
@@ -182,7 +200,7 @@ export function SecureInput({
       element.value = MASK_CHAR.repeat(existingValue.length);
 
       if (event.data) {
-        commit(
+        commitLatest(
           spliceValue(existingValue, range.start, range.end, event.data),
           range.start + event.data.length
         );
@@ -205,22 +223,22 @@ export function SecureInput({
         case 'insertText':
         case 'insertCompositionText':
         case 'insertFromDrop': {
-          commit(spliceValue(existingValue, start, end, data), start + data.length);
+          commitLatest(spliceValue(existingValue, start, end, data), start + data.length);
           break;
         }
         case 'deleteContentBackward': {
           if (start !== end) {
-            commit(spliceValue(existingValue, start, end), start);
+            commitLatest(spliceValue(existingValue, start, end), start);
           } else if (start > 0) {
-            commit(spliceValue(existingValue, start - 1, start), start - 1);
+            commitLatest(spliceValue(existingValue, start - 1, start), start - 1);
           }
           break;
         }
         case 'deleteContentForward': {
           if (start !== end) {
-            commit(spliceValue(existingValue, start, end), start);
+            commitLatest(spliceValue(existingValue, start, end), start);
           } else if (start < existingValue.length) {
-            commit(spliceValue(existingValue, start, start + 1), start);
+            commitLatest(spliceValue(existingValue, start, start + 1), start);
           }
           break;
         }
@@ -228,9 +246,9 @@ export function SecureInput({
         case 'deleteSoftLineBackward':
         case 'deleteHardLineBackward': {
           if (start === end) {
-            commit(existingValue.slice(end), 0);
+            commitLatest(existingValue.slice(end), 0);
           } else {
-            commit(spliceValue(existingValue, start, end), start);
+            commitLatest(spliceValue(existingValue, start, end), start);
           }
           break;
         }
@@ -238,9 +256,9 @@ export function SecureInput({
         case 'deleteSoftLineForward':
         case 'deleteHardLineForward': {
           if (start === end) {
-            commit(existingValue.slice(0, start), start);
+            commitLatest(existingValue.slice(0, start), start);
           } else {
-            commit(spliceValue(existingValue, start, end), start);
+            commitLatest(spliceValue(existingValue, start, end), start);
           }
           break;
         }
@@ -256,7 +274,7 @@ export function SecureInput({
       element.removeEventListener('compositionstart', handleCompositionStart);
       element.removeEventListener('compositionend', handleCompositionEnd);
     };
-  }, [commit]);
+  }, []);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (readOnly || disabled) {

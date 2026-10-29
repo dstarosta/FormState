@@ -598,7 +598,7 @@ describe('state and status tests', () => {
     }).toThrow(TypeError);
 
     expect(() => {
-      swap('registeredOn', 0, 1);
+      swap('registeredOn' as never, 0, 1);
     }).toThrow(TypeError);
 
     expect(() => {
@@ -610,11 +610,11 @@ describe('state and status tests', () => {
     }).toThrow(Error);
 
     expect(() => {
-      remove('version', 0);
+      remove('version' as never, 0);
     }).toThrow(TypeError);
 
     expect(() => {
-      clear('specialNumber');
+      clear('specialNumber' as never);
     }).toThrow(TypeError);
   });
 
@@ -674,6 +674,95 @@ describe('state and status tests', () => {
 
     expect(formState.data.name).toBe('Tom'); // changed value
     expect(formState.data.info.age).toBe(29); // unchanged value from the initial state
+  });
+
+  it('should keep formActions stable with an inline cssOptions classNames function', () => {
+    let className = 'first';
+    const { result, rerender } = renderHook(() =>
+      useFormState(schema, {
+        initialData: { name: 'Jane' },
+        cssOptions: { classNames: () => className },
+      })
+    );
+    const before = result.current.formActions;
+
+    className = 'second';
+    rerender();
+
+    expect(result.current.formActions).toBe(before);
+    expect(result.current.formClasses('name')).toBe('form-state__required second');
+  });
+
+  it('should not re-send listener events when errorMessageSeparator changes', () => {
+    const listenerSchema = z.object({ name: z.formString({ required: true }) });
+    const listener = vi.fn();
+
+    const { result, rerender } = renderHook(
+      ({ separator }: { separator: string }) => {
+        const form = useFormState(listenerSchema, {
+          initialData: { name: 'Jane' },
+          errorMessageSeparator: separator,
+        });
+        form.formHooks.useListener(listener);
+        return form;
+      },
+      { initialProps: { separator: '|' } }
+    );
+
+    act(() => {
+      result.current.formActions.change('name', 'Janet');
+    });
+
+    act(() => {
+      result.current.formActions.validate({ submit: true });
+    });
+
+    const count = (type: string) =>
+      listener.mock.calls.filter(([event]) => (event as { type: string }).type === type).length;
+    const before = { change: count('change'), submit: count('submit') };
+
+    expect(before.submit).toBe(1);
+
+    rerender({ separator: ',' });
+
+    expect({ change: count('change'), submit: count('submit') }).toStrictEqual(before);
+  });
+
+  it('should keep formActions stable when only the data changes', () => {
+    const { result } = renderHook(() => useFormState(schema, { initialData: { name: 'Jane' } }));
+    const before = result.current.formActions;
+
+    act(() => {
+      result.current.formActions.change('name', 'Janet');
+    });
+
+    expect(result.current.formActions).toBe(before);
+  });
+
+  it('should resolve state getters by field name and by path expression alike', () => {
+    const { result } = renderHook(() =>
+      useFormState(schema, { initialData: { name: 'Jane' }, validateOnMount: true })
+    );
+
+    act(() => {
+      result.current.formActions.change('name', '', { touch: true });
+      result.current.formActions.setDirty('#custom');
+    });
+
+    const { errors, touched, dirty, required, ranges, patterns, descriptions } =
+      result.current.formState;
+
+    expect(errors.get('name')).toBe(errors.get((path) => path.name));
+    expect(errors.get('name')).toBeDefined();
+    expect(touched.get('name')).toBe(true);
+    expect(required.get('name')).toBe(required.get((path) => path.name));
+    expect(ranges.get('name')).toStrictEqual(ranges.get((path) => path.name));
+    expect(patterns.get('name')).toBe(patterns.get((path) => path.name));
+    expect(descriptions.get('name')).toBe(descriptions.get((path) => path.name));
+    expect(dirty.get('name')).toBe(true);
+    expect(dirty.get((path) => path.name)).toBe(true);
+    expect(dirty.get((path) => path.info.age)).toBe(false);
+    expect(dirty.get('#custom')).toBe(true);
   });
 
   it('should keep metadata and error view identities when only the data changes', () => {

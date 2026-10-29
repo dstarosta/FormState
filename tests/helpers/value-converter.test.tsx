@@ -271,7 +271,7 @@ describe('value-converter', () => {
       expect(asDateString(new Date('invalid value'))).toBe('Invalid Date');
 
       expect(() => {
-        asDateString(new Date(2022, 21, 28), 'MMddyyyy');
+        asDateString(new Date(2022, 21, 28), 'MMddyyyy' as never);
       }).throws(TypeError);
     });
 

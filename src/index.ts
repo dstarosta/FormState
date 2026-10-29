@@ -4,6 +4,7 @@ export type {
   DateParseResult,
   DeepPartial,
   ElementFocusOptions,
+  FormArrayPath,
   FormChangeOptions,
   FormChangeArrayOptions,
   FormClassCallback,
@@ -33,6 +34,7 @@ export type {
   StateChangeListener,
   SubmitState,
   SubmitSuccessState,
+  ValidationPath,
   ValidationResult,
 } from './types/form-types';
 export { useFormState } from './use-form-state';

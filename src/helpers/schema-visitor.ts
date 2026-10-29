@@ -1046,8 +1046,8 @@ export const getPathNotation = <T extends z.ZodMiniObject>(path: FormStatePath<z
     .join('.');
 };
 
-export const combinePath = (path: PropertyKey | PropertyKey[] | undefined) => {
-  if (!Array.isArray(path)) {
+export const combinePath = (path: PropertyKey | readonly PropertyKey[] | undefined) => {
+  if (typeof path !== 'object') {
     return String(path || '');
   }
 

@@ -85,8 +85,12 @@ const buildParseResult = <T extends z.ZodMiniObject>(
 
   const errors = {
     ...zodErrors,
-    get: (expression: (data: z.infer<T>) => unknown) =>
-      zodErrors[getPath(parsedData, expression).join('.')],
+    get: (nameOrPath: keyof z.infer<T> | ((data: z.infer<T>) => unknown)) =>
+      zodErrors[
+        typeof nameOrPath === 'function'
+          ? getPath(parsedData, nameOrPath).join('.')
+          : String(nameOrPath)
+      ],
     getAll: () => allErrors(zodErrors, errorMessageSeparator),
     getKeys: () => truthyKeys(zodErrors),
   };
@@ -247,34 +251,47 @@ const allErrors = (
     .filter((error): error is string => typeof error === 'string' && error.trim().length > 0)
     .flatMap((error) => error.split(errorMessageSeparator));
 
-const toPathKey = <T extends object>(expression: PathExpression<T>): string =>
-  getExpressionPath(expression).join('.');
+// A root-level field name or a path expression, as accepted by the state getters.
+type NameOrPath<T extends object> = keyof T | PathExpression<T>;
 
-const toPathNotation = <T extends object>(expression: PathExpression<T>): string =>
-  getPathNotation(getExpressionPath(expression) as Parameters<typeof getPathNotation>[0]);
+const toPathKey = <T extends object>(nameOrPath: NameOrPath<T>): string =>
+  typeof nameOrPath === 'function' ? getExpressionPath(nameOrPath).join('.') : String(nameOrPath);
+
+const toPathNotation = <T extends object>(nameOrPath: NameOrPath<T>): string =>
+  typeof nameOrPath === 'function'
+    ? getPathNotation(getExpressionPath(nameOrPath) as Parameters<typeof getPathNotation>[0])
+    : String(nameOrPath);
 
 const errorGetters = <T extends object>(
   errors: Record<string, string | undefined>,
   errorMessageSeparator: string
 ) => ({
-  get: (expression: PathExpression<T>) => errors[toPathKey(expression)],
+  get: (nameOrPath: NameOrPath<T>) => errors[toPathKey(nameOrPath)],
   getManual: (key: string) => errors[key],
   getAll: () => allErrors(errors, errorMessageSeparator),
   getKeys: () => truthyKeys(errors),
 });
 
 const touchedGetters = <T extends object>(touched: Record<string, unknown>) => ({
-  get: (expression: PathExpression<T>) => Boolean(touched[toPathKey(expression)]),
+  get: (nameOrPath: NameOrPath<T>) => Boolean(touched[toPathKey(nameOrPath)]),
   getKeys: () => truthyKeys(touched),
 });
 
-const dirtyGetters = (dirty: Record<string, unknown>) => ({
-  get: (key: `#${string}`) => Boolean(dirty[key]),
+// Dirty state is tracked per root-level field (and per `#` key), so a path resolves to its root.
+const dirtyGetters = <T extends object>(dirty: Record<string, unknown>) => ({
+  get: (nameOrPath: NameOrPath<T> | `#${string}`) =>
+    Boolean(
+      dirty[
+        typeof nameOrPath === 'function'
+          ? (getExpressionPath(nameOrPath).at(0) ?? '')
+          : String(nameOrPath)
+      ]
+    ),
   getKeys: () => truthyKeys(dirty),
 });
 
 const requiredGetters = <T extends object>(required: Record<string, unknown>) => ({
-  get: (expression: PathExpression<T>) => Boolean(required[toPathKey(expression)]),
+  get: (nameOrPath: NameOrPath<T>) => Boolean(required[toPathKey(nameOrPath)]),
   getKeys: () => truthyKeys(required),
 });
 
@@ -297,8 +314,8 @@ const rangeOf = <T extends object>(
 const rangeGetters = <T extends object>(
   ranges: Record<string, { min: FieldRange; max: FieldRange } | undefined>
 ) => ({
-  get: (expression: PathExpression<T>) =>
-    ranges[toPathNotation(expression)] as RangeResult<number | Date> | undefined,
+  get: (nameOrPath: NameOrPath<T>) =>
+    ranges[toPathNotation(nameOrPath)] as RangeResult<number | Date> | undefined,
   getMin: (nameOrPath: PropertyKey | PathExpression<T>) => rangeOf<T>(ranges, nameOrPath, 'min'),
   getMax: (nameOrPath: PropertyKey | PathExpression<T>) => rangeOf<T>(ranges, nameOrPath, 'max'),
   getKeys: () => truthyKeys(ranges),
@@ -308,8 +325,8 @@ const stringGetters = <T extends object, F extends boolean>(
   slice: Record<string, string | undefined>,
   emptyFallback: F
 ) => ({
-  get: (expression: PathExpression<T>) => {
-    const value = slice[toPathNotation(expression)];
+  get: (nameOrPath: NameOrPath<T>) => {
+    const value = slice[toPathNotation(nameOrPath)];
     return (emptyFallback ? (value ?? '') : value) as F extends true ? string : string | undefined;
   },
   getKeys: () => truthyKeys(slice),
@@ -338,7 +355,7 @@ export const createImmutableDirty = <T extends z.ZodMiniObject>(
 ) =>
   freezeObject({
     ...dirty,
-    ...dirtyGetters(dirty),
+    ...dirtyGetters<z.infer<T>>(dirty),
   });
 
 export const createImmutableTouched = <T extends z.ZodMiniObject>(
@@ -350,14 +367,16 @@ export const createImmutableTouched = <T extends z.ZodMiniObject>(
   });
 
 export const createImmutableRanges = <T extends z.ZodMiniObject>(
-  ranges: Record<
-    keyof z.infer<T>,
-    {
-      type: string;
-      format: string;
-      min: FieldRange;
-      max: FieldRange;
-    }
+  ranges: Partial<
+    Record<
+      keyof z.infer<T>,
+      {
+        type: string;
+        format: string;
+        min: FieldRange;
+        max: FieldRange;
+      }
+    >
   >
 ) =>
   freezeObject({
@@ -425,7 +444,9 @@ export const createGroupBundle = <T extends z.ZodMiniObject>(
     touched: Record<string, boolean>;
     dirty: Record<string, boolean>;
     required: Record<string, boolean>;
-    ranges: Record<string, { type: string; format: string; min: FieldRange; max: FieldRange }>;
+    ranges: Partial<
+      Record<string, { type: string; format: string; min: FieldRange; max: FieldRange }>
+    >;
     patterns: Record<string, string | undefined>;
     descriptions: Record<string, string | undefined>;
   },
@@ -444,10 +465,7 @@ export const createGroupBundle = <T extends z.ZodMiniObject>(
     const touched = pickByKeys(slices.touched, keys, false);
     const dirty = pickByKeys(slices.dirty, keys, false);
     const required = pickByKeys(slices.required, keys, false);
-    const ranges = pickByKeys(slices.ranges, keys, false) as Record<
-      string,
-      { type: string; format: string; min: FieldRange; max: FieldRange }
-    >;
+    const ranges = pickByKeys(slices.ranges, keys, false);
     const patterns = pickByKeys(slices.patterns, keys, false);
     const descriptions = pickByKeys(slices.descriptions, keys, false);
 
@@ -463,7 +481,7 @@ export const createGroupBundle = <T extends z.ZodMiniObject>(
       },
       dirty: {
         ...(dirty as Pick<State['dirty'], K>),
-        ...dirtyGetters(dirty),
+        ...dirtyGetters<z.infer<T>>(dirty),
       },
       required: {
         ...(required as Pick<State['required'], K>),

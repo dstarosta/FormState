@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 
 import type { FormAction, FormProps, FormStore } from '../types/form-types';
 import { getFormData } from './element-values';
 import { FormResetBlocker } from './form-reset-blocker';
 import { mergeRefs } from './ref-merge';
+import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 
 // Private functions
 
@@ -70,39 +71,29 @@ export const createFormComponent = <T extends object>(
     const formRef = useRef<HTMLFormElement>(null);
     const lastSubmitter = useRef<HTMLElement>(null);
 
-    const formProps = useMemo(
-      () => ({
-        noValidate: !nativeValidation,
-        onKeyDown: (event: React.KeyboardEvent<HTMLFormElement>) => {
-          onKeyDown?.(event);
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+      onKeyDown?.(event);
 
-          if (
-            event.defaultPrevented ||
-            !(
-              !submitWithEnter &&
-              event.key === 'Enter' &&
-              event.target instanceof HTMLInputElement
-            ) ||
-            event.target.onkeydown
-          ) {
-            return;
-          }
+      if (
+        event.defaultPrevented ||
+        !(!submitWithEnter && event.key === 'Enter' && event.target instanceof HTMLInputElement) ||
+        event.target.onkeydown
+      ) {
+        return;
+      }
 
-          const element = event.target;
-          const styles = getComputedStyle(element);
-          const isHidden =
-            !element.offsetParent ||
-            element.getAttribute('aria-hidden') === 'true' ||
-            styles.display === 'none' ||
-            styles.visibility === 'hidden';
+      const element = event.target;
+      const styles = getComputedStyle(element);
+      const isHidden =
+        !element.offsetParent ||
+        element.getAttribute('aria-hidden') === 'true' ||
+        styles.display === 'none' ||
+        styles.visibility === 'hidden';
 
-          if (!isHidden) {
-            event.preventDefault();
-          }
-        },
-      }),
-      [nativeValidation, submitWithEnter, onKeyDown]
-    );
+      if (!isHidden) {
+        event.preventDefault();
+      }
+    };
 
     const resetStore = useCallback(() => {
       const form = formRef.current;
@@ -168,6 +159,7 @@ export const createFormComponent = <T extends object>(
       lastSubmitter.current = null;
     }, []);
 
+    // Only attaches refs, so a new (e.g. inline) forwarded ref does not re-run the form wiring below.
     const formRefCallback = useCallback(
       (node: HTMLFormElement | null) => {
         const refCleanup = mergeRefs(formRef, forwardedRef)(node);
@@ -176,37 +168,7 @@ export const createFormComponent = <T extends object>(
           externalFormRef.current = node;
         }
 
-        const form = node as HTMLFormElement;
-
-        if (store) {
-          resetStore();
-
-          form.addEventListener('input', handleInputChange);
-          form.addEventListener('change', handleInputChange);
-        }
-
-        // SecureInput values are patched into every FormData (React actions, onSubmit handlers and
-        // native submits); the submitter is only tracked for React actions, which omit it.
-        form.addEventListener('formdata', handleFormData);
-
-        const hasJavaScriptAction = form.action.startsWith('javascript:');
-
-        if (hasJavaScriptAction) {
-          form.addEventListener('submit', handleSubmit, { capture: true });
-        }
-
         return () => {
-          form.removeEventListener('formdata', handleFormData);
-
-          if (hasJavaScriptAction) {
-            form.removeEventListener('submit', handleSubmit, { capture: true });
-          }
-
-          if (store) {
-            form.removeEventListener('change', handleInputChange);
-            form.removeEventListener('input', handleInputChange);
-          }
-
           if (externalFormRef) {
             externalFormRef.current = null;
           }
@@ -214,8 +176,49 @@ export const createFormComponent = <T extends object>(
           refCleanup();
         };
       },
-      [forwardedRef, handleInputChange, handleFormData, handleSubmit, resetStore]
+      [forwardedRef]
     );
+
+    // Wires the form element once per mount: store sync, FormData patching and submitter tracking.
+    useIsomorphicLayoutEffect(() => {
+      const form = formRef.current;
+
+      // Unreachable guard
+      /* v8 ignore if -- @preserve */
+      if (!form) {
+        return;
+      }
+
+      if (store) {
+        resetStore();
+
+        form.addEventListener('input', handleInputChange);
+        form.addEventListener('change', handleInputChange);
+      }
+
+      // SecureInput values are patched into every FormData (React actions, onSubmit handlers and
+      // native submits); the submitter is only tracked for React actions, which omit it.
+      form.addEventListener('formdata', handleFormData);
+
+      const hasJavaScriptAction = form.action.startsWith('javascript:');
+
+      if (hasJavaScriptAction) {
+        form.addEventListener('submit', handleSubmit, { capture: true });
+      }
+
+      return () => {
+        form.removeEventListener('formdata', handleFormData);
+
+        if (hasJavaScriptAction) {
+          form.removeEventListener('submit', handleSubmit, { capture: true });
+        }
+
+        if (store) {
+          form.removeEventListener('change', handleInputChange);
+          form.removeEventListener('input', handleInputChange);
+        }
+      };
+    }, [handleInputChange, handleFormData, handleSubmit, resetStore]);
 
     const handleReset = useCallback(
       (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -245,7 +248,8 @@ export const createFormComponent = <T extends object>(
         ref={formRefCallback}
         autoComplete="off"
         onReset={handleReset}
-        {...formProps}
+        noValidate={!nativeValidation}
+        onKeyDown={handleKeyDown}
         {...restProps}
       >
         {children}

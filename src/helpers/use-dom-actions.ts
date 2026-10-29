@@ -1,14 +1,14 @@
 import { useCallback, type RefObject } from 'react';
 import type * as z from 'zod/mini';
 
-import type { ElementFocusOptions, FormInitOptions, FormMutableState } from '../types/form-types';
+import type { ElementFocusOptions, FormClassOptions, FormMutableState } from '../types/form-types';
 import { getPath } from './schema-visitor';
 
 // The `blur`, `focus` and `focusOnFirstError` form actions.
 export function useDomActions<T extends z.ZodMiniObject>(
   formElementRef: RefObject<HTMLFormElement | null>,
   formStateRef: RefObject<FormMutableState<z.infer<T>>>,
-  stableCssOptions: NonNullable<FormInitOptions<T>['cssOptions']>
+  cssPrefix: FormClassOptions['prefix']
 ) {
   type State = z.infer<T>;
 
@@ -70,8 +70,7 @@ export function useDomActions<T extends z.ZodMiniObject>(
   // Focuses the first input or textarea in the form with the error CSS class.
   const focusOnFirstError = useCallback(
     (options?: Omit<ElementFocusOptions<T>, 'errorKey'>) => {
-      const prefix =
-        stableCssOptions.prefix === null ? null : stableCssOptions.prefix?.trim() || 'form-state';
+      const prefix = cssPrefix === null ? null : cssPrefix?.trim() || 'form-state';
 
       const doFocus = () => {
         let element: HTMLElement | null = null;
@@ -112,7 +111,7 @@ export function useDomActions<T extends z.ZodMiniObject>(
         doFocus();
       });
     },
-    [stableCssOptions, formStateRef, queryWithinForm]
+    [cssPrefix, formStateRef, queryWithinForm]
   );
 
   return { blur, focus, focusOnFirstError };

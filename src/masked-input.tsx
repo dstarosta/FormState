@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { mergeRefs } from './helpers/ref-merge';
 import { createSyntheticChangeEvent } from './helpers/synthetic-event';
@@ -50,7 +50,8 @@ export type MaskedChangeEvent = React.ChangeEvent<HTMLInputElement> & {
 
 type MaskedInputProps = Omit<
   React.ComponentPropsWithRef<'input'>,
-  'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder'
+  // `onPaste` is handled internally to apply the mask.
+  'onBlur' | 'onChange' | 'type' | 'value' | 'defaultValue' | 'placeholder' | 'onPaste'
 > & {
   /**
    * Mask pattern. Tokens accept user input — `9` (digit), `a` (letter),
@@ -421,6 +422,9 @@ export function MaskedInput({
     [isControlled, info, name]
   );
 
+  // Lets the DOM listeners below read the latest values without re-subscribing.
+  const getLatest = useEffectEvent(() => ({ commit, info, readOnly, disabled }));
+
   useEffect(() => {
     const element = inputRef.current;
 
@@ -448,13 +452,21 @@ export function MaskedInput({
         return;
       }
 
+      const latest = getLatest();
+
       // The browser wrote the raw composed text into the DOM; restore the formatted value.
-      const currentFormatted = formatSlots(slotsRef.current, info);
-      element.value = currentFormatted === info.empty ? '' : currentFormatted;
+      const currentFormatted = formatSlots(slotsRef.current, latest.info);
+      element.value = currentFormatted === latest.info.empty ? '' : currentFormatted;
 
       if (event.data) {
-        const result = insertChars(slotsRef.current, info, range.start, range.end, event.data);
-        commit(result.slots, result.caret);
+        const result = insertChars(
+          slotsRef.current,
+          latest.info,
+          range.start,
+          range.end,
+          event.data
+        );
+        latest.commit(result.slots, result.caret);
       }
     };
 
@@ -463,7 +475,9 @@ export function MaskedInput({
         return;
       }
 
-      if (readOnly || disabled) {
+      const latest = getLatest();
+
+      if (latest.readOnly || latest.disabled) {
         event.preventDefault();
         return;
       }
@@ -480,8 +494,8 @@ export function MaskedInput({
         case 'insertFromPaste':
         case 'insertFromDrop': {
           event.preventDefault();
-          const result = insertChars(current, info, start, end, data);
-          commit(result.slots, result.caret);
+          const result = insertChars(current, latest.info, start, end, data);
+          latest.commit(result.slots, result.caret);
           break;
         }
         case 'deleteContentBackward':
@@ -490,30 +504,30 @@ export function MaskedInput({
           // Chrome's search clear button and "select all + delete/cut" should
           // let the browser handle the input. The useEffect listener takes
           // care of the state sync.
-          if (start === 0 && end === info.length) {
+          if (start === 0 && end === latest.info.length) {
             return;
           }
           event.preventDefault();
           if (event.inputType === 'deleteContentBackward') {
             if (start === end) {
-              const idx = prevSlotIndex(info, start - 1);
+              const idx = prevSlotIndex(latest.info, start - 1);
               if (idx !== -1) {
-                commit(clearRange(current, info, idx, idx + 1), idx);
+                latest.commit(clearRange(current, latest.info, idx, idx + 1), idx);
               }
             } else {
-              commit(clearRange(current, info, start, end), start);
+              latest.commit(clearRange(current, latest.info, start, end), start);
             }
           } else if (event.inputType === 'deleteContentForward') {
             if (start === end) {
-              const idx = nextSlotIndex(info, start);
+              const idx = nextSlotIndex(latest.info, start);
               if (idx !== -1) {
-                commit(clearRange(current, info, idx, idx + 1), start);
+                latest.commit(clearRange(current, latest.info, idx, idx + 1), start);
               }
             } else {
-              commit(clearRange(current, info, start, end), start);
+              latest.commit(clearRange(current, latest.info, start, end), start);
             }
           } else if (start !== end) {
-            commit(clearRange(current, info, start, end), start);
+            latest.commit(clearRange(current, latest.info, start, end), start);
           }
           break;
         }
@@ -522,29 +536,31 @@ export function MaskedInput({
         case 'deleteHardLineBackward': {
           event.preventDefault();
           const from = start === end ? 0 : start;
-          commit(clearRange(current, info, from, end), from);
+          latest.commit(clearRange(current, latest.info, from, end), from);
           break;
         }
         case 'deleteWordForward':
         case 'deleteSoftLineForward':
         case 'deleteHardLineForward': {
           event.preventDefault();
-          const to = start === end ? info.length : end;
-          commit(clearRange(current, info, start, to), start);
+          const to = start === end ? latest.info.length : end;
+          latest.commit(clearRange(current, latest.info, start, to), start);
           break;
         }
       }
     };
 
     const inputHandler = () => {
-      if (readOnly || disabled || element.value !== '') {
+      const latest = getLatest();
+
+      if (latest.readOnly || latest.disabled || element.value !== '') {
         return;
       }
       if (slotsRef.current.every((slot) => slot === null)) {
         return;
       }
-      const cleared: Slots = info.positions.map(() => null);
-      commit(cleared, 0);
+      const cleared: Slots = latest.info.positions.map(() => null);
+      latest.commit(cleared, 0);
     };
 
     element.addEventListener('beforeinput', handler);
@@ -558,7 +574,7 @@ export function MaskedInput({
       element.removeEventListener('compositionstart', handleCompositionStart);
       element.removeEventListener('compositionend', handleCompositionEnd);
     };
-  }, [commit, info, readOnly, disabled]);
+  }, []);
 
   const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
     event.preventDefault();

@@ -55,14 +55,15 @@ describe('rendering', () => {
   });
 
   it('does not let props re-enable autocomplete, spellcheck or password managers', () => {
-    render(
-      <SecureInput
-        autoComplete="current-password"
-        spellCheck
-        data-1p-ignore="false"
-        data-lpignore="false"
-      />
-    );
+    // The types reject these props; an untyped (JavaScript) consumer can still pass them.
+    const untypedProps: object = {
+      autoComplete: 'current-password',
+      spellCheck: true,
+      'data-1p-ignore': 'false',
+      'data-lpignore': 'false',
+    };
+
+    render(<SecureInput {...untypedProps} />);
 
     const input = getInput();
 

@@ -3558,6 +3558,7 @@ formState.touched.name;
 formState.dirty.name;
 formState.required.name;
 formState.descriptions.name;
+formState.errors.get('name');   // every .get() also accepts a field name
 
 // Arrays at the top level
 formActions.array.append('tags', ['react']);
@@ -3691,7 +3692,8 @@ formState.dirty.name            // true after first change
 formState.touched.name          // true after blur / explicit touch call
 formState.required.name         // derived from schema — never changes
 
-// .get() for nested fields
+// .get() for nested fields (dirty is tracked per top-level field, so this
+// reports whether "info" is dirty)
 formState.dirty.get((path) =&gt; path.info.address.city)
 formState.touched.get((path) =&gt; path.notes[index].text)
 formState.required.get((path) =&gt; path.info.age)

@@ -1,6 +1,7 @@
 import { useCallback, useDebugValue, useEffect, useRef, useState } from 'react';
 
 import type { BlockerResponse, FormState, FormStatus } from '../types/form-types';
+import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
 
 export function createUseBlocker<T extends object>(
   getState: () => FormState<T>,
@@ -17,8 +18,12 @@ export function createUseBlocker<T extends object>(
     const [blockerState, setBlockerState] = useState<'unblocked' | 'blocked'>('unblocked');
     const pendingRef = useRef<(() => void) | null>(null);
 
+    // Updated after commit (not during render); `guard` and `beforeunload` only run after commit.
     const shouldBlockRef = useRef(shouldBlock);
-    shouldBlockRef.current = shouldBlock;
+
+    useIsomorphicLayoutEffect(() => {
+      shouldBlockRef.current = shouldBlock;
+    });
 
     const block = useCallback(() => shouldBlockRef.current(getState(), getStatus()), []);
 

@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useOptimistic,
   useRef,
@@ -44,7 +45,6 @@ import {
   getPathNotation,
   isAsyncSchema,
 } from './helpers/schema-visitor';
-import { useDeepMemo } from './helpers/use-deep-memo';
 import {
   createGroupBundle,
   createImmutableData,
@@ -150,8 +150,10 @@ export function useFormState<T extends z.ZodMiniObject>(
     errorMessageSeparator,
   });
 
-  // Stable reference for form-level `formClasses` defaults.
-  const stableCssOptions = useDeepMemo(() => cssOptions ?? {}, [cssOptions]);
+  // Form-level `formClasses` defaults, kept as separate values so an inline `cssOptions` object
+  // (or an inline `classNames` function) does not change the identity of prefix-only consumers.
+  const cssPrefix = cssOptions?.prefix;
+  const cssClassNames = cssOptions?.classNames;
 
   // Tracks whether component is mounted.
   const isMountedRef = useRef(true);
@@ -288,7 +290,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   // The memoized "dirty" object of the form state.
-  const dirty = useMemo(() => createImmutableDirty(formState.dirty), [formState.dirty]);
+  const dirty = useMemo(() => createImmutableDirty<T>(formState.dirty), [formState.dirty]);
 
   // The memoized "touched" object of the form state.
   const touched = useMemo(() => createImmutableTouched<T>(formState.touched), [formState.touched]);
@@ -331,14 +333,24 @@ export function useFormState<T extends z.ZodMiniObject>(
     [formData, formErrors, touched, dirty, required, ranges, patterns, descriptions]
   );
 
-  const generateListenerState = useCallback(() => {
-    const data = createImmutableData(formStateRef.current.data);
-    const errors = createImmutableErrors<T>(formStateRef.current.errors, errorMessageSeparator);
-    const submitCount = formStateRef.current.submitCount;
-    const valid = Object.keys(formStateRef.current.errors).length === 0;
+  // Notifies the listeners with the committed state, reusing the memoized immutable views. As an
+  // effect event it reads the latest values without making the effects below re-run on them.
+  const notifyListeners = useEffectEvent((type: 'change' | 'submit') => {
+    const listenerState = {
+      data: formData,
+      errors: formErrors,
+      submitCount: formState.submitCount,
+      valid: Object.keys(formState.errors).length === 0,
+    };
 
-    return { data, errors, submitCount, valid };
-  }, [errorMessageSeparator]);
+    for (const listener of changeListeners) {
+      listener(
+        type === 'submit'
+          ? { type, formData: lastSubmittedFormData.current, ...listenerState }
+          : { type, ...listenerState }
+      );
+    }
+  });
 
   const initialDataChanged = useMemo(
     () => formState.initialData !== state.data && !deepEqual(formState.initialData, state.data),
@@ -368,42 +380,17 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Calls registered listeners on form change.
   useEffect(() => {
-    if (!formState.changed || changeListeners.size === 0) {
-      return;
+    if (formState.changed && changeListeners.size > 0) {
+      notifyListeners('change');
     }
-
-    const { data, errors, submitCount, valid } = generateListenerState();
-
-    for (const listener of changeListeners) {
-      listener({
-        type: 'change',
-        data,
-        errors,
-        submitCount,
-        valid,
-      });
-    }
-  }, [formState.data, formState.changed, generateListenerState, changeListeners]);
+  }, [formState.data, formState.changed, changeListeners]);
 
   // Calls registered listeners on form submission.
   useEffect(() => {
-    if (formState.submitCount === 0 || changeListeners.size === 0) {
-      return;
+    if (formState.submitCount > 0 && changeListeners.size > 0) {
+      notifyListeners('submit');
     }
-
-    const { data, errors, submitCount, valid } = generateListenerState();
-
-    for (const listener of changeListeners) {
-      listener({
-        type: 'submit',
-        formData: lastSubmittedFormData.current,
-        data,
-        errors,
-        submitCount,
-        valid,
-      });
-    }
-  }, [formState.submitCount, generateListenerState, changeListeners]);
+  }, [formState.submitCount, changeListeners]);
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -437,8 +424,8 @@ export function useFormState<T extends z.ZodMiniObject>(
           ? { classNames: classesOrOptions }
           : (classesOrOptions ?? {});
 
-      const currentClassNames = perCall.classNames ?? stableCssOptions.classNames;
-      const prefixSetting = perCall.prefix === undefined ? stableCssOptions.prefix : perCall.prefix;
+      const currentClassNames = perCall.classNames ?? cssClassNames;
+      const prefixSetting = perCall.prefix === undefined ? cssPrefix : perCall.prefix;
       const prefix = prefixSetting === null ? null : prefixSetting?.trim() || 'form-state';
 
       const isRequired = Boolean(formState.required[requiredPathNotation]);
@@ -491,7 +478,8 @@ export function useFormState<T extends z.ZodMiniObject>(
       formState.touched,
       formState.validated,
       formState.errors,
-      stableCssOptions,
+      cssPrefix,
+      cssClassNames,
     ]
   );
 
@@ -962,6 +950,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   // Returns the last submitted form data.
+  // Changes identity on each submit on purpose, so it can be used as a memo dependency.
   const getSubmittedData = useCallback(
     () =>
       formState.submittedData
@@ -990,7 +979,7 @@ export function useFormState<T extends z.ZodMiniObject>(
   const { blur, focus, focusOnFirstError } = useDomActions<T>(
     formElementRef,
     formStateRef,
-    stableCssOptions
+    cssPrefix
   );
 
   // The memoized Form component.
