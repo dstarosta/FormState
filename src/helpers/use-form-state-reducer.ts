@@ -198,7 +198,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
           if (shouldValidate) {
             const cached = parseAndCache(mergedData);
             changedData = cached.parsedData;
-            asyncPending = fromDebounce ? false : cached.asyncPending;
+            asyncPending = !fromDebounce && cached.asyncPending;
           } else {
             changedData = coerceFormData(schema, mergedData);
           }
@@ -310,7 +310,7 @@ export function useFormStateReducer<T extends z.ZodMiniObject>(
 
           const shouldValidate = validate && (validateBeforeSubmit || prevState.validated);
 
-          const asyncPending = shouldValidate ? parseAndCache(prevState.data).asyncPending : false;
+          const asyncPending = shouldValidate && parseAndCache(prevState.data).asyncPending;
 
           const pathNotation = Array.isArray(name) ? name.join('.') : name;
           const touched = { ...prevState.touched, [pathNotation]: true };

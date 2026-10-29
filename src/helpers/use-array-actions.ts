@@ -121,11 +121,13 @@ export function useArrayActions<T extends z.ZodMiniObject>(
             return;
           }
 
-          if (from !== to) {
-            const temp = draft[from];
-            draft[from] = draft[to];
-            draft[to] = temp;
+          if (from === to) {
+            return;
           }
+
+          const temp = draft[from];
+          draft[from] = draft[to];
+          draft[to] = temp;
         },
         options
       );

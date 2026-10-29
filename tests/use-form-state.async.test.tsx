@@ -892,6 +892,39 @@ describe('async schema validation', () => {
       caf.mockRestore();
     });
 
+    it('does not open a second burst when validateAsync runs during a change burst', async () => {
+      const events: AsyncEvent[] = [];
+      const listener = vi.fn((event: AsyncEvent) => {
+        events.push(event);
+      });
+      const asyncSchema = buildAsyncSchema(new Set(['Mike', 'John']), 30);
+
+      const { result } = renderListenerHarness(asyncSchema, listener, {
+        initialData: { name: 'Mike' },
+      });
+
+      act(() => {
+        result.current.change('name', 'John');
+      });
+
+      let validated: Promise<boolean> | undefined;
+
+      act(() => {
+        validated = result.current.validateAsync();
+      });
+
+      await expect(validated).resolves.toBe(true);
+
+      await waitFor(() => {
+        expect(result.current.formStatus.validating).toBe(false);
+      });
+
+      await waitFor(() => {
+        expect(events.filter((evt) => evt.type === 'asyncValidated')).toHaveLength(1);
+      });
+      expect(events.filter((evt) => evt.type === 'asyncValidating')).toHaveLength(1);
+    });
+
     it('closes the submit-phase asyncValidating event when a change supersedes it', async () => {
       const events: AsyncEvent[] = [];
       const listener = vi.fn((event: AsyncEvent) => {

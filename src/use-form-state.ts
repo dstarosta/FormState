@@ -222,10 +222,9 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   // Valid form state.
   const formValid = useMemo(() => {
-    if (!formState.validated || formState.asyncValidating) {
-      return null;
-    }
-    return Object.keys(formState.errors).length === 0;
+    return !formState.validated || formState.asyncValidating
+      ? null
+      : Object.keys(formState.errors).length === 0;
   }, [formState.errors, formState.validated, formState.asyncValidating]);
 
   // Holds a callback the `useListener` hook calls when a new listener registers.
@@ -398,12 +397,10 @@ export function useFormState<T extends z.ZodMiniObject>(
       isMountedRef.current = false;
 
       // Cancel all debounced callbacks.
-      if (currentCache.size > 0) {
-        for (const debounced of currentCache.values()) {
-          debounced.cancel();
-        }
-        currentCache.clear();
+      for (const debounced of currentCache.values()) {
+        debounced.cancel();
       }
+      currentCache.clear();
     };
   }, []);
 
@@ -576,24 +573,28 @@ export function useFormState<T extends z.ZodMiniObject>(
 
             const currentEntry = debounceCache.current.get(pathNotation);
 
-            if (currentEntry) {
-              if (typeof currentEntry.callback === 'function') {
-                changeCallbackRefs.current.push(currentEntry.callback);
-              }
-
-              dispatch({
-                type: 'change',
-                name: currentEntry.path,
-                value: currentEntry.value,
-                options: {
-                  touch: currentEntry.touch,
-                  validate: currentEntry.validate,
-                },
-                fromDebounce: true,
-              });
-
-              debounceCache.current.delete(pathNotation);
+            // Unreachable guard: every path that removes the entry cancels this timer first.
+            /* v8 ignore if -- @preserve */
+            if (!currentEntry) {
+              return;
             }
+
+            if (typeof currentEntry.callback === 'function') {
+              changeCallbackRefs.current.push(currentEntry.callback);
+            }
+
+            dispatch({
+              type: 'change',
+              name: currentEntry.path,
+              value: currentEntry.value,
+              options: {
+                touch: currentEntry.touch,
+                validate: currentEntry.validate,
+              },
+              fromDebounce: true,
+            });
+
+            debounceCache.current.delete(pathNotation);
           }, interval);
 
           entry = Object.assign(debouncedFn, {

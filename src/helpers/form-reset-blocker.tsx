@@ -40,9 +40,5 @@ export function FormResetBlocker({ formRef }: FormResetBlockerProps) {
     };
   }, [formRef]);
 
-  if (formRef) {
-    return null;
-  }
-
-  return <div ref={innerRef} hidden data-resethandler></div>;
+  return formRef ? null : <div ref={innerRef} hidden data-resethandler></div>;
 }

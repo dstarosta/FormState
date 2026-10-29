@@ -255,11 +255,10 @@ export function SecureInput({
         case 'deleteWordForward':
         case 'deleteSoftLineForward':
         case 'deleteHardLineForward': {
-          if (start === end) {
-            commitLatest(existingValue.slice(0, start), start);
-          } else {
-            commitLatest(spliceValue(existingValue, start, end), start);
-          }
+          commitLatest(
+            start === end ? existingValue.slice(0, start) : spliceValue(existingValue, start, end),
+            start
+          );
           break;
         }
       }
@@ -327,17 +326,21 @@ export function SecureInput({
       return;
     }
 
-    if (event.key.length === 1) {
-      // Distinguish Mac Option-modified characters (event.code differs from event.key)
-      // from Windows Alt-mnemonics (event.code base matches event.key).
-      const codeChar = event.code.replace(/^(Key|Digit)/, '').toLowerCase();
-      const isAltMnemonic = event.altKey && codeChar === event.key.toLowerCase();
-
-      if (!isAltMnemonic) {
-        event.preventDefault();
-        commit(spliceValue(existingValue, start, end, event.key), start + 1);
-      }
+    if (event.key.length !== 1) {
+      return;
     }
+
+    // Distinguish Mac Option-modified characters (event.code differs from event.key)
+    // from Windows Alt-mnemonics (event.code base matches event.key).
+    const codeChar = event.code.replace(/^(Key|Digit)/, '').toLowerCase();
+    const isAltMnemonic = event.altKey && codeChar === event.key.toLowerCase();
+
+    if (isAltMnemonic) {
+      return;
+    }
+
+    event.preventDefault();
+    commit(spliceValue(existingValue, start, end, event.key), start + 1);
   };
 
   const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {

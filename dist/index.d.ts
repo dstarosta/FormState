@@ -1,7 +1,5 @@
 import * as z from "zod/mini";
 import { ComponentType, PropsWithChildren, SyntheticEvent } from "react";
-//#endregion
-//#region src/types/form-types.d.ts
 declare module 'zod/mini' {
   interface ZodMiniObject {
     /**
@@ -2467,8 +2465,6 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
   elementPath?: PropertyKey[];
   ignoreValues?: unknown[];
 }): z.core.$ZodCheck<T[]>;
-//#endregion
-//#region src/use-form-state.d.ts
 /**
  * Hook that manages form state.
  *
@@ -2512,9 +2508,7 @@ declare function uniqueItems<T>(deepEquality?: boolean, params?: {
  *                                            same state property (default: "|").
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
-declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
-//#endregion
-//#region src/form-provider.d.ts
+export declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?: FormInitOptions<T>): FormStateResponse<T>;
 /**
  * Context provider to manage form state.
  *
@@ -2522,7 +2516,7 @@ declare function useFormState<T extends z.ZodMiniObject>(schema: T, formOptions?
  * @param props - Provider props.
  * @returns A form state provider.
  */
-declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): import("react").JSX.Element;
+export declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<PropsWithChildren<FormProviderInitOptions<T>>>): import("react").JSX.Element;
 /**
  * Hook that manages form state inside React components that are, or have a parent component,
  * wrapped with the formConnect HOC.
@@ -2534,7 +2528,7 @@ declare function FormStateProvider<T extends z.ZodMiniObject>(props: Readonly<Pr
  * @param schema - Zod schema to validate the form data.
  * @returns An object containing form state, status, actions, form HTML element props and state related CSS classes.
  */
-declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): FormStateResponse<T>;
+export declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): FormStateResponse<T>;
 /**
  * Hook that subscribes to a single group's data slice of the form state context. The component
  * re-renders only when that group's data changes.
@@ -2548,7 +2542,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject>(schema: T): Form
  * @param groupName - A group name declared via `z.group(schema, name)`.
  * @returns An immutable object containing only that group's root-level data fields.
  */
-declare function useFormStateContext<T extends z.ZodMiniObject, G extends GroupNames<GroupSchemaShape<T>>>(schema: T, groupName: G): Immutable<GroupData<T, G>>;
+export declare function useFormStateContext<T extends z.ZodMiniObject, G extends GroupNames<GroupSchemaShape<T>>>(schema: T, groupName: G): Immutable<GroupData<T, G>>;
 /**
  * Hook that subscribes to a value selected from the form state context. The component re-renders
  * only when the selected value changes (compared deeply).
@@ -2563,7 +2557,7 @@ declare function useFormStateContext<T extends z.ZodMiniObject, G extends GroupN
  * @param selector - Selects a value from the form state, status, actions, etc.
  * @returns The selected value.
  */
-declare function useFormStateContext<T extends z.ZodMiniObject, R>(schema: T, selector: (form: FormStateResponse<T>) => R): R;
+export declare function useFormStateContext<T extends z.ZodMiniObject, R>(schema: T, selector: (form: FormStateResponse<T>) => R): R;
 /**
  * HOC that wraps a React component with the form state context provider and initializes the state
  * based on the provided schema.
@@ -2610,18 +2604,16 @@ declare function useFormStateContext<T extends z.ZodMiniObject, R>(schema: T, se
  *
  * @returns A curried function to wrap the component.
  */
-declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
+export declare function formConnect<T extends z.ZodMiniObject>(options: FormProviderInitOptions<T>): <P>(Component: ComponentType<P>) => {
   (innerProps: Readonly<P>): import("react").JSX.Element;
   displayName: string;
 };
-//#endregion
-//#region src/helpers/state-manager.d.ts
 /**
  * Creates a unique symbol instance based on UUID v4.
  *
  * @returns The symbol.
  */
-declare function createSymbol(): symbol;
+export declare function createSymbol(): symbol;
 /**
  * Gets strongly typed child data or field value based on the provided name or path
  * in a disconnected form state data.
@@ -2634,7 +2626,7 @@ declare function createSymbol(): symbol;
  * @param data - The strongly typed state data.
  * @returns The child data or the field value that is assigned to the provided name or path.
  */
-declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValueOrUnknown<T, P>;
+export declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(schema: T, data: z.infer<T>, nameOrPath: P): FormPathValueOrUnknown<T, P>;
 /**
  * Parses an arbitrary object into the form state, returning `data` as a `SchemaDataObject`
  * on success — internal-only fields (like `z.symbol()`) and empty form values stripped,
@@ -2650,7 +2642,7 @@ declare function getState<T extends z.ZodMiniObject, P extends FormPath<T>>(sche
  *                                for the same state property (default: "|").
  * @returns `ParseAsObjectResult` with `data` as `SchemaDataObject` and `errors` on failure.
  */
-declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData: true, errorMessageSeparator?: string): ParseAsObjectResult<T>;
+export declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData: true, errorMessageSeparator?: string): ParseAsObjectResult<T>;
 /**
  * Parses an arbitrary object into the form state.
  *
@@ -2664,7 +2656,7 @@ declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, a
  *                                for the same state property (default: "|").
  * @returns `ParseResult` with form state `data` and `errors` on failure.
  */
-declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData?: false, errorMessageSeparator?: string): ParseResult<T>;
+export declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData?: false, errorMessageSeparator?: string): ParseResult<T>;
 /**
  * Parses an arbitrary object into the form state, returning `data` as a `SchemaDataObject`
  * on success — internal-only fields (like `z.symbol()`) and empty form values stripped,
@@ -2681,7 +2673,7 @@ declare function parseState<T extends z.ZodMiniObject>(schema: T, obj: object, a
  *                                for the same state property (default: "|").
  * @returns A promise resolving to `ParseAsObjectResult` with `data` as `SchemaDataObject` and `errors` on failure.
  */
-declare function parseStateAsync<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData: true, errorMessageSeparator?: string): Promise<ParseAsObjectResult<T>>;
+export declare function parseStateAsync<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData: true, errorMessageSeparator?: string): Promise<ParseAsObjectResult<T>>;
 /**
  * Parses an arbitrary object into the form state. Use this variant when the schema
  * contains async checks (e.g. `z.validateAsync`).
@@ -2696,7 +2688,7 @@ declare function parseStateAsync<T extends z.ZodMiniObject>(schema: T, obj: obje
  *                                for the same state property (default: "|").
  * @returns A promise resolving to `ParseResult` with form state `data` and `errors` on failure.
  */
-declare function parseStateAsync<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData?: false, errorMessageSeparator?: string): Promise<ParseResult<T>>;
+export declare function parseStateAsync<T extends z.ZodMiniObject>(schema: T, obj: object, asSchemaData?: false, errorMessageSeparator?: string): Promise<ParseResult<T>>;
 /**
  * Creates strongly typed initial state for a schema.
  *
@@ -2709,7 +2701,7 @@ declare function parseStateAsync<T extends z.ZodMiniObject>(schema: T, obj: obje
  * @param data - Optional partial data to merge into the initial state.
  * @returns A new instance of the initial state.
  */
-declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPartial<z.infer<T>> | null): z.infer<T>;
+export declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPartial<z.infer<T>> | null): z.infer<T>;
 /**
  * Updates an immutable array state in a nested schema.
  *
@@ -2727,7 +2719,7 @@ declare function createState<T extends z.ZodMiniObject>(schema: T, data?: DeepPa
  * @param updater - The updater function.
  * @returns A new array containing the modified state.
  */
-declare function updateState<T>(state: ImmutableArray<T> | undefined, updater: (draft: T[]) => void): T[];
+export declare function updateState<T>(state: ImmutableArray<T> | undefined, updater: (draft: T[]) => void): T[];
 /**
  * Updates an immutable object state in a nested schema.
  *
@@ -2747,9 +2739,7 @@ declare function updateState<T>(state: ImmutableArray<T> | undefined, updater: (
  * @param updater - The updater function.
  * @returns A new object containing the modified state.
  */
-declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: (draft: T) => void): T;
-//#endregion
-//#region src/helpers/date-formatter.d.ts
+export declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: (draft: T) => void): T;
 /**
  * Formats a date as a `string` in the provided date format.
  *
@@ -2760,7 +2750,7 @@ declare function updateState<T>(state: ImmutableObject<T> | undefined, updater: 
  * @throws A `TypeError` instance if the date object is not a valid `Date` instance.
  * @returns The formatted date string.
  */
-declare function formatDate(date: Date, format?: FormDateFormat, asUTC?: boolean): string;
+export declare function formatDate(date: Date, format?: FormDateFormat, asUTC?: boolean): string;
 /**
  * Parses the provided string input containing a date in the provided format.
  *
@@ -2769,15 +2759,13 @@ declare function formatDate(date: Date, format?: FormDateFormat, asUTC?: boolean
  * @returns An object containing the success flag and the date object, if the
  * operation was successful.
  */
-declare function safeParseDate(input: string | undefined, format?: FormDateFormat): {
+export declare function safeParseDate(input: string | undefined, format?: FormDateFormat): {
   success: false;
   date: null;
 } | {
   success: true;
   date: Date;
 };
-//#endregion
-//#region src/helpers/form-builder.d.ts
 /**
  * URL encodes form data name/value pairs.
  *
@@ -2789,14 +2777,14 @@ declare function safeParseDate(input: string | undefined, format?: FormDateForma
  *                     `inferredNameFormat` initialization value is used (default: "bracket").
  * @returns The `URLSearchParams` instance with the form data name/value pairs.
  */
-declare const formDataEncode: (formData: FormData, omitNames?: string[], nameFormat?: "bracket" | "dot") => URLSearchParams;
+export declare const formDataEncode: (formData: FormData, omitNames?: string[], nameFormat?: "bracket" | "dot") => URLSearchParams;
 /**
  * Creates a `FormData` instance from URL name/value pairs.
  *
  * @param nameValuePairs - The name/value pairs.
  * @returns The `FormData` instance containing the provided name/value pairs.
  */
-declare const formDataDecode: (nameValuePairs: URLSearchParams | string | string[][] | Record<string, string> | undefined) => FormData;
+export declare const formDataDecode: (nameValuePairs: URLSearchParams | string | string[][] | Record<string, string> | undefined) => FormData;
 /**
  * Submits a form element.
  *
@@ -2805,16 +2793,12 @@ declare const formDataDecode: (nameValuePairs: URLSearchParams | string | string
  * @param form - The form element.
  * @param submitter - An optional submitter HTML submit button element.
  */
-declare const submitForm: (form?: HTMLFormElement | null, submitter?: HTMLElement | null) => void;
-//#endregion
-//#region src/helpers/form-reset-blocker.d.ts
+export declare const submitForm: (form?: HTMLFormElement | null, submitter?: HTMLElement | null) => void;
 /**
  * A component to put inside a form element that has a function called from the `action` attribute
  * to avoid versions React 19.3+ from resetting the form after submitting the data.
  */
-declare function FormResetBlocker({ formRef }: FormResetBlockerProps): import("react").JSX.Element | null;
-//#endregion
-//#region src/helpers/class-helper.d.ts
+export declare function FormResetBlocker({ formRef }: FormResetBlockerProps): import("react").JSX.Element | null;
 /**
  * Resolves a clsx-style {@link FormClassValue} into a space-separated class name string.
  *
@@ -2824,9 +2808,7 @@ declare function FormResetBlocker({ formRef }: FormResetBlockerProps): import("r
  * @param values - A sequence of `string`, clsx-style `object`, array of either, or falsy values.
  * @returns A `string` of space-separated class names, or an empty string if nothing resolved.
  */
-declare const classNames: (...values: FormClassValue[]) => string;
-//#endregion
-//#region src/masked-input.d.ts
+export declare const classNames: (...values: FormClassValue[]) => string;
 /**
  * `React.FocusEvent` augmented with a {@link MaskedFocusEvent.complete}
  * flag and an {@link MaskedFocusEvent.unmaskedValue} string carrying just
@@ -2964,9 +2946,7 @@ type MaskedInputProps = Omit<React.ComponentPropsWithRef<'input'>, 'onBlur' | 'o
  *
  * @returns The component instance.
  */
-declare function MaskedInput({ mask, type, placeholderChar, placeholder, inputMode, value, defaultValue, onBlur, onChange, onFocus, onClick, onMouseDown, name, readOnly, disabled, ref, ...props }: Readonly<MaskedInputProps>): import("react").JSX.Element;
-//#endregion
-//#region src/secure-input.d.ts
+export declare function MaskedInput({ mask, type, placeholderChar, placeholder, inputMode, value, defaultValue, onBlur, onChange, onFocus, onClick, onMouseDown, name, readOnly, disabled, ref, ...props }: Readonly<MaskedInputProps>): import("react").JSX.Element;
 /**
  * Secure input props.
  */
@@ -3020,7 +3000,7 @@ type SecureInputProps = Omit<React.ComponentPropsWithRef<'input'>, 'onChange' | 
  *
  * @returns The component instance.
  */
-declare function SecureInput({ type, defaultValue, value, onChange, onSecureChange, onSecureBlur, onBlur, name, readOnly, disabled, ref, ...props }: Readonly<SecureInputProps>): import("react").JSX.Element;
+export declare function SecureInput({ type, defaultValue, value, onChange, onSecureChange, onSecureBlur, onBlur, name, readOnly, disabled, ref, ...props }: Readonly<SecureInputProps>): import("react").JSX.Element;
 declare namespace value_converter_d_exports {
   export { asBoolean, asDateString, asNumber, toBoolean, toDate, toFloat, toInt, toLiteral, toString };
 }
@@ -3125,6 +3105,5 @@ declare const asNumber: (value: number | "", defaultValue?: number) => number;
  * @return The `string` value containing the Date value.
  */
 declare function asDateString(value: Date | string, dateFormat?: FormDateFormat): string;
-//#endregion
-export { type BlockerResponse, type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormArrayPath, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, FormResetBlocker, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, FormStateProvider, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Group, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, MaskedInput, type SchemaDataObject, SecureInput, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationPath, type ValidationResult, classNames, value_converter_d_exports as convert, createState, createSymbol, formConnect, formDataDecode, formDataEncode, formatDate, getState, parseState, parseStateAsync, safeParseDate, submitForm, updateState, useFormState, useFormStateContext, form_schema_d_exports as z };
+export { type BlockerResponse, type DateParseResult, type DeepPartial, type ElementFocusOptions, type FormArrayPath, type FormChangeArrayOptions, type FormChangeOptions, type FormClassCallback, type FormClassOptions, type FormClassState, type FormClassValue, type FormControlWithStateProps, type FormDateFormat, type FormEventType, type FormInitOptions, type FormMode, type FormPath, type FormProviderInitOptions, type FormResetOptions, type FormState, type FormStateProps, type FormStatePropsWithIndex, type FormStateResponse, type FormStatus, type FormSubmitOptions, type FormTouchOptions, type FormValidateOptions, type Group, type Immutable, type MaskedChangeEvent, type MaskedFocusEvent, type SchemaDataObject, type StateChangeEvent, type StateChangeListener, type SubmitState, type SubmitSuccessState, type ValidationPath, type ValidationResult, value_converter_d_exports as convert, form_schema_d_exports as z };
 //# sourceMappingURL=index.d.ts.map

@@ -225,15 +225,17 @@ describe('toJSONSchema', () => {
     });
 
     const parsed = JSON.parse(testSchema.toJSONSchema()) as {
-      properties: Record<string, { anyOf?: { type?: string }[] }>;
+      properties: Record<string, { anyOf?: { type?: string }[]; type?: string | string[] }>;
     };
 
-    const members = parsed.properties['value']?.anyOf ?? [];
+    // Zod < 4.6 emits `anyOf` members; Zod 4.6+ collapses primitive members into a `type` array.
+    const property = parsed.properties['value'];
+    const types = property?.anyOf
+      ? property.anyOf.map((member) => member.type)
+      : [property?.type].flat();
 
-    expect(members).toHaveLength(3);
-    expect(members.map((member) => member.type)).toEqual(
-      expect.arrayContaining(['string', 'number', 'boolean'])
-    );
+    expect(types).toHaveLength(3);
+    expect(types).toEqual(expect.arrayContaining(['string', 'number', 'boolean']));
   });
 
   it('should keep a deliberate empty-string literal in a genuine multi-member union', () => {

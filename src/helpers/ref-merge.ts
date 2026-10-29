@@ -9,11 +9,7 @@ export const mergeRefs =
       if (typeof ref === 'function') {
         const result = ref(node);
 
-        if (typeof result === 'function') {
-          cleanups.push(result);
-        } else {
-          cleanups.push(() => ref(null));
-        }
+        cleanups.push(typeof result === 'function' ? result : () => ref(null));
       } else if (ref) {
         ref.current = node;
 

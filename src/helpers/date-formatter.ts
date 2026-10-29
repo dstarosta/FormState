@@ -123,11 +123,9 @@ export const parseDate = (
     dateDay = date.getDate();
   }
 
-  if (!isValidDate(date) || dateYear !== numYear || dateMonth !== numMonth || dateDay !== numDay) {
-    return INVALID_DATE;
-  }
-
-  return date;
+  return isValidDate(date) && dateYear === numYear && dateMonth === numMonth && dateDay === numDay
+    ? date
+    : INVALID_DATE;
 };
 
 // Public functions

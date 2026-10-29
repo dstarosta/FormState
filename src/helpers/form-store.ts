@@ -46,10 +46,12 @@ export function createFormStore() {
 
       pendingUpdates.add(name);
 
-      if (!isFlushing) {
-        isFlushing = true;
-        queueMicrotask(flush);
+      if (isFlushing) {
+        return;
       }
+
+      isFlushing = true;
+      queueMicrotask(flush);
     },
 
     subscribeToField: (name: string, listener: () => void) => {
@@ -65,12 +67,14 @@ export function createFormStore() {
       return () => {
         const current = fieldListeners.get(name);
 
-        if (current) {
-          current.delete(listener);
+        if (!current) {
+          return;
+        }
 
-          if (current.size === 0) {
-            fieldListeners.delete(name);
-          }
+        current.delete(listener);
+
+        if (current.size === 0) {
+          fieldListeners.delete(name);
         }
       };
     },

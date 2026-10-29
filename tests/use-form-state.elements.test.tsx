@@ -73,7 +73,7 @@ describe('form element tests', () => {
   };
 
   const FormComponent = ({
-    initialValue,
+    initialValue = '',
     initialMode,
     manualError,
     forwardRef,
@@ -99,7 +99,7 @@ describe('form element tests', () => {
       Form,
     } = useFormState(schema, {
       initialData: {
-        name: initialValue ?? '',
+        name: initialValue,
         info: {
           age: 30,
         },
@@ -519,17 +519,9 @@ describe('form element tests', () => {
   });
 
   it.each([true, false])('should fail to submit form using "submit"', async (watch) => {
-    const domConsoleSpy = vi
-      .spyOn(
-        (
-          globalThis as typeof globalThis & {
-            _virtualConsole: {
-              emit: ReturnType<typeof vi.fn>;
-            };
-          }
-        )._virtualConsole,
-        'emit'
-      )
+    // The native form.submit() bypasses the form handlers (jsdom does not implement it).
+    const nativeSubmitSpy = vi
+      .spyOn(HTMLFormElement.prototype, 'submit')
       .mockImplementation(() => {});
 
     render(<FormComponent watch={watch} />);
@@ -546,9 +538,9 @@ describe('form element tests', () => {
       expect(screen.queryByText('Form Submitted')).not.toBeInTheDocument();
     });
 
-    expect(domConsoleSpy).toHaveBeenCalledTimes(1);
+    expect(nativeSubmitSpy).toHaveBeenCalledTimes(1);
 
-    domConsoleSpy.mockReset();
+    nativeSubmitSpy.mockRestore();
   });
 
   it.each([true, false])('should fail to submit form with name "Ivan"', async (watch) => {

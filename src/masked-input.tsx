@@ -381,11 +381,13 @@ export function MaskedInput({
     callbacksRef.current = { onChange, onBlur };
     slotsRef.current = slots;
 
-    if (caretRef.current !== null && inputRef.current) {
-      const pos = caretRef.current;
-      inputRef.current.setSelectionRange(pos, pos);
-      caretRef.current = null;
+    if (caretRef.current === null || !inputRef.current) {
+      return;
     }
+
+    const pos = caretRef.current;
+    inputRef.current.setSelectionRange(pos, pos);
+    caretRef.current = null;
   });
 
   const select = (): [number, number] => {
@@ -458,16 +460,12 @@ export function MaskedInput({
       const currentFormatted = formatSlots(slotsRef.current, latest.info);
       element.value = currentFormatted === latest.info.empty ? '' : currentFormatted;
 
-      if (event.data) {
-        const result = insertChars(
-          slotsRef.current,
-          latest.info,
-          range.start,
-          range.end,
-          event.data
-        );
-        latest.commit(result.slots, result.caret);
+      if (!event.data) {
+        return;
       }
+
+      const result = insertChars(slotsRef.current, latest.info, range.start, range.end, event.data);
+      latest.commit(result.slots, result.caret);
     };
 
     const handler = (event: InputEvent) => {

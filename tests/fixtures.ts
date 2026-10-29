@@ -104,7 +104,7 @@ export const schema = z
       .with(z.describe('Is record active?')),
     isArchived: z.formBoolean({ required: true }).with(z.describe('Is record archived?')),
     version: z
-      // eslint-disable-next-line unicorn/prefer-top-level-await -- Zod's .catch(), not a Promise
+
       .catch(z.formNumber(z.gte(0, 'Negative version'), z.lte(9999999, 'Version is too high')), 0)
       .with(z.describe('Record version')),
     registeredOn: z.formDate({ dateFormat: 'MM/dd/yyyy' }).with(z.describe('Registered on')),

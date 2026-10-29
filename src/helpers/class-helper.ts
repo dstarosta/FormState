@@ -19,12 +19,14 @@ const collectClassNames = (value: FormClassValue, out: string[]) => {
     return;
   }
 
-  if (typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-    for (const key in obj) {
-      if (obj[key]) {
-        out.push(key);
-      }
+  if (typeof value !== 'object') {
+    return;
+  }
+
+  const obj = value as Record<string, unknown>;
+  for (const key in obj) {
+    if (obj[key]) {
+      out.push(key);
     }
   }
 };

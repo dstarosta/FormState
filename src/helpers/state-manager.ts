@@ -128,11 +128,9 @@ export const cleanEmpty = <T>(
   }
 
   if (isNotRecordObject(obj)) {
-    if (obj instanceof Date) {
-      return formatDate(obj, getDateFormat(schema, getFieldPath())) as DeepPartial<T>;
-    }
-
-    return obj as DeepPartial<T>;
+    return obj instanceof Date
+      ? (formatDate(obj, getDateFormat(schema, getFieldPath())) as DeepPartial<T>)
+      : (obj as DeepPartial<T>);
   }
 
   const innerObj: UnknownObject = {};
@@ -823,7 +821,10 @@ export function createState<T extends z.ZodMiniObject>(
         result[key] = value.def.catchValue({
           value: undefined,
           issues: [],
+          // Zod's catch context still requires these deprecated fields; callbacks may read them.
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           error: { issues: [] },
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           input: undefined,
         }) as State[typeof key];
       } else if (value instanceof z.ZodMiniDefault) {

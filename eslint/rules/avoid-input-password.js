@@ -3,18 +3,17 @@ function isJsxElement(node) {
 }
 
 function isPasswordInput(node) {
-  if (node.name.name !== 'input') {
-    return false;
-  }
-
-  return node.attributes.some(
-    (a) =>
-      a.type === 'JSXAttribute' &&
-      a.name?.name === 'type' &&
-      ((a.value?.type === 'Literal' && a.value.value === 'password') ||
-        (a.value?.type === 'JSXExpressionContainer' &&
-          a.value.expression?.type === 'Literal' &&
-          a.value.expression.value === 'password'))
+  return (
+    node.name.name === 'input' &&
+    node.attributes.some(
+      (a) =>
+        a.type === 'JSXAttribute' &&
+        a.name?.name === 'type' &&
+        ((a.value?.type === 'Literal' && a.value.value === 'password') ||
+          (a.value?.type === 'JSXExpressionContainer' &&
+            a.value.expression?.type === 'Literal' &&
+            a.value.expression.value === 'password'))
+    )
   );
 }
 
@@ -56,20 +55,16 @@ function getImportFix(fixer, sourceCode) {
 
     const lastSpecifier = formStateImport.specifiers.at(-1);
 
-    if (lastSpecifier) {
-      return fixer.insertTextAfter(lastSpecifier, ', SecureInput');
-    }
-
-    return fixer.replaceText(formStateImport, "import { SecureInput } from 'form-state';");
+    return lastSpecifier
+      ? fixer.insertTextAfter(lastSpecifier, ', SecureInput')
+      : fixer.replaceText(formStateImport, "import { SecureInput } from 'form-state';");
   }
 
   const lastImport = [...body].findLast((n) => n.type === 'ImportDeclaration');
 
-  if (lastImport) {
-    return fixer.insertTextAfter(lastImport, "\nimport { SecureInput } from 'form-state';");
-  }
-
-  return fixer.insertTextBefore(body[0], "import { SecureInput } from 'form-state';\n");
+  return lastImport
+    ? fixer.insertTextAfter(lastImport, "\nimport { SecureInput } from 'form-state';")
+    : fixer.insertTextBefore(body[0], "import { SecureInput } from 'form-state';\n");
 }
 
 export const avoidInputPassword = {

@@ -40,16 +40,16 @@ function isHookCall(node) {
 
 // A schema built in a component or hook body and then passed by name.
 function isRenderScopedSchema(variable) {
-  if (!variable || !isDeclaredInComponentOrHook(variable)) {
-    return false;
-  }
-
-  return variable.defs.some(
-    (def) =>
-      def.type === 'Variable' &&
-      def.node.init &&
-      isInlineSchemaExpression(def.node.init) &&
-      !isHookCall(def.node.init)
+  return (
+    Boolean(variable) &&
+    isDeclaredInComponentOrHook(variable) &&
+    variable.defs.some(
+      (def) =>
+        def.type === 'Variable' &&
+        def.node.init &&
+        isInlineSchemaExpression(def.node.init) &&
+        !isHookCall(def.node.init)
+    )
   );
 }
 

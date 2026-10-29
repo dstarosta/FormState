@@ -156,7 +156,7 @@ describe('form schema', () => {
     expect(requiredStringSchema.safeParse('test').success).toBe(true);
 
     const nfcSchema = z.formString({ normalize: 'NFC' });
-    const decomposed = '\u{6E}\u{303}'; // 'n' + combining tilde, length 2
+    const decomposed = 'n\u{303}'; // 'n' + combining tilde, length 2
     const composed = '\u{F1}'; // single 'n with tilde', length 1
     expect(nfcSchema.safeParse(decomposed).data).toBe(composed);
 

@@ -53,10 +53,12 @@ export function debounceAsync<T extends unknown[], R>(
       timeoutId = null;
     }
 
-    if (pendingResolve) {
-      pendingResolve(lastResult);
-      pendingResolve = null;
+    if (!pendingResolve) {
+      return;
     }
+
+    pendingResolve(lastResult);
+    pendingResolve = null;
   };
 
   const debounced = (...args: T): Promise<R> => {

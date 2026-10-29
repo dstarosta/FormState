@@ -213,10 +213,12 @@ export const createFormComponent = <T extends object>(
           form.removeEventListener('submit', handleSubmit, { capture: true });
         }
 
-        if (store) {
-          form.removeEventListener('change', handleInputChange);
-          form.removeEventListener('input', handleInputChange);
+        if (!store) {
+          return;
         }
+
+        form.removeEventListener('change', handleInputChange);
+        form.removeEventListener('input', handleInputChange);
       };
     }, [handleInputChange, handleFormData, handleSubmit, resetStore]);
 

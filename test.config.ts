@@ -17,11 +17,13 @@ Object.defineProperty(globalThis, 'FormData', {
     constructor(form?: HTMLFormElement, submitter?: HTMLElement | null) {
       super(form, submitter);
 
-      if (form) {
-        const event = new Event('formdata', { bubbles: true });
-        Object.defineProperty(event, 'formData', { value: this });
-        form.dispatchEvent(event);
+      if (!form) {
+        return;
       }
+
+      const event = new Event('formdata', { bubbles: true });
+      Object.defineProperty(event, 'formData', { value: this });
+      form.dispatchEvent(event);
     }
   },
   writable: true,

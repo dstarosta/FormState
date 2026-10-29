@@ -136,11 +136,7 @@ export function dotPathSet(obj: object, prop: string | number | string[], value:
       return clone;
     }
 
-    if (typeof val === 'function') {
-      return (val as (current: unknown) => unknown)(current);
-    }
-
-    return val;
+    return typeof val === 'function' ? (val as (current: unknown) => unknown)(current) : val;
   };
 
   return setPropImmutableRec(obj, propArray, value, 0);

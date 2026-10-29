@@ -78,22 +78,88 @@ const getDefaultMapFor = (check: AsyncCheck): AsyncCheckMetaMap => {
   return map;
 };
 
-const getSchemaLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
-  // Zod reduces repeated min/max checks and exact `length` checks into the tightest bounds.
-  const bag = schema._zod.bag as { minimum?: number; maximum?: number } | undefined;
+type Bounds = Record<
+  'minimum' | 'exclusiveMinimum' | 'maximum' | 'exclusiveMaximum',
+  number | undefined
+>;
 
-  return { type: 'length', format: 'integer', min: bag?.minimum, max: bag?.maximum };
+const tighterMin = (current: number | undefined, next: number | undefined) =>
+  next === undefined || (current !== undefined && current >= next) ? current : next;
+
+const tighterMax = (current: number | undefined, next: number | undefined) =>
+  next === undefined || (current !== undefined && current <= next) ? current : next;
+
+// Folds a schema's length and numeric checks into their tightest bounds. The check definitions are
+// read directly because Zod 4.6+ no longer records built-in bounds in `_zod.bag`; values that are
+// still in the bag (older Zod versions, third-party checks) are merged in.
+const collectBounds = (schema: z.ZodMiniType): Bounds => {
+  const bag = schema._zod.bag as Partial<Bounds>;
+  const bounds: Bounds = {
+    minimum: bag.minimum,
+    exclusiveMinimum: bag.exclusiveMinimum,
+    maximum: bag.maximum,
+    exclusiveMaximum: bag.exclusiveMaximum,
+  };
+
+  const checks = (schema._zod.def as { checks?: z.core.$ZodCheck[] }).checks ?? [];
+
+  for (const check of checks) {
+    const def = check._zod.def as {
+      check: string;
+      minimum?: number;
+      maximum?: number;
+      length?: number;
+      value?: unknown;
+      inclusive?: boolean;
+    };
+    const value = typeof def.value === 'number' ? def.value : undefined;
+
+    switch (def.check) {
+      case 'min_length': {
+        bounds.minimum = tighterMin(bounds.minimum, def.minimum);
+        break;
+      }
+      case 'max_length': {
+        bounds.maximum = tighterMax(bounds.maximum, def.maximum);
+        break;
+      }
+      case 'length_equals': {
+        bounds.minimum = tighterMin(bounds.minimum, def.length);
+        bounds.maximum = tighterMax(bounds.maximum, def.length);
+        break;
+      }
+      case 'greater_than': {
+        if (def.inclusive) {
+          bounds.minimum = tighterMin(bounds.minimum, value);
+        } else {
+          bounds.exclusiveMinimum = tighterMin(bounds.exclusiveMinimum, value);
+        }
+        break;
+      }
+      case 'less_than': {
+        if (def.inclusive) {
+          bounds.maximum = tighterMax(bounds.maximum, value);
+        } else {
+          bounds.exclusiveMaximum = tighterMax(bounds.exclusiveMaximum, value);
+        }
+        break;
+      }
+    }
+  }
+
+  return bounds;
+};
+
+const getSchemaLength = (schema: z.ZodMiniString | z.ZodMiniArray) => {
+  const { minimum, maximum } = collectBounds(schema);
+
+  return { type: 'length', format: 'integer', min: minimum, max: maximum };
 };
 
 const getNumericSchemaRange = (schema: z.ZodMiniNumber) => {
-  const bag = schema._zod.bag as Record<string, number | undefined> | undefined;
-
-  // Zod keeps inclusive and exclusive bounds separately; use the tighter one on each side
+  // Inclusive and exclusive bounds are kept separately; use the tighter one on each side
   // (an exclusive bound wins a tie).
-  const minimum = bag?.['minimum'];
-  const exclusiveMinimum = bag?.['exclusiveMinimum'];
-  const maximum = bag?.['maximum'];
-  const exclusiveMaximum = bag?.['exclusiveMaximum'];
+  const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = collectBounds(schema);
 
   const exclusiveMin =
     exclusiveMinimum !== undefined && (minimum === undefined || exclusiveMinimum >= minimum);
@@ -202,11 +268,9 @@ const getFormDateFormat = (schema: z.ZodMiniType): FormDateFormat | undefined =>
     if (inner instanceof z.ZodMiniDate) {
       const format = z.globalRegistry.get(inner)?.['format'];
 
-      if (typeof format === 'string' && format.length > 0) {
-        return format as FormDateFormat;
-      }
-
-      return 'yyyy-MM-dd';
+      return typeof format === 'string' && format.length > 0
+        ? (format as FormDateFormat)
+        : 'yyyy-MM-dd';
     }
   }
 
@@ -1035,24 +1099,19 @@ export const getPathAsString = <T extends object>(
 };
 
 export const getPathNotation = <T extends z.ZodMiniObject>(path: FormStatePath<z.infer<T>>) => {
-  return path
-    .map((pathPart) => {
-      if (DIGIT_RE.test(pathPart)) {
-        // array index is stored as 0
-        return '0';
-      }
-      return pathPart;
-    })
-    .join('.');
+  return (
+    path
+      // array indexes are stored as 0
+      .map((pathPart) => (DIGIT_RE.test(pathPart) ? '0' : pathPart))
+      .join('.')
+  );
 };
 
 export const combinePath = (path: PropertyKey | readonly PropertyKey[] | undefined) => {
-  if (typeof path !== 'object') {
-    return String(path || '');
-  }
-
-  return path
-    .filter((part) => typeof part !== 'symbol')
-    .map((part) => part.toString())
-    .join('.');
+  return typeof path === 'object'
+    ? path
+        .filter((part) => typeof part !== 'symbol')
+        .map((part) => part.toString())
+        .join('.')
+    : String(path || '');
 };

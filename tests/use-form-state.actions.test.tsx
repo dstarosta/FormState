@@ -367,6 +367,27 @@ describe('form actions', () => {
     expect(result.current.formState.errors.get((path) => path.name)).toBe('Name is taken');
   });
 
+  it('should drop a pending debounced change when the form unmounts', () => {
+    vi.useFakeTimers();
+    const callback = vi.fn();
+    const debounceSchema = z.object({ name: z.formString() });
+    const { result, unmount } = renderHook(() =>
+      useFormState(debounceSchema, { initialData: { name: '' } })
+    );
+
+    act(() => {
+      result.current.formActions.change('name', 'a', { debounceIntervalMs: 100, callback });
+    });
+
+    unmount();
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
   it('should debounce inline callbacks: only the latest runs once, with the final state', () => {
     vi.useFakeTimers();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

@@ -647,15 +647,17 @@ export function formDate(
 
       return dateValue;
     }),
-    options.required
-      ? z.union([
-          zodDateWithMeta.with(z.meta({ required: true })),
-          z
-            .string()
-            .with(z.meta({ required: true }))
-            .check(z.minLength(1, options.error)),
-        ])
-      : z.union([zodDateWithMeta, z.string()])
+    z.union(
+      options.required
+        ? [
+            zodDateWithMeta.with(z.meta({ required: true })),
+            z
+              .string()
+              .with(z.meta({ required: true }))
+              .check(z.minLength(1, options.error)),
+          ]
+        : [zodDateWithMeta, z.string()]
+    )
   );
 }
 
@@ -1205,10 +1207,7 @@ export function validateAsync<T>(
       const meta = pendingMetas.shift();
       // Unreachable guard
       /* v8 ignore if -- @preserve */
-      if (!meta) {
-        return predicate(obj);
-      }
-      return meta.runPredicate(obj);
+      return meta ? meta.runPredicate(obj) : predicate(obj);
     },
     {
       when: (payload) => {

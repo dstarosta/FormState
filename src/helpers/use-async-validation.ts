@@ -220,14 +220,10 @@ export function useAsyncValidation<T extends z.ZodMiniObject>({
       }
     }
 
-    // `flushed` closes the burst early because a newer validation has already started.
-    const finishBurst = (resolvedTrigger: string | undefined, flushed: boolean) => {
-      // Unreachable guard
-      /* v8 ignore if -- @preserve */
-      if (!flushed && requestId !== formStateRef.current.asyncRequestId) {
-        return;
-      }
-
+    // Closes the burst. A newer change-driven validation flushes this early (see `pendingFinish`),
+    // so no newer request of the same burst can be in flight here; a request id bumped by
+    // `validateAsync` or a submit must not keep the burst open.
+    const finishBurst = (resolvedTrigger: string | undefined) => {
       const snapshot = effectBurstRef.current.closingSnapshot ?? snapshotAsyncListenerState();
 
       asyncBurstActiveRef.current = false;
@@ -267,13 +263,13 @@ export function useAsyncValidation<T extends z.ZodMiniObject>({
 
     const scheduleFinish = () => {
       const frame = requestAnimationFrame(() => {
-        finishBurst(triggerField, false);
+        finishBurst(triggerField);
       });
 
       effectBurstRef.current.pendingFinish = {
         frame,
         flush: () => {
-          finishBurst(triggerField, true);
+          finishBurst(triggerField);
         },
       };
     };
@@ -386,10 +382,12 @@ export function useAsyncValidation<T extends z.ZodMiniObject>({
         asyncMetaMap,
         (collected) => {
           activePaths = collected;
-          if (ownsBurst) {
-            asyncBurstActiveRef.current = true;
-            fireAsyncListenerEvent('asyncValidating', collected);
+          if (!ownsBurst) {
+            return;
           }
+
+          asyncBurstActiveRef.current = true;
+          fireAsyncListenerEvent('asyncValidating', collected);
         }
       );
       activePaths = parsed.activePaths;

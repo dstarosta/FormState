@@ -616,6 +616,24 @@ describe('insert (beforeinput insertText)', () => {
     expect(input.value).toBe('12_');
   });
 
+  it('restores the formatted value when a composition ends without text', () => {
+    const onChange = vi.fn();
+
+    render(<MaskedInput mask="999" defaultValue="1" onChange={onChange} />);
+
+    const input = getInput();
+
+    setSelection(input, 1, 1);
+    fireEvent.compositionStart(input);
+    act(() => {
+      input.value = '1x';
+    });
+    fireEvent.compositionEnd(input, { data: '' });
+
+    expect(input.value).toBe('1__');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('restores the formatted value when the composed text is entirely invalid', () => {
     render(<MaskedInput mask="999" defaultValue="1" />);
 

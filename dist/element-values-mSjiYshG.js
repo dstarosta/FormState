@@ -1,1 +1,0 @@
-const e=new WeakMap;function t(t){return e.get(t)}function n(t,n){e.set(t,n)}export{n,t};

@@ -17,10 +17,9 @@ export function useDomActions<T extends z.ZodMiniObject>(
   const queryWithinForm = useCallback(
     (selector: string) => {
       const form = formElementRef.current;
-      if (form?.isConnected) {
-        return form.querySelector<HTMLElement>(selector);
-      }
-      return document.querySelector<HTMLElement>(`form ${selector}`);
+      return form?.isConnected
+        ? form.querySelector<HTMLElement>(selector)
+        : document.querySelector<HTMLElement>(`form ${selector}`);
     },
     [formElementRef]
   );
