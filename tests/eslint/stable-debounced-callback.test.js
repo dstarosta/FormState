@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { RuleTester } from 'eslint';
 import { stableDebouncedCallback } from '../../eslint/rules/stable-debounced-callback.js';
 
@@ -12,106 +12,22 @@ const ruleTester = new RuleTester({
   },
 });
 
+describe('stable-debounced-callback (deprecated)', () => {
+  it('is marked as deprecated and not recommended', () => {
+    expect(stableDebouncedCallback.meta.deprecated).toBe(true);
+    expect(stableDebouncedCallback.meta.docs.recommended).toBe(false);
+  });
+});
+
+// Inline callbacks are fine: `change()` always runs the latest callback for a debounced field.
 ruleTester.run('stable-debounced-callback', stableDebouncedCallback, {
   valid: [
-    // No options or no debounceIntervalMs — inline callback is fine
-    { code: 'change(path, value)' },
-    { code: 'change(path, value, { touch: true })' },
-    { code: 'change(path, value, { validate: false })' },
-    { code: 'change(path, value, { callback: () => {} })' },
-    { code: 'change(path, value, { callback: function() {} })' },
-
-    // debounceIntervalMs present but no callback
-    { code: 'change(path, value, { debounceIntervalMs: 300 })' },
-    { code: 'change(path, value, { debounceIntervalMs: 300, touch: true })' },
-
-    // debounceIntervalMs present with stable identifier
-    { code: 'change(path, value, { debounceIntervalMs: 300, callback: stableCallback })' },
-    {
-      code: 'formActions.change(path, value, { debounceIntervalMs: 300, callback: stableCallback })',
-    },
-
-    // debounceIntervalMs present with useCallback-wrapped function
-    {
-      code: 'change(path, value, { debounceIntervalMs: 300, callback: useCallback(() => {}, []) })',
-    },
-    {
-      code: 'change(path, value, { debounceIntervalMs: 300, callback: useCallback(function() {}, [deps]) })',
-    },
-
-    // Different method name — not flagged
-    { code: 'replace(path, value, { debounceIntervalMs: 300, callback: () => {} })' },
-    { code: 'update(path, value, { debounceIntervalMs: 300, callback: () => {} })' },
-
-    // Options passed as a variable — can't be statically inspected
-    { code: 'change(path, value, opts)' },
-
-    // Callback declared at module scope, or memoized in the component
-    {
-      code: 'const onSaved = () => {}; function C() { change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
-    },
-    {
-      code: 'function C() { const onSaved = useCallback(() => {}, []); change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
-    },
-    // Declared in a non-component function
-    {
-      code: "it('works', () => { const onSaved = () => {}; change(path, value, { debounceIntervalMs: 300, callback: onSaved }); });",
-    },
-  ],
-  invalid: [
-    // Callback created during render and passed by name
+    { code: 'change(path, value, { debounceIntervalMs: 300, callback: () => {} })' },
+    { code: 'change(path, value, { debounceIntervalMs: 300, callback: function () {} })' },
     {
       code: 'function C() { const onSaved = () => {}; change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
-      errors: [{ messageId: 'unstableCallbackReference', data: { name: 'onSaved' } }],
     },
-    {
-      code: 'function C() { function onSaved() {} change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
-      errors: [{ messageId: 'unstableCallbackReference', data: { name: 'onSaved' } }],
-    },
-    // Declared in the component body, used from an event handler
-    {
-      code: 'const C = () => { const onSaved = () => {}; const onInput = (v) => change(path, v, { debounceIntervalMs: 300, callback: onSaved }); };',
-      errors: [{ messageId: 'unstableCallbackReference', data: { name: 'onSaved' } }],
-    },
-    // Declared in a custom hook body
-    {
-      code: 'function useSearch() { const onSaved = () => {}; change(path, value, { debounceIntervalMs: 300, callback: onSaved }); }',
-      errors: [{ messageId: 'unstableCallbackReference', data: { name: 'onSaved' } }],
-    },
-    // Inline arrow function with debounceIntervalMs
-    {
-      code: 'change(path, value, { debounceIntervalMs: 300, callback: () => {} })',
-      errors: [{ messageId: 'unstableCallback' }],
-    },
-    // Inline arrow with body
-    {
-      code: 'change(path, value, { debounceIntervalMs: 300, callback: (state) => { console.log(state); } })',
-      errors: [{ messageId: 'unstableCallback' }],
-    },
-    // Inline function expression
-    {
-      code: 'change(path, value, { debounceIntervalMs: 300, callback: function() {} })',
-      errors: [{ messageId: 'unstableCallback' }],
-    },
-    // Inline named function expression
-    {
-      code: 'change(path, value, { debounceIntervalMs: 300, callback: function onChanged() {} })',
-      errors: [{ messageId: 'unstableCallback' }],
-    },
-    // Member call
-    {
-      code: 'formActions.change(path, value, { debounceIntervalMs: 300, callback: () => {} })',
-      errors: [{ messageId: 'unstableCallback' }],
-    },
-    // Deeply nested member call
-    {
-      code: 'form.actions.change(path, value, { debounceIntervalMs: 300, callback: () => {} })',
-      errors: [{ messageId: 'unstableCallback' }],
-    },
-    // Other options alongside debounceIntervalMs
-    {
-      code: 'change(path, value, { touch: true, debounceIntervalMs: 500, callback: () => {} })',
-      errors: [{ messageId: 'unstableCallback' }],
-    },
+    { code: 'formActions.change(path, value, { debounceIntervalMs: 300, callback: () => {} })' },
   ],
+  invalid: [],
 });

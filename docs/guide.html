@@ -322,22 +322,6 @@ export default defineConfig([
               <tr>
                 <td>
                   <a
-                    href="https://github.com/dstarosta/FormState/blob/master/docs/rules/stable-debounced-callback.md"
-                    target="_blank"
-                    ><code>stable-debounced-callback</code></a
-                  >
-                </td>
-                <td>
-                  Enforces stable callback references in <code>change()</code> calls that set
-                  <code>debounceIntervalMs</code>. An inline function resets the debounce timer on
-                  every render, preventing the callback from ever firing.
-                </td>
-                <td>error</td>
-                <td></td>
-              </tr>
-              <tr>
-                <td>
-                  <a
                     href="https://github.com/dstarosta/FormState/blob/master/docs/rules/use-form-schema.md"
                     target="_blank"
                     ><code>use-form-schema</code></a
@@ -5812,8 +5796,7 @@ const { change } = useFormStateContext(formSchema, (form) =&gt; form.formActions
           </p>
           <div class="code-block">
             <div class="code-block-header"><span class="code-block-lang">typescript</span></div>
-            <pre><code class="language-tsx">// Define the callback at module level so it has a stable reference.
-function onSearch(state: FormState&lt;FormSchema&gt;, status: FormStatus) {
+            <pre><code class="language-tsx">function onSearch(state: FormState&lt;FormSchema&gt;, status: FormStatus) {
   // Fires 400ms after the last keystroke
   performSearch(state.data.search);
 }
@@ -5826,17 +5809,10 @@ formActions.change('search', inputValue, {
           </div>
           <p>
             The callback always receives the latest <code>(state, status)</code> snapshot — even
-            when multiple rapid changes fired before the debounce elapsed.
+            when multiple rapid changes fired before the debounce elapsed. Inline functions are
+            fine: if several changes to the same field pass different callbacks, only the latest
+            one runs.
           </p>
-          <div class="callout callout-warning">
-            <div class="callout-label">Warning</div>
-            <p>
-              When you pass a <code>callback</code> alongside <code>debounceIntervalMs</code>, give
-              it a stable reference — wrap it in <code>useCallback</code> or define it outside the
-              component. An inline arrow function is recreated on every render and is flagged by the
-              <code>stable-debounced-callback</code> ESLint rule.
-            </p>
-          </div>
         </section>
         <section class="section" id="infer-name">
           <div class="section-eyebrow">Features</div>

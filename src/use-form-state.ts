@@ -70,7 +70,6 @@ import { createFormStore } from './helpers/form-store';
 import { createUseListener } from './helpers/use-listener-builder';
 import { createUseWatch } from './helpers/use-watch-builder';
 import { createUseBlocker } from './helpers/use-blocker-builder';
-import { IS_DEVELOPMENT } from './helpers/development-helper';
 import { createUseSelector } from './helpers/use-selector-builder';
 
 /**
@@ -180,9 +179,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       }
     >()
   );
-
-  // The set to dedupe "useCallback" warnings on debounce.
-  const debounceCallbackWarning = useRef(new Set<string>());
 
   // Per-form storage for `validateAsync` closure state.
   const [asyncMetaMap] = useState<AsyncCheckMetaMap>(() => new Map());
@@ -537,20 +533,7 @@ export function useFormState<T extends z.ZodMiniObject>(
           debounceCache.current.delete(pathNotation);
           debounceCache.current.set(pathNotation, entry);
 
-          if (
-            IS_DEVELOPMENT &&
-            callback &&
-            entry.callback &&
-            entry.callback !== callback &&
-            !debounceCallbackWarning.current.has(pathNotation)
-          ) {
-            console.warn(
-              `[useFormState] The callback reference for debounced field "${pathNotation}" changed between calls. ` +
-                'This usually means an inline function is getting passed. Consider wrapping it with useCallback().'
-            );
-            debounceCallbackWarning.current.add(pathNotation);
-          }
-
+          // The latest callback replaces the previous one, so its identity does not matter.
           entry.path = path;
           entry.value = value;
           entry.touch = Boolean(options?.touch);

@@ -367,6 +367,42 @@ describe('form actions', () => {
     expect(result.current.formState.errors.get((path) => path.name)).toBe('Name is taken');
   });
 
+  it('should debounce inline callbacks: only the latest runs once, with the final state', () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const debounceSchema = z.object({ name: z.formString() });
+    const calls: string[] = [];
+    const { result, rerender } = renderHook(() =>
+      useFormState(debounceSchema, { initialData: { name: '' } })
+    );
+
+    for (const value of ['a', 'ab', 'abc']) {
+      act(() => {
+        result.current.formActions.change('name', value, {
+          debounceIntervalMs: 100,
+          callback: (state) => calls.push(`${value}:${state.data.name}`),
+        });
+      });
+      rerender();
+      act(() => {
+        vi.advanceTimersByTime(50);
+      });
+    }
+
+    // Re-rendering while waiting must not postpone the callback.
+    for (let i = 0; i < 5; i++) {
+      rerender();
+      act(() => {
+        vi.advanceTimersByTime(20);
+      });
+    }
+
+    expect(calls).toStrictEqual(['abc:abc']);
+    expect(warn).not.toHaveBeenCalled();
+
+    warn.mockRestore();
+  });
+
   it('should call a debounced change callback per field', () => {
     vi.useFakeTimers();
 
@@ -419,7 +455,7 @@ describe('form actions', () => {
     expect(updateCounter).toBe(3);
   });
 
-  it('should debounce unstable callbacks for the same field without extra calls but warn the user', () => {
+  it('should debounce unstable callbacks for the same field without extra calls or warnings', () => {
     vi.useFakeTimers();
 
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -442,7 +478,6 @@ describe('form actions', () => {
     act(() => {
       change('name', 'A', {
         touch: true,
-        // eslint-disable-next-line form-state/stable-debounced-callback
         callback: () => {
           ++updateCounter;
         },
@@ -450,7 +485,6 @@ describe('form actions', () => {
       });
       change('name', 'Ali', {
         touch: true,
-        // eslint-disable-next-line form-state/stable-debounced-callback
         callback: () => {
           ++updateCounter;
         },
@@ -458,7 +492,6 @@ describe('form actions', () => {
       });
       change('name', 'Alice', {
         touch: true,
-        // eslint-disable-next-line form-state/stable-debounced-callback
         callback: () => {
           ++updateCounter;
         },
@@ -471,7 +504,7 @@ describe('form actions', () => {
     });
 
     expect(updateCounter).toBe(1);
-    expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
 
     consoleWarnSpy.mockReset();
   });
