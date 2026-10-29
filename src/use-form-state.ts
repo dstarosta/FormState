@@ -1,5 +1,4 @@
 import {
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -15,11 +14,8 @@ import { dotPathGet } from './helpers/dot-path';
 import { createFormComponent } from './helpers/form-builder';
 import { useIsomorphicLayoutEffect } from './helpers/use-isomorphic-layout-effect';
 import type {
-  ArrayElement,
   AsyncCheckMetaMap,
   DeepPartial,
-  ElementFocusOptions,
-  FormChangeArrayOptions,
   FormChangeOptions,
   FormClassCallback,
   FormClassOptions,
@@ -27,7 +23,6 @@ import type {
   FormClearErrorsOptions,
   FormInitOptions,
   FormMode,
-  FormMutableState,
   FormPathValue,
   FormReplaceOptions,
   FormResetOptions,
@@ -35,37 +30,22 @@ import type {
   FormStatePath,
   FormStateResponse,
   FormStatus,
-  FormSubmitHandler,
-  FormSubmitOptions,
   FormTouchOptions,
   FormValidateOptions,
   StateCallback,
   StateChangeListener,
-  SubmitState,
   SubmittedData,
   ValidationResult,
 } from './types/form-types';
 import {
-  coerceFormData,
-  collectActiveAsyncCheckPaths,
-  commitActiveAsyncCheckPaths,
-  runSubmitPhaseParse,
-  collectDescriptions,
   collectGroups,
-  collectLengths,
-  collectPatterns,
-  collectRanges,
-  collectRequired,
   getPath,
   getPathAsString,
   getPathNotation,
   isAsyncSchema,
-  setAsyncCheckPhase,
-  withMetaMap,
 } from './helpers/schema-visitor';
 import { useDeepMemo } from './helpers/use-deep-memo';
 import {
-  cleanEmpty,
   createGroupBundle,
   createImmutableData,
   createImmutableDescriptions,
@@ -75,16 +55,17 @@ import {
   createImmutableRanges,
   createImmutableRequired,
   createImmutableTouched,
-  createState,
   freezeObject,
-  getArrayPath,
-  mergeAsyncErrors,
-  safeSyncParse,
 } from './helpers/state-manager';
 import { classNames } from './helpers/class-helper';
 import { formatErrors, isSchemaValid, normalizeManualError } from './helpers/error-formatter';
 import { debounce } from './helpers/debouncer';
 import { useFormStateReducer } from './helpers/use-form-state-reducer';
+import { useArrayActions } from './helpers/use-array-actions';
+import { useDomActions } from './helpers/use-dom-actions';
+import { useInitialFormState } from './helpers/use-initial-form-state';
+import { useAsyncValidation } from './helpers/use-async-validation';
+import { useFormSubmit } from './helpers/use-form-submit';
 import { createFormStore } from './helpers/form-store';
 import { createUseListener } from './helpers/use-listener-builder';
 import { createUseWatch } from './helpers/use-watch-builder';
@@ -160,108 +141,17 @@ export function useFormState<T extends z.ZodMiniObject>(
 
   const [store] = useState(() => (watch ? createFormStore() : null));
 
-  const defaultData = useMemo(() => createState(schema), [schema]);
-
-  // Inline `initialData`/`initialTouched` values are compared by content so that only real changes
-  // rebuild the initial state (and reactively update the non-dirty values).
-  const memoizedInitialData = useDeepMemo(() => initialData, [initialData]);
-
-  const initialTouchedPaths = Array.isArray(initialTouched)
-    ? initialTouched.map((pathNotation) =>
-        typeof pathNotation === 'function'
-          ? getPath(defaultData, pathNotation).join('.')
-          : String(pathNotation)
-      )
-    : undefined;
-
-  const memoizedInitialTouchedPaths = useDeepMemo(() => initialTouchedPaths, [initialTouchedPaths]);
-
-  const initializedData = useMemo(
-    () => createState(schema, memoizedInitialData),
-    [schema, memoizedInitialData]
-  );
-
-  // Schema-only metadata does not depend on the initial data.
-  const schemaMetadata = useMemo(
-    () => ({
-      required: collectRequired(schema),
-      ranges: { ...collectRanges(schema), ...collectLengths(schema) },
-      patterns: collectPatterns(schema),
-      descriptions: collectDescriptions(schema),
-    }),
-    [schema]
-  );
-
-  // Stable reference for form-level `formClasses` defaults.
-  const stableCssOptions = useDeepMemo(() => cssOptions ?? {}, [cssOptions]);
-
-  // The processed initial state with default property values and optional errors during the
-  // initial validation.
-  const state = useMemo<FormMutableState<State>>(() => {
-    const mergedData = memoizedInitialData ? initializedData : defaultData;
-    const { result: safeResult, asyncPending: initialAsyncPending } = safeSyncParse(
-      schema,
-      mergedData
-    );
-
-    const initialErrors = initialAsyncPending
-      ? ({} as Record<keyof State | '', string | undefined>)
-      : formatErrors<State>(
-          (safeResult as { error?: Parameters<typeof formatErrors<State>>[0] }).error,
-          errorMessageSeparator
-        );
-    const errors = validateOnMount
-      ? initialErrors
-      : ({} as Record<keyof State | '', string | undefined>);
-
-    const dirty = {} as Record<keyof State, boolean>;
-    const touched = {} as Record<keyof State, boolean>;
-
-    for (const field in mergedData) {
-      if (Object.prototype.hasOwnProperty.call(mergedData, field)) {
-        dirty[field] = false;
-        touched[field] = false;
-      }
-    }
-
-    for (const path of memoizedInitialTouchedPaths ?? []) {
-      touched[path as keyof State] = true;
-    }
-
-    const data =
-      (safeResult as { data?: State } | null)?.data ?? coerceFormData(schema, mergedData);
-
-    return {
-      ...schemaMetadata,
-      initialData: data,
-      submittedData: null,
-      mode: initialMode,
-      changed: false,
-      replaced: false,
-      validated: validateOnMount,
-      submitCount: 0,
-      data,
-      initialErrors,
-      errors,
-      dirty,
-      touched,
-      manualErrors: {},
-      asyncErrors: {} as Record<keyof State | '', string | undefined>,
-      asyncRequestId: initialAsyncPending ? 1 : 0,
-      asyncValidating: initialAsyncPending && validateOnMount,
-      asyncTrigger: undefined,
-    } satisfies FormMutableState<State>;
-  }, [
-    schema,
-    schemaMetadata,
-    defaultData,
-    memoizedInitialData,
-    initializedData,
-    memoizedInitialTouchedPaths,
+  // The processed initial state.
+  const state = useInitialFormState(schema, {
+    initialData,
+    initialTouched,
     initialMode,
     validateOnMount,
     errorMessageSeparator,
-  ]);
+  });
+
+  // Stable reference for form-level `formClasses` defaults.
+  const stableCssOptions = useDeepMemo(() => cssOptions ?? {}, [cssOptions]);
 
   // Tracks whether component is mounted.
   const isMountedRef = useRef(true);
@@ -340,306 +230,19 @@ export function useFormState<T extends z.ZodMiniObject>(
     return Object.keys(formState.errors).length === 0;
   }, [formState.errors, formState.validated, formState.asyncValidating]);
 
-  // Generates asynchronous listener state.
-  const snapshotAsyncListenerState = useCallback(() => {
-    const current = formStateRef.current;
-    return {
-      data: createImmutableData(current.data),
-      errors: createImmutableErrors<T>(current.errors, errorMessageSeparator),
-      submitCount: current.submitCount,
-      valid: Object.keys(current.errors).length === 0,
-    };
-  }, [errorMessageSeparator]);
+  // Holds a callback the `useListener` hook calls when a new listener registers.
+  const onListenerAddedRef = useRef<((listener: StateChangeListener<State>) => void) | null>(null);
 
-  // Tracks whether a burst is currently in flight (between burst-start and finishBurst).
-  const asyncBurstActiveRef = useRef(false);
-
-  // Pending validating event refs.
-  const pendingValidatingRef = useRef<{
-    prevSnapshot: ReturnType<typeof snapshotAsyncListenerState>;
-    activePaths: readonly string[];
-    triggerField: string;
-    deliveredTo: Set<StateChangeListener<State>>;
-  } | null>(null);
-
-  // Snapshot of the form state from before the change that started the current async burst.
-  const prevAsyncSnapshotRef = useRef<ReturnType<typeof snapshotAsyncListenerState> | null>(null);
-
-  // Tracks the in-flight burst started by the change-driven effect (not validateAsync): whether its
-  // result arrived (finishScheduled), the state it was validated against (closingSnapshot) and the
-  // frame that will close it (pendingFinish), which a newer validation flushes early.
-  const effectBurstRef = useRef<{
-    active: boolean;
-    finishScheduled: boolean;
-    closingSnapshot: ReturnType<typeof snapshotAsyncListenerState> | null;
-    pendingFinish: { frame: number; flush: () => void } | null;
-  }>({ active: false, finishScheduled: false, closingSnapshot: null, pendingFinish: null });
-
-  // Seed the prev-snapshot at mount so the first change-driven burst has a pre-change ref.
-  useIsomorphicLayoutEffect(() => {
-    if (prevAsyncSnapshotRef.current === null) {
-      prevAsyncSnapshotRef.current = snapshotAsyncListenerState();
-    }
-  }, []);
-
-  // Delivers the current burst's `asyncValidating` event to listeners that
-  // haven't yet received it.
-  const drainPendingValidating = useCallback(
-    (targetListener?: StateChangeListener<State>) => {
-      const pending = pendingValidatingRef.current;
-      if (!pending) {
-        return;
-      }
-
-      const candidates = targetListener ? [targetListener] : changeListeners;
-      const recipients: StateChangeListener<State>[] = [];
-
-      for (const listener of candidates) {
-        if (!pending.deliveredTo.has(listener)) {
-          recipients.push(listener);
-          pending.deliveredTo.add(listener);
-        }
-      }
-
-      if (recipients.length === 0) {
-        return;
-      }
-
-      const { prevSnapshot, activePaths, triggerField } = pending;
-      const { data, errors, submitCount, valid } = prevSnapshot;
-
-      for (const schemaPath of activePaths) {
-        for (const listener of recipients) {
-          listener({
-            type: 'asyncValidating',
-            data,
-            errors,
-            submitCount,
-            valid,
-            triggerField,
-            schemaPath,
-          });
-        }
-      }
-    },
-    [changeListeners]
-  );
-
-  // Dispatches async events.
-  useEffect(() => {
-    if (!formState.asyncValidating) {
-      const effectBurst = effectBurstRef.current;
-
-      // The burst's result was committed; remember the validated state for its closing event.
-      if (effectBurst.active && effectBurst.finishScheduled && !effectBurst.closingSnapshot) {
-        effectBurst.closingSnapshot = snapshotAsyncListenerState();
-      }
-
-      // A burst whose run was cancelled (reset, replace, a non-validating change...) never
-      // reaches finishBurst; close it so the asyncValidating/asyncValidated pair stays balanced.
-      if (effectBurst.active && !effectBurst.finishScheduled) {
-        const pending = pendingValidatingRef.current;
-
-        effectBurst.active = false;
-        asyncBurstActiveRef.current = false;
-        pendingValidatingRef.current = null;
-
-        const snapshot = snapshotAsyncListenerState();
-        prevAsyncSnapshotRef.current = snapshot;
-
-        if (pending) {
-          const { data, errors, submitCount, valid } = snapshot;
-
-          for (const schemaPath of pending.activePaths) {
-            for (const listener of pending.deliveredTo) {
-              if (changeListeners.has(listener)) {
-                listener({
-                  type: 'asyncValidated',
-                  data,
-                  errors,
-                  submitCount,
-                  valid,
-                  triggerField: pending.triggerField,
-                  schemaPath,
-                });
-              }
-            }
-          }
-        }
-      }
-
-      return;
-    }
-
-    // A previous burst finished but its closing frame has not run yet: close it now so this
-    // validation starts its own burst.
-    const pendingFinish = effectBurstRef.current.pendingFinish;
-
-    if (pendingFinish) {
-      cancelAnimationFrame(pendingFinish.frame);
-      pendingFinish.flush();
-    }
-
-    const requestId = formState.asyncRequestId;
-    const triggerField = formStateRef.current.asyncTrigger ?? '';
-
-    setAsyncCheckPhase(schema, 'change', asyncMetaMap);
-
-    const activePaths = collectActiveAsyncCheckPaths(
-      schema,
-      formState.data,
-      'change',
-      asyncMetaMap
-    );
-
-    commitActiveAsyncCheckPaths(schema, formState.data, 'change', asyncMetaMap);
-
-    const cancelledRef = { current: false };
-
-    if (!asyncBurstActiveRef.current) {
-      asyncBurstActiveRef.current = true;
-      effectBurstRef.current = {
-        active: true,
-        finishScheduled: false,
-        closingSnapshot: null,
-        pendingFinish: null,
-      };
-
-      if (activePaths.length > 0) {
-        const prevSnapshot = prevAsyncSnapshotRef.current ?? snapshotAsyncListenerState();
-
-        pendingValidatingRef.current = {
-          prevSnapshot,
-          activePaths,
-          triggerField,
-          deliveredTo: new Set(),
-        };
-
-        drainPendingValidating();
-      }
-    }
-
-    // `flushed` closes the burst early because a newer validation has already started.
-    const finishBurst = (resolvedTrigger: string | undefined, flushed: boolean) => {
-      // Unreachable guard
-      /* v8 ignore if -- @preserve */
-      if (!flushed && requestId !== formStateRef.current.asyncRequestId) {
-        return;
-      }
-
-      const snapshot = effectBurstRef.current.closingSnapshot ?? snapshotAsyncListenerState();
-
-      asyncBurstActiveRef.current = false;
-      effectBurstRef.current = {
-        active: false,
-        finishScheduled: false,
-        closingSnapshot: null,
-        pendingFinish: null,
-      };
-
-      drainPendingValidating();
-
-      pendingValidatingRef.current = null;
-
-      prevAsyncSnapshotRef.current = snapshot;
-
-      if (activePaths.length === 0 || changeListeners.size === 0) {
-        return;
-      }
-
-      const { data, errors, submitCount, valid } = snapshot;
-
-      for (const schemaPath of activePaths) {
-        for (const listener of changeListeners) {
-          listener({
-            type: 'asyncValidated',
-            data,
-            errors,
-            submitCount,
-            valid,
-            triggerField: resolvedTrigger,
-            schemaPath,
-          });
-        }
-      }
-    };
-
-    const scheduleFinish = () => {
-      const frame = requestAnimationFrame(() => {
-        finishBurst(triggerField, false);
-      });
-
-      effectBurstRef.current.pendingFinish = {
-        frame,
-        flush: () => {
-          finishBurst(triggerField, true);
-        },
-      };
-    };
-
-    void (async () => {
-      try {
-        const result = await withMetaMap(asyncMetaMap, () => schema.safeParseAsync(formState.data));
-
-        if (cancelledRef.current) {
-          return;
-        }
-
-        const asyncErrors = formatErrors<State>(result.error, errorMessageSeparator);
-
-        effectBurstRef.current.finishScheduled = true;
-
-        dispatch({
-          type: 'asyncErrors',
-          requestId,
-          errors: asyncErrors,
-          activePaths,
-        });
-
-        scheduleFinish();
-      } catch (error: unknown) {
-        // Unreachable guard
-        /* v8 ignore if -- @preserve */
-        if (cancelledRef.current) {
-          return;
-        }
-
-        const message =
-          error instanceof Error && error.message ? error.message : 'Async validation failed.';
-
-        effectBurstRef.current.finishScheduled = true;
-
-        dispatch({
-          type: 'asyncErrors',
-          requestId,
-          errors: { '': message } as Record<keyof State | '', string | undefined>,
-          activePaths,
-        });
-
-        scheduleFinish();
-      }
-    })();
-
-    return () => {
-      cancelledRef.current = true;
-    };
-  }, [
+  // Async validation bursts, their listener events and the "validateAsync" function.
+  const { fireAsyncListenerEvent, validateAsync } = useAsyncValidation({
     schema,
-    formState.data,
-    formState.asyncValidating,
-    formState.asyncRequestId,
-    errorMessageSeparator,
+    formState,
+    formStateRef,
     dispatch,
     changeListeners,
-    snapshotAsyncListenerState,
-    drainPendingValidating,
+    onListenerAddedRef,
     asyncMetaMap,
-  ]);
-
-  // Registers listener callbacks.
-  useEffect(() => {
-    onListenerAddedRef.current = drainPendingValidating;
-    drainPendingValidating();
+    errorMessageSeparator,
   });
 
   // The memoized "formStatus" object. The `validSchema` getter delegates to
@@ -1110,165 +713,12 @@ export function useFormState<T extends z.ZodMiniObject>(
     [validateOnTouch, validateBeforeSubmit, dispatch]
   );
 
-  // Resolves the array path (throwing for non-array schema types) and dispatches a "changeArray"
-  // action; the reducer applies `mutator` to the latest state.
-  const mutateArray = useCallback(
-    (
-      nameOrPath: FormPath<T>,
-      mutator: (draft: unknown[]) => void,
-      options?: FormChangeArrayOptions<T>
-    ) => {
-      dispatch({
-        type: 'changeArray',
-        name: getArrayPath(schema, formStateRef.current.data, nameOrPath),
-        mutator,
-        options: {
-          touch: Boolean(options?.touch),
-          validate: options?.validate ?? validateOnChange,
-        },
-      });
-    },
-    [schema, validateOnChange, dispatch]
-  );
-
-  const append = useCallback(
-    <P extends FormPath<T>, I = FormPathValue<T, P>>(
-      nameOrPath: P,
-      items: ArrayElement<I>[] | ArrayElement<I>,
-      options?: FormChangeArrayOptions<T>
-    ) => {
-      mutateArray(
-        nameOrPath,
-        (draft) => {
-          if (Array.isArray(items)) {
-            draft.push(...items);
-          } else {
-            draft.push(items);
-          }
-        },
-        options
-      );
-    },
-    [mutateArray]
-  );
-
-  const insert = useCallback(
-    <P extends FormPath<T>, I = FormPathValue<T, P>>(
-      nameOrPath: P,
-      index: number,
-      items: ArrayElement<I>[] | ArrayElement<I>,
-      options?: FormChangeArrayOptions<T>
-    ) => {
-      mutateArray(
-        nameOrPath,
-        (draft) => {
-          if (Array.isArray(items)) {
-            draft.splice(index, 0, ...items);
-          } else {
-            draft.splice(index, 0, items);
-          }
-        },
-        options
-      );
-    },
-    [mutateArray]
-  );
-
-  const update = useCallback(
-    <P extends FormPath<T>, I = FormPathValue<T, P>>(
-      nameOrPath: P,
-      index: number,
-      item: ArrayElement<I>,
-      options?: FormChangeArrayOptions<T>
-    ) => {
-      mutateArray(
-        nameOrPath,
-        (draft) => {
-          draft.splice(index, 1, item);
-        },
-        options
-      );
-    },
-    [mutateArray]
-  );
-
-  const swap = useCallback(
-    (nameOrPath: FormPath<T>, from: number, to: number, options?: FormChangeArrayOptions<T>) => {
-      if (from < 0 || to < 0) {
-        throw new Error(`Index out of bounds: fromIndex=${String(from)}, toIndex=${String(to)}`);
-      }
-
-      mutateArray(
-        nameOrPath,
-        (draft) => {
-          // The upper bound is only known when the reducer runs against the latest state.
-          if (from >= draft.length || to >= draft.length) {
-            if (IS_DEVELOPMENT) {
-              console.warn(
-                `[useFormState] swap() skipped: fromIndex=${String(from)}, toIndex=${String(to)}, array length=${String(draft.length)}.`
-              );
-            }
-
-            return;
-          }
-
-          if (from !== to) {
-            const temp = draft[from];
-            draft[from] = draft[to];
-            draft[to] = temp;
-          }
-        },
-        options
-      );
-    },
-    [mutateArray]
-  );
-
-  const remove = useCallback(
-    <P extends FormPath<T>>(
-      nameOrPath: P,
-      indexOrPredicate:
-        number | ((value: ArrayElement<FormPathValue<T, P>>, index: number) => boolean),
-      options?: FormChangeArrayOptions<T>
-    ) => {
-      mutateArray(
-        nameOrPath,
-        (draft) => {
-          if (typeof indexOrPredicate === 'number') {
-            draft.splice(indexOrPredicate, 1);
-            return;
-          }
-
-          let writeIndex = 0;
-
-          for (let readIndex = 0; readIndex < draft.length; readIndex++) {
-            const value = draft[readIndex];
-
-            if (!indexOrPredicate(value as ArrayElement<FormPathValue<T, P>>, readIndex)) {
-              draft[writeIndex] = value;
-              writeIndex++;
-            }
-          }
-
-          draft.length = writeIndex;
-        },
-        options
-      );
-    },
-    [mutateArray]
-  );
-
-  const clear = useCallback(
-    (nameOrPath: FormPath<T>, options?: FormChangeArrayOptions<T>) => {
-      mutateArray(
-        nameOrPath,
-        (draft) => {
-          draft.length = 0;
-        },
-        options
-      );
-    },
-    [mutateArray]
+  // The "array" form actions.
+  const { append, insert, update, swap, remove, clear } = useArrayActions(
+    schema,
+    formStateRef,
+    dispatch,
+    validateOnChange
   );
 
   // The memoized "validate" function.
@@ -1349,95 +799,6 @@ export function useFormState<T extends z.ZodMiniObject>(
     [schema, errorMessageSeparator, dispatch]
   );
 
-  // Fires an `asyncValidating` / `asyncValidated` event.
-  const fireAsyncListenerEvent = useCallback(
-    (type: 'asyncValidating' | 'asyncValidated', paths: readonly string[]) => {
-      if (changeListeners.size === 0 || paths.length === 0) {
-        return;
-      }
-      const { data, errors, submitCount, valid } = snapshotAsyncListenerState();
-      for (const schemaPath of paths) {
-        for (const listener of changeListeners) {
-          listener({
-            type,
-            data,
-            errors,
-            submitCount,
-            valid,
-            triggerField: undefined,
-            schemaPath,
-          });
-        }
-      }
-    },
-    [changeListeners, snapshotAsyncListenerState]
-  );
-
-  // The memoized "validateAsync" function.
-  const validateAsync = useCallback(async (): Promise<boolean> => {
-    const requestId = formStateRef.current.asyncRequestId;
-
-    // Only fire `asyncValidating` if there isn't already an in-flight burst.
-    const ownsBurst = !asyncBurstActiveRef.current;
-
-    let activePaths: readonly string[] = [];
-    let freshAsyncErrors: Record<keyof State | '', string | undefined>;
-
-    try {
-      const parsed = await runSubmitPhaseParse(
-        schema,
-        formStateRef.current.data,
-        asyncMetaMap,
-        (collected) => {
-          activePaths = collected;
-          if (ownsBurst) {
-            asyncBurstActiveRef.current = true;
-            fireAsyncListenerEvent('asyncValidating', collected);
-          }
-        }
-      );
-      activePaths = parsed.activePaths;
-      freshAsyncErrors = formatErrors<State>(parsed.result.error, errorMessageSeparator);
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error && error.message ? error.message : 'Async validation failed.';
-      freshAsyncErrors = { '': message } as Record<keyof State | '', string | undefined>;
-    }
-
-    const superseded = requestId !== formStateRef.current.asyncRequestId;
-
-    const asyncErrors = mergeAsyncErrors(
-      formStateRef.current.asyncErrors,
-      freshAsyncErrors,
-      activePaths
-    );
-
-    if (!superseded) {
-      dispatch({
-        type: 'asyncValidate',
-        errors: asyncErrors,
-        freshErrors: freshAsyncErrors,
-      });
-    }
-
-    if (ownsBurst) {
-      // eslint-disable-next-line require-atomic-updates -- `ownsBurst` was captured before the await; only this call site flips the ref back to false in this path.
-      asyncBurstActiveRef.current = false;
-
-      if (!superseded) {
-        fireAsyncListenerEvent('asyncValidated', activePaths);
-      }
-    }
-
-    const mergedErrors = { ...freshAsyncErrors, ...asyncErrors };
-
-    return (
-      !superseded &&
-      Object.keys(mergedErrors).length === 0 &&
-      Object.keys(formStateRef.current.manualErrors).length === 0
-    );
-  }, [schema, errorMessageSeparator, dispatch, fireAsyncListenerEvent, asyncMetaMap]);
-
   // The memoized "handleReset" function.
   const handleReset = useCallback(
     (_event?: SyntheticEvent<HTMLFormElement> | null, options?: FormResetOptions<T>) => {
@@ -1470,148 +831,18 @@ export function useFormState<T extends z.ZodMiniObject>(
   );
 
   // The memoized "handleSubmit" function.
-  const handleSubmit = useCallback(
-    (onSubmit: FormSubmitHandler<T>, options?: FormSubmitOptions<T>) => {
-      return async (submittedFormData: FormData) => {
-        if (inFlightSubmitRef.current) {
-          return;
-        }
-
-        inFlightSubmitRef.current = true;
-
-        try {
-          const currentState = formStateRef.current;
-          const requestId = currentState.asyncRequestId;
-
-          let activePaths: readonly string[] = [];
-          let errors: Record<keyof State | '', string | undefined>;
-
-          try {
-            const parsed = await runSubmitPhaseParse(
-              schema,
-              currentState.data,
-              asyncMetaMap,
-              (collected) => {
-                activePaths = collected;
-                fireAsyncListenerEvent('asyncValidating', collected);
-              }
-            );
-            activePaths = parsed.activePaths;
-            errors = formatErrors<State>(parsed.result.error, errorMessageSeparator);
-          } catch (error: unknown) {
-            const message =
-              error instanceof Error && error.message ? error.message : 'Async validation failed.';
-            errors = { '': message } as Record<keyof State | '', string | undefined>;
-          }
-
-          // Close the submit-phase asyncValidating event even when a change superseded this run.
-          fireAsyncListenerEvent('asyncValidated', activePaths);
-
-          if (requestId !== formStateRef.current.asyncRequestId) {
-            return;
-          }
-
-          const mergedAsyncErrors = mergeAsyncErrors(
-            formStateRef.current.asyncErrors,
-            errors,
-            activePaths
-          );
-
-          const submittedErrors = {
-            ...errors,
-            ...mergedAsyncErrors,
-            ...formStateRef.current.manualErrors,
-          };
-          const hasErrors = Object.keys(submittedErrors).length > 0;
-
-          const submitState: SubmitState<State> = hasErrors
-            ? {
-                valid: false,
-                errors: createImmutableErrors<T>(submittedErrors, errorMessageSeparator),
-              }
-            : {
-                valid: true,
-                data: cleanEmpty(schema, currentState.data) as State,
-              };
-
-          startTransition(() => {
-            setIsSubmitting(true);
-          });
-
-          const submissionErrors = await onSubmit(submitState, submittedFormData);
-
-          // Edits made while `onSubmit` was pending are kept (and stay dirty/validating); the
-          // submit result is applied to the data that was actually sent.
-          const superseded = formStateRef.current.data !== currentState.data;
-
-          if (
-            hasErrors ||
-            (submissionErrors !== true && Object.keys(submissionErrors).length > 0)
-          ) {
-            if (typeof options?.onError === 'function') {
-              changeCallbackRefs.current.push(options.onError);
-            }
-
-            const manualErrors: Record<string, string> = {};
-
-            if (typeof submissionErrors === 'object') {
-              for (const errorName in submissionErrors) {
-                if (Object.hasOwn(submissionErrors, errorName)) {
-                  const error = submissionErrors[errorName];
-
-                  if (error) {
-                    manualErrors[errorName] = error;
-                  }
-                }
-              }
-            }
-
-            dispatch({
-              type: 'submitValidate',
-              asyncErrors: mergedAsyncErrors,
-              manualErrors: manualErrors,
-              freshErrors: errors,
-              superseded,
-            });
-            return;
-          }
-
-          if (typeof options?.onSuccess === 'function') {
-            changeCallbackRefs.current.push(() => {
-              options.onSuccess?.({
-                data: cleanEmpty(schema, currentState.data) as State,
-                formData: submittedFormData,
-              });
-            });
-          }
-
-          lastSubmittedFormData.current = submittedFormData;
-
-          dispatch({
-            type: 'submit',
-            data: currentState.data,
-            submittedData: {
-              data: createImmutableData(currentState.data),
-              formData: submittedFormData,
-            },
-            asyncErrors: mergedAsyncErrors,
-            freshErrors: errors,
-            superseded,
-            options: {
-              resetDirty: options?.resetDirty !== false,
-              resetTouched: options?.resetTouched !== false,
-              updateInitialData: options?.updateInitialData !== false,
-            },
-          });
-        } finally {
-          // This ref is just a guard against multiple submits.
-          // eslint-disable-next-line require-atomic-updates
-          inFlightSubmitRef.current = false;
-        }
-      };
-    },
-    [schema, errorMessageSeparator, setIsSubmitting, dispatch, fireAsyncListenerEvent, asyncMetaMap]
-  );
+  const handleSubmit = useFormSubmit({
+    schema,
+    formStateRef,
+    dispatch,
+    asyncMetaMap,
+    errorMessageSeparator,
+    fireAsyncListenerEvent,
+    setIsSubmitting,
+    inFlightSubmitRef,
+    changeCallbackRefs,
+    lastSubmittedFormData,
+  });
 
   // The memoized "reset" function.
   const reset = useCallback(
@@ -1755,104 +986,11 @@ export function useFormState<T extends z.ZodMiniObject>(
     [inferredNameFormat]
   );
 
-  // Resolves an element within the captured form scope, falling back to the first
-  // form in the document if no form has been captured yet.
-  const queryWithinForm = useCallback((selector: string) => {
-    const form = formElementRef.current;
-    if (form?.isConnected) {
-      return form.querySelector<HTMLElement>(selector);
-    }
-    return document.querySelector<HTMLElement>(`form ${selector}`);
-  }, []);
-
-  // Blurs the actively focused element.
-  const blur = useCallback(() => {
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-  }, []);
-
-  // Sets focus on an element
-  const focus = useCallback(
-    (elementOrName: HTMLElement | string | null, options?: ElementFocusOptions<T>) => {
-      const element =
-        typeof elementOrName === 'string'
-          ? queryWithinForm(`[name="${elementOrName.trim()}"]`)
-          : elementOrName;
-
-      if (!element) {
-        return;
-      }
-
-      if (options?.errorKey) {
-        const key =
-          typeof options.errorKey === 'function'
-            ? getPath(formStateRef.current.data, options.errorKey).join('.')
-            : String(options.errorKey);
-
-        if (!formStateRef.current.errors[key as keyof State]) {
-          return;
-        }
-      }
-
-      element.focus({
-        focusVisible: options?.focusVisible !== false,
-        preventScroll: options?.preventScroll === true,
-      });
-
-      if (options?.selectText && element instanceof HTMLInputElement) {
-        element.select();
-      }
-    },
-    [queryWithinForm]
-  );
-
-  // Focuses the first input or textarea in the form with the error CSS class.
-  const focusOnFirstError = useCallback(
-    (options?: Omit<ElementFocusOptions<T>, 'errorKey'>) => {
-      const prefix =
-        stableCssOptions.prefix === null ? null : stableCssOptions.prefix?.trim() || 'form-state';
-
-      const doFocus = () => {
-        let element: HTMLElement | null = null;
-
-        if (prefix) {
-          const errorClass = `${prefix}__error`;
-          element = queryWithinForm(`input.${errorClass}, textarea.${errorClass}`);
-        } else {
-          const errors = formStateRef.current.errors;
-
-          for (const key in errors) {
-            if (key && errors[key as keyof State]) {
-              const candidate = queryWithinForm(`input[name="${key}"], textarea[name="${key}"]`);
-
-              if (candidate) {
-                element = candidate;
-                break;
-              }
-            }
-          }
-        }
-
-        if (!element) {
-          return;
-        }
-
-        element.focus({
-          focusVisible: options?.focusVisible !== false,
-          preventScroll: options?.preventScroll === true,
-        });
-
-        if (options?.selectText && element instanceof HTMLInputElement) {
-          element.select();
-        }
-      };
-
-      requestAnimationFrame(() => {
-        doFocus();
-      });
-    },
-    [stableCssOptions, queryWithinForm]
+  // The DOM form actions.
+  const { blur, focus, focusOnFirstError } = useDomActions<T>(
+    formElementRef,
+    formStateRef,
+    stableCssOptions
   );
 
   // The memoized Form component.
@@ -1927,9 +1065,6 @@ export function useFormState<T extends z.ZodMiniObject>(
       () => blockerStateRef.current.formStatus
     )
   );
-
-  // Holds a callback the `useListener` hook calls when a new listener registers.
-  const onListenerAddedRef = useRef<((listener: StateChangeListener<State>) => void) | null>(null);
 
   // The closure reads `onListenerAddedRef.current` only when a listener is
   // added inside a "useEffect", never during render.
